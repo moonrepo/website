@@ -45,6 +45,10 @@ export default defineConfig({
 								'docs/moon/workspace',
 							],
 						},
+						{
+							label: 'Guides',
+							autogenerate: { directory: 'docs/moon/guides' },
+						},
 						...makeChangelogsSidebarLinks([
 							{
 								type: 'all',
