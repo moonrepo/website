@@ -1,6 +1,5 @@
 // @ts-check
 
-import solidJs from '@astrojs/solid-js';
 import starlight from '@astrojs/starlight';
 // import starlightDocSearch from '@astrojs/starlight-docsearch';
 import { defineConfig } from 'astro/config';
@@ -85,6 +84,5 @@ export default defineConfig({
 				starlightLlmsTxt(),
 			],
 		}),
-		solidJs({ devtools: false }),
 	],
 });

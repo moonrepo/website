@@ -8,6 +8,7 @@
     "dist"
   ],
   "compilerOptions": {
+    "jsx": "react-jsx",
     "verbatimModuleSyntax": true,
     "paths": {
       "#components/*": [
@@ -16,8 +17,6 @@
       "#layouts/*": [
         "./src/layouts/*"
       ]
-    },
-    "jsx": "preserve",
-    "jsxImportSource": "solid-js"
+    }
   }
 }
