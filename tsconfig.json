@@ -1,22 +1,11 @@
 {
-  "extends": "astro/tsconfigs/strict",
-  "include": [
-    ".astro/types.d.ts",
-    "**/*"
-  ],
-  "exclude": [
-    "dist"
-  ],
   "compilerOptions": {
-    "jsx": "react-jsx",
-    "verbatimModuleSyntax": true,
-    "paths": {
-      "#components/*": [
-        "./src/components/*"
-      ],
-      "#layouts/*": [
-        "./src/layouts/*"
-      ]
+    "composite": true,
+    "strict": true
+  },
+  "references": [
+    {
+      "path": "web"
     }
-  }
+  ]
 }
