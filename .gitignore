@@ -16,3 +16,7 @@ pnpm-debug.log*
 
 # macOS-specific files
 .DS_Store
+
+# moon
+.moon/cache
+.moon/docker

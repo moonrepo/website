@@ -1,0 +1,15 @@
+unstable_javascript:
+  packageManager: pnpm
+  dedupeOnLockfileChange: true
+  syncProjectWorkspaceDependencies: true
+  inferTasksFromScripts: false
+
+unstable_node: {}
+
+unstable_pnpm: {}
+
+typescript:
+  syncProjectReferences: true
+  syncProjectReferencesToPaths: true
+  includeProjectReferenceSources: true
+  includeSharedTypes: true
