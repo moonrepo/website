@@ -1,0 +1,35 @@
+---
+import { Code, TabItem, Tabs } from '@astrojs/starlight/components';
+import TOML from 'smol-toml';
+import YAML from 'yaml';
+
+export interface Props {
+	config: object;
+	file: string;
+}
+
+const { config, file } = Astro.props;
+---
+
+<Tabs syncKey="config-format">
+	<TabItem label="JSON">
+		<Code
+			code={JSON.stringify(config, null, 2)}
+			lang="json"
+			title={`${file}.json`}
+		/>
+	</TabItem>
+
+	<TabItem label="TOML">
+		<Code code={TOML.stringify(config)} lang="toml" title={`${file}.toml`} />
+	</TabItem>
+
+	<TabItem label="YAML">
+		<Code
+			code={YAML.stringify(config, { defaultKeyType: 'PLAIN', defaultStringType: 'QUOTE_SINGLE' })}
+			lang="yaml"
+			title={`${file}.yml`}
+		/>
+	</TabItem>
+</Tabs>
+
