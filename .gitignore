@@ -1,5 +1,10 @@
 # build output
 dist/
+.tanstack
+.cache
+.vercel
+.output
+.nitro
 
 # dependencies
 node_modules/

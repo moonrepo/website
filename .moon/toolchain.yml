@@ -1,3 +1,5 @@
+$schema: "./cache/schemas/toolchain.json"
+
 unstable_javascript:
   packageManager: pnpm
   dedupeOnLockfileChange: true

@@ -6,6 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
+    "includes": ["**", "!**/*.gen.ts", "!**/*.generated.ts"],
     "ignoreUnknown": false
   },
   "assist": {

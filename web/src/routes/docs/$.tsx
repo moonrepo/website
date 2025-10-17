@@ -19,7 +19,9 @@ export const Route = createFileRoute('/docs/$')({
 	component: Page,
 	loader: async ({ params }) => {
 		const data = await loader({ data: params._splat?.split('/') ?? [] });
+
 		await clientLoader.preload(data.path);
+
 		return data;
 	},
 });
@@ -30,7 +32,10 @@ const loader = createServerFn({
 	.inputValidator((slugs: string[]) => slugs)
 	.handler(async ({ data: slugs }) => {
 		const page = source.getPage(slugs);
-		if (!page) throw notFound();
+
+		if (!page) {
+			throw notFound();
+		}
 
 		return {
 			tree: source.pageTree as object,
@@ -80,6 +85,7 @@ function transformPageTree(tree: PageTree.Folder): PageTree.Folder {
 			...item,
 			icon: (
 				<span
+					// biome-ignore lint/security/noDangerouslySetInnerHtml: allowed
 					dangerouslySetInnerHTML={{
 						__html: item.icon,
 					}}
@@ -92,7 +98,10 @@ function transformPageTree(tree: PageTree.Folder): PageTree.Folder {
 		...tree,
 		index: tree.index ? transform(tree.index) : undefined,
 		children: tree.children.map((item) => {
-			if (item.type === 'folder') return transformPageTree(item);
+			if (item.type === 'folder') {
+				return transformPageTree(item);
+			}
+
 			return transform(item);
 		}),
 	};
