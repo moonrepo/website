@@ -65,6 +65,7 @@ const clientLoader = createClientLoader(docs.doc, {
 function Page() {
 	const data = Route.useLoaderData();
 	const Content = clientLoader.getComponent(data.path);
+
 	const tree = useMemo(
 		() => transformPageTree(data.tree as PageTree.Folder),
 		[data.tree],

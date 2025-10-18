@@ -9,12 +9,15 @@
     "start": "node .output/server/index.mjs"
   },
   "dependencies": {
+    "@moonrepo/types": "^1.33.3",
     "@tanstack/react-router": "^1.133.12",
     "@tanstack/react-start": "^1.133.12",
     "fumadocs-core": "^15.8.5",
     "fumadocs-mdx": "^12.0.3",
+    "fumadocs-typescript": "^4.0.11",
     "fumadocs-ui": "^15.8.5",
     "lucide-static": "^0.546.0",
+    "lucide-react": "^0.546.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "smol-toml": "^1.4.2",
