@@ -1,0 +1,41 @@
+---
+title: Workspace
+icon: Layers
+---
+
+The **Workspace** is the foundational concept in moon that serves as the central coordination point for all operations within your codebase. It represents a directory containing multiple projects, manages toolchains, executes tasks, and integrates tightly with version control systems (VCS). The workspace is the top-level organizational unit that enables moon's powerful monorepo management capabilities.
+
+## Key characteristics
+
+A workspace in moon is identified by the presence of a `.moon` directory within your repository, typically at the root. This directory contains all workspace-level configuration and serves as the anchor point for moon's project discovery, task execution, and caching mechanisms.
+
+- **Monorepo-first design** - Optimized for managing multiple related projects in a single repository.
+- **Automatic project discovery** - Uses glob patterns or explicit mappings to locate projects.
+- **Centralized configuration** - Workspace-level settings that cascade down to projects.
+- **Dependency graph management** - Creates and maintains project and task dependency relationships.
+- **Intelligent caching** - Content-based hashing and caching for optimal performance.
+- **VCS integration** - Deep integration with Git for change detection, file hashing, and more.
+
+## Core features
+
+### Project discovery
+
+### Project constraints
+
+### Code ownership
+
+### Code generation
+
+### Pipeline management
+
+### Content hashing
+
+### Remote caching
+
+### Version control integration
+
+## Configuration
+
+The workspace is configured through `.moon/workspace.*`. This file defines all workspace-level settings and behaviors.
+
+TODO settings
