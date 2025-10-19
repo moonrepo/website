@@ -3,6 +3,9 @@ import {
 	defineConfig,
 	defineDocs,
 } from 'fumadocs-mdx/config';
+import { createGenerator, remarkAutoTypeTable } from 'fumadocs-typescript';
+
+const generator = createGenerator();
 
 export const docs = defineDocs({
 	dir: 'content/docs',
@@ -17,4 +20,8 @@ export const blog = defineCollections({
 	// }),
 });
 
-export default defineConfig();
+export default defineConfig({
+	mdxOptions: {
+		remarkPlugins: [[remarkAutoTypeTable, { generator }]],
+	},
+});
