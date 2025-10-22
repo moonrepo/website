@@ -6,6 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
+    "includes": ["**", "!**/*.gen.ts", "!**/*.generated.ts"],
     "ignoreUnknown": false
   },
   "assist": {
@@ -25,7 +26,7 @@
   "linter": {
     "enabled": true,
     "domains": {
-      "solid": "recommended"
+      "react": "recommended"
     },
     "rules": {
       "recommended": true

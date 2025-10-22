@@ -1,0 +1,6 @@
+stack: "frontend"
+layer: "application"
+
+tasks:
+  dev:
+    command: "vite dev"
