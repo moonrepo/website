@@ -1,6 +1,6 @@
 import { createFileRoute, notFound } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
-import type { PageTree } from 'fumadocs-core/server';
+import type * as PageTree from 'fumadocs-core/page-tree';
 import { createClientLoader } from 'fumadocs-mdx/runtime/vite';
 import { DocsLayout } from 'fumadocs-ui/layouts/docs';
 import {
@@ -10,10 +10,10 @@ import {
 	DocsTitle,
 } from 'fumadocs-ui/page';
 import { useMemo } from 'react';
+import { docs } from '@/generated';
 import { baseOptions } from '@/lib/layout.shared';
 import { source } from '@/lib/source';
 import { getMdxComponents } from '@/mdxComponents';
-import { docs } from '../../../source.generated';
 
 export const Route = createFileRoute('/docs/$')({
 	component: Page,

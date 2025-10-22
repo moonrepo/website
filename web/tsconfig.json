@@ -18,6 +18,7 @@
     "target": "ES2022",
     "types": ["vite/client"],
     "paths": {
+      "@/generated": [".source"],
       "@/*": ["./src/*"]
     }
   }

@@ -27,6 +27,6 @@ export const blog = defineCollections({
 
 export default defineConfig({
 	mdxOptions: {
-		remarkPlugins: [[remarkAutoTypeTable, { generator }]],
+		// remarkPlugins: [[remarkAutoTypeTable, { generator }]],
 	},
 });
