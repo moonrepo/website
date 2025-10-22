@@ -3,6 +3,9 @@
   "name": "root",
   "version": "1.0.0",
   "type": "module",
+  "scripts": {
+    "deps": "pnpm update --latest --interactive"
+  },
   "devDependencies": {
     "@biomejs/biome": "2.2.5",
     "typescript": "^5.9.3"
