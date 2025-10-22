@@ -24,10 +24,10 @@ export default defineConfig({
 		}),
 		react(),
 	],
-	// resolve: {
-	// 	noExternal: fumadocsDeps,
-	// },
-	// optimizeDeps: {
-	// 	exclude: fumadocsDeps,
-	// },
+	resolve: {
+		noExternal: fumadocsDeps,
+	},
+	optimizeDeps: {
+		exclude: fumadocsDeps,
+	},
 });
