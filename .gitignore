@@ -1,8 +1,10 @@
 # build output
 dist/
-
-# generated types
-.astro/
+.tanstack
+.cache
+.vercel
+.output
+.nitro
 
 # dependencies
 node_modules/
@@ -19,3 +21,7 @@ pnpm-debug.log*
 
 # macOS-specific files
 .DS_Store
+
+# moon
+.moon/cache
+.moon/docker

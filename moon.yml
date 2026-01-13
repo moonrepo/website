@@ -1,0 +1,16 @@
+stack: "infrastructure"
+layer: "configuration"
+
+tasks:
+  check:
+    command: "biome check"
+
+  check-fix:
+    command: "biome check --write"
+    options:
+      runInCI: false
+
+  format:
+    command: "biome format --write"
+    options:
+      runInCI: false
