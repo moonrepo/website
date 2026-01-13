@@ -30,6 +30,8 @@
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@vitejs/plugin-react": "^5.0.4",
+    "hast-util-to-jsx-runtime": "^2.3.6",
+    "style-to-js": "^1.1.18",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.15",
     "vite": "^7.1.11",

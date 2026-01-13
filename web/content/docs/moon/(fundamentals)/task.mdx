@@ -3,6 +3,99 @@ title: Tasks
 icon: CircleChevronRight
 ---
 
+Tasks are the fundamental building blocks of moon's execution system. They define discrete units of work that can be executed within projects, such as building, testing, linting, or running development servers. Tasks form the backbone of moon's automation capabilities, providing incremental builds, smart hashing, local/remote caching, and parallel execution.
+
+## Types
+
+Tasks are categorized into three primary types:
+
+- **Build** - Tasks that produce artifacts or compiled outputs, and is derived from the
+  [`outputs`](#outputs) setting.
+- **Run** - Tasks for development servers, or long-running scripts, and is derived from the
+  [`preset`](#preset) setting.
+- **Test** - Tasks that run tests, lints, validations, or quality checks. This is the default.
+
+<Callout>
+  The type of task will be automatically inferred based on its configuration,
+  but can also be explicitly defined with the [`type`](#type) setting.
+</Callout>
+
+## Modes
+
+Alongside types, tasks can also grouped into a special mode that provides unique handling within the
+action graph and pipelines.
+
+### Local only
+
+Tasks either run locally, in CI, or both. For tasks that should
+_only_ be ran locally, such as, development servers and watchers, we provide a mechanism for opting out of running in CI.
+
+To mark a task as local only, disable [`options.runInCI`](#runinci) or configure the appropriate [`preset`](#preset).
+
+```yaml title="moon.yml"
+tasks:
+  dev:
+    command: "start-dev-server"
+    options:
+      runInCI: false
+```
+
+### Internal only
+
+Internal tasks are not meant to be ran explicitly by the user (on the command line), but are used internally as
+dependencies of other tasks. Additionally, internal tasks are not displayed in a project's tasks
+list, but can be inspected with [`moon task`](./commands/task).
+
+To mark a task as internal, enable [`options.internal`](#internal).
+
+```yaml title="moon.yml"
+tasks:
+  prepare:
+    command: "intermediate-step"
+    options:
+      internal: true
+```
+
+### Interactive
+
+Tasks that need to interact with the user via terminal prompts are known as interactive tasks.
+Because interactive tasks require stdin, and it's not possible to have multiple parallel running
+tasks interact with stdin, we isolate interactive tasks from other tasks in the action graph. This
+ensures that only 1 interactive task is ran at a time.
+
+To mark a task as interactive, enable [`options.interactive`](#interactive).
+
+```yaml title="moon.yml"
+tasks:
+  init:
+    command: "init-app"
+    options:
+      interactive: true
+```
+
+### Persistent
+
+Tasks that never complete, like servers and watchers, are known as persistent tasks. Persistent
+tasks are typically problematic when it comes to dependency graphs, because if they run in the
+middle of the graph, subsequent tasks will never run because the persistent task never completes!
+
+However in moon, this is a non-issue, as we collect all persistent tasks within the action graph and
+run them _last as a batch_. This is perfect for a few reasons:
+
+- All persistent tasks are ran in parallel, so they don't block each other.
+- Running both the backend API and frontend webapp in parallel is a breeze.
+- Dependencies of persistent tasks are guaranteed to have ran and completed.
+
+To mark a task as persistent, enable [`options.persistent`](#persistent) or configure the appropriate [`preset`](#preset).
+
+```yaml title="moon.yml"
+tasks:
+  dev:
+    command: "start-dev-server"
+    options:
+      persistent: true
+```
+
 ## Configuration
 
 <auto-type-table

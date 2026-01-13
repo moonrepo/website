@@ -12,11 +12,11 @@ export default defineConfig({
 		port: 3000,
 	},
 	plugins: [
-		mdx(await import('./source.config')),
-		tailwindCss(),
 		tsConfigPaths({
 			projects: ['./tsconfig.json'],
 		}),
+		mdx(await import('./source.config')),
+		tailwindCss(),
 		tanstackStart({
 			prerender: {
 				enabled: true,
@@ -28,6 +28,7 @@ export default defineConfig({
 		noExternal: fumadocsDeps,
 	},
 	optimizeDeps: {
+		include: ['style-to-js', 'hast-util-to-jsx-runtime'],
 		exclude: fumadocsDeps,
 	},
 });
