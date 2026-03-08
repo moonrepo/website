@@ -12,7 +12,7 @@ export interface ConfigTabsProps {
 
 export function ConfigTabs({ config, file }: ConfigTabsProps) {
 	return (
-		<Tabs groupId="config-format" items={['JSON', 'TOML', 'YAML']}>
+		<Tabs groupId="config-format" items={['YAML', 'JSON', 'TOML']}>
 			<Tab value="JSON">
 				<Code
 					code={JSON.stringify(config, null, 2)}

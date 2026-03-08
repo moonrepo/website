@@ -1,7 +1,12 @@
 ---
 title: Tasks
-icon: CircleChevronRight
+icon: Circle
 ---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+import { VersionLabel } from "@/components/VersionLabel";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
+import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 
 Tasks are the fundamental building blocks of moon's execution system. They define discrete units of work that can be executed within projects, such as building, testing, linting, or running development servers. Tasks form the backbone of moon's automation capabilities, providing incremental builds, smart hashing, local/remote caching, and parallel execution.
 
@@ -20,6 +25,18 @@ Tasks are categorized into three primary types:
   but can also be explicitly defined with the [`type`](#type) setting.
 </Callout>
 
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-project",
+        type: "build",
+      },
+    },
+  }}
+/>
+
 ## Modes
 
 Alongside types, tasks can also grouped into a special mode that provides unique handling within the
@@ -32,13 +49,17 @@ _only_ be ran locally, such as, development servers and watchers, we provide a m
 
 To mark a task as local only, disable [`options.runInCI`](#runinci) or configure the appropriate [`preset`](#preset).
 
-```yaml title="moon.yml"
-tasks:
-  dev:
-    command: "start-dev-server"
-    options:
-      runInCI: false
-```
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      dev: {
+        command: "start-dev-server",
+        preset: "server",
+      },
+    },
+  }}
+/>
 
 ### Internal only
 
@@ -48,13 +69,19 @@ list, but can be inspected with [`moon task`](./commands/task).
 
 To mark a task as internal, enable [`options.internal`](#internal).
 
-```yaml title="moon.yml"
-tasks:
-  prepare:
-    command: "intermediate-step"
-    options:
-      internal: true
-```
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      internal: {
+        command: "intermediate-step",
+        options: {
+          internal: true,
+        },
+      },
+    },
+  }}
+/>
 
 ### Interactive
 
@@ -65,13 +92,19 @@ ensures that only 1 interactive task is ran at a time.
 
 To mark a task as interactive, enable [`options.interactive`](#interactive).
 
-```yaml title="moon.yml"
-tasks:
-  init:
-    command: "init-app"
-    options:
-      interactive: true
-```
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      init: {
+        command: "init-project",
+        options: {
+          interactive: true,
+        },
+      },
+    },
+  }}
+/>
 
 ### Persistent
 
@@ -88,17 +121,404 @@ run them _last as a batch_. This is perfect for a few reasons:
 
 To mark a task as persistent, enable [`options.persistent`](#persistent) or configure the appropriate [`preset`](#preset).
 
-```yaml title="moon.yml"
-tasks:
-  dev:
-    command: "start-dev-server"
-    options:
-      persistent: true
-```
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      dev: {
+        command: "start-dev-server",
+        options: {
+          persistent: true,
+        },
+      },
+    },
+  }}
+/>
+
+## Command
+
+The work unit of a task is the `command` (or [`script`](#script)) setting. This setting represents a simple command line, comprised of an executable (binary, file path, etc), and zero or more arguments (options, flags, positionals, etc).
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        command: "executable --option value -f arg1 arg2",
+      },
+    },
+  }}
+/>
+
+This setting can also be defined with a list of strings, where each list item is an individual argument. This pattern should be used when the string variant is too complex to parse correctly, or is not parsed into the proper individual arguments.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        command: ["executable", "--option", "value", "-f", "arg1", "arg2"],
+      },
+    },
+  }}
+/>
+
+### Arguments
+
+The `args` setting is a collection of _additional_ arguments to merge into the [`command`](#command), and purely exists for composition when [task inheritance](./task-inheritance) occurs. This setting also supports a string, or a list of strings.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        args: "--another arg -x",
+      },
+    },
+  }}
+/>
+
+<Callout>
+  Argument merging is powered by the
+  [`options.mergeArgs`](./task-inheritance#merge-strategies) task option.
+</Callout>
+
+### Supported syntax
+
+As stated above, `command` only supports a single simple command, and does not support compound commands. A compound command may contain pipes (`|`), redirects (`>`, `<`, etc), multiple sequences (`&&`, `||`, etc), or other shell specific syntax. So what syntax is supported?
+
+<Tabs items={['Simple command', 'Compound command']}>
+<Tab>
+
+- Flags & flag groups: `-f`, `-aBc`
+- Options: `--option`, `--option=value`
+- Quoted values: `'value'`, `"value"`, `$'value'`, `$"value"`
+- Unquoted values: `value`, `file/path.md`, `glob/file.*`
+- Environment variables <sup>1</sup>: `KEY=value`
+- Expansion <sup>2</sup>: `$((expr))`, `${param}`, `~` (tilde), `*?[]` (globs)
+- Substitution <sup>2</sup>: `$(cmd)`, `<(cmd)`, `>(cmd)`
+- Passthrough: `--` (everything after)
+
+</Tab>
+<Tab>
+
+- Everything from simple commands
+- Pipes: `|`, `|&`, etc
+- Redirects: `>`, `>>`, `<`, `&>`, etc
+- Terminators: `;`, `&`, `2&>1`, etc
+- Sequences (multiple commands): `&&`, `||`, `;`
+
+</Tab>
+</Tabs>
+
+If you need to use a compound command or advanced syntax, use one of these alternate approaches:
+
+- Use [`script`](#script) instead of `command`, as it supports raw shell syntax.
+- Wrap the command in a shell script, and execute that directly: `bash ./example.sh`.
+
+> 1. Environment variable assignments _before_ the executable will be extracted as task [`env`](#environment-variables), otherwise it will be preserved as an argument.
+> 2. Expansion and substitution syntax is specific to the shell the task will run in.
+
+## Script
+
+Script is the opposite of [`command`](#command), in that it supports compound commands and advanced shell syntax, but does not support argument parsing or merging. The script is passed directly to the shell for execution, and is not parsed or transformed by moon in any way.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        script: "ls -Rl ./src | grep 'index' > result.txt",
+      },
+    },
+  }}
+/>
+
+## Dependencies
+
+Tasks can depend on other tasks, which means that when the task is executed, all of its dependencies will be executed first. This allows you to create complex workflows and ensure that certain tasks are always ran before others.
+
+Dependencies can be defined with the `deps` setting, which accepts a list of [targets](./target) in string or object format. The string format is a simple and concise way to define dependencies, while the object format provides more flexibility and options for each dependency.
+
+<Tabs items={['String', 'Object']}>
+<Tab>
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-project",
+        deps: ["lint", "test"],
+      },
+    },
+  }}
+/>
+
+</Tab>
+<Tab>
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-project",
+        deps: [{ target: "lint" }, { target: "test" }],
+      },
+    },
+  }}
+/>
+
+</Tab>
+</Tabs>
+
+### Parameters
+
+When using the object format for dependencies, you can also specify parameters to be passed to the dependency task when it's executed. The following parameters are supported:
+
+- `target` _(required)_ - The [target](./target) of the dependency task(s).
+- `args` - A list of additional arguments to append to the task's [`command`](#command) when it's executed.
+- `env` - A map of additional variables to merge into the task's environment when it's executed.
+- `optional` - Controls how this dependency is treated during task inheritance. When `false` (the default), will error if the task does not exist. When `true`, will be ignored if the task does not exist. This does _not_ allow the task to fail during execution.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-project",
+        deps: [
+          {
+            target: "lint",
+            args: ["--additional", "param"],
+            env: { KEY: "value" },
+          },
+          { target: "test", optional: true },
+        ],
+      },
+    },
+  }}
+/>
+
+### Scopes
+
+Dependencies support different [target](./target) scopes to reference tasks flexibly:
+
+#### Current project
+
+Tasks within the current/owning project can be referenced using multiple target scopes. Without a scope (just the task identifier), the `~:` scope (which means in the current project), or the explicit `<project-id>:` scope.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-project",
+        deps: ["lint", "~:test", "current-project-id:validate"],
+      },
+    },
+  }}
+/>
+
+#### Other projects
+
+Tasks within other/external projects can be referenced using the explicit `<project-id>:` scope.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-project",
+        deps: ["other-project-id:lint", "external-project-id:test"],
+      },
+    },
+  }}
+/>
+
+#### Dependency projects
+
+Tasks can be referenced from the current [project's dependencies](./project#dependencies) using the `^:` or `^<type>:` scopes. This will be expanded to all depended on projects of the current project. If you do not want all projects, then you'll need to explicitly define the dependencies.
+
+<VersionLabel version="2.1.0" /> Additionally, dependend on projects can be
+filtered by their dependency type, such as `production`, or `development`. The
+following dependency types are supported:
+
+- `dev` / `development`
+- `prod` / `production`
+- `peer`
+- `build`
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-project",
+        deps: ["^:lint", "^development:test"],
+      },
+    },
+  }}
+/>
+
+#### Tagged projects
+
+Tasks can be referenced from [tagged projects](./project#tags) using the `#<tag-id>:` scope. For example, if the target is `#example:build`, then the `build` task in all projects with the tag `example` will be included as a dependency.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-project",
+        deps: ["#dev:lint", "#dev:test"],
+      },
+    },
+  }}
+/>
+
+## Environment variables
+
+Environment variables allow you to pass configuration values to your tasks at execution time. Variables can be defined with the `env` setting, which accepts a map of key-value pairs.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-project",
+        env: {
+          APP_ENV: "development",
+          LOG_LEVEL: "debug",
+        },
+      },
+    },
+  }}
+/>
+
+<Callout>
+  Environment variable merging is powered by the
+  [`options.mergeEnv`](./task-inheritance#merge-strategies) task option.
+</Callout>
+
+### `.env` files
+
+Tasks can also load environment variables from `.env` files (known as dotenv or env files), which are simple text files that contain key-value pairs of environment variables. This is useful for storing sensitive information, such as API keys or database credentials. To load environment variables from an `.env` file, use the `options.envFile` setting.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-project",
+        options: {
+          envFile: true,
+        },
+      },
+    },
+  }}
+/>
+
+When `true`, this will expand to the following list of env files, in order of precedence, where the latter overwrites the former:
+
+- `/.env`
+- `/.env.local`
+- `.env`
+- `.env.local`
+- `.env.<task_id>`
+- `.env.<task_id>.local`
+
+If you'd prefer to customize this, you can also provide a single file path or list of file paths.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-project",
+        options: {
+          envFile: [".env", ".env.development", ".env.local"],
+        },
+      },
+    },
+  }}
+/>
+
+<Callout type="warning">
+  Env files are loaded and processed _before_ task execution, and are not
+  available during task creation or expansion (building the task graph).
+  Continue reading for more information.
+</Callout>
+
+### Precedence
+
+In the context of moon, there are 3 tiers of environment variables: system, task, and dotenv. Each tier has a different level of precedence, which determines which variable value is used when there are conflicts. The tiers are evaluated in the following order, from lowest precedence to highest:
+
+- Task `.env` files
+  - via `options.envFile`
+- Task env variables
+  - via `env` or `deps.*.env`
+- System variables
+  - via profile scripts (`.bashrc`, `.zshrc`, etc)
+  - via command line: `KEY=value moon ...`
+
+As noted above, system variables are the highest precedence, which means they will overwrite any conflicting variables defined in the task or dotenv tiers. If you don't want to inherit a system variable, you can override it in the task with a null value.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-project",
+        env: {
+          NO_SYSTEM_VAR: null,
+        },
+      },
+    },
+  }}
+/>
+
+### Substitution
+
+In regards to [precedence](#precedence), each tier can reference variables within the same tier or
+higher tier(s), but _not_ from lower tier(s). This is because variables are processed in _reverse
+order_. Refer to the following table:
+
+| Tier   | Can reference        | Evaluated during      |
+| ------ | -------------------- | --------------------- |
+| Dotenv | Dotenv, Task, System | Before task execution |
+| Task   | Task, System         | After task creation   |
+| System | System               | CLI startup           |
+
+## Inputs
+
+### Files
+
+### File groups
+
+### Globs
+
+### External projects
+
+### Environment variables
+
+## Outputs
+
+### Files
+
+### Globs
+
+## Toolchains
 
 ## Configuration
 
 <auto-type-table
   path="../../../../node_modules/@moonrepo/types/cjs/index.d.ts"
   name="TaskConfig"
+/>
+
+<auto-type-table
+  path="../../../../node_modules/@moonrepo/types/cjs/index.d.ts"
+  name="TaskOptionsConfig"
 />

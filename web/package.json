@@ -9,7 +9,7 @@
     "start": "node .output/server/index.mjs"
   },
   "dependencies": {
-    "@moonrepo/types": "^1.33.3",
+    "@moonrepo/types": "^2.0.4",
     "@tanstack/react-router": "^1.133.22",
     "@tanstack/react-start": "^1.133.22",
     "fumadocs-core": "^16.0.1",

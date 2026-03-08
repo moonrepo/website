@@ -18,8 +18,8 @@ importers:
   web:
     dependencies:
       '@moonrepo/types':
-        specifier: ^1.33.3
-        version: 1.33.3
+        specifier: ^2.0.4
+        version: 2.0.4
       '@tanstack/react-router':
         specifier: ^1.133.22
         version: 1.133.22(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -551,8 +551,8 @@ packages:
   '@mdx-js/mdx@3.1.1':
     resolution: {integrity: sha512-f6ZO2ifpwAQIpzGWaBQT2TXxPv6z3RBzQKpVftEWN78Vl/YweF1uwussDx8ECAXVtr3Rs89fKyG9YlzUs9DyGQ==}
 
-  '@moonrepo/types@1.33.3':
-    resolution: {integrity: sha512-MSwSPsGR4P/879/FlGeKFYzZKjfI4eqPvALiAyjrbEjWoZ83nDlXNywf3eGBxJHox2VUHW4hb13dr5TcULhq9A==}
+  '@moonrepo/types@2.0.4':
+    resolution: {integrity: sha512-KE6eGYcHku0IS/3O0SEOG1gORtGE0iBExTXSzHF2yoe06EZ22PErFVA7UVlSWvuMC8VzuRvBdkET7yRSr5I+4Q==}
     engines: {node: '>=18.12.0'}
 
   '@oozcitak/dom@1.15.10':
@@ -3063,7 +3063,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@moonrepo/types@1.33.3': {}
+  '@moonrepo/types@2.0.4': {}
 
   '@oozcitak/dom@1.15.10':
     dependencies:
