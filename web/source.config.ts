@@ -1,4 +1,5 @@
 import {
+	applyMdxPreset,
 	defineCollections,
 	defineConfig,
 	defineDocs,
@@ -26,7 +27,7 @@ export const blog = defineCollections({
 });
 
 export default defineConfig({
-	mdxOptions: {
+	mdxOptions: applyMdxPreset({
 		remarkPlugins: [[remarkAutoTypeTable, { generator }]],
-	},
+	}),
 });

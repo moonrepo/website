@@ -1,7 +1,6 @@
 import { createFileRoute, notFound } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import type * as PageTree from 'fumadocs-core/page-tree';
-import { createClientLoader } from 'fumadocs-mdx/runtime/vite';
 import { DocsLayout } from 'fumadocs-ui/layouts/docs';
 import {
 	DocsBody,
@@ -10,7 +9,7 @@ import {
 	DocsTitle,
 } from 'fumadocs-ui/page';
 import { useMemo } from 'react';
-import { docs } from '@/generated';
+import browserCollections from '@/generated/browser';
 import { baseOptions } from '@/lib/layout.shared';
 import { source } from '@/lib/source';
 import { getMdxComponents } from '@/mdxComponents';
@@ -43,7 +42,7 @@ const loader = createServerFn({
 		};
 	});
 
-const clientLoader = createClientLoader(docs.doc, {
+const clientLoader = browserCollections.docs.createClientLoader({
 	id: 'docs',
 	component({ toc, frontmatter, default: MDX }) {
 		return (
