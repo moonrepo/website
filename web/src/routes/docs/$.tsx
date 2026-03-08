@@ -1,6 +1,7 @@
 import { createFileRoute, notFound } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import type * as PageTree from 'fumadocs-core/page-tree';
+import { useFumadocsLoader } from 'fumadocs-core/source/client';
 import { DocsLayout } from 'fumadocs-ui/layouts/docs';
 import {
 	DocsBody,
@@ -8,7 +9,7 @@ import {
 	DocsPage,
 	DocsTitle,
 } from 'fumadocs-ui/page';
-import { useMemo } from 'react';
+import { Suspense } from 'react';
 import browserCollections from '@/generated/browser';
 import { baseOptions } from '@/lib/layout.shared';
 import { source } from '@/lib/source';
@@ -17,7 +18,8 @@ import { getMdxComponents } from '@/mdxComponents';
 export const Route = createFileRoute('/docs/$')({
 	component: Page,
 	loader: async ({ params }) => {
-		const data = await loader({ data: params._splat?.split('/') ?? [] });
+		const slugs = params._splat?.split('/') ?? [];
+		const data = await serverLoader({ data: slugs });
 
 		await clientLoader.preload(data.path);
 
@@ -25,7 +27,7 @@ export const Route = createFileRoute('/docs/$')({
 	},
 });
 
-const loader = createServerFn({
+const serverLoader = createServerFn({
 	method: 'GET',
 })
 	.inputValidator((slugs: string[]) => slugs)
@@ -37,8 +39,8 @@ const loader = createServerFn({
 		}
 
 		return {
-			tree: source.pageTree as object,
 			path: page.path,
+			pageTree: await source.serializePageTree(source.getPageTree()),
 		};
 	});
 
@@ -58,17 +60,11 @@ const clientLoader = browserCollections.docs.createClientLoader({
 });
 
 function Page() {
-	const data = Route.useLoaderData();
-	const Content = clientLoader.getComponent(data.path);
-
-	const tree = useMemo(
-		() => transformPageTree(data.tree as PageTree.Folder),
-		[data.tree],
-	);
+	const data = useFumadocsLoader(Route.useLoaderData());
 
 	return (
-		<DocsLayout {...baseOptions()} tree={tree}>
-			<Content />
+		<DocsLayout {...baseOptions()} tree={data.pageTree}>
+			<Suspense>{clientLoader.useContent(data.path)}</Suspense>
 		</DocsLayout>
 	);
 }

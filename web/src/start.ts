@@ -4,7 +4,7 @@ import { rewritePath } from 'fumadocs-core/negotiation';
 
 const { rewrite: rewriteLlm } = rewritePath(
 	'/docs{/*path}.mdx',
-	'/llms-mdx{/*path}',
+	'/llms.mdx/docs{/*path}',
 );
 
 const llmMiddleware = createMiddleware().server(({ next, request }) => {

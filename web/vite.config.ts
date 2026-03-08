@@ -15,8 +15,8 @@ export default defineConfig({
 		tsConfigPaths({
 			projects: ['./tsconfig.json'],
 		}),
-		mdx(await import('./source.config')),
 		tailwindCss(),
+		mdx(await import('./source.config')),
 		tanstackStart({
 			prerender: {
 				enabled: true,
