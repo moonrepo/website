@@ -5,18 +5,18 @@ import mdx from 'fumadocs-mdx/vite';
 import { defineConfig } from 'vite';
 import tsConfigPaths from 'vite-tsconfig-paths';
 
-const fumadocsDeps = ['fumadocs-core', 'fumadocs-ui'];
+const fumadocsDeps = ['fumadocs-core', 'fumadocs-ui', '@fumadocs/base-ui'];
 
 export default defineConfig({
 	server: {
 		port: 3000,
 	},
 	plugins: [
+		mdx(await import('./source.config')),
 		tsConfigPaths({
 			projects: ['./tsconfig.json'],
 		}),
 		tailwindCss(),
-		mdx(await import('./source.config')),
 		tanstackStart({
 			prerender: {
 				enabled: true,
@@ -27,8 +27,8 @@ export default defineConfig({
 	resolve: {
 		noExternal: fumadocsDeps,
 	},
-	optimizeDeps: {
-		include: ['style-to-js', 'hast-util-to-jsx-runtime'],
-		exclude: fumadocsDeps,
-	},
+	// optimizeDeps: {
+	// 	include: ['style-to-js', 'hast-util-to-jsx-runtime'],
+	// 	exclude: fumadocsDeps,
+	// },
 });

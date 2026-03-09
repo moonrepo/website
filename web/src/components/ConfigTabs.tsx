@@ -1,7 +1,5 @@
-import { CodeBlock as Code2, Pre } from 'fumadocs-ui/components/codeblock';
 import { DynamicCodeBlock as Code } from 'fumadocs-ui/components/dynamic-codeblock';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-
 import TOML from 'smol-toml';
 import YAML from 'yaml';
 
