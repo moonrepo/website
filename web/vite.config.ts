@@ -12,10 +12,10 @@ export default defineConfig({
 		port: 3000,
 	},
 	plugins: [
-		mdx(await import('./source.config')),
 		tsConfigPaths({
 			projects: ['./tsconfig.json'],
 		}),
+		mdx(await import('./source.config')),
 		tailwindCss(),
 		tanstackStart({
 			prerender: {
