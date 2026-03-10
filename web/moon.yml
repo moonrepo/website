@@ -7,5 +7,5 @@ tasks:
     preset: "server"
 
   test:
-    command: "vitest"
+    command: "vitest run"
     # preset: "utility"
