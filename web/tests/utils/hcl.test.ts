@@ -4,7 +4,6 @@ import { toHcl } from '../../src/utils/hcl';
 // Alias for the indentation unit used by toHcl (2 spaces)
 const I = '  ';
 const I2 = I + I;
-const I3 = I + I + I;
 
 describe('toHcl', () => {
 	describe('primitives', () => {
@@ -324,11 +323,7 @@ describe('toHcl', () => {
 			);
 
 			expect(result).toBe(
-				[
-					'env "NODE_ENV" = "production"',
-					'',
-					'env "DEBUG" = true',
-				].join('\n'),
+				['env "NODE_ENV" = "production"', '', 'env "DEBUG" = true'].join('\n'),
 			);
 		});
 	});

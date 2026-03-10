@@ -8,4 +8,3 @@ tasks:
 
   test:
     command: "vitest run"
-    # preset: "utility"

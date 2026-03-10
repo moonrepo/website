@@ -1,6 +1,5 @@
 import { createFileRoute, notFound } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
-import type * as PageTree from 'fumadocs-core/page-tree';
 import { useFumadocsLoader } from 'fumadocs-core/source/client';
 import { DocsLayout } from 'fumadocs-ui/layouts/docs';
 import {
@@ -67,34 +66,4 @@ function Page() {
 			<Suspense>{clientLoader.useContent(data.path)}</Suspense>
 		</DocsLayout>
 	);
-}
-
-function transformPageTree(tree: PageTree.Folder): PageTree.Folder {
-	function transform<T extends PageTree.Item | PageTree.Separator>(item: T) {
-		if (typeof item.icon !== 'string') return item;
-
-		return {
-			...item,
-			icon: (
-				<span
-					// biome-ignore lint/security/noDangerouslySetInnerHtml: allowed
-					dangerouslySetInnerHTML={{
-						__html: item.icon,
-					}}
-				/>
-			),
-		};
-	}
-
-	return {
-		...tree,
-		index: tree.index ? transform(tree.index) : undefined,
-		children: tree.children.map((item) => {
-			if (item.type === 'folder') {
-				return transformPageTree(item);
-			}
-
-			return transform(item);
-		}),
-	};
 }

@@ -1,8 +1,5 @@
 {
   "permissions": {
-    "allow": [
-      "Bash(xargs ls -la)",
-      "WebFetch(domain:pkl-lang.org)"
-    ]
+    "allow": ["Bash(xargs ls -la)", "WebFetch(domain:pkl-lang.org)"]
   }
 }

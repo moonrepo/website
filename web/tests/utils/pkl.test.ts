@@ -35,13 +35,9 @@ describe('toPkl', () => {
 			const result = toPkl({ tags: ['a', 'b', 'c'] });
 
 			expect(result).toBe(
-				[
-					'tags = new Listing {',
-					`${I}"a"`,
-					`${I}"b"`,
-					`${I}"c"`,
-					'}',
-				].join('\n'),
+				['tags = new Listing {', `${I}"a"`, `${I}"b"`, `${I}"c"`, '}'].join(
+					'\n',
+				),
 			);
 		});
 
@@ -57,9 +53,7 @@ describe('toPkl', () => {
 			const result = toPkl({ flags: [true, false] });
 
 			expect(result).toBe(
-				['flags = new Listing {', `${I}true`, `${I}false`, '}'].join(
-					'\n',
-				),
+				['flags = new Listing {', `${I}true`, `${I}false`, '}'].join('\n'),
 			);
 		});
 
@@ -117,12 +111,9 @@ describe('toPkl', () => {
 			});
 
 			expect(result).toBe(
-				[
-					'server {',
-					`${I}host = "localhost"`,
-					`${I}port = 8080`,
-					'}',
-				].join('\n'),
+				['server {', `${I}host = "localhost"`, `${I}port = 8080`, '}'].join(
+					'\n',
+				),
 			);
 		});
 
@@ -150,9 +141,7 @@ describe('toPkl', () => {
 
 		it('uses bracket syntax for keys with special characters', () => {
 			expect(toPkl({ 'my.key': 'value' })).toBe('["my.key"] = "value"');
-			expect(toPkl({ 'with spaces': true })).toBe(
-				'["with spaces"] = true',
-			);
+			expect(toPkl({ 'with spaces': true })).toBe('["with spaces"] = true');
 			expect(toPkl({ '123start': 1 })).toBe('["123start"] = 1');
 		});
 
@@ -323,9 +312,7 @@ describe('toPkl', () => {
 		});
 
 		it('formats empty mapping as empty block', () => {
-			expect(toPkl({ tasks: {} }, { mappings: ['tasks'] })).toBe(
-				'tasks {}',
-			);
+			expect(toPkl({ tasks: {} }, { mappings: ['tasks'] })).toBe('tasks {}');
 		});
 
 		it('ignores mappings option for non-object values', () => {
@@ -335,9 +322,7 @@ describe('toPkl', () => {
 			);
 
 			expect(result).toBe(
-				['tasks = new Listing {', `${I}"build"`, `${I}"test"`, '}'].join(
-					'\n',
-				),
+				['tasks = new Listing {', `${I}"build"`, `${I}"test"`, '}'].join('\n'),
 			);
 		});
 
