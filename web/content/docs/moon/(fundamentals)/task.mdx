@@ -277,10 +277,10 @@ Dependencies can be defined with the `deps` setting, which accepts a list of [ta
 
 When using the object format for dependencies, you can also specify parameters to be passed to the dependency task when it's executed. The following parameters are supported:
 
-- `target` _(required)_ - The [target](./target) of the dependency task(s).
-- `args` - A list of additional arguments to append to the task's [`command`](#command) when it's executed.
-- `env` - A map of additional variables to merge into the task's environment when it's executed.
-- `optional` - Controls how this dependency is treated during task inheritance. When `false` (the default), will error if the task does not exist. When `true`, will be ignored if the task does not exist. This does _not_ allow the task to fail during execution.
+- `target: string` _(required)_ - The [target](./target) of the dependency task(s).
+- `args: string[]` - A list of additional arguments to append to the task's [`command`](#command) when it's executed.
+- `env: Record<string, string>` - A map of additional variables to merge into the task's environment when it's executed.
+- `optional: boolean` - Controls how this dependency is treated during task inheritance. When `false` (the default), will error if the task does not exist. When `true`, will be ignored if the task does not exist. This does _not_ allow the task to fail during execution.
 
 <ConfigTabs
   file="moon"
@@ -420,6 +420,11 @@ Tasks can also load environment variables from `.env` files (known as dotenv or 
   }}
 />
 
+```text title=".env"
+APP_ENV=production
+LOG_LEVEL=debug
+```
+
 When `true`, this will expand to the following list of env files, in order of precedence, where the latter overwrites the former:
 
 - `/.env`
@@ -481,6 +486,20 @@ As noted above, system variables are the highest precedence, which means they wi
 
 ### Substitution
 
+Environment variables support substitution (also known as interpolation or expansion), which allows you to reference other variables within the same tier or higher tiers. This is useful for creating dynamic variables that depend on other variable values. The syntax for variable substitution is similar to shell variable syntax, and supports a variety of operators for different substitution patterns. Refer to the following table:
+
+```text title=".env"
+APP_URL="https://${HOST}:${PORT}"
+```
+
+| Syntax                                                | Effect                                                                                       |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `$VAR`, `${VAR}`                                      | Substitute with an empty string if variable is empty                                         |
+| `${VAR?}`                                             | Substitute with shell variable syntax (`$VAR`) if variable empty                             |
+| `${VAR!}`                                             | Don't substitute and keep shell variable syntax (`$VAR`)                                     |
+| `${VAR:default}`, `${VAR:-default}`, `${VAR-default}` | Substitute with variable if defined, otherwise with the provided default value               |
+| `${VAR:+alternate}`, `${VAR+alternate}`               | Substitute with provided alternate value if variable defined, otherwise with an empty string |
+
 In regards to [precedence](#precedence), each tier can reference variables within the same tier or
 higher tier(s), but _not_ from lower tier(s). This is because variables are processed in _reverse
 order_. Refer to the following table:
@@ -491,9 +510,109 @@ order_. Refer to the following table:
 | Task   | Task, System         | After task creation   |
 | System | System               | CLI startup           |
 
+<Callout>
+  We also support shell specific variable syntax: `$env:VAR` (powershell),
+  `$E:VAR` (elvish), `$env.VAR` (nushell), etc.
+</Callout>
+
 ## Inputs
 
+Task inputs specify which sources affect a task's execution cycle. They're critical for effective caching, as we generate a smart content hash from all inputs,
+and when inputs and the hash change, the cached result is invalidated and the task re-runs.
+
+Inputs can be defined with the `inputs` setting, which accepts a list of strings or objects. The string format is a simple and concise way to define inputs, while the object format provides more flexibility and options for each input.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-project",
+        inputs: ["src/**/*", "*.config.json", "manifest.json", "$APP_ENV"],
+      },
+    },
+  }}
+/>
+
 ### Files
+
+Files are simply that, project-relative or workspace-relative files on the filesystem (within the moon workspace). They can be defined with literal strings, the `file://` URI protocol, or the `file` property when using the object format.
+
+<Tabs items={['String', 'Object']}>
+<Tab>
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-project",
+        inputs: [
+          "project/file",
+          "/workspace/file",
+          "file://project/file",
+          "file:///workspace/file",
+        ],
+      },
+    },
+  }}
+/>
+
+</Tab>
+<Tab>
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-project",
+        inputs: [{ file: "project/file" }, { file: "/workspace/file" }],
+      },
+    },
+  }}
+/>
+
+</Tab>
+</Tabs>
+
+When using the URI or object formats, the following parameters are supported:
+
+- `content: string` - A [regex pattern](./config) to match the file's contents against when determining affected status. Otherwise, any change to the file will mark the task as affected.
+- `optional: boolean` - Mark the file as optional and log a warning instead of failing with an error when hashing. Files are required by default.
+
+<Tabs items={['String', 'Object']}>
+<Tab>
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-project",
+        inputs: ["file://file/path?content=^foobar$&optional=true"],
+      },
+    },
+  }}
+/>
+
+</Tab>
+<Tab>
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-project",
+        inputs: [{ file: "file/path", content: "^foobar$", optional: true }],
+      },
+    },
+  }}
+/>
+
+</Tab>
+</Tabs>
 
 ### File groups
 
