@@ -4,6 +4,7 @@ icon: Circle
 ---
 
 import { ConfigTabs } from "@/components/ConfigTabs";
+import { TypeLabel } from "@/components/TypeLabel";
 import { VersionLabel } from "@/components/VersionLabel";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
@@ -277,10 +278,10 @@ Dependencies can be defined with the `deps` setting, which accepts a list of [ta
 
 When using the object format for dependencies, you can also specify parameters to be passed to the dependency task when it's executed. The following parameters are supported:
 
-- `target: string` _(required)_ - The [target](./target) of the dependency task(s).
-- `args: string[]` - A list of additional arguments to append to the task's [`command`](#command) when it's executed.
-- `env: Record<string, string>` - A map of additional variables to merge into the task's environment when it's executed.
-- `optional: boolean` - Controls how this dependency is treated during task inheritance. When `false` (the default), will error if the task does not exist. When `true`, will be ignored if the task does not exist. This does _not_ allow the task to fail during execution.
+- `target` <TypeLabel type="string" /> _(required)_ - The [target](./target) of the dependency task(s).
+- `args` <TypeLabel type="string[]" /> - A list of additional arguments to append to the task's [`command`](#command) when it's executed.
+- `env` <TypeLabel type="Record<string, string>" /> - A map of additional variables to merge into the task's environment when it's executed.
+- `optional` <TypeLabel type="boolean" /> - Controls how this dependency is treated during task inheritance. When `false` (the default), will error if the task does not exist. When `true`, will be ignored if the task does not exist. This does _not_ allow the task to fail during execution.
 
 <ConfigTabs
   file="moon"
@@ -536,7 +537,7 @@ Inputs can be defined with the `inputs` setting, which accepts a list of strings
 
 ### Files
 
-Files are simply that, project-relative or workspace-relative files on the filesystem (within the moon workspace). They can be defined with literal strings, the `file://` URI protocol, or the `file` property when using the object format.
+Files are simply that, project-relative or workspace-relative files on the file system (within the moon workspace). They can be defined with literal strings, the `file://` URI protocol, or the `file` property when using the object format.
 
 <Tabs items={['String', 'Object']}>
 <Tab>
@@ -578,8 +579,8 @@ Files are simply that, project-relative or workspace-relative files on the files
 
 When using the URI or object formats, the following parameters are supported:
 
-- `content: string` - A [regex pattern](./config) to match the file's contents against when determining affected status. Otherwise, any change to the file will mark the task as affected.
-- `optional: boolean` - Mark the file as optional and log a warning instead of failing with an error when hashing. Files are required by default.
+- `content` <TypeLabel type="string" /> - A [regex pattern](./config) to match the file's contents against when determining affected status. Otherwise, any change to the file will mark the task as affected.
+- `optional` <TypeLabel type="boolean" /> - Mark the file as optional and log a warning instead of failing with an error when hashing. Files are required by default.
 
 <Tabs items={['String', 'Object']}>
 <Tab>
@@ -590,7 +591,7 @@ When using the URI or object formats, the following parameters are supported:
     tasks: {
       build: {
         command: "build-project",
-        inputs: ["file://file/path?content=^foobar$&optional=true"],
+        inputs: ["file://src/file?content=^foobar$&optional=true"],
       },
     },
   }}
@@ -605,7 +606,7 @@ When using the URI or object formats, the following parameters are supported:
     tasks: {
       build: {
         command: "build-project",
-        inputs: [{ file: "file/path", content: "^foobar$", optional: true }],
+        inputs: [{ file: "src/file", content: "^foobar$", optional: true }],
       },
     },
   }}
@@ -616,11 +617,292 @@ When using the URI or object formats, the following parameters are supported:
 
 ### File groups
 
+File group inputs allow you to reference the [`fileGroups`](./project#file-groups) setting in the project, effectively including all files within the specified file group as inputs to the task. They can be defined with the `group://` URI protocol, or the `group` property when using the object format.
+
+<Tabs items={['String', 'Object']}>
+<Tab>
+
+<ConfigTabs
+  file="moon"
+  config={{
+    fileGroups: {
+      sources: ["src/**/*", "resources/**/*"],
+      tests: ["tests/**/*"],
+    },
+    tasks: {
+      build: {
+        command: "build-project",
+        inputs: ["group://sources", "group://tests"],
+      },
+    },
+  }}
+/>
+
+</Tab>
+<Tab>
+
+<ConfigTabs
+  file="moon"
+  config={{
+    fileGroups: {
+      sources: ["src/**/*", "resources/**/*"],
+      tests: ["tests/**/*"],
+    },
+    tasks: {
+      build: {
+        command: "build-project",
+        inputs: [{ group: "sources" }, { group: "tests" }],
+      },
+    },
+  }}
+/>
+
+</Tab>
+</Tabs>
+
+When using the URI or object formats, the following parameters are supported:
+
+- `format` <TypeLabel type="string" /> - The format that all paths within the file group should be resolved to when included as an input. If the file group contains glob patterns, they will walk the file system. Supports one of the following values:
+  - `static` _(default)_ - Returns the paths as-is.
+  - `dirs` - Returns only directories. Will walk the file system if needed.
+  - `envs` - Returns only environment variables.
+  - `files` - Returns only files. Will walk the file system if needed.
+  - `globs` - Returns only glob patterns as-is. Will not walk the file system.
+  - `root` - Returns the common root directory of all paths in the group. Will walk the file system.
+
+<Tabs items={['String', 'Object']}>
+<Tab>
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-project",
+        inputs: ["group://sources?format=files"],
+      },
+    },
+  }}
+/>
+
+</Tab>
+<Tab>
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-project",
+        inputs: [{ group: "sources", format: "globs" }],
+      },
+    },
+  }}
+/>
+
+</Tab>
+</Tabs>
+
 ### Globs
+
+Globs are simply that, project-relative or workspace-relative [glob patterns](./config#glob-patterns) that will walk and match files on the file system (within the moon workspace). They can be defined with literal strings, the `glob://` URI protocol, or the `glob` property when using the object format.
+
+<Callout type="warning">
+  Be aware that files that match the glob, but are ignored via `.gitignore` (or
+  similar), will not be considered an input. To work around this, use explicit
+  file inputs.
+</Callout>
+
+<Tabs items={['String', 'Object']}>
+<Tab>
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-project",
+        inputs: [
+          "project/**/*",
+          "/workspace/*.json",
+          "glob://project/**/*",
+          "glob:///workspace/*.json",
+        ],
+      },
+    },
+  }}
+/>
+
+</Tab>
+<Tab>
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-project",
+        inputs: [{ glob: "project/**/*" }, { glob: "/workspace/*.json" }],
+      },
+    },
+  }}
+/>
+
+</Tab>
+</Tabs>
+
+When using the URI or object formats, the following parameters are supported:
+
+- `cache` <TypeLabel type="boolean" /> - Cache the result of the glob walk in-memory to improve performance on subsequent runs. Defaults to `true`.
+
+<Tabs items={['String', 'Object']}>
+<Tab>
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-project",
+        inputs: ["glob://src/**/*?cache=false"],
+      },
+    },
+  }}
+/>
+
+<Callout type="warning">
+  If you're glob pattern contains a `?`, such as `files?.txt`, we suggest using
+  the object format to avoid parsing issues with the query string.
+</Callout>
+
+</Tab>
+<Tab>
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-project",
+        inputs: [{ glob: "src/**/*", cache: false }],
+      },
+    },
+  }}
+/>
+
+</Tab>
+</Tabs>
 
 ### External projects
 
+External project inputs can be used to depend on files and globs from other projects within the same workspace. This is useful for handling cross-project relationships without needing to define explicit task dependencies.
+
+They can be defined with the `project://` URI protocol, or the `project` property when using the object format, both of which require a project identifier, or `^` for all dependent projects of the current project.
+
+Dependent projects can be scoped further by using `^development`, `^production`, `^peer`, or `^build` to only include projects with the specified dependency type.
+
+<Tabs items={['String', 'Object']}>
+<Tab>
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-project",
+        inputs: ["project://utils", "project://^production", "project://^"],
+      },
+    },
+  }}
+/>
+
+</Tab>
+<Tab>
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-project",
+        inputs: [
+          { project: "utils" },
+          { project: "^production" },
+          { project: "^" },
+        ],
+      },
+    },
+  }}
+/>
+
+</Tab>
+</Tabs>
+
+When using the URI or object formats, the following parameters are supported:
+
+- `filter` <TypeLabel type="string[]" /> - A list of glob patterns, relative from the project's root, to include as inputs. If not defined, defaults to `**/*`.
+- `fileGroup` <TypeLabel type="string" /> - An identifier of a [file group](./project#file-groups) in the external project to include as inputs. If defined, will override `filter`.
+
+<Tabs items={['String', 'Object']}>
+<Tab>
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-project",
+        inputs: [
+          "project://utils?filter=src/**/*",
+          "project://^development?fileGroup=sources",
+        ],
+      },
+    },
+  }}
+/>
+
+</Tab>
+<Tab>
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-project",
+        inputs: [
+          { project: "utils", filter: ["src/**/*"] },
+          { project: "^development", fileGroup: "sources" },
+        ],
+      },
+    },
+  }}
+/>
+
+</Tab>
+</Tabs>
+
 ### Environment variables
+
+Environment variables can also be used as inputs, and must start with a `$`. They can be defined with an explicit name, or a wildcard name using `*`. They do not support the URI or object formats, and therefore do not support additional parameters.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-project",
+        inputs: ["$ENV_MODE", "$APP_*"],
+      },
+    },
+  }}
+/>
+
+<Callout type="info">
+  When using an environment variable, we assume it's not defined by default, and
+  will trigger an affected state when it is defined. If the environment variable
+  always exists, then the task will always run and bypass the cache.
+</Callout>
 
 ## Outputs
 
