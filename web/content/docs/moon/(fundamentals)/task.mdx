@@ -248,8 +248,7 @@ Dependencies can be defined with the `deps` setting, which accepts a list of [ta
   file="moon"
   config={{
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         deps: ["lint", "test"],
       },
     },
@@ -263,8 +262,7 @@ Dependencies can be defined with the `deps` setting, which accepts a list of [ta
   file="moon"
   config={{
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         deps: [{ target: "lint" }, { target: "test" }],
       },
     },
@@ -287,8 +285,7 @@ When using the object format for dependencies, you can also specify parameters t
   file="moon"
   config={{
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         deps: [
           {
             target: "lint",
@@ -314,8 +311,7 @@ Tasks within the current/owning project can be referenced using multiple target 
   file="moon"
   config={{
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         deps: ["lint", "~:test", "current-project-id:validate"],
       },
     },
@@ -330,8 +326,7 @@ Tasks within other/external projects can be referenced using the explicit `<proj
   file="moon"
   config={{
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         deps: ["other-project-id:lint", "external-project-id:test"],
       },
     },
@@ -355,8 +350,7 @@ following dependency types are supported:
   file="moon"
   config={{
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         deps: ["^:lint", "^development:test"],
       },
     },
@@ -371,8 +365,7 @@ Tasks can be referenced from [tagged projects](./project#tags) using the `#<tag-
   file="moon"
   config={{
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         deps: ["#dev:lint", "#dev:test"],
       },
     },
@@ -387,8 +380,7 @@ Environment variables allow you to pass configuration values to your tasks at ex
   file="moon"
   config={{
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         env: {
           APP_ENV: "development",
           LOG_LEVEL: "debug",
@@ -411,8 +403,7 @@ Tasks can also load environment variables from `.env` files (known as dotenv or 
   file="moon"
   config={{
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         options: {
           envFile: true,
         },
@@ -441,8 +432,7 @@ If you'd prefer to customize this, you can also provide a single file path or li
   file="moon"
   config={{
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         options: {
           envFile: [".env", ".env.development", ".env.local"],
         },
@@ -475,8 +465,7 @@ As noted above, system variables are the highest precedence, which means they wi
   file="moon"
   config={{
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         env: {
           NO_SYSTEM_VAR: null,
         },
@@ -521,19 +510,23 @@ order_. Refer to the following table:
 Task inputs specify which sources affect a task's execution cycle. They're critical for effective caching, as we generate a smart content hash from all inputs,
 and when inputs and the hash change, the cached result is invalidated and the task re-runs.
 
-Inputs can be defined with the `inputs` setting, which accepts a list of strings or objects. The string format is a simple and concise way to define inputs, while the object format provides more flexibility and options for each input.
+Inputs can be defined with the `inputs` setting, which accepts a list of strings or objects, and defaults `**/*` (all files in the project). The string format is a simple and concise way to define inputs, while the object format provides more flexibility and options for each input.
 
 <ConfigTabs
   file="moon"
   config={{
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         inputs: ["src/**/*", "*.config.json", "manifest.json", "$APP_ENV"],
       },
     },
   }}
 />
+
+<Callout>
+  Input merging is powered by the
+  [`options.mergeInputs`](./task-inheritance#merge-strategies) task option.
+</Callout>
 
 ### Files
 
@@ -546,8 +539,7 @@ Files are simply that, project-relative or workspace-relative files on the file 
   file="moon"
   config={{
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         inputs: [
           "project/file",
           "/workspace/file",
@@ -566,8 +558,7 @@ Files are simply that, project-relative or workspace-relative files on the file 
   file="moon"
   config={{
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         inputs: [{ file: "project/file" }, { file: "/workspace/file" }],
       },
     },
@@ -589,8 +580,7 @@ When using the URI or object formats, the following parameters are supported:
   file="moon"
   config={{
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         inputs: ["file://src/file?content=^foobar$&optional=true"],
       },
     },
@@ -604,8 +594,7 @@ When using the URI or object formats, the following parameters are supported:
   file="moon"
   config={{
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         inputs: [{ file: "src/file", content: "^foobar$", optional: true }],
       },
     },
@@ -630,8 +619,7 @@ File group inputs allow you to reference the [`fileGroups`](./project#file-group
       tests: ["tests/**/*"],
     },
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         inputs: ["group://sources", "group://tests"],
       },
     },
@@ -649,8 +637,7 @@ File group inputs allow you to reference the [`fileGroups`](./project#file-group
       tests: ["tests/**/*"],
     },
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         inputs: [{ group: "sources" }, { group: "tests" }],
       },
     },
@@ -677,8 +664,7 @@ When using the URI or object formats, the following parameters are supported:
   file="moon"
   config={{
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         inputs: ["group://sources?format=files"],
       },
     },
@@ -692,8 +678,7 @@ When using the URI or object formats, the following parameters are supported:
   file="moon"
   config={{
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         inputs: [{ group: "sources", format: "globs" }],
       },
     },
@@ -720,8 +705,7 @@ Globs are simply that, project-relative or workspace-relative [glob patterns](./
   file="moon"
   config={{
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         inputs: [
           "project/**/*",
           "/workspace/*.json",
@@ -740,8 +724,7 @@ Globs are simply that, project-relative or workspace-relative [glob patterns](./
   file="moon"
   config={{
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         inputs: [{ glob: "project/**/*" }, { glob: "/workspace/*.json" }],
       },
     },
@@ -762,8 +745,7 @@ When using the URI or object formats, the following parameters are supported:
   file="moon"
   config={{
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         inputs: ["glob://src/**/*?cache=false"],
       },
     },
@@ -782,8 +764,7 @@ When using the URI or object formats, the following parameters are supported:
   file="moon"
   config={{
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         inputs: [{ glob: "src/**/*", cache: false }],
       },
     },
@@ -793,9 +774,9 @@ When using the URI or object formats, the following parameters are supported:
 </Tab>
 </Tabs>
 
-### External projects
+### Other projects
 
-External project inputs can be used to depend on files and globs from other projects within the same workspace. This is useful for handling cross-project relationships without needing to define explicit task dependencies.
+Other project inputs can be used to depend on files and globs from other/external projects within the same workspace. This is useful for handling cross-project relationships without needing to define explicit task dependencies.
 
 They can be defined with the `project://` URI protocol, or the `project` property when using the object format, both of which require a project identifier, or `^` for all dependent projects of the current project.
 
@@ -808,8 +789,7 @@ Dependent projects can be scoped further by using `^development`, `^production`,
   file="moon"
   config={{
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         inputs: ["project://utils", "project://^production", "project://^"],
       },
     },
@@ -823,8 +803,7 @@ Dependent projects can be scoped further by using `^development`, `^production`,
   file="moon"
   config={{
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         inputs: [
           { project: "utils" },
           { project: "^production" },
@@ -850,8 +829,7 @@ When using the URI or object formats, the following parameters are supported:
   file="moon"
   config={{
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         inputs: [
           "project://utils?filter=src/**/*",
           "project://^development?fileGroup=sources",
@@ -868,8 +846,7 @@ When using the URI or object formats, the following parameters are supported:
   file="moon"
   config={{
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         inputs: [
           { project: "utils", filter: ["src/**/*"] },
           { project: "^development", fileGroup: "sources" },
@@ -890,8 +867,7 @@ Environment variables can also be used as inputs, and must start with a `$`. The
   file="moon"
   config={{
     tasks: {
-      build: {
-        command: "build-project",
+      example: {
         inputs: ["$ENV_MODE", "$APP_*"],
       },
     },
@@ -912,12 +888,35 @@ Environment variables can also be used as inputs, and must start with a `$`. The
 
 ## Toolchains
 
+Toolchains are a very important concept for tasks, as they define the runtime environment in which a task executes. By specifying a toolchain for a task, you can ensure that it runs in the correct environment with the necessary tools, executables, and more.
+
+With that said, we suggest _not configuring toolchains explicitly_ for tasks, and instead rely on our internal detection mechanism, which inherits from the project, and is detected based on manifest, lock, and config files, and executable names.
+
+If for some reason you do need to explicitly configure a toolchain for a task, you can do so with the `toolchains` setting, which accepts a list of toolchain identifier(s) defined in [`.moon/toolchains.config`](./toolchains#configuration).
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        toolchains: ["javascript", "node"],
+      },
+    },
+  }}
+/>
+
 ## Configuration
+
+Tasks are defined with the `tasks` setting in multiple locations. The most common location is within a project's [`moon.config`](./project#configuration), but they can also be defined at the workspace for task inheritance within a [`.moon/tasks/*.config`](./task-inheritance#configuration).
+
+<Callout>Click each setting for more information!</Callout>
 
 <auto-type-table
   path="../../../../node_modules/@moonrepo/types/cjs/index.d.ts"
   name="TaskConfig"
 />
+
+### Options
 
 <auto-type-table
   path="../../../../node_modules/@moonrepo/types/cjs/index.d.ts"
