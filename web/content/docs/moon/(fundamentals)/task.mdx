@@ -18,12 +18,12 @@ Tasks are categorized into three primary types:
 - **Build** - Tasks that produce artifacts or compiled outputs, and is derived from the
   [`outputs`](#outputs) setting.
 - **Run** - Tasks for development servers, or long-running scripts, and is derived from the
-  [`preset`](#preset) setting.
+  [`preset`](#presets) setting.
 - **Test** - Tasks that run tests, lints, validations, or quality checks. This is the default.
 
 <Callout>
   The type of task will be automatically inferred based on its configuration,
-  but can also be explicitly defined with the [`type`](#type) setting.
+  but can also be explicitly defined with the `type` setting.
 </Callout>
 
 <ConfigTabs
@@ -48,7 +48,7 @@ action graph and pipelines.
 Tasks either run locally, in CI, or both. For tasks that should
 _only_ be ran locally, such as, development servers and watchers, we provide a mechanism for opting out of running in CI.
 
-To mark a task as local only, disable [`options.runInCI`](#runinci) or configure the appropriate [`preset`](#preset).
+To mark a task as local only, disable [`options.runInCI`](#runinci) or configure the appropriate [`preset`](#presets).
 
 <ConfigTabs
   file="moon"
@@ -120,7 +120,7 @@ run them _last as a batch_. This is perfect for a few reasons:
 - Running both the backend API and frontend webapp in parallel is a breeze.
 - Dependencies of persistent tasks are guaranteed to have ran and completed.
 
-To mark a task as persistent, enable [`options.persistent`](#persistent) or configure the appropriate [`preset`](#preset).
+To mark a task as persistent, enable [`options.persistent`](#persistent) or configure the appropriate [`preset`](#presets).
 
 <ConfigTabs
   file="moon"
@@ -186,9 +186,9 @@ The `args` setting is a collection of _additional_ arguments to merge into the [
 
 ### Supported syntax
 
-As stated above, `command` only supports a single simple command, and does not support compound commands. A compound command may contain pipes (`|`), redirects (`>`, `<`, etc), multiple sequences (`&&`, `||`, etc), or other shell specific syntax. So what syntax is supported?
+As stated above, `command` only supports a single simple command, and does not support complex commands. A complex command may contain pipes (`|`), redirects (`>`, `<`, etc), multiple sequences (`&&`, `||`, etc), or other shell specific syntax. So what syntax is supported?
 
-<Tabs items={['Simple command', 'Compound command']}>
+<Tabs items={['Simple command', 'Complex command']}>
 <Tab>
 
 - Flags & flag groups: `-f`, `-aBc`
@@ -212,7 +212,7 @@ As stated above, `command` only supports a single simple command, and does not s
 </Tab>
 </Tabs>
 
-If you need to use a compound command or advanced syntax, use one of these alternate approaches:
+If you need to use a complex command or advanced syntax, use one of these alternate approaches:
 
 - Use [`script`](#script) instead of `command`, as it supports raw shell syntax.
 - Wrap the command in a shell script, and execute that directly: `bash ./example.sh`.
@@ -222,7 +222,7 @@ If you need to use a compound command or advanced syntax, use one of these alter
 
 ## Script
 
-Script is the opposite of [`command`](#command), in that it supports compound commands and advanced shell syntax, but does not support argument parsing or merging. The script is passed directly to the shell for execution, and is not parsed or transformed by moon in any way.
+Script is the opposite of [`command`](#command), in that it supports complex commands and advanced shell syntax, but does not support argument parsing or merging. The script is passed directly to the shell for execution, and is not parsed or transformed by moon in any way.
 
 <ConfigTabs
   file="moon"
@@ -882,9 +882,220 @@ Environment variables can also be used as inputs, and must start with a `$`. The
 
 ## Outputs
 
+Task outputs are the opposite of inputs, in that they are sources that are _created_ as a result of the task's execution! These are also known as build artifacts, generated files, or compiled outputs. They're critical for effective caching and incremental builds, as these outputs are _hydrated_ on a cache hit, and the task is skipped instead of re-ran.
+
+Outputs can be defined with the `outputs` setting, which accepts a list of strings or objects. The string format is a simple and concise way to define outputs, while the object format provides more flexibility and options for each output.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        outputs: ["build/**/*", "dist/generated.json", "out/file"],
+      },
+    },
+  }}
+/>
+
+With that said, not _all_ outputs that a task produces need to be defined as outputs. Only those that are needed for caching, incremental builds, and persistence need to be defined. For example, logs, temporary files, tool specific caches (the command being ran), and more are not necessary to define as outputs.
+
+<Callout>
+  Output merging is powered by the
+  [`options.mergeOutputs`](./task-inheritance#merge-strategies) task option.
+</Callout>
+
 ### Files
 
+Files are simply that, project-relative or workspace-relative files on the file system (within the moon workspace). They can be defined with literal strings, the `file://` URI protocol, or the `file` property when using the object format.
+
+For directories, prefer using globs instead: `out/**/*` instead of `out`.
+
+<Tabs items={['String', 'Object']}>
+<Tab>
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        outputs: [
+          "project/file",
+          "/workspace/file",
+          "file://project/file",
+          "file:///workspace/file",
+        ],
+      },
+    },
+  }}
+/>
+
+</Tab>
+<Tab>
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        outputs: [{ file: "project/file" }, { file: "/workspace/file" }],
+      },
+    },
+  }}
+/>
+
+</Tab>
+</Tabs>
+
+When using the URI or object formats, the following parameters are supported:
+
+- `optional` <TypeLabel type="boolean" /> - Mark the file as optional instead of failing with an error when the output doesn't exist after task execution. Outputs are required by default.
+
+<Tabs items={['String', 'Object']}>
+<Tab>
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        outputs: ["file://dist/generated.json?optional=true"],
+      },
+    },
+  }}
+/>
+
+</Tab>
+<Tab>
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        outputs: [{ file: "dist/generated.json", optional: true }],
+      },
+    },
+  }}
+/>
+
+</Tab>
+</Tabs>
+
 ### Globs
+
+Globs are simply that, project-relative or workspace-relative [glob patterns](./config#glob-patterns) that will walk and match files on the file system (within the moon workspace). They can be defined with literal strings, the `glob://` URI protocol, or the `glob` property when using the object format.
+
+<Callout type="warning">
+  The same glob caveats that apply to [`inputs`](#inputs) also apply to outputs.
+</Callout>
+
+<Tabs items={['String', 'Object']}>
+<Tab>
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        outputs: [
+          "project/**/*",
+          "/workspace/*.json",
+          "glob://project/**/*",
+          "glob:///workspace/*.json",
+        ],
+      },
+    },
+  }}
+/>
+
+</Tab>
+<Tab>
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        outputs: [{ glob: "project/**/*" }, { glob: "/workspace/*.json" }],
+      },
+    },
+  }}
+/>
+
+</Tab>
+</Tabs>
+
+When using the URI or object formats, the following parameters are supported:
+
+- `optional` <TypeLabel type="boolean" /> - Mark the file(s) as optional instead of failing with an error when the output(s) don't exist after task execution. Outputs are required by default.
+
+<Tabs items={['String', 'Object']}>
+<Tab>
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        outputs: ["glob://dist/*.json?optional=true"],
+      },
+    },
+  }}
+/>
+
+</Tab>
+<Tab>
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        outputs: [{ glob: "dist/*.json", optional: true }],
+      },
+    },
+  }}
+/>
+
+</Tab>
+</Tabs>
+
+## Presets
+
+Presets are simply a collection or pre-configured options for common use cases. They help to reduce the amount of configuration needed for common task types, and provide a consistent experience across projects and teams.
+
+The following presets are currently available, and the options they pre-configure. They can be defined with the `preset` setting.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      dev: {
+        command: "start-dev-server",
+        preset: "server",
+      },
+    },
+  }}
+/>
+
+### `server`
+
+For long-running processes (development servers, etc).
+
+- `cache` -> false
+- `outputStyle` -> `stream`
+- `persistent` -> true
+- `priority` -> `low`
+- `runInCI` -> false
+
+### `utility`
+
+For interactive, one-off utility commands.
+
+- `cache` -> false
+- `interactive` -> true
+- `outputStyle` -> `stream`
+- `runInCI` -> `skip`
 
 ## Toolchains
 
