@@ -2,3 +2,341 @@
 title: Targets
 icon: Diamond
 ---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+
+A target is the address of one or more [tasks](./task), in the format of `<project-scope>:<task-scope>`. It tells moon which project or group of
+projects to search, and which task or group of tasks to select within those projects.
+
+For example, `app:build` selects the `build` task in the `app` project, while `:test` selects every
+`test` task in the workspace. When a target appears in task configuration, moon resolves it while
+building the project graph. When a target appears on the command line, moon resolves it while
+building the action graph for that run.
+
+Targets are intentionally compact because they show up everywhere: task dependencies, execution
+plans, affected checks, logs, and CLI commands.
+
+## Project scopes
+
+The project scope is the leading segment, before the colon. It answers "which project or projects should moon
+look in?"
+
+| Scope           | Example             | Meaning                                                           |
+| --------------- | ------------------- | ----------------------------------------------------------------- |
+| All             | `:build`            | The `build` task in all matching projects.                        |
+| Dependencies    | `^:build`           | The `build` task in projects that the current project depends on. |
+| Dependency type | `^production:build` | The `build` task in dependency projects of a specific type.       |
+| Identifier      | `app:build`         | The `build` task in the `app` project.                            |
+| Self            | `build`, `~:build`  | The `build` task in the current project.                          |
+| Tag             | `#frontend:build`   | The `build` task in projects tagged `frontend`.                   |
+
+### All
+
+The all scope omits the project scope entirely: `:<task>`. Use it when a command should fan out across the workspace:
+
+- `:build` runs every project's `build` task that exists.
+- `:#lint` runs every task tagged `lint` across all projects.
+
+In the run context, the all scope may also be narrowed by a query. For example, `:test` with a query
+for frontend projects only resolves `test` tasks in frontend projects.
+
+The all scope is not supported in task [`deps`](./task#dependencies). A task dependency must resolve from a specific
+owning project, its dependency projects, an explicit project, or tagged projects.
+
+### Dependencies `^`
+
+The dependency scope is written as `^:<task>`. In task configuration, it expands to the matching
+task in each project dependency of the current project.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    dependsOn: ["ui", "utils"],
+    tasks: {
+      build: {
+        command: "build-package",
+        deps: ["^:build"],
+      },
+    },
+  }}
+/>
+
+In this example, `^:build` expands to `ui:build` and `utils:build`, if those tasks exist. Dependency
+scopes are optional by default in task dependencies, so a missing `build` task in one dependency is
+allowed unless the dependency object marks it as required.
+
+You can also filter dependencies by their dependency type:
+
+| Scope                                  | Matches                   |
+| -------------------------------------- | ------------------------- |
+| `^build:<task>`                        | Build dependencies.       |
+| `^development:<task>` or `^dev:<task>` | Development dependencies. |
+| `^production:<task>` or `^prod:<task>` | Production dependencies.  |
+| `^peer:<task>`                         | Peer dependencies.        |
+
+<ConfigTabs
+  file="moon"
+  config={{
+    dependsOn: [
+      {
+        id: "ui",
+        scope: "production",
+      },
+      {
+        id: "test-utils",
+        scope: "development",
+      },
+    ],
+    tasks: {
+      test: {
+        command: "run-tests",
+        deps: ["^production:build", "^development:test"],
+      },
+    },
+  }}
+/>
+
+Dependency scopes require an owning project, so they are only valid in configuration contexts such
+as task dependencies. They are not valid as top-level run targets, because `moon run ^:build` has no
+single "current project dependencies" relationship to expand from.
+
+### Identifiers
+
+An identifier scope selects one project by ID or alias: `<project-id>:<task>`.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      deploy: {
+        command: "deploy-service",
+        deps: ["api:build", "web:build"],
+      },
+    },
+  }}
+/>
+
+Project identifiers come from the workspace project map, project `id` overrides, or toolchain
+aliases. See [Projects](./project#identifiers) for how project IDs and aliases are assigned.
+
+Identifier targets are the most explicit form and work in both run and config contexts. They are a
+good choice for important cross-project relationships because readers can see the exact project
+being referenced.
+
+<Callout>
+  If referencing an external project that is not a dependency of the current
+  project, it will automatically be inferred as one.
+</Callout>
+
+### Self `~`
+
+The self scope is written as `~:<task>` and points at the current project. In task configuration, an unscoped task ID is normalized to the self scope. So these are equivalent:
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      check: {
+        command: "check-package",
+        deps: ["lint", "~:lint"],
+      },
+    },
+  }}
+/>
+
+Use the explicit `~:` form when a dependency list mixes local tasks with external projects and you
+want the local relationship to stand out.
+
+The self scope needs a current project. In the CLI run context, `~:build` is resolved relative to the
+project for the current working directory. In task configuration, it is resolved relative to the
+project that owns the task.
+
+### Tags `#`
+
+A project tag scope is written as `#<tag>:<task>`. It expands to matching tasks in projects that
+have the given project tag.
+
+<ConfigTabs
+  file="a/moon"
+  config={{
+    tags: ["frontend"],
+    tasks: {
+      build: {
+        command: "build-web",
+      },
+    },
+  }}
+/>
+
+<ConfigTabs
+  file="b/moon"
+  config={{
+    tasks: {
+      verify: {
+        command: "verify-release",
+        deps: ["#frontend:build"],
+      },
+    },
+  }}
+/>
+
+Here, `#frontend:build` selects the `build` task from every project tagged `frontend`, excluding the
+owning project if it would create a dependency cycle.
+
+Project tag scopes are useful for policies that apply to a category of projects instead of one
+specific project. For example, a release task might depend on all `#package:build` tasks, or a smoke
+test might depend on all `#service:deploy` tasks.
+
+## Task scopes
+
+The task scope is the trailing segment, after the colon. It answers "which task or tasks should moon select from
+the resolved project scope?"
+
+| Scope      | Example     | Meaning                       |
+| ---------- | ----------- | ----------------------------- |
+| Identifier | `app:build` | Task in `app` named `build`.  |
+| Tag        | `app:#lint` | Tasks in `app` tagged `lint`. |
+
+### Identifiers
+
+The most common task scope is a task ID:
+
+- `app:build`
+- `:test`
+- `^:lint`
+- `#frontend:typecheck`
+
+Task IDs are defined under a project's `tasks` map. When a project scope resolves more than one
+project, moon only includes projects where that task exists. For explicit project targets like
+`app:build`, a missing task is an error. For fan-out targets like `:build` or `#frontend:build`,
+projects without the task are skipped.
+
+### Tags `#`
+
+A task tag scope is written as `<project-scope>:#<tag>`:
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      eslint: {
+        command: "eslint .",
+        tags: ["lint"],
+      },
+      stylelint: {
+        command: "stylelint **/*.css",
+        tags: ["lint"],
+      },
+      check: {
+        command: "check-package",
+        deps: ["~:#lint"],
+      },
+    },
+  }}
+/>
+
+In this example, `~:#lint` selects every task in the current project tagged `lint`, so `check`
+depends on both `eslint` and `stylelint`.
+
+Task tags can be combined with any project scope that is valid in the current context:
+
+- `app:#lint` selects all `lint` tasks in `app`.
+- `:#lint` selects all `lint` tasks in the workspace.
+- `#frontend:#lint` selects all `lint` tasks in frontend projects.
+- `^production:#build` selects all `build` tagged tasks in production dependencies.
+
+Task tags are especially helpful when projects use different task names for the same category of
+work. One project can expose `eslint`, another can expose `biome`, and both can be selected through
+the shared `lint` tag.
+
+## Run context
+
+The run context is used by commands that accept task targets, such as `moon run`, `moon ci`, and
+`moon exec`. These commands parse inputs as target locators, which support everything a normal
+target supports plus a few conveniences for interactive execution.
+
+First, a bare task ID selects that task from the default project:
+
+- `moon run build`
+- `moon run test`
+
+The default project is the project associated with the `defaultProject` setting. If you do not have a default project, use an explicit target like `app:build`.
+
+Second, run targets support glob-like matching:
+
+- `moon run :build-*` selects tasks with IDs matching `build-*` across all projects.
+- `moon run "packages/*:test"` selects matching projects and their `test` task.
+- `moon run "packages/...:build"` uses `...` as a shorthand for recursive project matching.
+- `moon run ":#lint-*"` selects task tags matching `lint-*` across all projects.
+- `moon run "#frontend-*:build-*"` matches project tags and task IDs by pattern.
+
+Quote glob targets in your shell so the shell does not expand them before moon sees them.
+
+In the run context, `:task`, `project:task`, and `#tag:task` can expand directly from the workspace
+graph. The dependency scopes `^` and dependency-type scopes are not valid as top-level run targets
+because they require a single owning project. The self scope `~` is resolved from the current
+working directory when possible.
+
+## Config context
+
+The config context is used by settings that store task dependencies, most commonly `tasks.*.deps`.
+In this context, moon knows the owning project and task, so scopes like `~` and `^` have precise
+meaning.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-package",
+        deps: [
+          "lint",
+          "~:typecheck",
+          "^:build",
+          "^production:generate",
+          "api:build",
+          "#shared:#prepare",
+        ],
+      },
+    },
+  }}
+/>
+
+During project graph construction, moon expands those entries into concrete task targets. It also
+deduplicates dependencies and drops direct self-cycles, so a task cannot accidentally depend on
+itself through a broad scope.
+
+Task dependencies may also use object form when a target needs extra options:
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      test: {
+        command: "run-tests",
+        deps: [
+          {
+            target: "^:build",
+            optional: false,
+          },
+          {
+            target: "fixtures:generate",
+            args: ["--small"],
+            env: {
+              FIXTURE_MODE: "test",
+            },
+          },
+        ],
+      },
+    },
+  }}
+/>
+
+The `optional` field controls whether a target that expands to no tasks is allowed. Self and
+explicit project targets are required by default. Dependency and project-tag scopes are optional by
+default because not every dependency or tagged project is expected to expose the same task.
+
+When an explicit project target or project tag target creates a cross-project task dependency, moon
+also records an implicit project dependency for graph correctness. This helps affected detection and
+execution ordering understand that the owning project relies on the referenced project, even if it
+was not listed manually in `dependsOn`.

@@ -2,3 +2,120 @@
 title: Projects
 icon: Square
 ---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+import { TypeLabel } from "@/components/TypeLabel";
+import { VersionLabel } from "@/components/VersionLabel";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
+import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
+
+## Identifiers
+
+Every project has an ID — the stable, unique handle moon uses to refer to it in configs, in
+the CLI, and in other projects' dependencies. Whenever you see a project mentioned,
+you're seeing its ID.
+
+An ID comes from one of two places. First, through the `projects` setting in
+[`.moon/workspace.config`](./workspace), which is either derived from the folder path, or explicitly defined. Otherwise, you can override it by configuring [`id`](#id).
+
+<ConfigTabs
+  file="moon"
+  config={{
+    id: "custom-id",
+  }}
+/>
+
+## Aliases
+
+An alias is a secondary, toolchain-derived name for a project. Aliases work as drop-in replacements
+for the ID — anywhere an ID is accepted, the alias works
+too.
+
+However, you don't configure aliases directly. They're picked up automatically from the project's associated toolchain(s). For example, a project on the `javascript` toolchain will use the `name` field from its `package.json` as
+its alias. Other toolchains do something analogous for their ecosystems.
+
+Aliases exist because most packages already have a canonical name in their ecosystem, and it is
+often more natural to use that name than to invent a separate moon-specific ID. A shared UI library
+might be declared with the ID `uiKit` at `packages/ui-kit`, while its
+`package.json` declares `@org/ui-kit`. In that case, both `uiKit` and `@org/ui-kit`
+refer to the same project:
+
+<ConfigTabs
+  file="moon"
+  config={{
+    dependsOn: ["uiKit", "@org/ui-kit"],
+  }}
+  comments={{
+    dependsOn: "Both values are equivalent!",
+  }}
+/>
+
+<Callout>
+  Aliases also need to be unique. An alias cannot collide with an existing
+  project ID, and two projects can't share the same alias. moon will assign an
+  aliases to the first receiving project.
+</Callout>
+
+## Dependencies
+
+### Scopes
+
+## Toolchains
+
+### Overrides
+
+## Tasks
+
+### Environment variables
+
+### File groups
+
+### Inheritance overrides
+
+## Categorization
+
+These four settings are the project's categorization dimensions. Each one answers a different
+question about the project. None of them are strictly required, but filling them in is how you
+get the most out of moon.
+
+### Stacks
+
+The `stack` setting describes _which broad technology stack the project belongs to_. It's most commonly used to
+enforce cross-stack boundaries — for example, preventing a frontend project from depending on a
+backend one.
+
+Supported values:
+
+- `backend` — Server-side APIs and services.
+- `data` — Data sources, database layers.
+- `frontend` — Client-side user interfaces.
+- `infrastructure` — Cloud, server, and container infrastructure.
+- `systems` — Low-level systems programming.
+- `unknown` - Default when not defined.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    stack: "frontend",
+  }}
+/>
+
+### Layers
+
+### Tags
+
+### Language
+
+The `language` setting describes _what the code is written in_. moon will try to auto-detect this from config
+files in the project — a `package.json` implies `javascript`, a `Cargo.toml` implies `rust`, and so
+on — but an explicit value in `moon.yml` always takes precedence.
+
+## Ownership
+
+### Metadata
+
+### Codeowners
+
+## ???
+
+### Docker integration
