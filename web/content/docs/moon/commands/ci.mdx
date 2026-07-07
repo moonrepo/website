@@ -1,0 +1,27 @@
+---
+title: moon ci
+---
+
+Run all affected tasks in a CI environment.
+
+## Arguments
+
+- `[TARGETS]...`: List of explicit task targets to run
+
+## Options
+
+- `-f, --force`: Force run and bypass cache, ignore changed files, and skip affected checks [env: MOON_FORCE=]
+- `-i, --interactive`: Run the pipeline and tasks interactively
+- `-s, --summary [<SUMMARY>]`: Print a summary of all actions that were ran in the pipeline [env: MOON_SUMMARY=] [possible values: none, minimal, normal, detailed]
+- `-h, --help`: Print help
+- `-V, --version`: Print version
+- `--base <BASE>`: Base branch, commit, or revision to compare against [env: MOON_BASE=]
+- `--head <HEAD>`: Current branch, commit, or revision to compare with [env: MOON_HEAD=]
+- `-g, --include-relations`: Include graph relations for affected checks, instead of just changed files [env: MOON_INCLUDE_RELATIONS=]
+- `--status <STATUS>`: Filter changed files based on a changed status
+- `--stdin`: Accept changed files from stdin for affected checks
+- `--no-actions`: Run the pipeline without sync and setup related actions [env: MOON_NO_ACTIONS=]
+- `--downstream <DOWNSTREAM>`: Control the depth of downstream dependents [aliases: --dependents] [possible values: none, direct, deep]
+- `--upstream <UPSTREAM>`: Control the depth of upstream dependencies [aliases: --dependencies] [possible values: none, direct, deep]
+- `--job <JOB>`: Index of the current job [env: MOON_JOB=]
+- `--job-total <JOB_TOTAL>`: Total amount of jobs to run [env: MOON_JOB_TOTAL=]

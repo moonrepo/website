@@ -1,0 +1,23 @@
+---
+title: moon docker file
+---
+
+Generate a Dockerfile for a project.
+
+## Arguments
+
+- `<ID>`: ID of project to create a Dockerfile for
+- `[DEST]`: Destination path, relative from the project root
+
+## Options
+
+- `--defaults`: Use default options instead of prompting
+- `--build-task <BUILD_TASK>`: ID of a task to build the project
+- `--image <IMAGE>`: Base Docker image to use
+- `--no-prune`: Do not prune dependencies in the build stage
+- `--no-setup`: Do not setup dependencies in the build stage
+- `--no-toolchain`: Do not use the toolchain and instead use system binaries
+- `--start-task <START_TASK>`: ID of a task to run the project
+- `--template <TEMPLATE>`: Template path, relative from the workspace root, to render the Dockerfile with
+- `-h, --help`: Print help
+- `-V, --version`: Print version
