@@ -2,32 +2,134 @@
 title: moon exec
 ---
 
-Low-level command for executing tasks in the action pipeline.
+import { TypeLabel } from "@/components/TypeLabel";
+
+The most general and low-level command for executing task [targets](../target) through moon's
+action pipeline. It's the foundation that the higher-level [`moon run`](./run),
+[`moon check`](./check), and [`moon ci`](./ci) commands are built on top of — each of those
+commands internally assembles a set of `exec` arguments (a fixed `--on-failure` mode, a resolved
+list of targets, forced CI flags, and so on) and hands them to this same execution pipeline. Reach
+for `moon exec` directly when you need finer-grained or scriptable control over target selection
+and pipeline behavior than those convenience commands expose.
+
+Targets can be passed as arguments on the command line, using the standard
+[target syntax](../target) (`project:task`, `:task`, `#tag:task`, `~:task`, and so on). When no
+targets are provided, and none are defined by an execution plan either, moon prompts with a
+multi-select list of every task in the workspace.
+
+Instead of (or in addition to) command line flags, a declarative
+[execution plan](../guides/exec-plan) (a JSON file) can be supplied with `--plan`, describing the
+targets to run along with affected, graph, and pipeline settings. CLI targets are only used to
+populate the plan when the plan itself doesn't already define any; if both provide targets, the
+plan's targets win and a warning is logged. Values from the plan otherwise take precedence over
+their command line equivalents (base/head revision, upstream/downstream scope, job partitioning,
+and more).
+
+`moon exec` also ships as its own standalone binary, `moonx`, so `moonx app:build` is equivalent to
+`moon exec app:build` (or its alias, `moon x app:build`).
+
+```shell
+# Run `lint` in project `app`
+$ moon exec app:lint
+$ moonx app:lint
+
+# Run `build` in projects `client` and `server`
+$ moon exec client:build server:build
+
+# Run `test` in every project
+$ moon exec :test
+
+# Run `test` in the closest project, relative to the current working directory
+$ moon exec '~:test'
+
+# Run `test` in every project tagged `frontend`
+$ moon exec '#frontend:test'
+
+# Only run targets affected by changed files, continuing past failures
+$ moon exec :test --affected --on-failure continue
+
+# Drive the pipeline from a declarative execution plan
+$ moon exec --plan ./plan.json
+
+# Pass arguments through to the underlying task command
+$ moon exec app:start -- --port 8080
+```
 
 ## Arguments
 
-- `[TARGETS]...`: List of task targets to execute in the action pipeline
-- `[PASSTHROUGH]...`: Arguments to pass through to the underlying command
+- `[TARGETS...]` - List of task [targets](../target) to execute in the action pipeline. Can be
+  omitted when `--plan` provides its own targets, in which case you're prompted interactively.
+- `-- [PASSTHROUGH...]` - Arguments to pass through to the underlying task command(s) being
+  executed.
 
 ## Options
 
-- `--ci [<CI>]`: Execute the pipeline as if it's a CI environment [possible values: true, false]
-- `-f, --force`: Force run and bypass cache, ignore changed files, and skip affected checks [env: MOON_FORCE=]
-- `-i, --interactive`: Run the pipeline and tasks interactively
-- `-s, --summary [<SUMMARY>]`: Print a summary of all actions that were ran in the pipeline [env: MOON_SUMMARY=] [possible values: none, minimal, normal, detailed]
-- `-h, --help`: Print help
-- `-V, --version`: Print version
-- `--ignore-ci-checks`: Ignore "run in CI" task checks
-- `--on-failure <ON_FAILURE>`: When a task fails, either bail the pipeline, or continue executing [env: MOON_ON_FAILURE=] [default: bail] [possible values: bail, continue]
-- `--query <QUERY>`: Filter tasks based on the result of a query
-- `--no-actions`: Run the pipeline without sync and setup related actions [env: MOON_NO_ACTIONS=]
-- `--affected [<AFFECTED>]`: Only run tasks if affected by changed files [env: MOON_AFFECTED=]
-- `--base <BASE>`: Base branch, commit, or revision to compare against [env: MOON_BASE=]
-- `--head <HEAD>`: Current branch, commit, or revision to compare with [env: MOON_HEAD=]
-- `-g, --include-relations`: Include graph relations for affected checks, instead of just changed files [env: MOON_INCLUDE_RELATIONS=]
-- `--status <STATUS>`: Filter changed files based on a changed status
-- `--stdin`: Accept changed files from stdin for affected checks
-- `--downstream <DOWNSTREAM>`: Control the depth of downstream dependents [aliases: --dependents] [possible values: none, direct, deep]
-- `--upstream <UPSTREAM>`: Control the depth of upstream dependencies [aliases: --dependencies] [possible values: none, direct, deep]
-- `--job <JOB>`: Index of the current job [env: MOON_JOB=]
-- `--job-total <JOB_TOTAL>`: Total amount of jobs to run [env: MOON_JOB_TOTAL=]
+- `--ci` <TypeLabel type="boolean" /> - Execute the pipeline as though it's running in a CI
+  environment, which enables `runInCI` task checks, syncs the workspace, and attempts to extract
+  base/head revisions from the detected CI provider. Passing the flag alone is equivalent to
+  `--ci true`; use `--ci false` to force it off. Defaults to auto-detecting the current environment
+  when omitted.
+- `-f`, `--force` - Force run and bypass the cache, ignore changed files, and skip affected checks
+  (tasks still run even when unaffected, while affected files continue to be tracked for the
+  `affectedFiles` task variable). Can also be set via the `MOON_FORCE` environment variable.
+- `-i`, `--interactive` - Run the pipeline and its tasks interactively, allowing tasks to receive
+  input from the terminal.
+- `-p`, `--plan` <TypeLabel type="string" /> - Relative path to an [execution plan](../guides/exec-plan)
+  (JSON) used to declaratively define the targets, affected criteria, graph relations, and pipeline
+  settings for this run, instead of (or alongside) the options below. Can also be set via the
+  `MOON_EXEC_PLAN` environment variable.
+- `-s`, `--summary` <TypeLabel type="boolean | string" /> - Print a summary of all actions that were
+  ran in the pipeline. Accepts `none`, `minimal`, `normal` (default when the flag is passed without
+  a value), or `detailed`. Can also be set via the `MOON_SUMMARY` environment variable.
+
+### Workflow
+
+- `--ignore-ci-checks` - Ignore each task's "run in CI" (`runInCI`) setting, forcing it to execute
+  regardless of whether it's normally intended to run in a CI environment.
+- `--on-failure` <TypeLabel type="bail | continue" /> - When a task fails, either immediately
+  bail the entire pipeline (the default), or continue executing the remaining tasks. Can also be
+  set via the `MOON_ON_FAILURE` environment variable. [`moon ci`](./ci) always overrides this to
+  `continue`.
+- `--query` <TypeLabel type="string" /> - Filter the resolved task targets using a
+  [query language](../advanced/query-lang) expression, only executing targets whose owning project
+  matches.
+- `--no-actions` - Run the pipeline without executing sync and setup related actions (toolchain
+  installation, project syncing, etc), running only the requested tasks. Can also be set via the
+  `MOON_NO_ACTIONS` environment variable.
+
+### Affected
+
+- `--affected` <TypeLabel type="boolean | string" /> - Only run tasks if affected by changed files
+  (or by upstream/downstream relations when `--include-relations` is passed). When passed without
+  a value, changed files are detected from the local working tree; a string value further filters
+  affected checks (for example `local` or `remote`). Can also be set via the `MOON_AFFECTED`
+  environment variable.
+- `--base` <TypeLabel type="string" /> - Base branch, commit, or revision to compare against when
+  determining changed files. Can also be set via the `MOON_BASE` environment variable.
+- `--head` <TypeLabel type="string" /> - Current branch, commit, or revision to compare with when
+  determining changed files. Defaults to the working tree. Can also be set via the `MOON_HEAD`
+  environment variable.
+- `-g`, `--include-relations` - Include upstream and downstream graph relations when determining
+  affected status, instead of only changed files. Requires `--affected` to also be passed. Can
+  also be set via the `MOON_INCLUDE_RELATIONS` environment variable.
+- `--status` <TypeLabel type="added | all | deleted | modified | staged | unstaged | untracked" /> -
+  Filter changed files based on one or more changed statuses. Requires `--affected` to also be
+  passed. Defaults to `all`.
+- `--stdin` - Accept a list of changed files from stdin, instead of querying the VCS for them.
+  Requires `--affected` to also be passed.
+
+### Graph
+
+- `--downstream` <TypeLabel type="none | direct | deep" /> - Control the depth of downstream
+  dependents to include in the action graph. Aliased as `--dependents`. Defaults to `none`.
+- `--upstream` <TypeLabel type="none | direct | deep" /> - Control the depth of upstream
+  dependencies to include in the action graph. Aliased as `--dependencies`. Defaults to `deep`.
+
+### Parallelism
+
+- `--job` <TypeLabel type="number" /> - Index (zero-based) of the current job, used to partition
+  and distribute targets across multiple machines or processes. Can also be set via the `MOON_JOB`
+  environment variable.
+- `--job-total` <TypeLabel type="number" /> - Total number of jobs being run, used alongside
+  `--job` to determine this job's partition of targets. Can also be set via the `MOON_JOB_TOTAL`
+  environment variable.

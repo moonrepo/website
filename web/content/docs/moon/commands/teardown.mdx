@@ -2,9 +2,22 @@
 title: moon teardown
 ---
 
-Teardown the environment by uninstalling all toolchains and deleting cache files.
+The `moon teardown` command uninstalls every configured [toolchain](../toolchain) from the
+current workspace, reversing what [`moon setup`](./setup) installed. It's useful when you want to
+force a clean re-installation of a toolchain, free up disk space consumed by installed toolchain
+versions, or reset your environment while troubleshooting a suspected toolchain issue.
 
-## Options
+For each toolchain configured in [`.moon/toolchains.*`](../toolchain) (or the `toolchains`
+setting in a project's [`moon.*`](../project)), moon resolves the version that was configured
+for it and uninstalls that version from
+the underlying [proto](/docs/proto) tool store. If the toolchain plugin implements its own
+`teardown_toolchain` hook, that hook also runs, allowing the plugin to perform additional
+cleanup beyond removing the installed binaries (for example, clearing plugin-managed state or
+temporary directories it created during setup).
 
-- `-h, --help`: Print help
-- `-V, --version`: Print version
+This command does not touch moon's own task cache under `.moon/cache` — use
+[`moon clean`](./clean) for that instead.
+
+```shell
+$ moon teardown
+```

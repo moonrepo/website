@@ -2,9 +2,36 @@
 title: moon docker
 ---
 
-Operations for integrating with Docker and Dockerfiles.
+Operations for integrating moon with Docker and `Dockerfile`s.
 
-## Options
+moon's Docker support is built around its [project graph](../project-graph) and toolchain
+plugins, so that multi-stage Docker builds can take full advantage of layer caching, instead
+of copying the entire repository into every stage. The integration is made up of four
+subcommands that are typically chained together, either by hand-writing a `Dockerfile`, or by
+generating one with [`moon docker file`](./docker/file):
 
-- `-h, --help`: Print help
-- `-V, --version`: Print version
+- [`moon docker scaffold`](./docker/scaffold) - Run first, outside of Docker (or in an early
+  build stage), to copy a minimal skeleton of the repository (manifests, lockfiles, and the
+  source files of the projects being built) into `.moon/docker`, ready to be `COPY`'d into the
+  image.
+- [`moon docker setup`](./docker/setup) - Run inside the image, after the scaffolded files have
+  been copied in, to install toolchains and dependencies for the projects that were scaffolded.
+- [`moon docker prune`](./docker/prune) - Run after the project has been built, to strip
+  development-only dependencies and files back down to production-only, shrinking the final
+  image.
+- [`moon docker file`](./docker/file) - An optional helper that generates a multi-stage
+  `Dockerfile` for a project, pre-wired to call the three commands above in the correct order.
+
+```shell
+# Generate a Dockerfile for a project
+$ moon docker file <project>
+
+# Scaffold a skeleton for use within a Dockerfile
+$ moon docker scaffold <project>
+
+# Install toolchains and dependencies within the Dockerfile
+$ moon docker setup
+
+# Remove development dependencies from the built image
+$ moon docker prune
+```

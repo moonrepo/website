@@ -2,11 +2,31 @@
 title: moon sync code-owners
 ---
 
-Sync aggregated code owners to a `CODEOWNERS` file.
+The `moon sync code-owners` command manually syncs code owners by aggregating the `owners`
+settings from every [project](../../project) in the workspace, alongside any workspace-level
+`codeowners` settings, into a single `CODEOWNERS` file understood by your configured VCS provider.
+Refer to the [code owners guide](../../guides/codeowners) for more information on how ownership
+paths are defined and merged.
+
+The file is only regenerated when the aggregated ownership data has changed since the last sync
+(tracked through a cache fingerprint) or when it doesn't exist yet, so running this command
+repeatedly is cheap. This same generation logic also runs automatically as part of the sync phase
+in [`moon run`](../run) and [`moon sync`](../sync).
+
+```shell
+$ moon sync code-owners
+```
+
+Use `--force` to bypass the cache and regenerate the file regardless of whether ownership data has
+changed, or `--clean` to remove a previously generated file entirely.
+
+```shell
+$ moon sync code-owners --force
+$ moon sync code-owners --clean
+```
 
 ## Options
 
-- `--clean`: Clean and remove previously generated file
-- `--force`: Bypass cache and force create file
-- `-h, --help`: Print help
-- `-V, --version`: Print version
+- `--clean` - Clean and remove the previously generated `CODEOWNERS` file, instead of generating
+  one.
+- `--force` - Bypass the cache and force create the file, even if ownership data hasn't changed.

@@ -2,16 +2,39 @@
 title: moon extension add
 ---
 
-Add and configure an extension plugin.
+Register and configure a new [extension](../extension) plugin. This command downloads the
+extension's WASM plugin, extracts its metadata, and (if the plugin implements an
+`initialize_extension` function) runs an interactive series of prompts to gather configuration
+values from you. Once complete, a new block is appended to (or updated within)
+[`.moon/extensions.*`](../../extension), persisting the extension's plugin locator and any configured settings so
+that it can be executed later with [`moon ext`](../ext).
+
+For moon's built-in extensions (`download`, `migrate-nx`, `migrate-turborepo`, and `unpack`), the
+`plugin` argument can be omitted, as moon already knows the locator to use. For third-party or
+custom extensions, `plugin` is required and must be a valid plugin locator string, such as a
+`file://` path or a `https://` URL pointing to the `.wasm` file.
+
+```shell
+$ moon extension add download
+$ moon extension add my-extension https://example.com/path/to/plugin.wasm
+```
+
+To skip the interactive prompts entirely and accept default values, pass `--yes`. To still be
+prompted but with a reduced set of minimal, sane-default questions, pass `--minimal`.
+
+```shell
+$ moon extension add download --yes
+```
 
 ## Arguments
 
-- `<ID>`: Unique ID of the extension to add
-- `[PLUGIN]`: Plugin locator string to find and load the extension
+- `<ID>` - Unique ID to register the extension under. For built-in extensions this must match one
+  of the known identifiers (`download`, `migrate-nx`, `migrate-turborepo`, `unpack`).
+- `[PLUGIN]` - Plugin locator string used to locate and load the extension's WASM file. Required
+  for anything other than moon's built-in extensions.
 
 ## Options
 
-- `--minimal`: Add with minimal configuration and prompts
-- `--yes`: Skip prompts and use default values
-- `-h, --help`: Print help
-- `-V, --version`: Print version
+- `--minimal` - Generate the extension's configuration using a minimal set of prompts and sane
+  default values.
+- `--yes` - Skip all prompts and accept default values for every configuration setting.

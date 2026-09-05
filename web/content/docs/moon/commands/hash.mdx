@@ -2,15 +2,75 @@
 title: moon hash
 ---
 
-Inspect or diff the contents of a generated hashes.
+Inspect the contents of a generated [hash](../advanced/cache) manifest, or diff the
+contents of two hash manifests. This is extremely useful for debugging why a task is or isn't
+being cached, and for understanding exactly what inputs (files, environment variables, tool
+versions, etc) went into computing a task's hash.
+
+Manifests are looked up from `.moon/cache/hashes` by matching the provided hash against the
+`.json` files stored there. The hash argument can be either the fully qualified hash or a partial
+(short) prefix of it, as long as the prefix uniquely resolves to a single manifest file.
+
+### Inspecting a hash
+
+When only one hash is provided, the command prints the resolved hash followed by the pretty-printed
+contents of its manifest.
+
+```shell
+$ moon hash 0b55b234f1018581c45b00241d7340dc648c63e639fbafdaf85a4cd7e718fdde
+
+# Using a short/partial hash
+$ moon hash 0b55b234
+```
+
+```json
+Hash: 0b55b234f1018581c45b00241d7340dc648c63e639fbafdaf85a4cd7e718fdde
+
+{
+  "command": "build",
+  "args": ["./build"]
+  // ...
+}
+```
+
+### Diffing two hashes
+
+When a second hash is provided, the command diffs the two manifests line by line and prints the
+result, similar to `git diff`. Lines that match are printed as-is, lines only found on the left are
+prefixed and highlighted in green, and lines only found on the right are prefixed and highlighted in
+red (colors are only applied when running in a terminal; otherwise `+`/`-`/` ` prefixes are used).
+
+```shell
+$ moon hash 0b55b234f1018581c45b00241d7340dc648c63e639fbafdaf85a4cd7e718fdde 2388552fee5a02062d0ef402bdc7232f0a447458b058c80ce9c3d0d4d7cfe171
+
+# Using short/partial hashes
+$ moon hash 0b55b234 2388552f
+```
+
+```diff
+Left:  0b55b234f1018581c45b00241d7340dc648c63e639fbafdaf85a4cd7e718fdde
+Right: 2388552fee5a02062d0ef402bdc7232f0a447458b058c80ce9c3d0d4d7cfe171
+
+{
+	"command": "build",
+	"args": [
++		"./dist"
+-		"./build"
+	],
+	...
+}
+```
+
+If a provided hash (in either mode) doesn't match any manifest in the cache, the command errors out.
 
 ## Arguments
 
-- `<HASH>`: Hash to inspect
-- `[DIFF_HASH]`: Another hash to diff against
+- `<HASH>` - The hash (or a unique partial prefix of it) to inspect.
+- `[DIFF_HASH]` - Another hash (or partial prefix) to diff the first hash against.
 
 ## Options
 
-- `--json`: Print in JSON format
-- `-h, --help`: Print help
-- `-V, --version`: Print version
+- `--json` - Print the manifest, or the diff result, as JSON instead
+  of the default pretty-printed/colored output. When diffing, the JSON output includes `left`,
+  `left_hash`, `left_diffs`, `right`, `right_hash`, and `right_diffs` fields, where the `*_diffs`
+  fields map line numbers to the differing line content.

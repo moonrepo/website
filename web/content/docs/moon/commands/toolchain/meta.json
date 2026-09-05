@@ -1,7 +1,4 @@
 {
   "title": "moon toolchain",
-  "pages": [
-    "add",
-    "info"
-  ]
+  "pages": ["add", "download", "info"]
 }

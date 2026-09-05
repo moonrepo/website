@@ -2,16 +2,45 @@
 title: moon toolchain add
 ---
 
-Add and configure a toolchain plugin.
+Add and configure a [toolchain](../../toolchain) plugin for the current workspace, one of the
+[`moon toolchain`](../toolchain) management commands. This command
+downloads the toolchain's WASM plugin, extracts its metadata, and (if the plugin implements an
+`initialize_toolchain` function) runs an interactive series of prompts to gather configuration
+values from you. Once complete, a new block is appended to (or updated within)
+[`.moon/toolchains.*`](../../toolchain), persisting the toolchain's plugin locator (for third-party toolchains),
+detected or confirmed version, and any configured settings, so that it's used going forward.
+
+For moon's built-in toolchains, the `plugin`
+argument can be omitted, as moon already knows the locator to use. For third-party or custom
+toolchains, `plugin` is required and must be a valid
+[plugin locator](https://moonrepo.dev/docs/concepts/wasm-plugin) string, such as a `file://` path
+or an `https://` URL pointing to the `.wasm` file.
+
+```shell
+$ moon toolchain add typescript
+$ moon toolchain add my-toolchain https://example.com/path/to/plugin.wasm
+```
+
+If the toolchain manages a versioned tool (tier 3), moon attempts to detect an existing version
+from the current directory, and otherwise prompts you to confirm which version to manage through
+moon.
+
+To skip the interactive prompts entirely and accept default values, pass `--yes`. To still be
+prompted but with a reduced set of minimal, sane-default questions, pass `--minimal`.
+
+```shell
+$ moon toolchain add typescript --yes
+```
 
 ## Arguments
 
-- `<ID>`: Unique ID of the toolchain to add
-- `[PLUGIN]`: Plugin locator string to find and load the toolchain
+- `<ID>` - Unique ID to register the toolchain under. For built-in toolchains this must match one
+  of the known identifiers.
+- `[PLUGIN]` - Plugin locator string used to locate and load the toolchain's WASM file. Required
+  for anything other than moon's built-in toolchains.
 
 ## Options
 
-- `--minimal`: Add with minimal configuration and prompts
-- `--yes`: Skip prompts and use default values
-- `-h, --help`: Print help
-- `-V, --version`: Print version
+- `--minimal` - Generate the toolchain's configuration using a minimal set of prompts and sane
+  default values.
+- `--yes` - Skip all prompts and accept default values for every configuration setting.

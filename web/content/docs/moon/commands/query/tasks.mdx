@@ -2,13 +2,74 @@
 title: moon query tasks
 ---
 
-Query for tasks within the task graph, grouped by project.
+import { TypeLabel } from "@/components/TypeLabel";
+
+Query information about every [task](../../task) in the task graph, and print the result as JSON,
+grouped by project, like every other [`moon query`](../query) subcommand. Tasks can be filtered either with the `[QUERY]` argument, using
+[the query language (MQL)](../../advanced/query-lang), or with the individual `--option` flags below
+— when `[QUERY]` is provided, it takes precedence and all filter options are ignored.
+
+MQL is a small expression language for filtering projects and tasks with more precision than a
+single regex flag allows. A statement is made up of `field operator value` comparisons — `=`/`!=`
+for exact/negated matches (or `[a, b, c]` lists), and `~`/`!~` for glob-based matches — joined with
+`&&`/`AND` or `||`/`OR`, and grouped with parentheses. Fields relevant to tasks include `task`,
+`taskType`, `taskTag`/`taskTags`, and `taskToolchain`/`taskToolchains`, alongside the project-level
+fields such as `project`/`projectId`. See the [query language docs](../../advanced/query-lang) for
+the full field and operator reference.
+
+When no `[QUERY]` is given, the `--option` filters are applied instead, where every value is treated
+as a case-insensitive regular expression matched against the relevant task field.
+
+```shell
+# List every task in the workspace, grouped by project
+$ moon query tasks
+
+# Find tasks whose ID matches "build"
+$ moon query tasks --id build
+$ moon query tasks "task~build"
+
+# Find tasks that belong to a project matching "app"
+$ moon query tasks --project app
+
+# Find tasks affected by changed files
+$ moon query tasks --affected
+```
+
+The output is a JSON object with a `tasks` map (project ID to a map of task ID to full
+[task](../../task) configuration object) and the resolved `options` that were used to produce them.
 
 ## Arguments
 
-- `[QUERY]`: Filter tasks using a query (takes precedence over options)
+- `[QUERY]` - An [MQL statement](../../advanced/query-lang) to filter tasks with. When provided, all
+  filter options below are ignored.
 
 ## Options
 
-- `-h, --help`: Print help
-- `-V, --version`: Print version
+### Affected
+
+- `--affected` <TypeLabel type="boolean | string" /> - Filter down to only tasks affected by changed
+  files. When passed without a value, changed files are detected from the local working tree (or
+  piped in via stdin, as produced by [`moon query changed-files`](./changed-files)); a string value
+  further customizes the comparison, using the same syntax as the
+  [`moon query affected`](./affected) `[BY]` argument.
+- `--downstream` <TypeLabel type="none | direct | deep" /> - Include downstream dependents of
+  the queried tasks. Defaults to `none`. Can also be passed as `--dependents`. Requires `--affected`
+  to also be passed.
+- `--upstream` <TypeLabel type="none | direct | deep" /> - Include upstream dependencies of
+  the queried tasks. Defaults to `none`. Can also be passed as `--dependencies`. Requires
+  `--affected` to also be passed.
+
+### Filters
+
+All values below are matched as case-insensitive regular expressions, and are ignored when
+`[QUERY]` is provided.
+
+- `--command` <TypeLabel type="string" /> - Filter tasks whose command matches this pattern.
+- `--id` <TypeLabel type="string" /> - Filter tasks that match this ID.
+- `--project` <TypeLabel type="string" /> - Filter tasks that belong to a project matching this
+  pattern.
+- `--script` <TypeLabel type="string" /> - Filter tasks whose script matches this pattern.
+- `--tags` <TypeLabel type="string" /> - Filter tasks that have a tag matching this pattern.
+- `--toolchain` <TypeLabel type="string" /> - Filter tasks that use a toolchain matching this
+  pattern.
+- `--type` <TypeLabel type="string" /> - Filter tasks of this type.

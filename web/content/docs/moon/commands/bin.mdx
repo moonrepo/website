@@ -2,13 +2,23 @@
 title: moon bin
 ---
 
-Return an absolute path to a binary within the toolchain.
+Return an absolute path to a binary within a [toolchain](../toolchain), as installed and managed
+by [proto](../../proto). This is useful for locating the exact binary that moon (and its tasks)
+will execute, without having to guess at proto's tool directory structure.
+
+Internally this command delegates straight to `proto bin <toolchain>`, inheriting any
+toolchain-specific plugin configuration from the workspace, so the resolved path always matches
+what moon itself would run.
+
+```shell
+$ moon bin node
+/Users/example/.proto/tools/node/x.x.x/bin/node
+```
+
+If the toolchain is not configured for the current workspace (for example, querying `yarn` when
+the package manager is set to `npm`), the command exits with a code of `1` and prints nothing. If
+the toolchain is configured but has not been installed yet, it exits with a code of `2`.
 
 ## Arguments
 
-- `<TOOLCHAIN>`: The toolchain to query
-
-## Options
-
-- `-h, --help`: Print help
-- `-V, --version`: Print version
+- `<TOOLCHAIN>` - The ID of the toolchain to query (for example `node`, `rust`, `deno`).

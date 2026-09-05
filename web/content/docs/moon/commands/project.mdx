@@ -2,15 +2,52 @@
 title: moon project
 ---
 
-Display information about a single project.
+Display information about a single project, including its metadata, source location,
+toolchains, dependencies, configuration, file groups, and tasks.
+
+When `ID` is omitted and the terminal is interactive, moon prompts you to select a
+project from a list of all known IDs (with descriptions, when configured). Non-interactive
+sessions (for example CI) must always pass an explicit `ID`, as there's no terminal to
+render the prompt in.
+
+The default output renders a series of sections in the terminal:
+
+- **Metadata** — the project's `title`, `description`, `channel`, `owner`, `maintainers`,
+  and any custom `metadata` fields, when configured in [`moon.*`](../project).
+- **About** — the project `id`, `aliases` (if any toolchain registers one), `source`
+  path (relative to the workspace root), `root` (absolute path), enabled `toolchains`,
+  `language`, `stack`, `layer`, and the list of projects it `dependsOn`, alongside each
+  dependency's scope (`production`, `development`, `build`, `peer`, or `root`) and, when
+  inherited transitively, which dependency it came in `via`.
+- **Configuration** — the config layers this project's settings were inherited from,
+  its `tags`, and any project-level `env` variables.
+- **File groups** — every [file group](../project#file-groups) defined for the
+  project, and the files/globs each one resolves to.
+- **Tasks** — every configured task ID and the resolved command line it runs.
+
+Sections that have no data (no metadata block, no file groups, and so on) are omitted
+from the output. To list every project in the workspace as a table, use
+[`moon projects`](./projects); to visualize a project alongside its dependencies and
+dependents, use [`moon project-graph`](./project-graph).
+
+```shell
+$ moon project
+
+$ moon project client
+
+$ moon project client --json
+
+$ moon project client --no-tasks
+```
 
 ## Arguments
 
-- `[ID]`: Project ID to inspect
+- `[ID]` - Project ID to inspect. When omitted, prompts for a project to select
+  interactively (requires a TTY).
 
 ## Options
 
-- `--json`: Print in JSON format
-- `--no-tasks`: Do not include tasks in output
-- `-h, --help`: Print help
-- `-V, --version`: Print version
+- `--json` - Print the entire project, including its expanded configuration, dependencies,
+  file groups, and tasks, as JSON, instead of the formatted terminal output.
+- `--no-tasks` - Exclude the "Tasks" section from the formatted output. Has no effect
+  when combined with `--json`.

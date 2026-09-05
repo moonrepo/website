@@ -1,9 +1,4 @@
 {
   "title": "moon sync",
-  "pages": [
-    "code-owners",
-    "config-schemas",
-    "projects",
-    "vcs-hooks"
-  ]
+  "pages": ["code-owners", "config-schemas", "projects", "vcs-hooks"]
 }

@@ -2,11 +2,53 @@
 title: moon clean
 ---
 
-Clean the workspace and delete any stale or invalid artifacts.
+import { TypeLabel } from "@/components/TypeLabel";
+
+Clean the workspace by deleting stale or invalid cached artifacts from `.moon/cache`.
+This is useful for reclaiming disk space, or for troubleshooting when cached state
+seems out of date or corrupted.
+
+By default, `moon clean` removes items from the following locations that are older
+than the `--lifetime` threshold:
+
+- `.moon/cache/hashes` - Hash manifests generated from hashing inputs, as inspected by
+  [`moon hash`](./hash).
+- `.moon/cache/outputs` - Archived task output artifacts.
+- `.moon/cache/locks` - Stale file locks left behind by interrupted processes.
+
+It also runs garbage collection against any writable _local_ storage backends
+(the content-addressable blob store used for caching task outputs), removing blobs
+older than the same threshold. Remote storage backends are always skipped, as they
+manage their own eviction server-side. If a particular backend fails to be cleaned,
+the error is logged and moon continues on to the next one, rather than aborting.
+
+Passing `--all` forces the lifetime down to a single second, so effectively every
+item is considered stale and removed, regardless of age. In this mode, moon also
+wipes out the following, which are otherwise preserved:
+
+- `.moon/cache/states` - Cached state for projects, tasks, and tools.
+- `.moon/cache/temp` - Temporary files used during runs.
+
+Once cleaning has finished, moon prints how many files were deleted and how many
+bytes were reclaimed.
+
+```shell
+# Delete cached artifacts older than the default lifetime (7 days)
+$ moon clean
+
+# Use a custom lifetime
+$ moon clean --lifetime "3 days"
+
+# Delete all cached items and reset local state entirely
+$ moon clean --all
+```
 
 ## Options
 
-- `--all`: Clean all cached items and reset state
-- `--lifetime <LIFETIME>`: Lifetime of cached artifacts [default: "7 days"]
-- `-h, --help`: Print help
-- `-V, --version`: Print version
+- `--all` - Clean all cached items and reset state, ignoring `--lifetime`. This also
+  clears cached project/task/tool state and temporary files, in addition to hashes,
+  outputs, locks, and local storage blobs. Can also be passed as `--reset`.
+- `--lifetime` <TypeLabel type="string" /> - The maximum age of cached artifacts to
+  keep; anything older is deleted. Accepts a human-readable duration, such as
+  `"7 days"`, `"24 hours"`, or `"30 minutes"`. Defaults to `"7 days"`. Ignored when
+  `--all` is passed.

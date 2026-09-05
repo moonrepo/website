@@ -1,0 +1,22 @@
+---
+title: moon extension download
+---
+
+Download and cache every [extension](../extension) plugin currently configured in
+[`.moon/extensions.*`](../../extension). Each configured plugin's locator is resolved, its `.wasm`
+file is fetched (or verified against the existing cache), and the plugin is loaded and registered,
+but it is _not_ executed — no `register_extension` API call or extension-specific logic runs, so
+this is purely a fetch-and-cache operation.
+
+This is handy for warming the plugin cache ahead of time, rather than paying the download cost on
+first use. For example, in a CI pipeline or when building a Docker image, running this command as
+an early step ensures every extension is already cached before [`moon ext`](../ext) is invoked
+later on, avoiding an extra network round trip mid-run. It's also useful if you know you're about
+to go offline and want every configured extension available locally beforehand.
+
+```shell
+$ moon extension download
+```
+
+If no extensions are configured in [`.moon/extensions.*`](../../extension), an info notice is
+printed and nothing is downloaded.

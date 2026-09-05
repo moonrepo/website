@@ -2,29 +2,105 @@
 title: moon run
 ---
 
-Run one or many tasks in the action pipeline.
+import { TypeLabel } from "@/components/TypeLabel";
+
+Run one or many [targets](../target) (and their upstream dependencies) through moon's action
+pipeline, in topological order. This is the command you'll reach for most often: it resolves the
+tasks that match the given targets, builds an action graph from them (installing dependencies,
+syncing projects, running dependency tasks, and so on), and then executes that graph, caching each
+task's output along the way to speed up subsequent runs. To see the graph a set of targets would
+produce without running anything, use [`moon action-graph`](./action-graph).
+
+`moon run` is a thin, opinionated wrapper around [`moon exec`](./exec): it forwards to the same
+execution engine but always fails fast, aborting the entire pipeline as soon as any task fails
+(equivalent to `moon exec --on-failure bail`). If you'd rather continue running unaffected tasks
+after a failure, use [`moon exec`](./exec) directly with `--on-failure continue`.
+
+If no targets are provided on the command line, moon prompts interactively with a multi-select
+list of all known tasks in the workspace, letting you choose which ones to run.
+
+```shell
+# Run `lint` in project `app`
+$ moon run app:lint
+
+# Run `dev` in projects `client` and `server`
+$ moon run client:dev server:dev
+
+# Run `test` in every project
+$ moon run :test
+
+# Run `test` in the closest project relative to the current directory
+$ moon run '~:test'
+
+# Run `test` in every project tagged `frontend`
+$ moon run '#frontend:test'
+
+# Run `build` only in projects matching a query
+$ moon run :build --query "language=javascript"
+
+# Pass arguments through to the underlying command
+$ moon run app:build -- --minify
+
+# Only run `lint` if it's affected by changes since the `master` branch
+$ moon run app:lint --affected --base master
+```
 
 ## Arguments
 
-- `[TARGETS]...`: List of explicit task targets to run
-- `[PASSTHROUGH]...`: Arguments to pass through to the underlying command
+- `[TARGETS...]` - List of explicit [task targets](../target) to run. When omitted, moon prompts
+  interactively for a selection of tasks.
+- `-- [ARGS...]` - Additional arguments to pass through to the underlying task command. Only
+  applies to explicit targets, and is ignored when multiple tasks are being run.
 
 ## Options
 
-- `-f, --force`: Force run and bypass cache, ignore changed files, and skip affected checks [env: MOON_FORCE=]
-- `-i, --interactive`: Run the pipeline and tasks interactively
-- `-s, --summary [<SUMMARY>]`: Print a summary of all actions that were ran in the pipeline [env: MOON_SUMMARY=] [possible values: none, minimal, normal, detailed]
-- `-h, --help`: Print help
-- `-V, --version`: Print version
-- `--query <QUERY>`: Filter tasks based on the result of a query
-- `--no-actions`: Run the pipeline without sync and setup related actions [env: MOON_NO_ACTIONS=]
-- `--affected [<AFFECTED>]`: Only run tasks if affected by changed files [env: MOON_AFFECTED=]
-- `--base <BASE>`: Base branch, commit, or revision to compare against [env: MOON_BASE=]
-- `--head <HEAD>`: Current branch, commit, or revision to compare with [env: MOON_HEAD=]
-- `-g, --include-relations`: Include graph relations for affected checks, instead of just changed files [env: MOON_INCLUDE_RELATIONS=]
-- `--status <STATUS>`: Filter changed files based on a changed status
-- `--stdin`: Accept changed files from stdin for affected checks
-- `--downstream <DOWNSTREAM>`: Control the depth of downstream dependents [aliases: --dependents] [possible values: none, direct, deep]
-- `--upstream <UPSTREAM>`: Control the depth of upstream dependencies [aliases: --dependencies] [possible values: none, direct, deep]
-- `--job <JOB>`: Index of the current job [env: MOON_JOB=]
-- `--job-total <JOB_TOTAL>`: Total amount of jobs to run [env: MOON_JOB_TOTAL=]
+- `-f`, `--force` - Force run the pipeline, bypassing the cache, ignoring changed files, and
+  skipping affected checks. Can also be set via the `MOON_FORCE` environment variable. Forcing
+  still tracks affected files for the `affectedFiles` task variable, it only bypasses the affected
+  _selection_ filter, so unaffected tasks still run.
+- `-i`, `--interactive` - Run the pipeline and its tasks interactively, allowing tasks to read from
+  and write to `stdin`/`stdout` directly instead of being captured.
+- `-p`, `--plan` <TypeLabel type="string" /> - Relative path to an execution plan file (JSON) that
+  customizes the action graph and pipeline before it runs, such as pre-defining targets, affected
+  settings, graph depth, or parallelism/job partitioning. Can also be set via the
+  `MOON_EXEC_PLAN` environment variable. Targets passed on the command line are merged into the
+  plan when the plan itself doesn't already define any.
+- `-s`, `--summary` <TypeLabel type="none | minimal | normal | detailed" /> - Print a summary
+  of all actions that ran in the pipeline once it completes. Can also be set via the
+  `MOON_SUMMARY` environment variable. Defaults to `normal` when passed without a value.
+- `--query` <TypeLabel type="string" /> - Filter the tasks to run based on the result of a
+  [query](./query) statement, further narrowing the resolved targets.
+- `--no-actions` - Run the pipeline without any sync or setup related actions (toolchain
+  installation, project syncing, etc), executing only the requested tasks. Can also be set via the
+  `MOON_NO_ACTIONS` environment variable.
+- `--affected` <TypeLabel type="boolean | string" /> - Only run tasks that are affected by changed
+  files (or by upstream/downstream relations when `--include-relations` is set). Can also be set
+  via the `MOON_AFFECTED` environment variable. When no other affected filters are provided, moon
+  compares against locally modified files; passing a string value (for example
+  `--affected=remote`) customizes the comparison source. When a task isn't affected, it's skipped
+  entirely (unless `--force` is also passed).
+- `--base` <TypeLabel type="string" /> - Base branch, commit, or revision to compare against when
+  determining changed files. Can also be set via the `MOON_BASE` environment variable. Requires
+  `--affected`.
+- `--head` <TypeLabel type="string" /> - Current branch, commit, or revision to compare with when
+  determining changed files. Defaults to the working tree (`HEAD`). Can also be set via the
+  `MOON_HEAD` environment variable. Requires `--affected`.
+- `-g`, `--include-relations` - When checking affected status, also include upstream (dependency)
+  and downstream (dependent) task relations, instead of only changed files. Can also be set via
+  the `MOON_INCLUDE_RELATIONS` environment variable. Requires `--affected`.
+- `--status` <TypeLabel type="added | all | deleted | modified | staged | unstaged | untracked" /> -
+  Filter changed files used for affected checks down to a specific VCS status. Can be passed
+  multiple times. Requires `--affected`.
+- `--stdin` - Read the list of changed files from `stdin`, instead of querying the VCS, for
+  affected checks. Requires `--affected`.
+- `--downstream` <TypeLabel type="none | direct | deep" /> - Control how deeply downstream
+  dependent tasks are included in the action graph. Aliased as `--dependents`. Defaults to `none`.
+- `--upstream` <TypeLabel type="none | direct | deep" /> - Control how deeply upstream
+  dependency tasks are included in the action graph. Aliased as `--dependencies`. Defaults to
+  `deep`.
+- `--job` <TypeLabel type="number" /> - Zero-based index of the current job, used to partition
+  resolved targets across multiple parallel invocations. Can also be set via the `MOON_JOB`
+  environment variable. Must be paired with `--job-total`.
+- `--job-total` <TypeLabel type="number" /> - Total number of jobs that targets are being
+  partitioned across. Can also be set via the `MOON_JOB_TOTAL` environment variable. Must be
+  paired with `--job`.

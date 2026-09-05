@@ -2,26 +2,110 @@
 title: moon ci
 ---
 
-Run all affected tasks in a CI environment.
+import { TypeLabel } from "@/components/TypeLabel";
+
+Run tasks in a continuous integration (CI) environment, with sane defaults tailored for that
+context. Like [`moon check`](./check), this is a thin wrapper around the same
+[action pipeline](./exec) used by [`moon run`](./run) and [`moon exec`](./exec), but it pre-fills a
+handful of options so that a single `moon ci` invocation is typically all a CI pipeline needs.
+
+Compared to running tasks directly, `moon ci`:
+
+- Always detects affected tasks by comparing changed files against a base revision — this cannot be
+  disabled, though how the comparison is made can still be customized with the affected options
+  below. When running inside a supported CI provider, the base and head revisions (and whether the
+  build is for a pull request) are automatically extracted from the CI environment if `--base` and
+  `--head` aren't explicitly provided.
+- Always respects each task's [`runInCI`](../task#runinci) setting, so tasks explicitly excluded
+  from CI never run.
+- Forces the pipeline into CI mode (as if `--ci` were passed to [`moon exec`](./exec)), which
+  affects how the console renders output and how other moon features detect a CI environment.
+- Continues running remaining tasks after a failure, instead of bailing on the first one, so a
+  single broken task doesn't hide the results of the others.
+- Includes direct downstream dependents of affected tasks by default (unless `--downstream` is
+  passed explicitly), to help catch regressions in tasks that depend on what changed.
+- Prints a detailed summary of the pipeline by default (unless `--summary` is passed explicitly), so
+  CI logs always contain a full breakdown of what ran.
+
+When no explicit targets are passed and no `--plan` is provided, every task in the workspace is
+queued up as a candidate, and the affected and `runInCI` checks above determine which of them
+actually execute. Passing explicit targets narrows this candidate list down first, but the same
+affected and `runInCI` filtering is still applied on top.
+
+```shell
+# Run every affected, CI-enabled task in the workspace
+$ moon ci
+
+# Run specific targets, still filtered by affected status and runInCI
+$ moon ci :build :lint
+
+# Compare against an explicit base and head revision
+$ moon ci --base main --head HEAD
+
+# Shard the run across 2 parallel CI jobs
+$ moon ci --job 0 --job-total 2
+```
+
+See the [continuous integration guide](../guides/ci) for a deeper walkthrough of wiring `moon ci`
+into common CI providers, including sharding examples.
 
 ## Arguments
 
-- `[TARGETS]...`: List of explicit task targets to run
+- `[TARGETS...]` - List of explicit task [targets](../target) to run. When omitted, every task in
+  the workspace is considered, subject to affected and `runInCI` filtering.
 
 ## Options
 
-- `-f, --force`: Force run and bypass cache, ignore changed files, and skip affected checks [env: MOON_FORCE=]
-- `-i, --interactive`: Run the pipeline and tasks interactively
-- `-s, --summary [<SUMMARY>]`: Print a summary of all actions that were ran in the pipeline [env: MOON_SUMMARY=] [possible values: none, minimal, normal, detailed]
-- `-h, --help`: Print help
-- `-V, --version`: Print version
-- `--base <BASE>`: Base branch, commit, or revision to compare against [env: MOON_BASE=]
-- `--head <HEAD>`: Current branch, commit, or revision to compare with [env: MOON_HEAD=]
-- `-g, --include-relations`: Include graph relations for affected checks, instead of just changed files [env: MOON_INCLUDE_RELATIONS=]
-- `--status <STATUS>`: Filter changed files based on a changed status
-- `--stdin`: Accept changed files from stdin for affected checks
-- `--no-actions`: Run the pipeline without sync and setup related actions [env: MOON_NO_ACTIONS=]
-- `--downstream <DOWNSTREAM>`: Control the depth of downstream dependents [aliases: --dependents] [possible values: none, direct, deep]
-- `--upstream <UPSTREAM>`: Control the depth of upstream dependencies [aliases: --dependencies] [possible values: none, direct, deep]
-- `--job <JOB>`: Index of the current job [env: MOON_JOB=]
-- `--job-total <JOB_TOTAL>`: Total amount of jobs to run [env: MOON_JOB_TOTAL=]
+### Affected
+
+- `--base` <TypeLabel type="string" /> - Base branch, commit, or revision to compare against when
+  determining changed files. When running in a supported CI provider, this is automatically derived
+  from the CI environment (for example, the pull request's base branch) if not provided. Can also be
+  set via the `MOON_BASE` environment variable.
+- `--head` <TypeLabel type="string" /> - Current branch, commit, or revision to compare with when
+  determining changed files. When running in a supported CI provider, this is automatically derived
+  from the CI environment if not provided; otherwise defaults to the working tree. Can also be set
+  via the `MOON_HEAD` environment variable.
+- `-g`, `--include-relations` - Include upstream and downstream graph relations when determining
+  affected status, instead of only changed files. Can also be set via the `MOON_INCLUDE_RELATIONS`
+  environment variable.
+- `--status` <TypeLabel type="added | all | deleted | modified | staged | unstaged | untracked" /> -
+  Filter changed files based on one or more changed statuses. Defaults to `all`.
+- `--stdin` - Accept a list of changed files from stdin, instead of querying the VCS for them.
+
+### Graph
+
+- `--downstream` <TypeLabel type="none | direct | deep" /> - Control the depth of downstream
+  dependents to include in the action graph. Aliased as `--dependents`. Defaults to `direct` (unlike
+  [`moon run`](./run) and [`moon exec`](./exec), which default to `none`), so tasks that depend on
+  what changed are also verified.
+- `--upstream` <TypeLabel type="none | direct | deep" /> - Control the depth of upstream
+  dependencies to include in the action graph. Aliased as `--dependencies`. Defaults to `deep`.
+
+### Parallelism
+
+- `--job` <TypeLabel type="number" /> - Index (zero-based) of the current job, used to shard targets
+  across multiple parallel CI jobs or machines. Must be paired with `--job-total`. Can also be set
+  via the `MOON_JOB` environment variable.
+- `--job-total` <TypeLabel type="number" /> - Total number of jobs being run, used alongside `--job`
+  to determine this job's partition of targets. Can also be set via the `MOON_JOB_TOTAL` environment
+  variable.
+
+### Workflow
+
+- `-f`, `--force` - Force run and bypass the cache, ignore changed files, and skip affected checks
+  (tasks still run even when unaffected, though affected files are still tracked). Can also be set
+  via the `MOON_FORCE` environment variable.
+- `-i`, `--interactive` - Run the pipeline and its tasks interactively, allowing tasks to receive
+  input from the terminal.
+- `--no-actions` - Run the pipeline without executing sync and setup related actions (toolchain
+  installation, project syncing, etc), running only the requested tasks. Can also be set via the
+  `MOON_NO_ACTIONS` environment variable.
+- `-p`, `--plan` <TypeLabel type="string" /> - Relative path to an execution plan (JSON) used to
+  further customize the action graph and pipeline for this run. Can also be set via the
+  `MOON_EXEC_PLAN` environment variable.
+- `-s`, `--summary` <TypeLabel type="boolean | string" /> - Print a summary of all actions that were
+  ran in the pipeline. Accepts `none`, `minimal`, `normal`, or `detailed`. When passed without a
+  value, defaults to `normal`; when omitted entirely, defaults to `detailed` (unlike
+  [`moon run`](./run) and [`moon exec`](./exec), which default to `normal`). Can also be set via the
+  `MOON_SUMMARY` environment variable.

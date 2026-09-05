@@ -2,9 +2,13 @@
 title: moon migrate
 ---
 
-Operations for migrating existing projects to moon.
+Operations for migrating existing projects and workspaces to moon, or between major
+versions of moon itself.
 
-## Options
+This is a parent command with a single subcommand:
 
-- `-h, --help`: Print help
-- `-V, --version`: Print version
+- [`moon migrate v2`](./migrate/v2) - Migrate an existing moon v1 workspace to moon v2.
+
+```shell
+$ moon migrate v2
+```

@@ -2,4 +2,67 @@
 title: moon query changed-files
 ---
 
-Query for changed files between revisions.
+import { TypeLabel } from "@/components/TypeLabel";
+
+Query the list of files that have changed according to your
+[VCS](../../workspace#version-control-integration) (Git), and print the result as JSON, like every
+other [`moon query`](../query) subcommand. This is the
+same logic that powers affected detection throughout moon ([`moon ci`](../ci), [`moon check --affected`](../check),
+[`moon query affected`](./affected), and so on), exposed as a standalone command so it can be
+inspected or reused independently.
+
+Changed files are gathered using the following logic:
+
+- If neither `--base` nor `--head` is provided (or the `MOON_BASE`/`MOON_HEAD` environment
+  variables), and the current branch is the workspace's default branch, and `--default-branch` is
+  enabled, files are compared against the previous revision (`HEAD~1`). This mirrors what
+  [continuous integration](../ci) uses by default.
+- If `--local` is enabled (and neither `--base`, `--head`, nor `MOON_BASE`/`MOON_HEAD` are set),
+  only files from your local working tree are returned (equivalent to `git status`).
+- Otherwise, files are diffed between `--base` (defaulting to the workspace's configured `vcs.defaultBranch`)
+  and `--head` (defaulting to `HEAD`).
+- When `--head` is not explicitly provided, files from your local working tree are merged into the
+  result as well, since the comparison is implicitly against your current checkout. An explicit
+  `--head` performs a pure revision-to-revision comparison and excludes local changes.
+- `--local` and `--remote` are mutually exclusive, and only take effect when no explicit base or
+  head is set.
+
+When running outside of CI, `--local` behavior and skipping `--default-branch` comparisons are
+enabled automatically; the opposite is true when running inside CI. If the repository is a shallow
+clone and no explicit `--base` was given, moon can't reliably diff revisions and instead returns an
+empty file list with `shallow: true` in the output (a warning is also logged).
+
+```shell
+# Return every changed file (added, modified, deleted, etc)
+$ moon query changed-files
+
+# Return only files that were modified
+$ moon query changed-files --status modified
+
+# Return files that differ between 2 revisions
+$ moon query changed-files --base main --head feature-branch
+
+# Return only local, uncommitted changes
+$ moon query changed-files --local
+```
+
+The output is a JSON object containing the list of workspace-relative `files`, the resolved
+`options` that were used, and a `shallow` flag indicating whether the VCS history was too shallow to
+produce a reliable comparison.
+
+## Options
+
+- `--base` <TypeLabel type="string" /> - Base branch, commit, or revision to compare against. Can
+  also be set via the `MOON_BASE` environment variable.
+- `--default-branch` <TypeLabel type="boolean" /> - When on the default branch, compare against the
+  previous revision (`HEAD~1`) instead of diffing 2 branches. Passing the flag alone enables it.
+  Defaults to whether moon detects it's running in CI.
+- `--head` <TypeLabel type="string" /> - Current branch, commit, or revision to compare with.
+  Defaults to `HEAD`. Can also be set via the `MOON_HEAD` environment variable.
+- `--local` - Gather files from your local working tree (`git status`) instead of the remote.
+  Mutually exclusive with `--remote`.
+- `--remote` - Gather files from a remote comparison instead of your local working tree. Mutually
+  exclusive with `--local`.
+- `--status` <TypeLabel type="added | all | deleted | modified | staged | unstaged | untracked" /> -
+  Filter files based on one or more changed statuses. Can be passed multiple times. Defaults to
+  `all`.

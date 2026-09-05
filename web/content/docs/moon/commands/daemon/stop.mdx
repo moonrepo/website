@@ -1,0 +1,13 @@
+---
+title: moon daemon stop
+---
+
+Stop the running [daemon](../daemon) (alias: `shutdown`).
+
+The daemon is first asked to shut down gracefully over RPC. The command then waits for it to actually release ownership of its lock file, which is how moon confirms the process is truly gone (rather than trusting the RPC call alone). If the daemon doesn't release that lock within a few seconds — for example, it's wedged, or it never received the RPC request — its previously recorded process ID is killed outright, and ownership is confirmed again before moon considers it stopped. Once stopped, its socket (or named pipe) and state file are cleaned up automatically; a fresh daemon started later will recreate them.
+
+Unlike [`start`](./start) and [`restart`](./restart), this command doesn't check whether the `daemon` setting is enabled — it will stop a running daemon regardless, which is useful right after turning the setting off. If no daemon is running, a warning is printed and nothing else happens.
+
+```shell
+$ moon daemon stop
+```

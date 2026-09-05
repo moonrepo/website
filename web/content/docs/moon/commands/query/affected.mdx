@@ -2,15 +2,51 @@
 title: moon query affected
 ---
 
-Query affected status for projects and tasks.
+import { TypeLabel } from "@/components/TypeLabel";
+
+Determine which [projects](../../project) and [tasks](../../task) are affected by changes in the
+current [VCS](../../workspace#version-control-integration) working tree, and print the result as
+JSON, like every other [`moon query`](../query) subcommand. This is the same affected detection logic used internally by [`moon ci`](../ci) and
+`--affected` flags elsewhere in moon, exposed as a standalone query for scripting and tooling.
+
+Under the hood, this command first collects a list of changed files (from the local index, or a
+comparison between 2 revisions, depending on the `[BY]` argument and your VCS state), then walks the
+project and task graphs to determine which nodes are affected by those files, optionally expanding
+the result to include upstream dependencies and downstream dependents.
+
+If data is piped into this command via stdin (as produced by
+[`moon query changed-files`](./changed-files)), it's used as the list of changed files instead of
+querying the VCS directly, allowing the 2 commands to be composed together.
+
+```shell
+# Determine affected projects and tasks based on local changes
+$ moon query affected
+
+# Also include downstream dependents and upstream dependencies
+$ moon query affected --downstream deep --upstream deep
+
+# Reuse the output of another query
+$ moon query changed-files --status added --status modified | moon query affected
+```
+
+The output is a JSON object with a `projects` and `tasks` map, keyed by project ID and task target
+respectively. Each entry records why that project or task was marked affected: the changed files
+that triggered it, related tasks/projects, and whether it was affected through an
+`upstream`/`downstream` relationship.
 
 ## Arguments
 
-- `[BY]`: Conditions in which to track affected
+- `[BY]` - Conditions in which to track affected, as a comma-separated list. Accepts `true` or
+  `false` to simply toggle affected tracking, or a string built from the following tokens:
+  - `local` / `!remote` - Only consider local, uncommitted changes (`git status`).
+  - `remote` / `!local` - Only consider changes between the 2 revisions below, ignoring local
+    changes.
+  - `<base>` or `<base>:<head>` - The base (and optionally head) revision to diff against, instead
+    of the workspace's configured default branch and `HEAD`.
 
 ## Options
 
-- `--downstream <DOWNSTREAM>`: Include downstream dependents [default: none] [aliases: --dependents] [possible values: none, direct, deep]
-- `--upstream <UPSTREAM>`: Include upstream dependencies [default: none] [aliases: --dependencies] [possible values: none, direct, deep]
-- `-h, --help`: Print help
-- `-V, --version`: Print version
+- `--downstream` <TypeLabel type="none | direct | deep" /> - Include downstream dependents of
+  affected projects/tasks. Defaults to `none`. Can also be passed as `--dependents`.
+- `--upstream` <TypeLabel type="none | direct | deep" /> - Include upstream dependencies of
+  affected projects/tasks. Defaults to `none`. Can also be passed as `--dependencies`.

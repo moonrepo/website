@@ -1,0 +1,4 @@
+{
+  "title": "moon daemon",
+  "pages": ["logs", "restart", "start", "status", "stop"]
+}

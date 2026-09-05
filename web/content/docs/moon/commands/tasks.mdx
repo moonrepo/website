@@ -2,14 +2,43 @@
 title: moon tasks
 ---
 
-Display a table of all tasks.
+Display a table of every [task](../task) configured across the workspace, or scoped to
+a single project.
+
+By default, moon collects every task from every [project](../project) in the workspace.
+When the `project` argument is provided, only tasks
+belonging to that project are listed instead, and moon exits early with an info notice
+if the project has no tasks configured. In both cases the resulting list is sorted
+alphabetically by [target](../target).
+
+The table renders one row per task, with columns for the target, the resolved command
+(shown as `(script)` when the task uses a `script` instead of a `command`), its
+[type](../task#types) (`build`, `run`, or `test`), its applied [preset](../task#presets)
+(`server` or `utility`, when set), the [toolchain(s)](../toolchain) it runs under, and
+its description. The `Type`, `Preset`, and `Description` columns are hidden automatically
+when the terminal isn't wide enough to fit them.
+
+Pass `--json` to skip the table entirely and print the full list of resolved tasks as a
+single JSON array instead, useful for scripting or feeding into other tooling.
+
+```shell
+# List every task in the workspace
+$ moon tasks
+
+# List tasks for a specific project
+$ moon tasks app
+
+# Print all tasks as JSON
+$ moon tasks --json
+```
+
+For a single task's fully resolved details, use [`moon task`](./task) instead. To query
+and filter tasks with more complex criteria, use [`moon query tasks`](./query/tasks).
 
 ## Arguments
 
-- `[PROJECT]`: Filter tasks to a specific project
+- `[PROJECT]` - Filter tasks to a specific [project](../project) by ID.
 
 ## Options
 
-- `--json`: Print in JSON format
-- `-h, --help`: Print help
-- `-V, --version`: Print version
+- `--json` - Print the list of tasks as JSON instead of a table.

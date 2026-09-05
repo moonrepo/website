@@ -2,14 +2,29 @@
 title: moon ext
 ---
 
-Execute an extension plugin.
+Execute an extension, a WASM plugin that extends moon with custom functionality, has whitelisted
+access to the file system, and can receive partial information about the current workspace.
+
+To execute an extension, moon looks up the provided extension `id` in the workspace's configured
+extensions (typically defined in [`.moon/extensions.*`](../extension)), resolves and loads its WASM plugin
+(downloading and caching it locally if it's referenced by a URL), and then calls the plugin's
+`execute_extension` function. Any arguments passed after a `--` separator are not parsed by
+`moon ext` itself, but are instead forwarded verbatim to the extension, which is responsible for
+parsing them on its own.
+
+Extensions must first be registered with the workspace before they can be executed with this
+command, either manually within [`.moon/extensions.*`](../extension), or by running
+[`moon extension add`](./extension/add). To inspect what an extension supports before running it,
+use [`moon extension info`](./extension/info). See [`moon extension`](./extension) for managing
+extensions as a whole.
+
+```shell
+$ moon ext download -- --url https://github.com/moonrepo/moon/releases/latest/download/moon-x86_64-unknown-linux.tar.xz
+```
 
 ## Arguments
 
-- `<ID>`: Extension ID to execute
-- `[PASSTHROUGH]...`: Arguments to pass through to the extension
-
-## Options
-
-- `-h, --help`: Print help
-- `-V, --version`: Print version
+- `<ID>` - ID of the extension to execute, as configured in [`.moon/extensions.*`](../extension).
+- `-- [PASSTHROUGH...]` - Arguments to pass through to the extension. These are not interpreted by
+  `moon ext`, and must appear after a `--` separator so they aren't mistaken for arguments to the
+  `moon ext` command itself.

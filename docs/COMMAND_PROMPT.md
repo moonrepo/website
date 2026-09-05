@@ -1,5 +1,9 @@
 For each command documentation page at `web/content/docs/moon/commands`, spawn a sonnet subagent to generate and implement the content.
 
+## Requirements
+
+See `docs/DOCS_STYLE_GUIDE.md`.
+
 ## Structure
 
 The page should use the following structure:
@@ -24,7 +28,7 @@ DESCRIPTION
 
 The name of the command as it would appear on the command line, e.g., `moon exec`. This should match the name of the file.
 
-If the command is in a directory, then it is a subcommand and should be referenced as `moon parent-command subcommand`, e.g., `moon query projects`.
+If the command is in a directory, then it is a sub-command and should be referenced as `moon parent-command sub-command`, e.g., `moon query projects`.
 
 ### Description
 
@@ -48,21 +52,19 @@ Otherwise, list each argument in the following format:
 
 ```
 - `<ARG>` - DESCRIPTION
+# or variadic
+- `<ARGS...>` - DESCRIPTION
 ```
 
 2. Optional argument:
 
 ```
 - `[ARG]` - DESCRIPTION
-```
-
-3. Variadic arguments:
-
-```
+# or variadic
 - `[ARGS...]` - DESCRIPTION
 ```
 
-4. Rest/passthrough arguments (after `--`):
+3. Rest/passthrough arguments (after `--`):
 
 ```
 - `-- [ARGS...]` - DESCRIPTION
@@ -79,7 +81,7 @@ Otherwise, list each option in the following format:
 ```
 - `--OPTION` - DESCRIPTION
 # or with short flag
-- `-O, --OPTION` - DESCRIPTION
+- `-O`, `--OPTION` - DESCRIPTION
 ```
 
 2. Option with value:
@@ -87,7 +89,7 @@ Otherwise, list each option in the following format:
 ```
 - `--OPTION` VALUE - DESCRIPTION
 # or with short flag
-- `-O, --OPTION` VALUE - DESCRIPTION
+- `-O`, `--OPTION` VALUE - DESCRIPTION
 ```
 
 The value should use the `TypeLabel` component, and the type string should match TypeScript syntax. For example:
