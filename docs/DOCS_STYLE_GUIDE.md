@@ -18,16 +18,16 @@ The `website` directory is the old website and documentation. Refer to this for 
 
 ### Configuration
 
-When referencing configuration files in documentation, like `.moon/workspace.yml`, always use `*` as the extension, as moon supports multiple formats. So instead of `.moon/workspace.yml`, write `.moon/workspace.*`. For task inheritance configuration files, use `.moon/tasks/**/*` explicitly.
+When referencing configuration files in documentation, like `.moon/workspace.yml`, always use `config` as the extension, as moon supports multiple formats. So instead of `.moon/workspace.yml`, write `.moon/workspace.config`. For task inheritance configuration files, use `.moon/tasks/*.config` explicitly.
 
 Additionally, all file references (wrapped with inline code ticks), should link to the relevant fundamentals (or guides) page.
 
-- `.moon/workspace.*` - workspace configuration file, `workspace` fundamentals page
-- `.moon/extensions.*` - extensions configuration file, `extension` fundamentals page
-- `.moon/toolchains.*` - toolchains configuration file, `toolchain` fundamentals page
-- `.moon/tasks/**/*` - task inheritance configuration files, `tasks-inheritance` fundamentals page
-- `moon.*` - project configuration file, `project` fundamentals page
-- `template.*` - codegen template configuration file, `codegen` guides page
+- `.moon/workspace.config` - workspace configuration file, `workspace` fundamentals page
+- `.moon/extensions.config` - extensions configuration file, `extension` fundamentals page
+- `.moon/toolchains.config` - toolchains configuration file, `toolchain` fundamentals page
+- `.moon/tasks/*.config` - task inheritance configuration files, `tasks-inheritance` fundamentals page
+- `moon.config` - project configuration file, `project` fundamentals page
+- `template.config` - codegen template configuration file, `codegen` guides page
 
 ### Commands
 

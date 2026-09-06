@@ -136,6 +136,31 @@ To mark a task as persistent, enable [`options.persistent`](#persistent) or conf
   }}
 />
 
+### Sync phase
+
+<VersionLabel version="2.1.0" /> Tasks can also run as part of the syncing
+phase, instead of only when explicitly ran or depended on. When [`moon
+sync`](./commands/sync) is executed, it walks every project and queues these
+tasks into the action graph alongside the workspace and project sync actions,
+which makes them a good fit for codegen and other housekeeping that should be
+kept up to date across the repository.
+
+To run a task in the sync phase, enable `options.runInSyncPhase`.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      codegen: {
+        command: "generate-types",
+        options: {
+          runInSyncPhase: true,
+        },
+      },
+    },
+  }}
+/>
+
 ## Command
 
 The work unit of a task is the `command` (or [`script`](#script)) setting. This setting represents a simple command line, comprised of an executable (binary, file path, etc), and zero or more arguments (options, flags, positionals, etc).
@@ -280,6 +305,18 @@ When using the object format for dependencies, you can also specify parameters t
 - `args` <TypeLabel type="string[]" /> - A list of additional arguments to append to the task's [`command`](#command) when it's executed.
 - `env` <TypeLabel type="Record<string, string>" /> - A map of additional variables to merge into the task's environment when it's executed.
 - `optional` <TypeLabel type="boolean" /> - Controls how this dependency is treated during task inheritance. When `false` (the default), will error if the task does not exist. When `true`, will be ignored if the task does not exist. This does _not_ allow the task to fail during execution.
+- `cacheStrategy` <TypeLabel type="hash | ignored | outputs" /> <VersionLabel version="2.3.0" /> - Controls how changes to this dependency invalidate the current task's cache. Supports the following values:
+  - `hash` - Any change to the dependency's hash invalidates this task.
+  - `ignored` - The dependency never invalidates this task's cache, and acts as a sequencing edge only.
+  - `outputs` - Only changes to the dependency's _output files_ invalidate this task, not changes to its inputs. Useful for build tasks that only care about what a dependency produced.
+
+<Callout>
+  When `cacheStrategy` is omitted, it resolves to `hash` if the dependency
+  declares [`outputs`](#outputs), and `ignored` if it doesn't. Before v2.3.0 the
+  default was always `hash`, so tasks depending on output-less tasks (lints,
+  tests) now see fewer cache invalidations. Set `cacheStrategy: 'hash'`
+  explicitly to restore the old behavior for a given dependency.
+</Callout>
 
 <ConfigTabs
   file="moon"
@@ -1059,6 +1096,108 @@ When using the URI or object formats, the following parameters are supported:
 
 </Tab>
 </Tabs>
+
+## Checks
+
+<VersionLabel version="2.4.0" /> Checks are shell scripts that run _before_ the
+task itself, and depending on the type of check, can skip the task, fail it
+before it starts, or feed extra data into its hash. They're defined with the
+`checks` setting, where each entry pairs a `check` type with the `script` to
+run.
+
+Three types are supported:
+
+- `condition` - The task is _skipped_ when every condition passes, and runs as normal otherwise.
+  Use this to guard a task behind an environment check.
+- `requirement` - The task fails and does not run when the check fails. Use this to assert a
+  precondition, such as a required tool being installed.
+- `fingerprint` - The task fails and does not run when the check fails; otherwise the script's
+  output is mixed into the task's hash. Use this to make a task cache-aware of state that isn't a
+  file, such as a remote schema version.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      deploy: {
+        command: "deploy-app",
+        checks: [
+          { check: "requirement", script: "command -v aws" },
+          { check: "fingerprint", script: "aws sts get-caller-identity" },
+        ],
+      },
+    },
+  }}
+/>
+
+A check can also be written as a plain string, which is shorthand for a `requirement`:
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      deploy: {
+        command: "deploy-app",
+        checks: ["command -v aws"],
+      },
+    },
+  }}
+/>
+
+A `fingerprint` check can narrow _what_ is hashed with its `hash` field, which accepts
+`exit-code`, `stdout`, `stderr`, or a boolean (`true`, the default, hashes all output).
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "build-app",
+        checks: [
+          {
+            check: "fingerprint",
+            script: "get-schema-version",
+            hash: "stdout",
+          },
+        ],
+      },
+    },
+  }}
+/>
+
+When tasks are inherited or extended, `options.mergeChecks` <VersionLabel version="2.4.0" />
+controls how the check lists are combined, using the same merge strategies as the other
+`merge*` options.
+
+## Tags
+
+<VersionLabel version="2.3.0" /> Tasks can be categorized with the `tags`
+setting, in the same spirit as [project tags](./project#tags). Task tags are
+inherited alongside the rest of the task, and `options.mergeTags` controls how
+they're combined when a task is extended.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      lint: {
+        command: "eslint",
+        tags: ["quality"],
+      },
+      typecheck: {
+        command: "tsc --noEmit",
+        tags: ["quality"],
+      },
+    },
+  }}
+/>
+
+Once tagged, tasks can be referenced as a group:
+
+- In [targets](./target), through the task tag scope — `~:#quality` selects every `quality` tagged
+  task in the current project, and `app:#quality` does the same for the `app` project.
+- In [MQL](./advanced/query-lang), through the `taskTag` field.
+- On the command line, with `moon query tasks --tags quality`.
 
 ## Presets
 
