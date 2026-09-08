@@ -3,7 +3,7 @@ title: moon projects
 ---
 
 Display a table of all [projects](../project) configured in the workspace, as
-registered in [`.moon/workspace.*`](../workspace) or discovered by
+registered in [`.moon/workspace.config`](../workspace) or discovered by
 [project discovery](../workspace#project-discovery). This is a quick way to get an
 overview of every project without writing a [query](./query/projects) or inspecting
 each [project](./project) individually.
@@ -11,7 +11,7 @@ each [project](./project) individually.
 For each project, the table renders the project ID, its source location (relative to
 the workspace root), its [tech stack](../project#stacks) and
 [layer](../project#layers), the [toolchains](../toolchain) it uses, and the
-description from its [`moon.*`](../project) (when one is set). Projects are always sorted
+description from its [`moon.config`](../project) (when one is set). Projects are always sorted
 alphabetically by ID. If the workspace has no projects configured, an informational
 notice is printed instead of an empty table.
 

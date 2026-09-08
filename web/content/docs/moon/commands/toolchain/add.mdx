@@ -7,7 +7,7 @@ Add and configure a [toolchain](../../toolchain) plugin for the current workspac
 downloads the toolchain's WASM plugin, extracts its metadata, and (if the plugin implements an
 `initialize_toolchain` function) runs an interactive series of prompts to gather configuration
 values from you. Once complete, a new block is appended to (or updated within)
-[`.moon/toolchains.*`](../../toolchain), persisting the toolchain's plugin locator (for third-party toolchains),
+[`.moon/toolchains.config`](../../toolchain), persisting the toolchain's plugin locator (for third-party toolchains),
 detected or confirmed version, and any configured settings, so that it's used going forward.
 
 For moon's built-in toolchains, the `plugin`

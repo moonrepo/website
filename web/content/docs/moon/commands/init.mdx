@@ -3,7 +3,7 @@ title: moon init
 ---
 
 Initialize [moon](/docs/moon) in the current repository (or another destination), scaffolding the
-minimum files required to run moon: a [`.moon/workspace.*`](../workspace) file and a `.gitignore` entry for
+minimum files required to run moon: a [`.moon/workspace.config`](../workspace) file and a `.gitignore` entry for
 moon's internal cache and Docker directories.
 
 The command first prompts you to confirm the destination to initialize into (skipped with `--yes`).
@@ -15,12 +15,12 @@ Once confirmed, moon inspects the destination's Git repository to detect useful 
 
 - The upstream provider is detected from repository files — a `.gitlab` directory implies GitLab, a
   `bitbucket-pipelines.yml` file implies Bitbucket, and everything else falls back to GitHub — and
-  written to the `vcs.provider` setting in [`.moon/workspace.*`](../workspace).
+  written to the `vcs.provider` setting in [`.moon/workspace.config`](../workspace).
 - The default branch is detected from the local Git checkout (or Git's global default when the
   repository has no commits yet) and written to the `vcs.defaultBranch` setting in
-  [`.moon/workspace.*`](../workspace).
+  [`.moon/workspace.config`](../workspace).
 
-The generated [`.moon/workspace.*`](../workspace) also includes a commented out `projects` setting (pre-filled
+The generated [`.moon/workspace.config`](../workspace) also includes a commented out `projects` setting (pre-filled
 with a `packages/*` glob example) that you must uncomment and adjust to match your repository's
 project layout, as moon has no projects configured by default. Refer to the
 [workspace](../workspace) fundamentals page for more information on these settings.

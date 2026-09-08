@@ -3,7 +3,7 @@ title: moon toolchain download
 ---
 
 Download the WASM plugin for every [toolchain](../../toolchain) configured in
-[`.moon/toolchains.*`](../../toolchain), one of the [`moon toolchain`](../toolchain) management
+[`.moon/toolchains.config`](../../toolchain), one of the [`moon toolchain`](../toolchain) management
 commands. This is purely a plugin-fetching step: for each
 configured toolchain, moon resolves its plugin locator, downloads the `.wasm` file (or reuses it
 from the local cache if already present), and registers the plugin so it's ready to be used.

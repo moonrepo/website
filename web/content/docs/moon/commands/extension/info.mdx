@@ -15,7 +15,7 @@ This is useful for auditing what an extension actually supports and does before 
 
 Just like [`moon extension add`](./add), the `plugin` argument can be omitted for moon's built-in
 extensions (`download`, `migrate-nx`, `migrate-turborepo`, and `unpack`), since their locators are
-already known. For any other extension, either configure it in [`.moon/extensions.*`](../../extension) first, or
+already known. For any other extension, either configure it in [`.moon/extensions.config`](../../extension) first, or
 pass its plugin locator explicitly.
 
 ```shell
@@ -25,7 +25,7 @@ $ moon extension info my-extension https://example.com/path/to/plugin.wasm
 
 ## Arguments
 
-- `<ID>` - ID of the extension to inspect. If already configured in [`.moon/extensions.*`](../../extension), its
+- `<ID>` - ID of the extension to inspect. If already configured in [`.moon/extensions.config`](../../extension), its
   locator will be resolved automatically.
 - `[PLUGIN]` - Plugin locator string used to locate and load the extension's WASM file, when not
   already configured or not a built-in extension.

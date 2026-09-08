@@ -7,8 +7,8 @@ current workspace, reversing what [`moon setup`](./setup) installed. It's useful
 force a clean re-installation of a toolchain, free up disk space consumed by installed toolchain
 versions, or reset your environment while troubleshooting a suspected toolchain issue.
 
-For each toolchain configured in [`.moon/toolchains.*`](../toolchain) (or the `toolchains`
-setting in a project's [`moon.*`](../project)), moon resolves the version that was configured
+For each toolchain configured in [`.moon/toolchains.config`](../toolchain) (or the `toolchains`
+setting in a project's [`moon.config`](../project)), moon resolves the version that was configured
 for it and uninstalls that version from
 the underlying [proto](/docs/proto) tool store. If the toolchain plugin implements its own
 `teardown_toolchain` hook, that hook also runs, allowing the plugin to perform additional

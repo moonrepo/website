@@ -3,7 +3,7 @@ title: moon extension download
 ---
 
 Download and cache every [extension](../extension) plugin currently configured in
-[`.moon/extensions.*`](../../extension). Each configured plugin's locator is resolved, its `.wasm`
+[`.moon/extensions.config`](../../extension). Each configured plugin's locator is resolved, its `.wasm`
 file is fetched (or verified against the existing cache), and the plugin is loaded and registered,
 but it is _not_ executed — no `register_extension` API call or extension-specific logic runs, so
 this is purely a fetch-and-cache operation.
@@ -18,5 +18,5 @@ to go offline and want every configured extension available locally beforehand.
 $ moon extension download
 ```
 
-If no extensions are configured in [`.moon/extensions.*`](../../extension), an info notice is
+If no extensions are configured in [`.moon/extensions.config`](../../extension), an info notice is
 printed and nothing is downloaded.

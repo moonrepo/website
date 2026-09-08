@@ -2,3 +2,283 @@
 title: Task inheritance
 icon: Diameter
 ---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+import { TypeLabel } from "@/components/TypeLabel";
+import { VersionLabel } from "@/components/VersionLabel";
+
+Task inheritance is how a [task](./task) defined once, at the workspace level, becomes available to
+many [projects](./project) without being copied into each one. Instead of every project repeating
+the same `lint`, `test`, or `build` definition, those tasks live in the workspace and each project
+inherits the ones that apply to it, then adjusts what it needs to.
+
+Inheritance is layered. A project doesn't pick a single source of truth for a task — it collects
+every matching workspace configuration, merges them in a deterministic order, and finally merges
+its own definition on top. The result is that broad defaults can be declared once, and narrow
+overrides can be applied exactly where they're needed.
+
+## Configuration
+
+Workspace tasks are configured in files under the `.moon/tasks` directory. Every configuration
+file in that directory is loaded, including files in nested sub-directories, so you're free to
+organize them however suits your repository.
+
+```
+.moon/
+  tasks/
+    all.yml
+    node.yml
+    frontend/
+      app.yml
+      library.yml
+```
+
+<Callout>
+  File names carry no special meaning. In moon v1, a name like
+  `tag-frontend.yml` determined which projects inherited the file. In v2, that
+  role belongs entirely to the [`inheritedBy`](#scoping-inheritance) setting,
+  and files can be named anything you like.
+</Callout>
+
+Each file uses the same shape, and supports the following settings:
+
+- `inheritedBy` <VersionLabel version="2.0.0" /> - Conditions that decide which projects inherit
+  this file. See [scoping inheritance](#scoping-inheritance).
+- `tasks` - A map of task identifiers to task definitions, matching the shape used in a project's
+  [`moon.config`](./project#tasks).
+- `taskOptions` <VersionLabel version="1.20.0" /> - Default [task options](./task#options) applied
+  to every task inherited from this file.
+- `implicitDeps` - Task [dependencies](./task#dependencies) injected into every inherited task.
+- `implicitInputs` - Task [inputs](./task#inputs) injected into every inherited task.
+- `fileGroups` - [File groups](./advanced/file-groups) made available to inheriting projects.
+- `env` <VersionLabel version="2.5.0" /> - Environment variables merged into every inheriting
+  project's `env`.
+- `extends` <VersionLabel version="1.12.0" /> - Extends another tasks configuration file, by
+  relative path or secure URL.
+
+<ConfigTabs
+  file=".moon/tasks/all"
+  config={{
+    implicitInputs: ["package.json"],
+    tasks: {
+      lint: {
+        command: "eslint .",
+      },
+      test: {
+        command: "vitest run",
+      },
+    },
+  }}
+/>
+
+<Callout>
+  The configuration file a task came from is automatically registered as one of
+  that task's inputs. Editing a workspace tasks file will invalidate the cache
+  of every task it defines, without you having to declare that relationship.
+</Callout>
+
+## Scoping inheritance
+
+By default, a tasks file is inherited by _every_ project in the workspace. The `inheritedBy`
+setting narrows that down with conditions matched against each project. When multiple conditions
+are defined, **all** of them must match.
+
+- `toolchains` - Matches against the [toolchains](./toolchain) detected for the project.
+- `languages` - Matches against the project's `language`.
+- `stacks` - Matches against the project's [stack](./project#stacks).
+- `layers` - Matches against the project's [layer](./project#layers).
+- `tags` - Matches against the project's [tags](./project#tags).
+- `files` - Matches when at least one of the listed files exists in the project.
+- `order` <TypeLabel type="number" /> - Explicitly sets this file's position in the inheritance
+  chain. See [inheritance order](#inheritance-order).
+
+<ConfigTabs
+  file=".moon/tasks/frontend/app"
+  config={{
+    inheritedBy: {
+      layers: "application",
+      stacks: "frontend",
+    },
+    tasks: {
+      dev: {
+        command: "vite dev",
+        preset: "server",
+      },
+    },
+  }}
+/>
+
+The `toolchains` and `tags` conditions accept a single value, a list of values (matched with OR),
+or a clause object for finer control:
+
+- `and` - Every value must match.
+- `or` - At least one value must match.
+- `not` - No value may match.
+
+<ConfigTabs
+  file=".moon/tasks/node-only"
+  config={{
+    inheritedBy: {
+      toolchains: { and: ["node", "typescript"], not: ["deno"] },
+    },
+    tasks: {
+      typecheck: {
+        command: "tsc --noEmit",
+      },
+    },
+  }}
+/>
+
+<Callout>
+  When a file's `inheritedBy.toolchains` condition resolves to exactly one
+  toolchain, that toolchain is also applied as the default `toolchains` value
+  for every task the file defines, unless the task sets its own.
+</Callout>
+
+## Inheritance order
+
+Matching files are sorted before they're merged, so that broad configuration is applied first and
+specific configuration is applied last. Each file receives a numeric order, derived from the
+conditions it declares:
+
+| Conditions declared      | Order |
+| ------------------------ | ----- |
+| None, or `files` only    | 0     |
+| `toolchains`/`languages` | +50   |
+| `stacks`                 | +100  |
+| `layers`                 | +150  |
+| `tags`                   | +500  |
+
+Because the values add together, a file scoped by both toolchain and layer (200) is applied after
+one scoped by toolchain alone (50). Files that end up with the same order are sorted by their path,
+so the result is stable across machines. Setting `inheritedBy.order` explicitly overrides the
+derived value entirely.
+
+The project's own tasks, defined in its [`moon.config`](./project#tasks), are always merged
+last, and therefore always win against inherited configuration.
+
+## Merge strategies
+
+When the same task is defined in more than one place, its settings are merged rather than
+replaced outright. Collection settings — `args`, `checks`, `deps`, `env`, `inputs`, `outputs`,
+`tags`, and `toolchains` — are combined using a merge strategy, while scalar settings like
+`command` and `script` are simply overwritten by the last definition in the chain.
+
+Four strategies are available:
+
+- `append` - Add the inheriting values after the inherited ones. **This is the default.**
+- `prepend` - Add the inheriting values before the inherited ones.
+- `replace` - Discard the inherited values entirely and use only the inheriting ones.
+- `preserve` - Keep the values from the first (most global) configuration in the chain, and
+  discard everything merged after it.
+
+Strategies are configured per task, through [task options](./task#options). The `merge` option
+sets the default for every collection, and the field-specific options override it:
+
+- `merge` - Default for all of the below.
+- `mergeArgs`, `mergeChecks` <VersionLabel version="2.4.0" />, `mergeDeps`, `mergeEnv`,
+  `mergeInputs`, `mergeOutputs`, `mergeTags` <VersionLabel version="2.3.0" />, `mergeToolchains`
+  <VersionLabel version="2.0.0" />
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      lint: {
+        args: ["--fix"],
+        options: {
+          mergeArgs: "prepend",
+          mergeInputs: "replace",
+        },
+      },
+    },
+  }}
+/>
+
+<Callout>
+  Merge strategies apply to inheritance, not to a task's own configuration. Two
+  entries within the same list are never merged against each other.
+</Callout>
+
+## Extending a task
+
+A task can also inherit from a _sibling_ task, rather than from the workspace, using the `extends`
+setting. The extended task is resolved first and its configuration is placed earlier in the merge
+chain, so the extending task's settings win.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      test: {
+        command: "vitest run",
+        inputs: ["src/**/*", "tests/**/*"],
+      },
+      "test-watch": {
+        extends: "test",
+        args: ["--watch"],
+        preset: "server",
+      },
+    },
+  }}
+/>
+
+The referenced task must exist, either locally in the same project or in the inherited workspace
+tasks, otherwise configuration will fail to build.
+
+## Filtering what a project inherits
+
+A project can opt out of, or rename, the tasks it would otherwise inherit, through the
+`workspace.inheritedTasks` setting in its [`moon.config`](./project#inheritance-overrides).
+
+- `include` <TypeLabel type="string[]" /> - Only inherit tasks with these identifiers. When
+  undefined, all matching tasks are inherited; when an empty list, none are.
+- `exclude` <TypeLabel type="string[]" /> - Inherit everything except these identifiers.
+- `rename` <TypeLabel type="Record<string, string>" /> - Map an inherited task's identifier to a
+  new one, scoped to this project.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    workspace: {
+      inheritedTasks: {
+        exclude: ["lint"],
+        rename: { test: "unit-test" },
+      },
+    },
+  }}
+/>
+
+These filters match tasks by identifier only. Task dependencies pointing at the current project
+are updated to follow a `rename`, and dropped when the task they point at is excluded — but
+dependencies on _other_ projects (such as `^:build`) are always preserved, since excluding a task
+locally shouldn't stop it from running upstream. Dependencies using the task tag scope
+(`~:#tag`) have no identifier to match against, so they're never excluded or renamed.
+
+<VersionLabel version="2.5.0" /> Projects can additionally control how inherited
+`env` and `fileGroups` are combined with their own, through the
+`workspace.mergeStrategies` setting, which accepts the same four strategies
+described above.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    workspace: {
+      mergeStrategies: {
+        env: "replace",
+        fileGroups: "prepend",
+      },
+    },
+  }}
+/>
+
+## Debugging inheritance
+
+Because a single task can be assembled from several files, it's often useful to see what a project
+actually ended up with. [`moon task <target>`](./commands/task) prints a task's fully resolved
+configuration, including the config layers it inherited from, and
+[`moon project <id>`](./commands/project) does the same for a project as a whole.
+
+```shell
+$ moon task app:lint
+```

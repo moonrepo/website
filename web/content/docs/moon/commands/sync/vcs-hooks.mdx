@@ -3,7 +3,7 @@ title: moon sync vcs-hooks
 ---
 
 Part of [`moon sync`](../sync), this command manually generates hook scripts for your configured VCS, based
-on the commands defined in the `vcs.hooks` setting of `.moon/workspace.*`. Each configured hook
+on the commands defined in the `vcs.hooks` setting of `.moon/workspace.config`. Each configured hook
 (for example `pre-commit` or `pre-push`) is written out as a script that the VCS will execute at
 the appropriate point, and the scripts are wired up to run through the VCS client's own hook
 mechanism. Refer to the [workspace](../../workspace) fundamentals page for more on VCS

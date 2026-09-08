@@ -19,7 +19,7 @@ the information moon explicitly passes them, and are portable across every platf
 - **Sandboxed** - Executed as WASM with whitelisted access to the file system and a controlled view
   of the workspace.
 - **Configuration driven** - Registered by a unique identifier in
-  [`.moon/extensions.*`](#configuration), alongside any settings the plugin declares.
+  [`.moon/extensions.config`](#configuration), alongside any settings the plugin declares.
 - **Distributable** - Sourced from a plugin locator, so they can live in a Git repository, on
   GitHub releases, behind a URL, or on the local file system.
 - **Self describing** - Each plugin reports its own name, description, and version, and may declare
@@ -44,7 +44,7 @@ $ moon ext unpack -- --input ./archive.tar.gz --output ./out
 During project graph construction, extensions implementing `extend_project_graph` are given the
 set of discovered project sources and can return additional projects, aliases, and input files to
 register. This allows an extension to teach moon about projects that its own conventions define,
-rather than requiring them to be listed in [`.moon/workspace.*`](./workspace).
+rather than requiring them to be listed in [`.moon/workspace.config`](./workspace).
 
 ### Command augmentation
 
@@ -80,7 +80,7 @@ These identifiers also work with [`moon ext`](./commands/ext) and
 
 ## Configuration
 
-Extensions are configured through `.moon/extensions.*`, where each top-level key is the unique
+Extensions are configured through `.moon/extensions.config`, where each top-level key is the unique
 identifier the extension will be referenced by. The `plugin` setting is the locator moon uses to
 find and download the WASM file, and every other key is arbitrary configuration passed through to
 the plugin itself.
@@ -104,7 +104,7 @@ Extensions can be added and inspected from the command line, instead of editing 
 file by hand:
 
 - [`moon extension add`](./commands/extension/add) - Register an extension and write it to
-  `.moon/extensions.*`.
+  `.moon/extensions.config`.
 - [`moon extension info`](./commands/extension/info) - Print an extension's metadata, settings
   schema, and the plugin functions it implements.
 - [`moon extension download`](./commands/extension/download) - Download and cache the WASM plugins

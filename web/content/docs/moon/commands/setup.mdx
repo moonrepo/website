@@ -9,8 +9,8 @@ workspace. It's the toolchain-only counterpart to what happens automatically bef
 Internally, the command builds an action graph scoped to environment and toolchain setup only. It
 first ensures [proto](/docs/proto) itself is installed, as it's a dependency for every toolchain
 plugin's setup. It then walks each toolchain configured in
-[`.moon/toolchains.*`](../toolchain) (or the `toolchains` setting in a project's
-[`moon.*`](../project)), resolving its version specification and queuing the actions necessary
+[`.moon/toolchains.config`](../toolchain) (or the `toolchains` setting in a project's
+[`moon.config`](../project)), resolving its version specification and queuing the actions necessary
 to download and install it. For toolchains whose dependency root is the workspace root, the
 toolchain's environment (for example, resolving and installing dependencies from a lockfile) is
 also set up.

@@ -5,7 +5,7 @@ title: moon template
 Display detailed information about a single [template](../guides/codegen), sourced from
 whichever location is configured in `generator.templates`. This is useful for inspecting a
 template's variables, files, and configuration before running [`moon generate`](./generate)
-against it, without having to open and read the [`template.*`](../guides/codegen) file by hand.
+against it, without having to open and read the [`template.config`](../guides/codegen) file by hand.
 
 If an `id` argument isn't provided, and the terminal is interactive, you'll be prompted to select
 one from the list of templates available (the same list rendered by
@@ -18,7 +18,7 @@ names using default variable values) and renders:
 - **About** - The template's ID, its root location on the file system (hidden in test
   environments), its configured `destination` path (if any), the IDs of any templates it `extends`
   from, and the names of its non-template asset files and template files.
-- **Variables** - Every variable defined in [`template.*`](../guides/codegen), alongside its type (`bool`, `number`,
+- **Variables** - Every variable defined in [`template.config`](../guides/codegen), alongside its type (`bool`, `number`,
   `string`, an array, an enum, or an object), whether it's `internal`, `multiple` (enums that
   accept more than one value), or `required`, and its configured prompt text, if any.
 

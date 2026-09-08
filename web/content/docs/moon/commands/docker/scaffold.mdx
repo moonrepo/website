@@ -15,7 +15,7 @@ Running the command deletes any stale skeleton at `.moon/docker` (this path shou
 
 - `configs/` - Mirrors the folder structure of the entire repository (every project in the
   graph, plus the workspace root), but only copies the files needed to install dependencies,
-  such as manifests, lockfiles, `moon.*` project configs, and `.moon`'s own workspace and task
+  such as manifests, lockfiles, `moon.config` project configs, and `.moon`'s own workspace and task
   configs. Additional files can be included per toolchain (via each plugin's
   `defineDockerMetadata` hook), and further customized with the `docker.scaffold.configsPhaseGlobs`
   setting, at the project or workspace level.
