@@ -17,7 +17,7 @@ The [`moon ci`](../commands/ci) command does all the heavy lifting necessary for
 - Determines changed files by comparing the current HEAD against a base.
 - Determines all [targets](../target) that need to run based on changed files.
 - Additionally runs affected [targets](../target) dependencies _and_ dependents.
-- Generates an [action graph](../action#action-graph) (dependency graph).
+- Generates an [action graph](../action-graph) (dependency graph).
 - Installs the applicable [toolchains](../toolchain) for each running task.
 - Runs all [actions](../action) within the graph using a thread pool.
 - Displays stats about all passing, failed, and invalid [actions](../action).

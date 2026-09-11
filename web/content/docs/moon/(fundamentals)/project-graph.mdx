@@ -1,3 +1,88 @@
 ---
 title: Project graph
+icon: Network
 ---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+import { VersionLabel } from "@/components/VersionLabel";
+
+The **project graph** is a directed graph of every [project](./project) in the
+[workspace](./workspace), connected by the dependency relationships between them. It's the first
+graph moon builds, and everything else is derived from it: the [task graph](./task-graph) is
+layered on top of it, the [action graph](./action-graph) is built from both, and affected
+detection, syncing, and Docker scaffolding all walk it.
+
+Nodes are projects, and edges are dependencies pointing from a project to the projects it depends
+on. Each edge is labelled with the [scope](#dependency-scopes) of that dependency, which is what
+allows moon to answer questions like "what does this project need in production?" separately from
+"what does it need to be developed?".
+
+## Dependency scopes
+
+Every edge carries a scope, declared through a project's `dependsOn` setting, or _automatically inferred_ through toolchains:
+
+- `production` - Required at runtime. **This is the default.**
+- `development` - Required only while developing, such as test or build tooling.
+- `build` - Required to build the project.
+- `peer` - A peer relationship, mirroring the concept from package managers.
+- `root` - A special scope for depending on the workspace root-level project.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    dependsOn: ["shared", { id: "test-utils", scope: "development" }],
+  }}
+/>
+
+Scopes are what make [dependency-scoped targets](./target) such as `^production:build` work, and
+they're also how [`moon docker prune`](./commands/docker/prune) knows which dependencies can be
+removed from a production image.
+
+## Graph partitions
+
+Internally the graph is split into two **partitions**, and a scope belongs to exactly one of them:
+
+| Partition   | Scopes                         |
+| ----------- | ------------------------------ |
+| Production  | `production`, `peer`           |
+| Development | `development`, `build`, `root` |
+
+Each partition is independently acyclic, and ordering or recursive traversal always operates on a
+single partition. The practical consequence is that a cycle is only an error when it exists
+_within_ one partition — a cycle that crosses the production/development boundary is allowed.
+
+This matters more often than it sounds. A library depending on a test helper (`development`) that
+depends back on the library (`production`) is a perfectly reasonable arrangement, and moon permits
+it because the two edges live in different partitions.
+
+## Focusing
+
+The whole graph is rarely what you want to look at. A graph can be **focused** on a single
+project, reducing it to that project and its dependencies, and optionally its dependents as well.
+[`moon project-graph <id>`](./commands/project-graph) does exactly this, and
+[`moon docker scaffold`](./commands/docker/scaffold) uses the same mechanism to work out the
+minimum set of files a Docker build context needs.
+
+```shell
+# The whole graph
+$ moon project-graph
+
+# Just `app` and what it depends on
+$ moon project-graph app
+
+# Also include everything that depends on `app`
+$ moon project-graph app --dependents
+```
+
+## Inspecting
+
+Alongside the interactive visualizer, the graph can be exported for other tools, or queried
+directly:
+
+- [`moon project-graph`](./commands/project-graph) - Serves the visualizer, or prints the graph
+  with `--dot` (Graphviz) or `--json`.
+- [`moon projects`](./commands/projects) - Lists every project as a table.
+- [`moon project <id>`](./commands/project) - Prints one project's resolved configuration,
+  including its dependencies and the scope of each.
+- [`moon query projects`](./commands/query/projects) - Queries the graph as JSON, filtered with
+  [MQL](./advanced/query-lang).

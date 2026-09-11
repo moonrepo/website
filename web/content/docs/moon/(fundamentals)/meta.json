@@ -1,0 +1,18 @@
+{
+  "title": "Fundamentals",
+  "pages": [
+    "config",
+    "action",
+    "action-graph",
+    "project",
+    "project-graph",
+    "task",
+    "task-inheritance",
+    "task-graph",
+    "target",
+    "extension",
+    "toolchain",
+    "workspace",
+    "..."
+  ]
+}

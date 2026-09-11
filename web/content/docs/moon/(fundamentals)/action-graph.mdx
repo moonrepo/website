@@ -1,3 +1,88 @@
 ---
 title: Action graph
+icon: FastForward
 ---
+
+The **action graph** is what moon actually executes, known as [actions](./action). Where the [project graph](./project-graph)
+and [task graph](./task-graph) describe how things relate to one another, the action graph
+describes the complete set of work required to satisfy a command, and the order that work has to
+happen in.
+
+It's built fresh for every run, from the targets you asked for. Running a single task is rarely
+just running that task: the toolchain it needs may not be installed, dependencies may not be
+installed, projects may need syncing, and other tasks may need to run first. Each of those is a
+node in the graph, and the edges between them encode the ordering.
+
+## How the graph is built
+
+Requesting a task inserts a `RunTask` node, and then moon works backwards from it, adding the
+nodes that must come first:
+
+1. `RunTask` requires the project to be synced, so a `SyncProject` node is added.
+2. `SyncProject` requires the workspace to be synced, and requires the projects it depends on to
+   be synced first — so it fans out into `SyncWorkspace` and further `SyncProject` nodes.
+3. `RunTask` also requires its toolchains' dependencies, adding `InstallDependencies`.
+4. `InstallDependencies` requires `SetupEnvironment`, which requires `SetupToolchain`, which
+   requires `SetupProto` when a version is involved — each also depending on `SyncWorkspace`.
+5. Finally, the task's own [dependencies](./task-graph#dependencies) are added as further
+   `RunTask` nodes, recursively.
+
+Every one of these steps is conditional. A toolchain that manages no versioned tool contributes no
+`SetupToolchain` node; a task whose toolchains install nothing contributes no
+`InstallDependencies`. Commands can also disable whole categories of action — this is what
+[`moon run --no-actions`](./commands/run) does, reducing the graph to task execution alone.
+
+## Ordering
+
+Once built, the graph is sorted topologically so that every node runs after the nodes it depends
+on. Because the graph is directed and acyclic, this ordering always exists — and when it doesn't,
+moon reports the cycle by name rather than proceeding.
+
+Topological order alone doesn't decide _when_ something runs, only what it must follow. Nodes with
+no relationship between them are free to run in parallel, bounded by the pipeline's concurrency,
+which defaults to the number of available CPU cores.
+
+### Priority
+
+Task nodes carry a priority, set through `options.priority`, and the sorted graph is grouped by it
+before dispatch:
+
+| Priority   | Level |
+| ---------- | ----- |
+| `critical` | 0     |
+| `high`     | 1     |
+| `normal`   | 2     |
+| `low`      | 3     |
+
+Higher priority groups are dispatched first. Priority never overrides dependency order — it only
+decides which of the currently _runnable_ nodes gets picked up next.
+
+### Persistent tasks
+
+[Persistent tasks](./task#persistent) never complete, so running them in the middle of a graph
+would stall everything behind them. moon avoids this by deferring them: within each priority
+group, persistent nodes are collected aside, every non-persistent action is allowed to finish, and
+only then are the persistent ones dispatched together in parallel.
+
+The effect is that a dev server's dependencies are guaranteed to have been built before it starts,
+and running a backend and a frontend server together works without either blocking the other.
+
+## Inspecting
+
+The action graph is the most useful of the three graphs for answering "why is this running?", and
+the most granular — a single task expands into several nodes here.
+
+- [`moon action-graph`](./commands/action-graph) - Serves the interactive visualizer, or prints
+  the graph with `--dot` (Graphviz) or `--json`. Pass targets to focus it.
+- [`moon run --summary`](./commands/run) - Prints a summary of every action the pipeline ran,
+  after the fact.
+- [`moon ci`](./commands/ci) - Builds the graph from affected targets, and shards it across jobs
+  with `--job` and `--job-total`.
+
+```shell
+# Visualize everything moon would do for a target
+$ moon action-graph app:build
+
+# Include the tasks that depend on it too
+$ moon action-graph app:build --dependents
+```

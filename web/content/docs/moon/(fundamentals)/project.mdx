@@ -56,6 +56,43 @@ refer to the same project:
   aliases to the first receiving project.
 </Callout>
 
+## Discovery
+
+Projects are located through the `projects` setting in [`.moon/workspace.config`](./workspace),
+which accepts three shapes:
+
+- **A map** of project identifiers to their source paths, for explicit control.
+- **A list of globs**, for convention-based discovery.
+- **Both**, using the `sources` and `globs` keys together.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    projects: {
+      globs: ["apps/*", "packages/*"],
+      sources: {
+        root: ".",
+      },
+    },
+  }}
+/>
+
+When a project is found by a glob, its identifier is inferred from the matched path. By default
+that's the directory name, but `projects.globFormat` <VersionLabel version="2.0.0" /> can switch it
+to the full workspace-relative source path instead, which is useful when directory names collide
+across the repository.
+
+<Callout>
+  Globs are matched against directories, and hidden directories (those beginning
+  with `.`) are skipped. Suffix a glob with the project config file name to be
+  explicit about what counts as a project.
+</Callout>
+
+Beyond configuration, [toolchain](./toolchain) and [extension](./extension) plugins can contribute
+to discovery through their `extend_project_graph` hook, registering additional projects, aliases,
+and input files. This is how a toolchain can teach moon about projects that its own ecosystem
+already defines, such as a package manager's workspace members.
+
 ## Dependencies
 
 ### Scopes
