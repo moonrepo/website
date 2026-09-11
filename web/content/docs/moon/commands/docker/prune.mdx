@@ -1,0 +1,29 @@
+---
+title: moon docker prune
+---
+
+Reduces the size of a Docker image by removing development artifacts and reinstalling
+production-only dependencies for the projects that were previously scaffolded. This is intended
+to be run inside a `Dockerfile`, after a project has been built, as the final step before the
+`start` stage, and is the last of the [`moon docker`](../docker) commands to run.
+
+The command reads the `dockerManifest.json` file from the workspace root, which is written by
+[`moon docker scaffold`](./scaffold) and records which projects were explicitly focused on
+versus pulled in as dependencies. If this manifest doesn't exist, the command fails and suggests
+running [`moon docker scaffold`](./scaffold) first.
+
+For every toolchain-specific dependency workspace used by the focused projects (for example, a
+Yarn workspace root or a Cargo workspace root), moon runs two steps in parallel across
+workspaces:
+
+1. Each toolchain plugin's own pruning logic is invoked first, which typically deletes vendor
+   directories (`node_modules`, build caches, and similar) and other files not needed at
+   runtime. This step is controlled by the `docker.prune.deleteVendorDirectories` setting
+   (`true` by default).
+2. If `docker.prune.installToolchainDependencies` is enabled (`true` by default), dependencies
+   are reinstalled with production-only flags, scoped to just the packages used by the focused
+   and related projects, with the install output streamed to the console.
+
+```shell
+$ moon docker prune
+```

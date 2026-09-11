@@ -1,0 +1,55 @@
+---
+title: moon project-graph
+---
+
+import { TypeLabel } from "@/components/TypeLabel";
+
+Generates and displays the [project graph](../project) for the entire workspace (or a subset of
+it), which represents every configured project as a node, and the relationships between them
+(based on `dependsOn` and detected implicit dependencies) as edges.
+
+By default, moon starts a local web server and opens an interactive visualizer for exploring the
+graph in the browser. Alternatively, the graph can be printed to the terminal in
+[Graphviz DOT](https://graphviz.org/doc/info/lang.html) format for use with external tooling, or
+as raw JSON for scripting and inspection.
+
+When an `[id]` argument is provided, the graph is trimmed down ("focused") to only that project
+and its upstream dependencies, which is useful for understanding why a large monorepo pulls in a
+particular dependency chain. Pass `--dependents` alongside the ID to also include projects that
+directly depend on the focused project.
+
+```shell
+# Run the interactive visualizer for the whole workspace
+$ moon project-graph
+
+# Focus the graph around a specific project
+$ moon project-graph app
+
+# Also include direct dependents of the focused project
+$ moon project-graph app --dependents
+
+# Print the graph in DOT format
+$ moon project-graph --dot > graph.dot
+
+# Print the graph as JSON
+$ moon project-graph --json
+```
+
+## Arguments
+
+- `[ID]` - Optional ID of a project to focus the graph on. When omitted, the entire workspace
+  graph is used.
+
+## Options
+
+- `--dependents` - Include direct dependents of the focused project. Only applies when `[ID]` is
+  provided.
+- `--host` <TypeLabel type="string" /> - The host address to bind the visualizer web server to.
+  Defaults to `127.0.0.1`. Can also be set with the `MOON_HOST` environment variable.
+- `--port` <TypeLabel type="number" /> - The port to bind the visualizer web server to. Defaults to
+  `0`, which selects a random available port. Can also be set with the `MOON_PORT` environment
+  variable.
+- `--dot` - Print the graph in DOT format to the terminal instead of starting the visualizer.
+- `--json` - Print the graph as JSON to the terminal instead of starting the visualizer.
+
+This command can also be ran as `moon pg` as a shorthand alias.

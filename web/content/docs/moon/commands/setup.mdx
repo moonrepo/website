@@ -1,0 +1,34 @@
+---
+title: moon setup
+---
+
+The `moon setup` command installs and prepares every configured [toolchain](../toolchain) for the
+current workspace, without also installing dependencies, syncing projects, or syncing the
+workspace. It's the toolchain-only counterpart to what happens automatically before a task runs.
+
+Internally, the command builds an action graph scoped to environment and toolchain setup only. It
+first ensures [proto](/docs/proto) itself is installed, as it's a dependency for every toolchain
+plugin's setup. It then walks each toolchain configured in
+[`.moon/toolchains.config`](../toolchain) (or the `toolchains` setting in a project's
+[`moon.config`](../project)), resolving its version specification and queuing the actions necessary
+to download and install it. For toolchains whose dependency root is the workspace root, the
+toolchain's environment (for example, resolving and installing dependencies from a lockfile) is
+also set up.
+
+If no toolchains are configured, or all configured toolchains are already installed and up to
+date, the command exits early with an informational message and does nothing further. Otherwise,
+it runs the resulting actions through the action pipeline, reporting a success or failure notice
+once complete, and exits with a non-zero code if any toolchain failed to set up. Once a toolchain
+is set up, [`moon bin`](./bin) will return the absolute path to its installed binary.
+
+```shell
+$ moon setup
+```
+
+Because moon automatically sets up toolchains as needed when running other commands (detecting
+affected projects, running a task, generating a build artifact, and so on), you'll rarely need to
+run this command manually. It's most useful for warming a toolchain cache ahead of time, such as
+in a Docker image build step or CI job, or for troubleshooting toolchain installation issues in
+isolation.
+
+To reverse this process and remove installed toolchains, use [`moon teardown`](./teardown).

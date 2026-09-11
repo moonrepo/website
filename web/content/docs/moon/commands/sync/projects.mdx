@@ -1,0 +1,25 @@
+---
+title: moon sync projects
+---
+
+The `moon sync projects` command forcibly syncs every project in the workspace, without also
+syncing the workspace itself or running sync-phase tasks (unlike a bare
+[`moon sync`](../sync)). Syncing a project applies moon's project-level automation, including:
+
+- Linking cross-project dependencies based on `dependsOn` in each [project's](../../project)
+  configuration.
+- Ensuring language-specific configuration files exist and are accurate (for example, TypeScript
+  project references, or workspace manifests).
+- Ensuring root-level and project-level configuration remain consistent with each other.
+- Any other language-specific semantics required by a project's configured toolchains.
+
+Project dependencies are also synced as part of this process, and the whole operation runs through
+moon's action pipeline, so output and failure handling behave the same as [`moon run`](../run).
+
+```shell
+$ moon sync projects
+```
+
+This command should rarely need to be run manually, as [`moon run`](../run) automatically syncs
+affected projects before executing their tasks. However, it can be useful after migrating or
+refactoring the repository, when you want every project brought into a healthy state at once.

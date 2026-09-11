@@ -4,3 +4,7 @@ layer: "application"
 tasks:
   dev:
     command: "vite dev"
+    preset: "server"
+
+  test:
+    command: "vitest run"

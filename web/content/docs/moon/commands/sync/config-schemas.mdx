@@ -1,0 +1,39 @@
+---
+title: moon sync config-schemas
+---
+
+Part of [`moon sync`](../sync), this command manually generates JSON schemas for all of moon's
+configuration file types, and writes them to the `.moon/cache/schemas` directory. These schemas
+can then be referenced from a config file's `$schema` property (or through an editor extension) to
+enable validation and autocompletion. Refer to the [configuration guide](../../config) for more
+information on wiring up schemas in your editor.
+
+The following schema files are generated:
+
+- `extensions.json`
+- `project.json`
+- `tasks.json`
+- `template-frontmatter.json`
+- `template.json`
+- `toolchains.json`
+- `workspace.json`
+
+By default, schemas are only regenerated when they don't already exist, or when the moon version
+has changed since the last generation (tracked through a cache fingerprint). This same generation
+logic also runs automatically the first time a task is run, so this command mostly exists for
+forcing a refresh.
+
+```shell
+$ moon sync config-schemas
+```
+
+Use `--force` to bypass the cache and regenerate every schema, regardless of whether they already
+exist.
+
+```shell
+$ moon sync config-schemas --force
+```
+
+## Options
+
+- `--force` - Bypass the cache and force create the schemas.

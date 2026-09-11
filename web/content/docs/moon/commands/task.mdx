@@ -1,0 +1,53 @@
+---
+title: moon task
+---
+
+Display detailed information about a single [task](../task), after it's been merged
+with [inherited configuration](../task-inheritance), token resolution, and toolchain
+detection have all been applied.
+
+If a `target` argument isn't provided, moon prompts you interactively to select a task
+from every task in the workspace (grouped and searchable by project). This is useful
+when you don't remember the exact target format of the task you want to inspect.
+
+The default output is a human-readable breakdown split into three sections:
+
+- **About** — the task's target, owning project, ID, enabled [toolchain(s)](../toolchain),
+  [type](../task#types) (`run`, `build`, or `test`), applied [preset](../task#presets) (if
+  any), special modes (`internal`, `interactive`, `persistent`), and the list of
+  [task dependencies](../task#dependencies) it runs before itself.
+- **Process** — the resolved command (or script) that's actually executed, the shell used
+  when `shell` is enabled, declared environment variables, the working directory the task
+  runs from, the lookup paths used to resolve the binary, whether dependencies run in
+  parallel or serial, and whether the task is configured to run in CI.
+- **Configuration** — which inherited configuration layers the task's settings came from,
+  its [tags](../project#tags), and its fully expanded [inputs](../task#inputs) and
+  [outputs](../task#outputs) (file paths, globs, and `$ENV_VAR` references), sorted
+  alphabetically.
+
+Pass `--json` to skip the formatted view entirely and print the fully resolved task as
+a single JSON object instead, useful for scripting or feeding into other tooling.
+
+```shell
+# Prompt interactively for a task to inspect
+$ moon task
+
+# Inspect a specific task
+$ moon task app:build
+
+# Print the resolved task as JSON
+$ moon task app:build --json
+```
+
+For a graph-based view of how this task relates to other tasks, use
+[`moon task-graph`](./task-graph) instead. To list every task across the workspace, or
+scoped to a project, use [`moon tasks`](./tasks).
+
+## Arguments
+
+- `[TARGET]` - The task [target](../target) to inspect, in the format `project:task`. If
+  omitted, moon prompts you to select one interactively.
+
+## Options
+
+- `--json` - Print the resolved task as JSON instead of the formatted breakdown.

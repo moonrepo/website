@@ -1,0 +1,111 @@
+---
+title: Extensions
+icon: Puzzle
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+
+**Extensions** are WASM plugins that extend moon with functionality that doesn't belong to a
+[toolchain](./toolchain) or a [task](./task). They're the general purpose escape hatch of the plugin
+system: an extension can be invoked directly from the command line as a one-off utility, or it can
+hook into moon's internals to shape the project graph, augment commands before they execute, and
+participate in workspace and project syncing.
+
+Because extensions are WASM, they run in a sandbox with whitelisted file system access, receive only
+the information moon explicitly passes them, and are portable across every platform moon supports.
+
+## Key characteristics
+
+- **Sandboxed** - Executed as WASM with whitelisted access to the file system and a controlled view
+  of the workspace.
+- **Configuration driven** - Registered by a unique identifier in
+  [`.moon/extensions.config`](#configuration), alongside any settings the plugin declares.
+- **Distributable** - Sourced from a plugin locator, so they can live in a Git repository, on
+  GitHub releases, behind a URL, or on the local file system.
+- **Self describing** - Each plugin reports its own name, description, and version, and may declare
+  a JSON schema for its settings.
+- **Optional hooks** - A plugin implements only the functions it needs; moon skips the rest.
+
+## Core features
+
+### Direct execution
+
+An extension that implements `execute_extension` can be run on demand with
+[`moon ext`](./commands/ext), which loads the plugin and forwards every argument after `--` to it.
+This is the model used by moon's built-in extensions, and is well suited to one-off utilities such
+as downloading a file, unpacking an archive, or migrating configuration from another task runner.
+
+```shell
+$ moon ext unpack -- --input ./archive.tar.gz --output ./out
+```
+
+### Project graph extension
+
+During project graph construction, extensions implementing `extend_project_graph` are given the
+set of discovered project sources and can return additional projects, aliases, and input files to
+register. This allows an extension to teach moon about projects that its own conventions define,
+rather than requiring them to be listed in [`.moon/workspace.config`](./workspace).
+
+### Command augmentation
+
+Before a process runs, extensions can rewrite it:
+
+- `extend_command` - Applies to any command moon executes.
+- `extend_task_command` - Applies to a [task](./task) that runs a command.
+- `extend_task_script` - Applies to a task that runs a script.
+
+Each hook can prepend arguments, inject environment variables, and contribute additional `PATH`
+lookup paths, which makes it possible to wrap tasks in a runner or profiler without editing every
+task definition.
+
+### Workspace and project syncing
+
+Extensions implementing `sync_workspace` or `sync_project` run as part of moon's
+[sync actions](./action), alongside the equivalent toolchain hooks. Both return the list of files
+they changed, so syncing stays incremental and the results can be reported to the user. See
+[`moon sync`](./commands/sync).
+
+## Built-in extensions
+
+moon ships with a handful of extensions that require no plugin locator — configuring the identifier
+alone is enough, and moon resolves the plugin for you:
+
+- `download` - Download a file from a URL to a destination in the workspace.
+- `migrate-nx` - Migrate an Nx workspace's configuration to moon.
+- `migrate-turborepo` - Migrate a Turborepo workspace's configuration to moon.
+- `unpack` - Unpack an archive (zip, tar, and so on) to a destination.
+
+These identifiers also work with [`moon ext`](./commands/ext) and
+[`moon extension info`](./commands/extension/info) without being configured first.
+
+## Configuration
+
+Extensions are configured through `.moon/extensions.config`, where each top-level key is the unique
+identifier the extension will be referenced by. The `plugin` setting is the locator moon uses to
+find and download the WASM file, and every other key is arbitrary configuration passed through to
+the plugin itself.
+
+<ConfigTabs
+  file=".moon/extensions"
+  config={{
+    unpack: {},
+    "my-extension": {
+      plugin: "github://organization/repository/my_extension",
+      someSetting: true,
+    },
+  }}
+/>
+
+The `plugin` setting can be omitted entirely for [built-in extensions](#built-in-extensions), as
+moon knows where to find them. Configuration files can also be composed with the `extends` setting,
+which accepts a relative file path or a secure URL.
+
+Extensions can be added and inspected from the command line, instead of editing the configuration
+file by hand:
+
+- [`moon extension add`](./commands/extension/add) - Register an extension and write it to
+  `.moon/extensions.config`.
+- [`moon extension info`](./commands/extension/info) - Print an extension's metadata, settings
+  schema, and the plugin functions it implements.
+- [`moon extension download`](./commands/extension/download) - Download and cache the WASM plugins
+  for every configured extension, without executing them.

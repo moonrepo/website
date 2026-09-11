@@ -1,0 +1,133 @@
+---
+title: Configuration
+icon: Settings
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+
+Configuration is the backbone of moon, and is used to define the structure and behavior of your workspace. This includes defining projects, tasks, toolchains, and more. Configuration files are typically located in the `.moon` directory at the root of your workspace, within a project with `moon.config`, but can also be located in other places depending on the specific configuration type.
+
+## Supported formats
+
+In moon, you can define configuration files in a variety of formats. We currently support the
+following:
+
+- JSON (`.json`)
+- JSON with comments (`.jsonc`)
+- [HCL](https://github.com/hashicorp/hcl) (`.hcl`)
+- [Pkl](https://pkl-lang.org/) (`.pkl`)
+- [TOML](https://toml.io/en/) (`.toml`)
+- YAML (`.yml`, `.yaml`)
+
+<Callout>
+  When referencing config files in this documentation, we'll either use `*` or
+  `config` as the file extension to represent all supported formats. For
+  example, `moon.*` or `moon.config`.
+</Callout>
+
+## Schema validation
+
+We support schema validation for configuration files through
+[JSON Schema](https://json-schema.org/), even for formats that are not JSON (however, this depends on format/tool/editor support). To reference the schema for a specific configuration file, configure the `$schema` property at the top of the file.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    $schema: "./cache/schemas/workspace.json",
+  }}
+/>
+
+The JSON schemas are automatically created when running a task. If they do not exist yet, you can run
+[`moon sync config-schemas`](../commands/sync/config-schemas) to generate them manually. The following schemas are provided, relative from `.moon/cache/schemas`:
+
+- `.moon/workspace.config` - `workspace.json`
+- `.moon/extensions.config` - `extensions.json`
+- `.moon/toolchains.config` - `toolchains.json`
+- `.moon/tasks/*.config` - `tasks.json`
+- `moon.config` - `project.json`
+- `template.config` - `template.json`
+
+<Callout type="error">
+  In older versions of moon, the schema files were located at
+  `https://moonrepo.dev/schemas`. These URLs are now deprecated, as they do not
+  support dynamic settings. Please update your `$schema` references to point to
+  the local schema files in `.moon/cache/schemas`.
+</Callout>
+
+### VS Code
+
+If you are using [YAML configuration files](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml), you must customize the schema with the following comment instead of the `$schema` property.
+
+```yaml
+# yaml-language-server: $schema=<path-to-schema>
+```
+
+## File and glob paths
+
+When configuring paths, there are a few conventions to be aware of.
+
+### Project relative
+
+When configuring `fileGroups`, `inputs`, `outputs`, and other settings within a task or project, all defined paths are relative from the
+project root. They _must not_ traverse upwards out of the project with `..`.
+
+```bash
+# Valid
+config.json
+src/**/*
+./src/**/*
+!tests/**/*
+
+# Invalid
+../utils
+../../common
+```
+
+### Workspace relative
+
+Alternatively, you can also define paths relative from the workspace root by prefixing with a forward slash (`/`). This is useful for referencing files across projects. They _must not_ traverse upwards out of the workspace with `..`.
+
+```bash
+# Valid
+/config.root.json
+/shared/**/*
+!/shared/tests/**/*
+
+# Invalid
+/../utils
+../out/of/workspace
+```
+
+## Glob patterns
+
+Globs in moon are [Rust-based globs](https://github.com/olson-sean-k/wax), _not_ JavaScript-based.
+This may result in different or unexpected results. The following guidelines must be met when using
+globs:
+
+- Must use forward slashes (`/`) for path separators, even on Windows.
+- Must _not_ start with or use any relative path parts, `.` or `..`.
+
+### Supported syntax
+
+- `*` - Matches zero or more characters, but does not match the `/` character. Will attempt to match
+  the longest possible text (eager).
+- `$` - Like `*`, but will attempt to match the shortest possible text (lazy).
+- `**` - Matches zero or more directories.
+- `?` - Matches exactly one character, but not `/`.
+- `[abc]` - Matches one case-sensitive character listed in the brackets.
+- `[!xyz]` - Like the above, but will match any character _not_ listed.
+- `[a-z]` - Matches one case-sensitive character in range in the brackets.
+- `[!x-z]` - Like the above, but will match any character _not_ in range.
+- `{glob,glob}` - Matches one or more comma separated list of sub-glob patterns.
+- `<glob:n,n>` - Matches a sub-glob within a defined bounds.
+- `!` - At the start of a pattern, will negate previous positive patterns.
+
+### Examples
+
+```bash
+README.{md,mdx,txt}
+src/**/*
+tests/**/*.jsx?
+!**/__tests__/**/*
+logs/<[0-9]:4>-<[0-9]:2>-<[0-9]:2>.log
+```

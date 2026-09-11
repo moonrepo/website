@@ -1,0 +1,23 @@
+---
+title: moon docker setup
+---
+
+Installs toolchains and dependencies for the projects that were previously scaffolded, acting
+as an all-in-one replacement for manually running commands like `npm install`, `cargo fetch`, or
+similar package manager commands within a `Dockerfile`. It runs after
+[`moon docker scaffold`](./scaffold) in the [`moon docker`](../docker) workflow.
+
+The command reads the `dockerManifest.json` file from the workspace root, which is written by
+[`moon docker scaffold`](./scaffold) and lists which projects were explicitly focused on. If
+this manifest doesn't exist, the command fails and suggests running [`moon docker scaffold`](./scaffold)
+first. For each focused project, moon builds an [action graph](../../action-graph) that installs
+the toolchain(s) and dependencies required by that project, then runs the action pipeline to
+execute those actions.
+
+This is intended to be run inside a `Dockerfile`, in the `build` stage, after the scaffolded
+files from [`moon docker scaffold`](./scaffold) have been copied into the image but before the project itself
+is built.
+
+```shell
+$ moon docker setup
+```

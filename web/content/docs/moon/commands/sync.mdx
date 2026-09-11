@@ -1,0 +1,38 @@
+---
+title: moon sync
+---
+
+The `moon sync` command ensures the workspace and all of its projects are in a healthy,
+up-to-date state. It's the manual entry point for the same synchronization logic that
+[`moon run`](./run) triggers automatically for affected projects before executing tasks, but run
+across the entire workspace instead of a subset.
+
+When invoked without a subcommand, `moon sync` performs a full workspace sync:
+
+- Syncs the workspace itself (for example, generating code owners, VCS hooks, and configuration
+  schemas, depending on what's configured).
+- Syncs every project in the workspace, linking cross-project dependencies and ensuring
+  language-specific configuration files are present and accurate.
+- Runs any task across the workspace whose `runInSyncPhase` option is enabled, since these tasks
+  are considered part of the sync process itself (for example, generating a lockfile or
+  manifest).
+
+All of the above is executed through moon's action pipeline, so output, caching, and failure
+handling behave the same as [`moon run`](./run).
+
+```shell
+$ moon sync
+```
+
+This command should rarely need to be run manually, as affected projects are synced automatically
+whenever tasks are run. However, it's useful after migrating or refactoring the repository, after
+pulling large upstream changes, or when you suspect the workspace has drifted out of sync.
+
+`moon sync` also has dedicated subcommands for syncing individual pieces of the workspace, instead
+of everything at once:
+
+- [`moon sync code-owners`](./sync/code-owners) - Sync the aggregated `CODEOWNERS` file.
+- [`moon sync config-schemas`](./sync/config-schemas) - Generate configuration JSON schemas.
+- [`moon sync projects`](./sync/projects) - Sync all projects, without the workspace or
+  sync-phase tasks.
+- [`moon sync vcs-hooks`](./sync/vcs-hooks) - Sync VCS hook scripts.

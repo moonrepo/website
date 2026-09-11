@@ -1,0 +1,80 @@
+---
+title: moon mcp
+---
+
+Start a [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server that communicates
+over stdio, allowing AI agents and editor assistants (Claude Code, Cursor, VS Code Copilot, Zed,
+and others) to query and operate on your moon workspace directly.
+
+```shell
+$ moon mcp
+```
+
+This command is not meant to be run manually in a terminal. Instead, your editor or agent client
+spawns `moon mcp` as a subprocess and communicates with it using the MCP protocol. When started,
+the command loads the current [workspace graph](../workspace) in the background, then blocks and
+listens for tool requests on stdin/stdout until the parent process sends a shutdown signal, at
+which point the server aborts and the command exits.
+
+### Registering with a client
+
+Most MCP clients are configured with a JSON file that declares the command to run and any
+environment variables it needs. `MOON_WORKSPACE_ROOT` should point at the absolute path of the
+moon workspace to operate on when the client's working directory can't be relied on.
+
+```json
+{
+  "mcpServers": {
+    "moon": {
+      "command": "moon",
+      "args": ["mcp"],
+      "env": {
+        "MOON_WORKSPACE_ROOT": "/absolute/path/to/your/moon/workspace"
+      }
+    }
+  }
+}
+```
+
+For Claude Code specifically, this can also be registered with:
+
+```shell
+$ claude mcp add moon -s project -e MOON_WORKSPACE_ROOT=/absolute/path/to/your/moon/workspace -- moon mcp
+```
+
+Refer to your editor or client's documentation for where this configuration file lives (for
+example `.cursor/mcp.json`, `.vscode/mcp.json`, or `.zed/settings.json`), as the exact file and
+shape differs per tool.
+
+## Available tools
+
+Once registered, an agent can discover and call the following tools exposed by the server. Inputs
+and outputs are JSON, and read-only tools return data sourced from the in-memory workspace graph
+so they're safe to call repeatedly without mutating the workspace.
+
+- `get_project` - Get a project and its tasks by `id`, optionally including the project's direct
+  dependencies.
+- `get_projects` - Get a lightweight fragment (id, source, etc) of every project in the workspace.
+- `get_task` - Get a task by fully-qualified `target`, optionally including the task's own
+  dependencies.
+- `get_tasks` - Get a lightweight fragment of every task in the workspace, optionally including
+  internal tasks.
+- `get_template` - Get a [template's](../guides/codegen) full variable schema by `id`,
+  including types, defaults, prompts, required flags, and enum values, with any `extends` chain
+  already resolved.
+- `get_templates` - List all available templates with their id, title, and description, optionally
+  filtered with a case-insensitive regular expression (mirrors [`moon templates`](./templates)).
+- `get_changed_files` - Get the list of files changed between a base and head revision, defaulting
+  to the workspace's touched files when no revisions are provided (mirrors the logic behind
+  `--affected`).
+- `sync_projects` - Run the sync-project action for one, many, or (when no ids are given) all
+  projects, and return the resulting actions (mirrors [`moon sync projects`](./sync)).
+- `sync_workspace` - Run the sync-workspace action and return the resulting actions (mirrors
+  [`moon sync workspace`](./sync)).
+- `generate` - Generate or scaffold code from a template by shelling out to
+  [`moon generate`](./generate), forwarding a destination path, variables, and `--dry-run` or
+  `--force` as needed.
+
+Because the server is just another moon process, all of these tools respect the same
+[`.moon`](../config) configuration, toolchains, and project/task graph as running the equivalent
+command directly.

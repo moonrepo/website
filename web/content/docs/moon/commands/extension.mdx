@@ -1,0 +1,27 @@
+---
+title: moon extension
+---
+
+Manage extension plugins, WASM plugins that extend moon with custom functionality outside of the
+core toolchain and task running pipeline. Extensions have whitelisted access to the file system
+and can receive partial information about the current workspace, and are typically used for
+one-off utilities like downloading files, migrating from other task runners, or unpacking
+archives.
+
+This is a parent command and does nothing on its own; use one of the following subcommands:
+
+- [`moon extension add`](./extension/add) - Register a new extension and configure it in
+  [`.moon/extensions.config`](../extension).
+- [`moon extension download`](./extension/download) - Download and cache the WASM plugins for all configured extensions,
+  without executing them.
+- [`moon extension info`](./extension/info) - Inspect a registered (or ad-hoc) extension's
+  metadata, configuration schema, and supported APIs.
+
+To actually execute an extension's functionality, use [`moon ext`](./ext) instead, which loads the
+extension and calls its `execute_extension` function.
+
+```shell
+$ moon extension add unpack
+$ moon extension info unpack
+$ moon extension download
+```

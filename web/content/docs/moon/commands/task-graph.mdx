@@ -1,0 +1,56 @@
+---
+title: moon task-graph
+---
+
+import { TypeLabel } from "@/components/TypeLabel";
+
+Generates and displays the [task graph](../task) for the entire workspace (or a subset of it),
+which represents every configured task (across all projects) as a node, and the dependencies
+between them (based on a task's `deps`) as edges.
+
+By default, moon starts a local web server and opens an interactive visualizer for exploring the
+graph in the browser. Alternatively, the graph can be printed to the terminal in
+[Graphviz DOT](https://graphviz.org/doc/info/lang.html) format for use with external tooling, or
+as raw JSON for scripting and inspection. Before rendering or printing, moon force-expands every
+task in the graph so relationships are fully resolved.
+
+When a `[target]` argument is provided, the graph is trimmed down ("focused") to only that task
+and its upstream dependencies, which is useful for understanding why a task pulls in a particular
+dependency chain. Pass `--dependents` alongside the target to also include tasks that directly
+depend on the focused task.
+
+```shell
+# Run the interactive visualizer for the whole workspace
+$ moon task-graph
+
+# Focus the graph around a specific task
+$ moon task-graph app:build
+
+# Also include direct dependents of the focused task
+$ moon task-graph app:build --dependents
+
+# Print the graph in DOT format
+$ moon task-graph --dot > graph.dot
+
+# Print the graph as JSON
+$ moon task-graph --json
+```
+
+This command can also be ran as `moon tg` as a shorthand alias.
+
+## Arguments
+
+- `[TARGET]` - Optional [target](../target) of a task to focus the graph on. When omitted, the
+  entire workspace graph is used.
+
+## Options
+
+- `--dependents` - Include direct dependents of the focused task. Only applies when `[TARGET]` is
+  provided.
+- `--host` <TypeLabel type="string" /> - The host address to bind the visualizer web server to.
+  Defaults to `127.0.0.1`. Can also be set with the `MOON_HOST` environment variable.
+- `--port` <TypeLabel type="number" /> - The port to bind the visualizer web server to. Defaults to
+  `0`, which selects a random available port. Can also be set with the `MOON_PORT` environment
+  variable.
+- `--dot` - Print the graph in DOT format to the terminal instead of starting the visualizer.
+- `--json` - Print the graph as JSON to the terminal instead of starting the visualizer.

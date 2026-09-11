@@ -1,0 +1,83 @@
+---
+title: moon generate
+---
+
+import { TypeLabel } from "@/components/TypeLabel";
+
+The `moon generate` (or `moon g`) command scaffolds files and folders into your workspace from a
+pre-defined [template](../guides/codegen), using an interactive series of prompts. Templates are
+located based on the `generator.templates` setting in [`.moon/workspace.config`](../workspace), and can live on the
+local file system, a Git repository, or an npm package.
+
+When run, moon will:
+
+1. Prompt you to select which template to generate from, if an `id` argument isn't provided.
+2. Gather values for every variable defined in the template's [`template.config`](../guides/codegen), either from
+   passthrough arguments, variable defaults, or interactive prompts.
+3. Determine the destination directory, from `--to`, the template's configured `destination`, or
+   an interactive prompt.
+4. Load and render the template's files, checking whether any would overwrite existing files at
+   the destination.
+5. Write the rendered files (and copy any binary assets) to the destination, unless `--dry-run`
+   was passed.
+
+If a destination file already exists, moon handles it based on the file type: JSON and YAML files
+can be merged into the existing file, while all other files prompt you to confirm an overwrite.
+Pass `--force` to skip these prompts and always replace existing files. Once generation completes,
+moon prints a list of every file that was created, merged, replaced, or skipped.
+
+Variable values can also be supplied non-interactively by appending arguments after `--`. These
+arguments are parsed as long flags matching each variable's name, using a type-aware parser derived
+from the template's variable configuration:
+
+- `string` and `number` variables accept a single value, e.g. `--name example`.
+- `boolean` variables are toggled with `--name` (true) or `--no-name` (false).
+- `array` and multi-value `enum` variables accept repeated flags, e.g. `--tags foo --tags bar`.
+- Single-value `enum` variables accept one of their configured possible values.
+- `object` variables cannot be set from the command line and always resolve to their default.
+
+Any variable not supplied on the command line falls back to an interactive prompt, unless
+`--defaults` is passed (or moon isn't running in a terminal), in which case the template's
+configured default value is used instead.
+
+```shell
+# Select a template interactively and generate it
+$ moon generate
+
+# Generate a specific template to the current directory
+$ moon generate npm-package
+
+# Generate a template to an explicit destination
+$ moon generate npm-package --to ./packages/example
+
+# Generate a template, providing variable values up-front
+$ moon generate npm-package --to ./packages/example -- --name "@company/example" --private
+
+# Preview what a generation run would do, without writing files
+$ moon generate npm-package --dry-run
+
+# Scaffold a new template named "react-app"
+$ moon generate react-app --template
+```
+
+## Arguments
+
+- `[ID]` - ID of the template to generate. When omitted, you'll be prompted to select one from
+  the templates available in `generator.templates` (see [`moon templates`](./templates) to list
+  them, or [`moon template`](./template) to inspect one).
+- `-- [VARS...]` - Additional arguments, in `--name value` form, to define as template variable
+  values, bypassing their interactive prompts.
+
+## Options
+
+- `--to` <TypeLabel type="string" /> - Destination path to write files to, relative from the
+  workspace root (when prefixed with `/`) or the current working directory. When not defined,
+  falls back to the template's configured `destination`, or prompts for a path.
+- `--defaults` - Use the default value of every variable instead of prompting for each one.
+- `--dry-run` - Run the entire generator process, including prompts, without writing any files to
+  the destination.
+- `--force` - Force overwrite any existing files at the destination, instead of prompting to merge
+  or replace them.
+- `--template` - Create a new template with the provided `id`, instead of generating from an
+  existing one. The template is scaffolded into the first file-based location configured in
+  `generator.templates`.

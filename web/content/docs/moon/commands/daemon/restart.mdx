@@ -1,0 +1,13 @@
+---
+title: moon daemon restart
+---
+
+Restart the [daemon](../daemon) by stopping the currently running process and starting a fresh one in its place.
+
+This is equivalent to running [`moon daemon stop`](./stop) followed by [`moon daemon start`](./start), and is useful when the daemon's in-memory state feels stale in a way its own file watcher didn't pick up, or after making changes you want it to pick up cleanly (for example, upgrading moon, which normally stops the daemon for you already; see [`moon upgrade`](../upgrade)). The previous process is asked to shut down gracefully first, and only killed outright if it doesn't exit in time, exactly as [`moon daemon stop`](./stop) does. Once it's confirmed gone, a new daemon process is spawned and the command waits for it to become ready, the same way [`moon daemon start`](./start) does — including failing if it doesn't become ready within the startup window.
+
+Like `start`, this command requires the `daemon` setting to be enabled in [`.moon/workspace.config`](../../workspace) (or the `MOON_DAEMON` environment variable); if it isn't, a warning is shown and nothing happens.
+
+```shell
+$ moon daemon restart
+```

@@ -1,11 +1,18 @@
 import {
+	applyMdxPreset,
 	defineCollections,
 	defineConfig,
 	defineDocs,
 } from 'fumadocs-mdx/config';
-import { createGenerator, remarkAutoTypeTable } from 'fumadocs-typescript';
+import {
+	createFileSystemGeneratorCache,
+	createGenerator,
+	remarkAutoTypeTable,
+} from 'fumadocs-typescript';
 
-const generator = createGenerator();
+const generator = createGenerator({
+	cache: createFileSystemGeneratorCache('node_modules/.fuma/typescript'),
+});
 
 export const docs = defineDocs({
 	dir: 'content/docs',
@@ -26,7 +33,7 @@ export const blog = defineCollections({
 });
 
 export default defineConfig({
-	mdxOptions: {
+	mdxOptions: applyMdxPreset({
 		remarkPlugins: [[remarkAutoTypeTable, { generator }]],
-	},
+	}),
 });

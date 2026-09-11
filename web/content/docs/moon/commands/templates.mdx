@@ -1,0 +1,41 @@
+---
+title: moon templates
+---
+
+import { TypeLabel } from "@/components/TypeLabel";
+
+List all templates that are available for code generation, sourced from every location
+configured in `generator.templates`.
+
+For each template, moon renders a table with the following columns:
+
+- **Template** - The unique template ID, used with [`moon generate`](./generate) and
+  [`moon template`](./template).
+- **Title** - The human-readable title defined in the template's [`template.config`](../guides/codegen) file.
+- **Location** - The template's root directory, shown relative to the workspace root when
+  possible. This column is hidden on narrower terminals.
+- **Variables** - The names of all variables defined by the template, sorted alphabetically.
+- **Description** - The template's description. This column is hidden on narrower terminals.
+
+If no templates have been configured or located, a notice is printed instead, prompting you to
+configure the `generator.templates` setting in [`.moon/workspace.config`](../workspace).
+
+```shell
+$ moon templates
+```
+
+To narrow the list down to templates whose ID matches a pattern, use `--filter`. To consume the
+list programmatically, pass `--json` to print the raw template configurations instead of
+rendering a table.
+
+```shell
+$ moon templates --filter react
+$ moon templates --json
+```
+
+## Options
+
+- `--filter` <TypeLabel type="string" /> - Filter templates whose ID matches this pattern. The
+  pattern is compiled as a case-insensitive regular expression.
+- `--json` - Print the templates as JSON instead of rendering a table. When passed, this bypasses
+  the "no templates" notice and `--filter`, and always prints (potentially an empty object).

@@ -1,0 +1,40 @@
+---
+title: moon toolchain info
+---
+
+Show detailed information about a [toolchain](../../toolchain) plugin registered with
+[`moon toolchain`](../toolchain): its description, ID,
+display name, plugin version, configuration schema (if any), and which of the toolchain API tiers
+it implements. To gather this, moon downloads the toolchain's WASM plugin (the same as
+[`moon toolchain add`](./add) would), and inspects which functions it exports.
+
+For moon's built-in toolchains, the `plugin` argument can be omitted, as moon already knows the
+locator to use. For third-party or custom toolchains, `plugin` is required and must be a valid
+[plugin locator](https://moonrepo.dev/docs/concepts/wasm-plugin) string.
+
+```shell
+$ moon toolchain info typescript
+$ moon toolchain info my-toolchain https://example.com/path/to/plugin.wasm
+```
+
+The output is broken down into the three toolchain API tiers:
+
+- **Tier 1 - Usage detection** - Config file globs and executable names used to detect the
+  toolchain, plus whether functions like `register_toolchain`, `initialize_toolchain`,
+  `detect_version_files`, `sync_project`, and `extend_command` are implemented.
+- **Tier 2 - Ecosystem integration** - Manifest files, lock files, and a vendor directory name (if
+  applicable), plus whether functions like `install_dependencies`, `hash_task_contents`,
+  `parse_lock`, and `parse_manifest` are implemented.
+- **Tier 3 - Tool management** - Whether functions for downloading, unpacking, and locating a
+  versioned tool (`download_prebuilt`, `unpack_archive`, `locate_executables`, and so on) are
+  implemented, which determines whether moon can manage the tool's version for you.
+
+This command does not modify the workspace; it's purely informational, and is useful for verifying
+a toolchain plugin's capabilities before running [`moon toolchain add`](./add).
+
+## Arguments
+
+- `<ID>` - Toolchain ID to inspect. For built-in toolchains this must match one of the known
+  identifiers.
+- `[PLUGIN]` - Plugin locator string used to locate and load the toolchain's WASM file. Required
+  for anything other than moon's built-in toolchains.

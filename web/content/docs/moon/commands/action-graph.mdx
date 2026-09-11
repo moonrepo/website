@@ -1,0 +1,62 @@
+---
+title: moon action-graph
+---
+
+import { TypeLabel } from "@/components/TypeLabel";
+
+Generates and serves an interactive visualization of the [action graph](../action-graph)
+(aliased as `moon ag`),
+moon's low-level representation of every unit of work in the pipeline (toolchain setup,
+dependency installation, project syncing, and task execution) and the dependency edges
+between them. This is more granular than the [task graph](./task-graph): each task is
+expanded into one or more discrete actions, and actions for toolchain and workspace
+setup are included as well.
+
+By default, the command starts a local web server and opens it in your browser, streaming
+the graph data to a visualizer UI (the same one used by [`moon project-graph`](./project-graph) and
+[`moon task-graph`](./task-graph)) served from a CDN. Instead of serving the graph, `--dot` or `--json` can
+be passed to print the graph in that format to the terminal instead, which is useful for
+piping into other tools or for debugging why a particular action exists (or doesn't).
+
+Without arguments, every task in the workspace is added to the graph. Passing one or more
+[targets](../target) focuses the graph to just those targets and their upstream
+dependencies. Add `--dependents` to also include downstream dependents of the focused
+targets, showing what would be affected if they changed.
+
+```shell
+# Serve an interactive visualization of the entire action graph
+$ moon action-graph
+
+# Focus the graph around a single target and its dependencies
+$ moon action-graph app:build
+
+# Also include dependents of the focused target
+$ moon action-graph app:build --dependents
+
+# Export the whole graph to a DOT file for use with Graphviz
+$ moon action-graph --dot > graph.dot
+
+# Print the graph as JSON instead of starting a server
+$ moon action-graph --json
+```
+
+## Arguments
+
+- `[TARGETS...]` - Task [targets](../target) to focus the graph around. When omitted, all
+  tasks in the workspace are graphed. Dependencies of these targets are always included;
+  pass `--dependents` to also include dependents.
+
+## Options
+
+- `--dependents` - Include downstream dependents of the focused target(s) in the graph, in
+  addition to their upstream dependencies. Has no effect when no targets are provided.
+- `--host` <TypeLabel type="string" /> - The host address to bind the local visualizer
+  server to. Defaults to `127.0.0.1`. Can also be set with the `MOON_HOST` environment
+  variable.
+- `--port` <TypeLabel type="number" /> - The port to bind the local visualizer server to.
+  Defaults to `0`, which selects a random available port. Can also be set with the
+  `MOON_PORT` environment variable.
+- `--dot` - Print the action graph in Graphviz DOT format to the terminal, instead of
+  starting the visualizer server.
+- `--json` - Print the action graph as JSON to the terminal, instead of starting the
+  visualizer server.

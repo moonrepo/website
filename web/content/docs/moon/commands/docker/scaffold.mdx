@@ -1,0 +1,45 @@
+---
+title: moon docker scaffold
+---
+
+Creates a repository skeleton for use within a `Dockerfile`, so that only the files necessary
+to install dependencies and build specific projects are copied into a Docker build context,
+instead of the entire repository. It's the first of the [`moon docker`](../docker) commands to
+run. This is what allows Docker's layer caching to work
+effectively across builds. The command uses the [project graph](../../project-graph) to
+determine which files are required, so every referenced project must be
+[configured in moon](../../project) or the scaffold will be incomplete.
+
+Running the command deletes any stale skeleton at `.moon/docker` (this path should be
+`.dockerignore`'d), then recreates two independent skeletons within it:
+
+- `configs/` - Mirrors the folder structure of the entire repository (every project in the
+  graph, plus the workspace root), but only copies the files needed to install dependencies,
+  such as manifests, lockfiles, `moon.config` project configs, and `.moon`'s own workspace and task
+  configs. Additional files can be included per toolchain (via each plugin's
+  `defineDockerMetadata` hook), and further customized with the `docker.scaffold.configsPhaseGlobs`
+  setting, at the project or workspace level.
+- `sources/` - Contains the source files of only the project IDs passed as arguments, plus their
+  non-root-scope dependencies (resolved transitively through the project graph). Unlike
+  `configs/`, this is not a 1:1 mirror of the repository, which avoids ever having to
+  `COPY . .` the whole codebase. By default this copies every file in each included project,
+  though this can be scoped down with the `docker.scaffold.sourcesPhaseGlobs` setting, at the
+  project or workspace level.
+
+Both skeletons additionally receive a `dockerManifest.json` file, recording which projects were
+passed explicitly (`focusedProjects`) versus pulled in as dependencies (`unfocusedProjects`).
+This manifest is later read by [`moon docker setup`](./setup) and
+[`moon docker prune`](./prune) to know which projects to install dependencies for and prune.
+
+```shell
+# Scaffold a skeleton focused on a single project and its dependencies
+$ moon docker scaffold app
+
+# Scaffold a skeleton spanning multiple projects
+$ moon docker scaffold app another-app
+```
+
+## Arguments
+
+- `<IDS...>` - List of [project](../../project) IDs to copy sources for. At least one ID is
+  required.

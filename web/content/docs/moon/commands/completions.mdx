@@ -1,0 +1,45 @@
+---
+title: moon completions
+---
+
+import { TypeLabel } from "@/components/TypeLabel";
+
+Generate shell completion scripts for moon's command line interface, so that commands,
+options, and arguments can be tab-completed in your terminal.
+
+When run without `--shell`, moon attempts to detect your current shell by inspecting
+the `SHELL` environment variable (and the parent process hierarchy), and generates a
+completion script for it. The generated script is written directly to stdout, so it
+must be redirected to a file or piped into your shell's completion loading mechanism.
+
+```shell
+$ moon completions --shell bash
+$ moon completions --shell zsh > ~/.zsh/completions/_moon
+```
+
+For example, to enable completions for a couple of common shells:
+
+- **Bash** — append the generated script to your `~/.bashrc` (or a file sourced by it):
+
+  ```shell
+  $ moon completions --shell bash >> ~/.bashrc
+  ```
+
+- **Zsh** — write the script to a directory on your `fpath` (must be named `_moon`),
+  then reload your shell:
+
+  ```shell
+  $ moon completions --shell zsh > ~/.zsh/completions/_moon
+  ```
+
+## Options
+
+- `--shell` <TypeLabel type="bash | elvish | fish | nu | pwsh | zsh" /> -
+  The shell to generate the completions script for. When omitted, moon detects the
+  current shell automatically and errors out if detection fails. Bash, Elvish, Fish,
+  and Zsh scripts are generated using `clap_complete`, while `nu` generates a native
+  [Nushell](https://www.nushell.sh) completions module. Other shell names that moon
+  otherwise recognizes for shell detection purposes (such as `sh`, `dash`, `ash`,
+  `ion`, `murex`, `xonsh`, and `powershell`, as opposed to `pwsh`) are not supported
+  for completions generation, and moon exits with an error and a non-zero exit code
+  if one of them is provided or detected.

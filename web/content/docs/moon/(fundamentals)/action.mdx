@@ -1,0 +1,112 @@
+---
+title: Actions
+icon: Zap
+---
+
+An **action** is a single unit of work that moon executes. Everything moon does at runtime is an
+action: syncing the workspace, installing a toolchain, installing dependencies, syncing a project,
+and running a task are all the same kind of thing as far as the pipeline is concerned.
+
+Actions are the nodes of the [action graph](./action-graph). The graph decides _what_ needs to
+happen and in what order; an action is the record of one of those things actually happening —
+what it was, how long it took, whether it passed, and what it did along the way.
+
+## Types
+
+There are seven types of action, distinguished by the work they perform:
+
+- **SyncWorkspace** - Syncs the workspace as a whole and installs system-level dependencies.
+- **SyncProject** - Syncs a single [project](./project), applying toolchain and plugin specific
+  semantics to its configuration and source files.
+- **SetupProto** - Installs [proto](/docs/proto) itself, at the version the workspace requires.
+- **SetupToolchain** - Installs and prepares a [toolchain](./toolchain) at a specific version.
+- **SetupEnvironment** - Prepares a toolchain's environment within a specific root.
+- **InstallDependencies** - Installs a toolchain's dependencies in the closest dependency root.
+- **RunTask** - Runs one [task](./task), addressed by its [target](./target).
+
+Only `RunTask` corresponds to something you wrote in configuration. The rest are inferred from
+what that task needs, which is why a run often contains far more actions than targets you asked
+for.
+
+## Statuses
+
+Every action finishes with a status, and it's the status — not just success or failure — that
+explains what happened:
+
+- `passed` - The action ran and succeeded.
+- `failed` - The action ran and failed.
+- `cached` - The result was restored from the local cache, so nothing was re-executed.
+- `cached-from-remote` - The result was restored from [remote cache](./advanced/cache).
+- `skipped` - Nothing needed to happen.
+- `invalid` - The action could not be performed as configured.
+- `timed-out` - The action exceeded its `options.timeout`.
+- `aborted` - The action was terminated by the pipeline, typically because something else failed
+  hard.
+
+<Callout>
+  `cached` and `cached-from-remote` are successes, not omissions. A run where
+  most actions report as cached is moon working correctly — it means the inputs
+  didn't change, so the previous outputs were reused.
+</Callout>
+
+### Failures
+
+A failing action normally bails the pipeline, aborting the work that hasn't started yet. Two
+things change that.
+
+A task with `options.allowFailure` enabled is permitted to fail without stopping anything else.
+Its action is still recorded as failed, and a warning is logged, but the pipeline carries on. Note
+that tasks marked this way cannot be depended on by other tasks, since their success can't be
+relied upon.
+
+A task with `options.retryCount` set is re-executed on failure, up to that many additional
+attempts. Each attempt is recorded, so the full history is preserved rather than replaced.
+
+### Flaky actions
+
+When a task fails at least once and then passes on a later attempt, the action is marked as
+**flaky**. The status is `passed` — the task did ultimately succeed — but the flaky marker is kept
+so that intermittent failures are visible rather than silently swallowed by the retry.
+
+This only applies to tasks with retries configured; without them, a single failure is simply a
+failure.
+
+## Operations
+
+An action is rarely a single step, and the work inside one is broken into **operations**.
+Operations are timed and statused individually, and they nest, so a run report shows where the
+time inside an action actually went.
+
+The operation types are:
+
+- `HashGeneration` - Computing the [hash](./advanced/cache) from the task's inputs.
+- `MutexAcquisition` - Waiting on a task's `options.mutex` lock.
+- `OutputHydration` - Restoring cached outputs, instead of executing.
+- `ProcessExecution` - Running a child process that isn't the task itself.
+- `TaskExecution` - Running the task's own command or script. One per attempt.
+- `ArchiveCreation` - Archiving the task's outputs after a successful run.
+- `SetupOperation` - A toolchain setup step, recording the files it changed.
+- `SyncOperation` - A workspace or project sync step, recording the files it changed.
+
+Reading these in order tells the story of a task: hash the inputs, and either hydrate the outputs
+from cache, or execute and then archive what was produced.
+
+## Reports
+
+After every run, moon writes a machine-readable report of every action to
+`.moon/cache/runReport.json`, including each action's node, status, duration, operations, and any
+error. It's the most complete record available, and useful for building your own tooling around a
+run.
+
+The same data drives the terminal summary. [`moon run --summary`](./commands/run) controls how much
+of it is printed, from `none` through `minimal`, `normal`, and `detailed`.
+
+Reports also carry an **estimate** — a comparison of how long the actions would have taken
+executed serially outside of moon, against how long the pipeline actually took, expressed as a
+time gain or loss. It's a rough number, but it's the quickest way to see what caching and
+parallelism are buying you.
+
+```shell
+# Run with the most verbose summary
+$ moon run app:build --summary detailed
+```

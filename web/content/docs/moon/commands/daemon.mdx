@@ -1,0 +1,26 @@
+---
+title: moon daemon
+---
+
+Manage moon's background daemon process (alias: `d`).
+
+The daemon is a long-lived, per-workspace background process that keeps the [project graph and task graph](../workspace) warm in memory between CLI invocations instead of rebuilding it from disk on every run. While running, it also watches your files for changes — `.prototools`, `.moon/*.*` workspace and toolchain configs, `.moon/tasks/**/*.*`, and every project's `moon.config` — and incrementally refreshes only the parts of its in-memory state that are affected, rather than throwing everything away. Offloading this work to a persistent process is what lets subsequent `moon` commands skip straight to execution.
+
+The daemon does not run by default. It's gated behind the `daemon` setting in [`.moon/workspace.config`](../workspace) (or the `MOON_DAEMON` environment variable), since it's still an evolving feature. Once enabled, any `moon` command that needs the daemon's state will transparently start it (or connect to an already-running instance) as part of its normal startup, so in everyday use you won't need to run these subcommands directly. They exist for inspecting and managing the process by hand: checking whether it's up, tailing its logs, or restarting it after a configuration change.
+
+This is a parent command and does nothing on its own; use one of the following subcommands:
+
+- [`moon daemon start`](./daemon/start) - Start the daemon if it's not already running, reusing an existing process ID otherwise.
+- [`moon daemon stop`](./daemon/stop) - Stop the running daemon, gracefully if possible.
+- [`moon daemon restart`](./daemon/restart) - Stop and then start the daemon again.
+- [`moon daemon status`](./daemon/status) - View the process ID, endpoint, and uptime of the running daemon.
+- [`moon daemon logs`](./daemon/logs) - Tail the daemon's log file.
+
+The daemon's own server process is launched internally (as a detached `moon daemon server` process) whenever it needs to be spawned; it's not intended to be run directly.
+
+```shell
+$ moon daemon start
+$ moon daemon status
+$ moon daemon logs
+$ moon daemon stop
+```

@@ -1,0 +1,45 @@
+---
+title: moon upgrade
+---
+
+Checks for a newer version of moon and, if one is available, downloads and installs it in
+place of the currently running binary.
+
+The command first requires an internet connection, and queries moon's release manifest for the
+latest available version. If the currently installed version is already the latest, moon prints
+a notice and exits without doing anything further.
+
+How the upgrade is applied depends on how moon was originally installed:
+
+- If moon was installed through [proto](/docs/proto), the upgrade defers to proto by running
+  `proto install moon latest --pin local`, letting proto manage the download and pinning.
+- If moon was installed via the official install script (living under `~/.moon`), moon downloads
+  the appropriate release archive for your operating system and architecture (accounting for
+  `musl` vs `gnu` on Linux), unpacks it into a temporary directory, and replaces the existing
+  `moon` and `moonx` executables in place. The previous binaries are moved aside as `.backup`
+  files rather than deleted outright, since a running executable can't be removed on most
+  platforms. The destination directory can be overridden with the `MOON_INSTALL_DIR` environment
+  variable; otherwise it defaults to the `bin` folder inside moon's store.
+- If moon was installed some other way (for example, through a system package manager or a
+  standalone binary outside of `~/.moon`), moon refuses to upgrade itself and exits with an error,
+  since it has no reliable way to locate and replace the binary. In this case you'll need to
+  upgrade using whatever mechanism originally installed it.
+
+After a successful upgrade, moon also stops any currently running background daemon so that the
+next invocation of moon picks up the newly installed version.
+
+```shell
+$ moon upgrade
+```
+
+To also pin the newly installed version as the workspace's required version, pass
+`--update-constraint`:
+
+```shell
+$ moon upgrade --update-constraint
+```
+
+## Options
+
+- `--update-constraint` - After a successful upgrade, updates the `versionConstraint` setting in
+  the [workspace](../workspace) configuration file to require (`^`) the newly installed version.

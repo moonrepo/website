@@ -1,14 +1,16 @@
 import { loader } from 'fumadocs-core/source';
-import * as icons from 'lucide-static';
-import { create, docs } from '@/generated';
+import { lucideIconsPlugin } from 'fumadocs-core/source/lucide-icons';
+// import * as icons from 'lucide-static';
+import { docs } from '@/generated/server';
 
 export const source = loader({
-	source: await create.sourceAsync(docs.doc, docs.meta),
+	source: docs.toFumadocsSource(),
 	baseUrl: '/docs',
-	icon(icon) {
-		if (icon && icon in icons) {
-			// biome-ignore lint/performance/noDynamicNamespaceImportAccess: allowed
-			return icons[icon as keyof typeof icons];
-		}
-	},
+	plugins: [lucideIconsPlugin()],
+	// icon(icon) {
+	// 	if (icon && icon in icons) {
+	// 		// biome-ignore lint/performance/noDynamicNamespaceImportAccess: allowed
+	// 		return icons[icon as keyof typeof icons];
+	// 	}
+	// },
 });

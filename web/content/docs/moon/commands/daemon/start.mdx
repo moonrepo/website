@@ -1,0 +1,15 @@
+---
+title: moon daemon start
+---
+
+Start the [daemon](../daemon) if it's not already running (alias: `startup`).
+
+If a daemon for this workspace is already accepting connections, its existing process ID is reused and reported back — this command never spawns a second, competing daemon. Otherwise, a new daemon process is spawned detached from the current terminal (as `moon daemon server`, logging at trace level to its log file), and the command waits, polling for readiness, until it either starts accepting connections or a startup timeout is reached, in which case the command fails. Concurrent starts are coordinated through on-disk and in-process locks, so if another `moon` command is starting the daemon at the same time (or another CLI process entirely), this command waits for that spawn to finish instead of racing it.
+
+You typically don't need to run this manually: once the daemon is enabled, any `moon` command that can use it will start it automatically on first use. Running `moon daemon start` by hand is mostly useful for warming the daemon up ahead of time — for example, in CI setup or right after enabling the setting.
+
+The `daemon` setting must be enabled in [`.moon/workspace.config`](../../workspace) (or via the `MOON_DAEMON` environment variable) for this to do anything; otherwise a warning is shown and the command exits without starting a process.
+
+```shell
+$ moon daemon start
+```
