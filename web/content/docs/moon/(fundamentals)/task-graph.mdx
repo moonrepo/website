@@ -24,39 +24,7 @@ When a command runs tasks, moon builds an [action graph](./action-graph) from th
 expanding each task into the full set of work required to run it. One task node in the task graph
 typically becomes several nodes in the action graph.
 
-## Dependencies
-
-Edges come from a task's `deps` setting. Because dependencies are written as
-[targets](./target), a single entry can expand into many edges: `^:build` becomes one edge per
-dependency project that actually defines a `build` task, and `~:#quality` becomes one edge per
-locally tagged task.
-
-<ConfigTabs
-  file="moon"
-  config={{
-    tasks: {
-      build: {
-        command: "vite build",
-        deps: ["~:codegen", "^:build"],
-      },
-    },
-  }}
-/>
-
-Scope expansion happens while the graph is built, so a scoped target that matches nothing simply
-contributes no edges.
-
-### Dependency types
-
-Every edge is typed, derived from the `optional` flag on the dependency:
-
-- `required` - The task must exist. **This is the default**, and configuration fails to build when
-  the target can't be resolved.
-- `optional` - The dependency is skipped when the task doesn't exist, rather than failing. Note
-  that this only concerns whether the task _exists_ — it does not allow the dependency to fail at
-  runtime.
-
-## Cycles
+## Graph cycles
 
 Unlike the [project graph](./project-graph#graph-partitions), the task graph is not partitioned — it is
 a single acyclic graph, and a cycle anywhere in it is an error. Two tasks that depend on each

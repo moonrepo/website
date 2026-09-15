@@ -11,6 +11,8 @@ import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 
 Tasks are the fundamental building blocks of moon's execution system. They define discrete units of work that can be executed within projects, such as building, testing, linting, or running development servers. Tasks form the backbone of moon's automation capabilities, providing incremental builds, smart hashing, local/remote caching, and parallel execution.
 
+Tasks are defined with the `tasks` setting in multiple locations. The most common location is within a project's [`moon.config`](./project#configuration), but they can also be defined at the workspace for task inheritance within a [`.moon/tasks/*.config`](./task-inheritance#configuration).
+
 ## Types
 
 Tasks are categorized into three primary types:
@@ -1199,6 +1201,25 @@ Once tagged, tasks can be referenced as a group:
 - In [MQL](./advanced/query-lang), through the `taskTag` field.
 - On the command line, with `moon query tasks --tags quality`.
 
+## Toolchains
+
+Toolchains are a very important concept for tasks, as they define the runtime environment in which a task executes. By specifying a toolchain for a task, you can ensure that it runs in the correct environment with the necessary tools, executables, and more.
+
+With that said, we suggest _not configuring toolchains explicitly_ for tasks, and instead rely on our internal detection mechanism, which inherits from the project, and is detected based on manifest, lock, and config files, and executable names.
+
+If for some reason you do need to explicitly configure a toolchain for a task, you can do so with the `toolchains` setting, which accepts a list of toolchain identifier(s) defined in [`.moon/toolchains.config`](./toolchains#configuration).
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        toolchains: ["javascript", "node"],
+      },
+    },
+  }}
+/>
+
 ## Presets
 
 Presets are simply a collection or pre-configured options for common use cases. They help to reduce the amount of configuration needed for common task types, and provide a consistent experience across projects and teams.
@@ -1235,40 +1256,3 @@ For interactive, one-off utility commands.
 - `interactive` -> true
 - `outputStyle` -> `stream`
 - `runInCI` -> `skip`
-
-## Toolchains
-
-Toolchains are a very important concept for tasks, as they define the runtime environment in which a task executes. By specifying a toolchain for a task, you can ensure that it runs in the correct environment with the necessary tools, executables, and more.
-
-With that said, we suggest _not configuring toolchains explicitly_ for tasks, and instead rely on our internal detection mechanism, which inherits from the project, and is detected based on manifest, lock, and config files, and executable names.
-
-If for some reason you do need to explicitly configure a toolchain for a task, you can do so with the `toolchains` setting, which accepts a list of toolchain identifier(s) defined in [`.moon/toolchains.config`](./toolchains#configuration).
-
-<ConfigTabs
-  file="moon"
-  config={{
-    tasks: {
-      example: {
-        toolchains: ["javascript", "node"],
-      },
-    },
-  }}
-/>
-
-## Configuration
-
-Tasks are defined with the `tasks` setting in multiple locations. The most common location is within a project's [`moon.config`](./project#configuration), but they can also be defined at the workspace for task inheritance within a [`.moon/tasks/*.config`](./task-inheritance#configuration).
-
-<Callout>Click each setting for more information!</Callout>
-
-<auto-type-table
-  path="../../../../node_modules/@moonrepo/types/cjs/index.d.ts"
-  name="TaskConfig"
-/>
-
-### Options
-
-<auto-type-table
-  path="../../../../node_modules/@moonrepo/types/cjs/index.d.ts"
-  name="TaskOptionsConfig"
-/>

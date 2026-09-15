@@ -17,27 +17,6 @@ on. Each edge is labelled with the [scope](#dependency-scopes) of that dependenc
 allows moon to answer questions like "what does this project need in production?" separately from
 "what does it need to be developed?".
 
-## Dependency scopes
-
-Every edge carries a scope, declared through a project's `dependsOn` setting, or _automatically inferred_ through toolchains:
-
-- `production` - Required at runtime. **This is the default.**
-- `development` - Required only while developing, such as test or build tooling.
-- `build` - Required to build the project.
-- `peer` - A peer relationship, mirroring the concept from package managers.
-- `root` - A special scope for depending on the workspace root-level project.
-
-<ConfigTabs
-  file="moon"
-  config={{
-    dependsOn: ["shared", { id: "test-utils", scope: "development" }],
-  }}
-/>
-
-Scopes are what make [dependency-scoped targets](./target) such as `^production:build` work, and
-they're also how [`moon docker prune`](./commands/docker/prune) knows which dependencies can be
-removed from a production image.
-
 ## Graph partitions
 
 Internally the graph is split into two **partitions**, and a scope belongs to exactly one of them:
