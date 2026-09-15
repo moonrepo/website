@@ -1,0 +1,77 @@
+---
+title: RemoteMtlsConfig
+---
+
+Configures for both server and client authentication with mTLS.
+@since 1.30.0
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`assumeHttp2`](#assumehttp2) | `boolean` | If true, assume that the server supports HTTP/2, even if it doesn't provide protocol negotiation via ALPN. |
+| [`caCert`](#cacert) | `string` | A file path, relative from the workspace root, to the certificate authority PEM encoded X509 certificate. |
+| [`clientCert`](#clientcert) | `string` | A file path, relative from the workspace root, to the client's PEM encoded X509 certificate. |
+| [`clientKey`](#clientkey) | `string` | A file path, relative from the workspace root, to the client's PEM encoded X509 private key. |
+| [`domain`](#domain) | `string` | The domain name in which to verify the TLS certificate. |
+
+## Properties
+
+### `assumeHttp2`
+
+> **Optional**
+
+If true, assume that the server supports HTTP/2,
+even if it doesn't provide protocol negotiation via ALPN.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+| Environment variable | `MOON_REMOTE_MTLS_HTTP` |
+
+### `caCert`
+
+> **Required**
+
+A file path, relative from the workspace root, to the
+certificate authority PEM encoded X509 certificate.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+| Environment variable | `MOON_REMOTE_MTLS_CA_CERT` |
+
+### `clientCert`
+
+> **Required**
+
+A file path, relative from the workspace root, to the
+client's PEM encoded X509 certificate.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+| Environment variable | `MOON_REMOTE_MTLS_CLIENT_CERT` |
+
+### `clientKey`
+
+> **Required**
+
+A file path, relative from the workspace root, to the
+client's PEM encoded X509 private key.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+| Environment variable | `MOON_REMOTE_MTLS_CLIENT_KEY` |
+
+### `domain`
+
+> **Optional** · **Nullable**
+
+The domain name in which to verify the TLS certificate.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+| Environment variable | `MOON_REMOTE_MTLS_DOMAIN` |

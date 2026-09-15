@@ -1,0 +1,52 @@
+---
+title: ProjectInput
+---
+
+An external project input.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`filter`](#filter) | `string[]` | A list of globs, relative from the project's root, in which to determine affected status. |
+| [`group`](#group) | [`Id`](./Id) | A file group identifier within the project in which to determine affected status. |
+| [`project`](#project) | `string` | The external project identifier. |
+
+## Properties
+
+### `filter`
+
+> **Optional**
+
+A list of globs, relative from the project's root,
+in which to determine affected status.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string[]` |
+
+### `group`
+
+> **Optional** · **Nullable**
+
+A file group identifier within the project in which
+to determine affected status.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`Id`](./Id) |
+| Aliases | `fileGroup` |
+
+### `project`
+
+> **Required**
+
+The external project identifier.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+
+## References
+
+- [`Id`](./Id)

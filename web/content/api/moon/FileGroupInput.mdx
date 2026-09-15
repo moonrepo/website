@@ -1,0 +1,42 @@
+---
+title: FileGroupInput
+---
+
+A file group input.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`format`](#format) | [`FileGroupInputFormat`](./FileGroupInputFormat) | Format to resolve the file group into. |
+| [`group`](#group) | [`Id`](./Id) | The file group identifier. |
+
+## Properties
+
+### `format`
+
+> **Optional**
+
+Format to resolve the file group into.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`FileGroupInputFormat`](./FileGroupInputFormat) |
+| Default | `"static"` |
+| Values | `"static"`, `"dirs"`, `"envs"`, `"files"`, `"globs"`, `"root"` |
+| Aliases | `as` |
+
+### `group`
+
+> **Required**
+
+The file group identifier.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`Id`](./Id) |
+
+## References
+
+- [`FileGroupInputFormat`](./FileGroupInputFormat)
+- [`Id`](./Id)

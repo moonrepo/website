@@ -1,0 +1,52 @@
+---
+title: InheritedClauseConfig
+---
+
+Condition applies using logical operator clauses.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`and`](#and) | `Id \| Id[]` | Require all values to match, using an AND operator. |
+| [`not`](#not) | `Id \| Id[]` | Require no values to match, using a NOT operator. |
+| [`or`](#or) | `Id \| Id[]` | Require any values to match, using an OR operator. |
+
+## Properties
+
+### `and`
+
+> **Optional** · **Nullable**
+
+Require all values to match, using an AND operator.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Id \| Id[]` |
+| References | [`Id`](./Id) |
+
+### `not`
+
+> **Optional** · **Nullable**
+
+Require no values to match, using a NOT operator.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Id \| Id[]` |
+| References | [`Id`](./Id) |
+
+### `or`
+
+> **Optional** · **Nullable**
+
+Require any values to match, using an OR operator.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Id \| Id[]` |
+| References | [`Id`](./Id) |
+
+## References
+
+- [`Id`](./Id)

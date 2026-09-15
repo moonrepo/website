@@ -1,0 +1,137 @@
+---
+title: InheritedTasksConfig
+---
+
+Configures tasks and task related settings that'll be inherited by all
+matching projects.
+Docs: https://moonrepo.dev/docs/config/tasks
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`$schema`](#schema) | `string` |  |
+| [`env`](#env) | `Record<string, string \| null>` | A map of environment variables that will be inherited by all matching projects, and merged into their `env` setting. @since 2.5.0 |
+| [`extends`](#extends) | [`ExtendsFrom`](./ExtendsFrom) | Extends one or many tasks configuration files. Supports a relative file path or a secure URL. @since 1.12.0 |
+| [`fileGroups`](#filegroups) | `Record<Id, Input[]>` | A map of group identifiers to a list of file paths, globs, and environment variables, that can be referenced from tasks. |
+| [`implicitDeps`](#implicitdeps) | `TaskDependency[]` | Task dependencies (`deps`) that will be automatically injected into every task that inherits this configuration. |
+| [`implicitInputs`](#implicitinputs) | `Input[]` | Task inputs (`inputs`) that will be automatically injected into every task that inherits this configuration. |
+| [`inheritedBy`](#inheritedby) | [`InheritedByConfig`](./InheritedByConfig) | A map of conditions that define which projects will inherit these tasks and configuration. If not defined, will be inherited by all projects. @since 2.0.0 |
+| [`taskOptions`](#taskoptions) | [`TaskOptionsConfig`](./TaskOptionsConfig) | Default task options for all inherited tasks. @since 1.20.0 |
+| [`tasks`](#tasks) | `Record<Id, TaskConfig>` | A map of identifiers to task objects. Tasks represent the work-unit of a project, and can be ran in the action pipeline. |
+
+## Properties
+
+### `$schema`
+
+> **Optional**
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+| Default | `"../cache/schemas/tasks.json"` |
+
+### `env`
+
+> **Optional**
+
+A map of environment variables that will be inherited by all
+matching projects, and merged into their `env` setting.
+@since 2.5.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Record<string, string \| null>` |
+
+### `extends`
+
+> **Optional** · **Nullable**
+
+Extends one or many tasks configuration files.
+Supports a relative file path or a secure URL.
+@since 1.12.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`ExtendsFrom`](./ExtendsFrom) |
+
+### `fileGroups`
+
+> **Optional**
+
+A map of group identifiers to a list of file paths, globs, and
+environment variables, that can be referenced from tasks.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Record<Id, Input[]>` |
+| References | [`Id`](./Id), [`Input`](./Input) |
+
+### `implicitDeps`
+
+> **Optional**
+
+Task dependencies (`deps`) that will be automatically injected into every
+task that inherits this configuration.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `TaskDependency[]` |
+| References | [`TaskDependency`](./TaskDependency) |
+
+### `implicitInputs`
+
+> **Optional**
+
+Task inputs (`inputs`) that will be automatically injected into every
+task that inherits this configuration.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Input[]` |
+| References | [`Input`](./Input) |
+
+### `inheritedBy`
+
+> **Optional** · **Nullable**
+
+A map of conditions that define which projects will inherit these
+tasks and configuration. If not defined, will be inherited by all projects.
+@since 2.0.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`InheritedByConfig`](./InheritedByConfig) |
+
+### `taskOptions`
+
+> **Optional** · **Nullable**
+
+Default task options for all inherited tasks.
+@since 1.20.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`TaskOptionsConfig`](./TaskOptionsConfig) |
+
+### `tasks`
+
+> **Optional**
+
+A map of identifiers to task objects. Tasks represent the work-unit
+of a project, and can be ran in the action pipeline.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Record<Id, TaskConfig>` |
+| References | [`Id`](./Id), [`TaskConfig`](./TaskConfig) |
+
+## References
+
+- [`ExtendsFrom`](./ExtendsFrom)
+- [`Id`](./Id)
+- [`InheritedByConfig`](./InheritedByConfig)
+- [`Input`](./Input)
+- [`TaskConfig`](./TaskConfig)
+- [`TaskDependency`](./TaskDependency)
+- [`TaskOptionsConfig`](./TaskOptionsConfig)

@@ -1,0 +1,54 @@
+---
+title: ExtensionsConfig
+---
+
+Configures all extensions.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`$schema`](#schema) | `string` |  |
+| [`extends`](#extends) | [`ExtendsFrom`](./ExtendsFrom) | Extends one or many extensions configuration files. Supports a relative file path or a secure URL. @since 2.0.0 |
+| [`plugins`](#plugins) | `Record<Id, ExtensionPluginConfig>` | Configures and integrates extensions into the system using a unique identifier. |
+
+## Properties
+
+### `$schema`
+
+> **Optional**
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+| Default | `"./cache/schemas/extensions.json"` |
+
+### `extends`
+
+> **Optional** · **Nullable**
+
+Extends one or many extensions configuration files.
+Supports a relative file path or a secure URL.
+@since 2.0.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`ExtendsFrom`](./ExtendsFrom) |
+
+### `plugins`
+
+> **Flattened**
+
+Configures and integrates extensions into the system using
+a unique identifier.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Record<Id, ExtensionPluginConfig>` |
+| References | [`Id`](./Id), [`ExtensionPluginConfig`](./ExtensionPluginConfig) |
+
+## References
+
+- [`ExtendsFrom`](./ExtendsFrom)
+- [`ExtensionPluginConfig`](./ExtensionPluginConfig)
+- [`Id`](./Id)

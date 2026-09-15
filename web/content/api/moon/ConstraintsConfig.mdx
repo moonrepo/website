@@ -1,0 +1,42 @@
+---
+title: ConstraintsConfig
+---
+
+Configures boundaries and constraints between projects.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`enforceLayerRelationships`](#enforcelayerrelationships) | `boolean` | Enforces relationships between projects based on each project's `layer` setting. |
+| [`tagRelationships`](#tagrelationships) | `Record<Id, Id[]>` | Enforces relationships between projects based on each project's `tags` setting. Requires a mapping of tags, to acceptable tags. |
+
+## Properties
+
+### `enforceLayerRelationships`
+
+> **Optional**
+
+Enforces relationships between projects based on each project's
+`layer` setting.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+| Default | `true` |
+
+### `tagRelationships`
+
+> **Optional**
+
+Enforces relationships between projects based on each project's
+`tags` setting. Requires a mapping of tags, to acceptable tags.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Record<Id, Id[]>` |
+| References | [`Id`](./Id) |
+
+## References
+
+- [`Id`](./Id)

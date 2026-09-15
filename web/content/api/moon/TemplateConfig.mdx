@@ -1,0 +1,97 @@
+---
+title: TemplateConfig
+---
+
+Configures a template and its files to be scaffolded.
+Docs: https://moonrepo.dev/docs/config/template
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`$schema`](#schema) | `string` |  |
+| [`description`](#description) | `string` | A description on what the template scaffolds. |
+| [`destination`](#destination) | `string` | A pre-populated destination to scaffold to, relative from the workspace root when leading with `/`, otherwise the working directory. |
+| [`extends`](#extends) | `Id \| Id[]` | Extends one or many other templates. |
+| [`id`](#id) | [`Id`](./Id) | Overrides the identifier of the template, instead of using the folder name. |
+| [`title`](#title) | `string` | A human-readable title for the template. |
+| [`variables`](#variables) | `Record<string, TemplateVariable>` | A map of variables that'll be interpolated within each template file. Variables can also be populated by passing command line arguments. |
+
+## Properties
+
+### `$schema`
+
+> **Required**
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+
+### `description`
+
+> **Required**
+
+A description on what the template scaffolds.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+
+### `destination`
+
+> **Optional** · **Nullable**
+
+A pre-populated destination to scaffold to, relative from the
+workspace root when leading with `/`, otherwise the working directory.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+
+### `extends`
+
+> **Optional**
+
+Extends one or many other templates.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Id \| Id[]` |
+| References | [`Id`](./Id) |
+
+### `id`
+
+> **Optional** · **Nullable**
+
+Overrides the identifier of the template, instead of using the folder name.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`Id`](./Id) |
+
+### `title`
+
+> **Required**
+
+A human-readable title for the template.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+
+### `variables`
+
+> **Optional**
+
+A map of variables that'll be interpolated within each template file.
+Variables can also be populated by passing command line arguments.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Record<string, TemplateVariable>` |
+| References | [`TemplateVariable`](./TemplateVariable) |
+
+## References
+
+- [`Id`](./Id)
+- [`TemplateVariable`](./TemplateVariable)

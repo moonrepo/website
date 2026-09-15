@@ -1,0 +1,46 @@
+---
+title: InheritedConditionConfig
+---
+
+Patterns in which a condition can be configured as.
+
+## Index
+
+| Variant | Type | Description |
+| --- | --- | --- |
+| [`one`](#one) | [`Id`](./Id) | Condition applies to a single value. |
+| [`many`](#many) | `Id[]` | Condition applies to multiple values, and matches using an OR operator. |
+| [`clause`](#clause) | [`InheritedClauseConfig`](./InheritedClauseConfig) | Condition applies using logical operator clauses. |
+
+## Variants
+
+### `one`
+
+Condition applies to a single value.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`Id`](./Id) |
+
+### `many`
+
+Condition applies to multiple values,
+and matches using an OR operator.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Id[]` |
+| References | [`Id`](./Id) |
+
+### `clause`
+
+Condition applies using logical operator clauses.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`InheritedClauseConfig`](./InheritedClauseConfig) |
+
+## References
+
+- [`Id`](./Id)
+- [`InheritedClauseConfig`](./InheritedClauseConfig)

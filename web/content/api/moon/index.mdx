@@ -1,0 +1,117 @@
+---
+title: Index
+---
+
+## Types
+
+| Type | Kind | Description |
+| --- | --- | --- |
+| [`CacheCasConfig`](./CacheCasConfig) | Struct | Configures aspects of the content-addressable storage (CAS) cache. |
+| [`CacheConfig`](./CacheConfig) | Struct | Configures aspects of the caching engine and layer. |
+| [`CodeownersConfig`](./CodeownersConfig) | Struct | Configures code ownership rules for generating a `CODEOWNERS` file. |
+| [`CodeownersOrderBy`](./CodeownersOrderBy) | Enum | How to order ownership rules within the generated file. |
+| [`ConstraintsConfig`](./ConstraintsConfig) | Struct | Configures boundaries and constraints between projects. |
+| [`DependencyScope`](./DependencyScope) | Enum | The relationship scope of a dependency. |
+| [`DependencySource`](./DependencySource) | Enum | The source where the dependency comes from. Either explicitly defined in configuration, or implicitly derived from source files. |
+| [`DockerConfig`](./DockerConfig) | Struct | Configures our Docker integration. |
+| [`DockerFileConfig`](./DockerFileConfig) | Struct | Configures `Dockerfile` generation. When configured at the workspace-level, applies to all projects, but can be overridden at the project-level. |
+| [`DockerPruneConfig`](./DockerPruneConfig) | Struct | Configures aspects of the Docker pruning process. |
+| [`DockerScaffoldConfig`](./DockerScaffoldConfig) | Struct | Configures aspects of the Docker scaffolding process. When configured at the workspace-level, applies to all projects, but can be overridden at the project-level. |
+| [`ExperimentsConfig`](./ExperimentsConfig) | Struct | Configures experiments across the entire moon workspace. |
+| [`ExtendsFrom`](./ExtendsFrom) | Union |  |
+| [`ExtensionPluginConfig`](./ExtensionPluginConfig) | Struct | Configures an individual extension. |
+| [`ExtensionsConfig`](./ExtensionsConfig) | Struct | Configures all extensions. |
+| [`FileGroupInput`](./FileGroupInput) | Struct | A file group input. |
+| [`FileGroupInputFormat`](./FileGroupInputFormat) | Enum | Available formats to resolve the file group into. |
+| [`FileInput`](./FileInput) | Struct | A file path input. |
+| [`FileOutput`](./FileOutput) | Struct | A file path output. |
+| [`GeneratorConfig`](./GeneratorConfig) | Struct | Configures the generator for scaffolding from templates. |
+| [`GlobInput`](./GlobInput) | Struct | A glob pattern input. |
+| [`GlobOutput`](./GlobOutput) | Struct | A glob pattern output. |
+| [`HasherConfig`](./HasherConfig) | Struct | Configures aspects of the content hashing engine. |
+| [`HasherOptimization`](./HasherOptimization) | Enum | The optimization to use when hashing. |
+| [`HasherWalkStrategy`](./HasherWalkStrategy) | Enum | The strategy to use when walking the file system. |
+| [`Id`](./Id) | `string` |  |
+| [`InheritedByConfig`](./InheritedByConfig) | Struct | Configures conditions that must match against a project for tasks to be inherited. If multiple conditions are defined, then all must match for inheritance to occur. If no conditions are defined, then tasks will be inherited by all projects. |
+| [`InheritedClauseConfig`](./InheritedClauseConfig) | Struct | Condition applies using logical operator clauses. |
+| [`InheritedConditionConfig`](./InheritedConditionConfig) | Union | Patterns in which a condition can be configured as. |
+| [`InheritedTasksConfig`](./InheritedTasksConfig) | Struct | Configures tasks and task related settings that'll be inherited by all matching projects. Docs: https://moonrepo.dev/docs/config/tasks |
+| [`Input`](./Input) | Union |  |
+| [`LanguageType`](./LanguageType) | Enum | Supported programming languages that each project can be written in. |
+| [`LayerType`](./LayerType) | Enum | The layer within the technology stack, for categorizing. |
+| [`MergeStrategy`](./MergeStrategy) | Enum | The strategy in which to merge two configuration values. |
+| [`MoonConfig`](./MoonConfig) | Struct | Configures how and where moon updates will be received. |
+| [`NotifierConfig`](./NotifierConfig) | Struct | Configures how and where notifications are sent. |
+| [`NotifierEventType`](./NotifierEventType) | Enum | The types of events in which to send notifications. |
+| [`Output`](./Output) | Union |  |
+| [`OwnersConfig`](./OwnersConfig) | Struct | Defines ownership of source code within the current project, by mapping file paths and glob patterns to owners. An owner is either a user, team, or group. |
+| [`OwnersPaths`](./OwnersPaths) | Union | A mapping of file paths and file globs to owners. |
+| [`PipelineActionSwitch`](./PipelineActionSwitch) | Union | Toggles the state of actions within the pipeline. |
+| [`PipelineConfig`](./PipelineConfig) | Struct | Configures aspects of the action pipeline. |
+| [`PluginLocator`](./PluginLocator) | `string` | Strategies and protocols for locating plugins. |
+| [`ProjectConfig`](./ProjectConfig) | Struct | Configures information and tasks for a project. Docs: https://moonrepo.dev/docs/config/project |
+| [`ProjectDependencyConfig`](./ProjectDependencyConfig) | Struct | A project referenced by identifier, with additional parameters. |
+| [`ProjectDependsOn`](./ProjectDependsOn) | Union | Expanded information about a project dependency. |
+| [`ProjectDockerConfig`](./ProjectDockerConfig) | Struct | Configures our Docker integration. @since 1.27.0 |
+| [`ProjectInput`](./ProjectInput) | Struct | An external project input. |
+| [`ProjectMetadataConfig`](./ProjectMetadataConfig) | Struct | Expanded information about the project. |
+| [`ProjectToolchainEntry`](./ProjectToolchainEntry) | Union | Variants a project-level toolchain can be configured. |
+| [`ProjectToolchainsConfig`](./ProjectToolchainsConfig) | Struct | Overrides top-level toolchain settings, scoped to this project. |
+| [`ProjectWorkspaceConfig`](./ProjectWorkspaceConfig) | Struct | Overrides workspace settings, scoped to this project. |
+| [`ProjectWorkspaceInheritedTasksConfig`](./ProjectWorkspaceInheritedTasksConfig) | Struct | Controls how workspace-level tasks are inherited. |
+| [`ProjectWorkspaceMergeStrategiesConfig`](./ProjectWorkspaceMergeStrategiesConfig) | Struct | Controls how project settings are merged with inherited workspace-level settings. |
+| [`ProtoConfig`](./ProtoConfig) | Struct | Configures how moon integrates with proto. |
+| [`Range`](./Range) | `string` |  |
+| [`RemoteApi`](./RemoteApi) | Enum | The API format of the remote service. @since 1.32.0 |
+| [`RemoteAuthConfig`](./RemoteAuthConfig) | Struct | Configures basic HTTP authentication. @since 1.32.0 |
+| [`RemoteCacheConfig`](./RemoteCacheConfig) | Struct | Configures the action cache (AC) and content-addressable cache (CAS). @since 1.30.0 |
+| [`RemoteCompression`](./RemoteCompression) | Enum | Supported blob compression levels for gRPC APIs. @since 1.31.0 |
+| [`RemoteConfig`](./RemoteConfig) | Struct | Configures the remote service, powered by the Bazel Remote Execution API. @since 1.30.0 |
+| [`RemoteMtlsConfig`](./RemoteMtlsConfig) | Struct | Configures for both server and client authentication with mTLS. @since 1.30.0 |
+| [`RemoteTlsConfig`](./RemoteTlsConfig) | Struct | Configures for server-only authentication with TLS. @since 1.30.0 |
+| [`StackType`](./StackType) | Enum | The technology stack of the project, for categorizing. |
+| [`TaggedTaskCheck`](./TaggedTaskCheck) | Union |  |
+| [`TaskArgs`](./TaskArgs) | Union | Configures a command and its arguments to execute. |
+| [`TaskCheck`](./TaskCheck) | Union |  |
+| [`TaskCheckConditionConfig`](./TaskCheckConditionConfig) | Struct | Task check configuration for conditions. |
+| [`TaskCheckFingerprintConfig`](./TaskCheckFingerprintConfig) | Struct | Task check configuration for fingerprinting. |
+| [`TaskCheckRequirementConfig`](./TaskCheckRequirementConfig) | Struct | Task check configuration for requirements. |
+| [`TaskConfig`](./TaskConfig) | Struct | Configures a task to be ran within the action pipeline. |
+| [`TaskDependency`](./TaskDependency) | Union | Configures another task that this task depends on. |
+| [`TaskDependencyCacheStrategy`](./TaskDependencyCacheStrategy) | Enum | Controls how a task dependency invalidates the current task's cache entry. When omitted, the effective strategy is `Hash` if the dependency declares outputs, or `Ignored` otherwise. @since 2.3.0 |
+| [`TaskDependencyConfig`](./TaskDependencyConfig) | Struct | A task referenced by target, with additional parameters to pass through. |
+| [`TaskOperatingSystem`](./TaskOperatingSystem) | Enum | The operating system in which to only run this task on. |
+| [`TaskOptionAffectedFilesConfig`](./TaskOptionAffectedFilesConfig) | Struct | Expanded information about affected files handling. |
+| [`TaskOptionAffectedFilesEntry`](./TaskOptionAffectedFilesEntry) | Union |  |
+| [`TaskOptionEnvFile`](./TaskOptionEnvFile) | Union |  |
+| [`TaskOptionsConfig`](./TaskOptionsConfig) | Struct | Options to control task inheritance, execution, and more. |
+| [`TaskOutputStyle`](./TaskOutputStyle) | Enum | The style in which task output will be printed to the console. |
+| [`TaskPreset`](./TaskPreset) | Enum | Preset options to inherit. |
+| [`TaskPriority`](./TaskPriority) | Enum | The priority levels a task can be bucketed into when running in the action pipeline. |
+| [`TaskType`](./TaskType) | Enum | The type of task. |
+| [`TaskUnixShell`](./TaskUnixShell) | Enum | A list of available shells on Unix. |
+| [`TaskWindowsShell`](./TaskWindowsShell) | Enum | A list of available shells on Windows. |
+| [`TemplateConfig`](./TemplateConfig) | Struct | Configures a template and its files to be scaffolded. Docs: https://moonrepo.dev/docs/config/template |
+| [`TemplateVariable`](./TemplateVariable) | Union | Each type of template variable. |
+| [`TemplateVariableArraySetting`](./TemplateVariableArraySetting) | Struct | An array variable. |
+| [`TemplateVariableBoolSetting`](./TemplateVariableBoolSetting) | Struct | A boolean variable. |
+| [`TemplateVariableEnumDefault`](./TemplateVariableEnumDefault) | Union |  |
+| [`TemplateVariableEnumSetting`](./TemplateVariableEnumSetting) | Struct | A string enumerable variable. |
+| [`TemplateVariableEnumValue`](./TemplateVariableEnumValue) | Union |  |
+| [`TemplateVariableEnumValueConfig`](./TemplateVariableEnumValueConfig) | Struct |  |
+| [`TemplateVariableNumberSetting`](./TemplateVariableNumberSetting) | Struct | A number variable. |
+| [`TemplateVariableObjectSetting`](./TemplateVariableObjectSetting) | Struct | An object variable. |
+| [`TemplateVariableStringSetting`](./TemplateVariableStringSetting) | Struct | A string variable. |
+| [`ToolchainPluginConfig`](./ToolchainPluginConfig) | Struct | Configures an individual toolchain. |
+| [`ToolchainPluginVersionFrom`](./ToolchainPluginVersionFrom) | Union | The strategy in which to inherit a version from `.prototools`. |
+| [`ToolchainsConfig`](./ToolchainsConfig) | Struct | Configures all toolchains. Docs: https://moonrepo.dev/docs/config/toolchain |
+| [`UnresolvedVersionSpec`](./UnresolvedVersionSpec) | `string` | Represents an unresolved version or alias that must be resolved to a fully-qualified version. |
+| [`VcsClient`](./VcsClient) | Enum | The VCS being utilized by the repository. |
+| [`VcsConfig`](./VcsConfig) | Struct | Configures the version control system (VCS). |
+| [`VcsHookFormat`](./VcsHookFormat) | Enum | The format to use for generated VCS hook files. @since 1.29.0 |
+| [`VcsProvider`](./VcsProvider) | Enum | The upstream version control provider, where the repository source code is stored. |
+| [`VersionSpec`](./VersionSpec) | `string` | Represents a resolved version or alias. |
+| [`WorkspaceConfig`](./WorkspaceConfig) | Struct | Configures all aspects of the moon workspace. Docs: https://moonrepo.dev/docs/config/workspace |
+| [`WorkspaceProjectGlobFormat`](./WorkspaceProjectGlobFormat) | Enum | The project identifier format for glob located projects. |
+| [`WorkspaceProjects`](./WorkspaceProjects) | Union | Configures projects in the workspace. |
+| [`WorkspaceProjectsConfig`](./WorkspaceProjectsConfig) | Struct | Using both glob patterns and file source paths. |

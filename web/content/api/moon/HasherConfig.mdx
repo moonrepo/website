@@ -1,0 +1,83 @@
+---
+title: HasherConfig
+---
+
+Configures aspects of the content hashing engine.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`ignoreMissingPatterns`](#ignoremissingpatterns) | `string[]` | When `warnOnMissingInputs` is enabled, filters missing file paths from logging a warning. @since 1.10.0 |
+| [`ignorePatterns`](#ignorepatterns) | `string[]` | Filters file paths that match a configured glob pattern when a hash is being generated. Patterns are workspace relative, so prefixing with `**` is recommended. @since 1.10.0 |
+| [`optimization`](#optimization) | [`HasherOptimization`](./HasherOptimization) | The optimization to use when hashing. |
+| [`walkStrategy`](#walkstrategy) | [`HasherWalkStrategy`](./HasherWalkStrategy) | The strategy to use when walking the file system. |
+| [`warnOnMissingInputs`](#warnonmissinginputs) | `boolean` | Logs a warning when a task has configured an explicit file path input, and that file does not exist when hashing. |
+
+## Properties
+
+### `ignoreMissingPatterns`
+
+> **Optional**
+
+When `warnOnMissingInputs` is enabled, filters missing file
+paths from logging a warning.
+@since 1.10.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string[]` |
+
+### `ignorePatterns`
+
+> **Optional**
+
+Filters file paths that match a configured glob pattern
+when a hash is being generated. Patterns are workspace relative,
+so prefixing with `**` is recommended.
+@since 1.10.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string[]` |
+
+### `optimization`
+
+> **Required**
+
+The optimization to use when hashing.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`HasherOptimization`](./HasherOptimization) |
+| Default | `"accuracy"` |
+| Values | `"accuracy"`, `"performance"` |
+
+### `walkStrategy`
+
+> **Required**
+
+The strategy to use when walking the file system.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`HasherWalkStrategy`](./HasherWalkStrategy) |
+| Default | `"vcs"` |
+| Values | `"glob"`, `"vcs"` |
+
+### `warnOnMissingInputs`
+
+> **Optional**
+
+Logs a warning when a task has configured an explicit file path
+input, and that file does not exist when hashing.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+| Default | `true` |
+
+## References
+
+- [`HasherOptimization`](./HasherOptimization)
+- [`HasherWalkStrategy`](./HasherWalkStrategy)

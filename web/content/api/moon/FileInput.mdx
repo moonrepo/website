@@ -1,0 +1,49 @@
+---
+title: FileInput
+---
+
+A file path input.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`content`](#content) | `string` | Regex pattern to match the file's contents against when determining affected status. |
+| [`file`](#file) | `string` | The literal file path. |
+| [`optional`](#optional) | `boolean` | Mark the file as optional instead of logging a warning when hashing a task. |
+
+## Properties
+
+### `content`
+
+> **Optional** · **Nullable**
+
+Regex pattern to match the file's contents against
+when determining affected status.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+| Format | `regex` |
+| Aliases | `match`, `matches` |
+
+### `file`
+
+> **Required**
+
+The literal file path.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+
+### `optional`
+
+> **Optional** · **Nullable**
+
+Mark the file as optional instead of logging a warning
+when hashing a task.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |

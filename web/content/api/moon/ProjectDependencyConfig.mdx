@@ -1,0 +1,66 @@
+---
+title: ProjectDependencyConfig
+---
+
+A project referenced by identifier, with additional parameters.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`id`](#id) | [`Id`](./Id) | Identifier of the depended on project. |
+| [`scope`](#scope) | [`DependencyScope`](./DependencyScope) | Scope of the dependency relationship. |
+| [`source`](#source) | [`DependencySource`](./DependencySource) | Source of where the dependency came from. |
+| [`via`](#via) | `string` | Metadata about the source. |
+
+## Properties
+
+### `id`
+
+> **Required**
+
+Identifier of the depended on project.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`Id`](./Id) |
+
+### `scope`
+
+> **Required**
+
+Scope of the dependency relationship.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`DependencyScope`](./DependencyScope) |
+| Default | `"production"` |
+| Values | `"build"`, `"development"`, `"peer"`, `"production"`, `"root"` |
+
+### `source`
+
+> **Required**
+
+Source of where the dependency came from.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`DependencySource`](./DependencySource) |
+| Default | `"explicit"` |
+| Values | `"explicit"`, `"implicit"` |
+
+### `via`
+
+> **Optional** · **Nullable**
+
+Metadata about the source.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+
+## References
+
+- [`DependencyScope`](./DependencyScope)
+- [`DependencySource`](./DependencySource)
+- [`Id`](./Id)

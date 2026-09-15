@@ -1,0 +1,108 @@
+---
+title: VcsConfig
+---
+
+Configures the version control system (VCS).
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`client`](#client) | [`VcsClient`](./VcsClient) | The VCS client being utilized by the repository. |
+| [`defaultBranch`](#defaultbranch) | `string` | The default branch / base. |
+| [`hookFormat`](#hookformat) | [`VcsHookFormat`](./VcsHookFormat) | The format to use for generated VCS hook files. @since 1.29.0 |
+| [`hooks`](#hooks) | `Record<string, string[]>` | A map of hooks to a list of commands to run when the hook is triggered. @since 1.9.0 |
+| [`provider`](#provider) | [`VcsProvider`](./VcsProvider) | The upstream version control provider, where the repository source code is stored. @since 1.8.0 |
+| [`remoteCandidates`](#remotecandidates) | `string[]` | List of remote's in which to compare branches against. |
+| [`sync`](#sync) | `boolean` | Automatically generate hooks and scripts during a sync operation, based on the `hooks` setting. @since 1.9.0 |
+
+## Properties
+
+### `client`
+
+> **Required**
+
+The VCS client being utilized by the repository.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`VcsClient`](./VcsClient) |
+| Default | `"git"` |
+| Values | `"git"` |
+
+### `defaultBranch`
+
+> **Optional**
+
+The default branch / base.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+| Default | `"master"` |
+
+### `hookFormat`
+
+> **Required**
+
+The format to use for generated VCS hook files.
+@since 1.29.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`VcsHookFormat`](./VcsHookFormat) |
+| Default | `"native"` |
+| Values | `"bash"`, `"native"` |
+
+### `hooks`
+
+> **Optional**
+
+A map of hooks to a list of commands to run when the hook is triggered.
+@since 1.9.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Record<string, string[]>` |
+
+### `provider`
+
+> **Required**
+
+The upstream version control provider, where the repository
+source code is stored.
+@since 1.8.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`VcsProvider`](./VcsProvider) |
+| Default | `"github"` |
+| Values | `"bitbucket"`, `"bitbucket-legacy"`, `"github"`, `"gitlab"`, `"other"` |
+
+### `remoteCandidates`
+
+> **Optional**
+
+List of remote's in which to compare branches against.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string[]` |
+
+### `sync`
+
+> **Optional**
+
+Automatically generate hooks and scripts during a sync operation,
+based on the `hooks` setting.
+@since 1.9.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+
+## References
+
+- [`VcsClient`](./VcsClient)
+- [`VcsHookFormat`](./VcsHookFormat)
+- [`VcsProvider`](./VcsProvider)

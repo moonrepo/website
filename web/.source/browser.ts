@@ -8,6 +8,13 @@ const create = browser<typeof Config, import("fumadocs-mdx/runtime/types").Inter
   }
 }>();
 const browserCollections = {
+  api: create.doc("api", import.meta.glob(["./**/*.{mdx,md}"], {
+    "base": "./../content/api",
+    "query": {
+      "collection": "api"
+    },
+    "eager": false
+  })),
   blog: create.doc("blog", import.meta.glob(["./**/*.{mdx,md}"], {
     "base": "./../content/blog",
     "query": {

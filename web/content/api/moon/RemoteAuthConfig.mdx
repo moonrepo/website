@@ -1,0 +1,36 @@
+---
+title: RemoteAuthConfig
+---
+
+Configures basic HTTP authentication.
+@since 1.32.0
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`headers`](#headers) | `Record<string, string>` | A map of HTTP headers to inject into every request. |
+| [`token`](#token) | `string` | The name of an environment variable to use as a bearer token. |
+
+## Properties
+
+### `headers`
+
+> **Optional**
+
+A map of HTTP headers to inject into every request.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Record<string, string>` |
+
+### `token`
+
+> **Optional** · **Nullable**
+
+The name of an environment variable to use as a bearer token.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+| Environment variable | `MOON_REMOTE_AUTH_TOKEN` |

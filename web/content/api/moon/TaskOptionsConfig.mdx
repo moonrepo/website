@@ -1,0 +1,432 @@
+---
+title: TaskOptionsConfig
+---
+
+Options to control task inheritance, execution, and more.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`affectedFiles`](#affectedfiles) | [`TaskOptionAffectedFilesEntry`](./TaskOptionAffectedFilesEntry) | The pattern in which affected files will be passed to the task. |
+| [`allowFailure`](#allowfailure) | `boolean` | Allow the task to fail without failing the entire action pipeline. @since 1.13.0 |
+| [`cache`](#cache) | `boolean \| string` | Cache the `outputs` of the task for incremental builds. Defaults to `true` if outputs are configured for the task. |
+| [`cacheKey`](#cachekey) | `string` | A custom key to include in the cache hashing process. Can be used to invalidate local and remote caches. |
+| [`cacheLifetime`](#cachelifetime) | `string` | Lifetime to cache the task itself, in the format of "1h", "30m", etc. If not defined, caches live forever, or until inputs change. @since 1.29.0 |
+| [`envFile`](#envfile) | [`TaskOptionEnvFile`](./TaskOptionEnvFile) | Loads and sets environment variables from the `.env` file(s) when running the task. |
+| [`inferInputs`](#inferinputs) | `boolean` | Automatically infer inputs from file groups or environment variables that were utilized within `command`, `script`, `args`, and `env`. @since 1.31.0 |
+| [`interactive`](#interactive) | `boolean` | Marks the task as interactive, so that it will run in isolation, and have direct access to stdin. @since 1.12.0 |
+| [`internal`](#internal) | `boolean` | Marks the task as internal, which disables it from being ran from the command line, but can still be depended on by other tasks. @since 1.23.0 |
+| [`merge`](#merge) | [`MergeStrategy`](./MergeStrategy) | The default strategy to use when merging `args`, `deps`, `env`, `inputs`, or `outputs` with an inherited task. Can be overridden with the other field-specific merge options. |
+| [`mergeArgs`](#mergeargs) | [`MergeStrategy`](./MergeStrategy) | The strategy to use when merging `args` with an inherited task. |
+| [`mergeChecks`](#mergechecks) | [`MergeStrategy`](./MergeStrategy) | The strategy to use when merging `checks` with an inherited task. @since 2.4.0 |
+| [`mergeDeps`](#mergedeps) | [`MergeStrategy`](./MergeStrategy) | The strategy to use when merging `deps` with an inherited task. |
+| [`mergeEnv`](#mergeenv) | [`MergeStrategy`](./MergeStrategy) | The strategy to use when merging `env` with an inherited task. |
+| [`mergeInputs`](#mergeinputs) | [`MergeStrategy`](./MergeStrategy) | The strategy to use when merging `inputs` with an inherited task. |
+| [`mergeOutputs`](#mergeoutputs) | [`MergeStrategy`](./MergeStrategy) | The strategy to use when merging `outputs` with an inherited task. |
+| [`mergeTags`](#mergetags) | [`MergeStrategy`](./MergeStrategy) | The strategy to use when merging `tags` with an inherited task. @since 2.3.0 |
+| [`mergeToolchains`](#mergetoolchains) | [`MergeStrategy`](./MergeStrategy) | The strategy to use when merging `toolchains` with an inherited task. @since 2.0.0 |
+| [`mutex`](#mutex) | `string` | Creates an exclusive lock on a virtual resource, preventing other tasks using the same resource from running concurrently. @since 1.24.0 |
+| [`os`](#os) | `TaskOperatingSystem \| TaskOperatingSystem[]` | The operating system in which to only run this task on. |
+| [`outputStyle`](#outputstyle) | [`TaskOutputStyle`](./TaskOutputStyle) | The style in which task output will be printed to the console. |
+| [`persistent`](#persistent) | `boolean` | Marks the task as persistent (continuously running). This is ideal for watchers, servers, or never-ending processes. @since 1.6.0 |
+| [`priority`](#priority) | [`TaskPriority`](./TaskPriority) | Marks the task with a certain priority, which determines the order in which it is ran within the action pipeline. |
+| [`retryCount`](#retrycount) | `number` | The number of times a failing task will be retried to succeed. |
+| [`runDepsInParallel`](#rundepsinparallel) | `boolean` | Runs direct task dependencies (via `deps`) in sequential order. Each dependency's own dependency subtree is also ordered, so that transitive dependencies run after the preceding direct dependency. |
+| [`runFromWorkspaceRoot`](#runfromworkspaceroot) | `boolean` | Runs the task from the workspace root, instead of the project root. |
+| [`runInCI`](#runinci) | `boolean \| string` | Whether to run the task in CI or not, when executing `moon ci`, `moon check`, or `moon run`. |
+| [`runInSyncPhase`](#runinsyncphase) | `boolean` | Runs the task automatically when executing `moon sync`. |
+| [`shell`](#shell) | `boolean` | Runs the task within a shell. When not defined, runs the task directly while relying on native `PATH` resolution. |
+| [`timeout`](#timeout) | `number` | The maximum time in seconds that a task can run before being cancelled. |
+| [`unixShell`](#unixshell) | [`TaskUnixShell`](./TaskUnixShell) | The shell to run the task in when on a Unix-based machine. @since 1.21.0 |
+| [`windowsShell`](#windowsshell) | [`TaskWindowsShell`](./TaskWindowsShell) | The shell to run the task in when on a Windows machine. @since 1.21.0 |
+
+## Properties
+
+### `affectedFiles`
+
+> **Optional** · **Nullable**
+
+The pattern in which affected files will be passed to the task.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`TaskOptionAffectedFilesEntry`](./TaskOptionAffectedFilesEntry) |
+
+### `allowFailure`
+
+> **Optional** · **Nullable**
+
+Allow the task to fail without failing the entire action pipeline.
+@since 1.13.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+
+### `cache`
+
+> **Optional** · **Nullable**
+
+Cache the `outputs` of the task for incremental builds.
+Defaults to `true` if outputs are configured for the task.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean \| string` |
+
+### `cacheKey`
+
+> **Optional** · **Nullable**
+
+A custom key to include in the cache hashing process. Can be
+used to invalidate local and remote caches.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+
+### `cacheLifetime`
+
+> **Optional** · **Nullable**
+
+Lifetime to cache the task itself, in the format of "1h", "30m", etc.
+If not defined, caches live forever, or until inputs change.
+@since 1.29.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+
+### `envFile`
+
+> **Optional** · **Nullable**
+
+Loads and sets environment variables from the `.env` file(s) when
+running the task.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`TaskOptionEnvFile`](./TaskOptionEnvFile) |
+
+### `inferInputs`
+
+> **Optional** · **Nullable**
+
+Automatically infer inputs from file groups or environment variables
+that were utilized within `command`, `script`, `args`, and `env`.
+@since 1.31.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+
+### `interactive`
+
+> **Optional** · **Nullable**
+
+Marks the task as interactive, so that it will run in isolation,
+and have direct access to stdin.
+@since 1.12.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+
+### `internal`
+
+> **Optional** · **Nullable**
+
+Marks the task as internal, which disables it from being ran
+from the command line, but can still be depended on by other tasks.
+@since 1.23.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+
+### `merge`
+
+> **Optional** · **Nullable**
+
+The default strategy to use when merging `args`, `deps`, `env`,
+`inputs`, or `outputs` with an inherited task. Can be overridden
+with the other field-specific merge options.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`MergeStrategy`](./MergeStrategy) |
+| Default | `"append"` |
+| Values | `"append"`, `"prepend"`, `"preserve"`, `"replace"` |
+
+### `mergeArgs`
+
+> **Optional** · **Nullable**
+
+The strategy to use when merging `args` with an inherited task.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`MergeStrategy`](./MergeStrategy) |
+| Default | `"append"` |
+| Values | `"append"`, `"prepend"`, `"preserve"`, `"replace"` |
+
+### `mergeChecks`
+
+> **Optional** · **Nullable**
+
+The strategy to use when merging `checks` with an inherited task.
+@since 2.4.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`MergeStrategy`](./MergeStrategy) |
+| Default | `"append"` |
+| Values | `"append"`, `"prepend"`, `"preserve"`, `"replace"` |
+
+### `mergeDeps`
+
+> **Optional** · **Nullable**
+
+The strategy to use when merging `deps` with an inherited task.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`MergeStrategy`](./MergeStrategy) |
+| Default | `"append"` |
+| Values | `"append"`, `"prepend"`, `"preserve"`, `"replace"` |
+
+### `mergeEnv`
+
+> **Optional** · **Nullable**
+
+The strategy to use when merging `env` with an inherited task.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`MergeStrategy`](./MergeStrategy) |
+| Default | `"append"` |
+| Values | `"append"`, `"prepend"`, `"preserve"`, `"replace"` |
+
+### `mergeInputs`
+
+> **Optional** · **Nullable**
+
+The strategy to use when merging `inputs` with an inherited task.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`MergeStrategy`](./MergeStrategy) |
+| Default | `"append"` |
+| Values | `"append"`, `"prepend"`, `"preserve"`, `"replace"` |
+
+### `mergeOutputs`
+
+> **Optional** · **Nullable**
+
+The strategy to use when merging `outputs` with an inherited task.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`MergeStrategy`](./MergeStrategy) |
+| Default | `"append"` |
+| Values | `"append"`, `"prepend"`, `"preserve"`, `"replace"` |
+
+### `mergeTags`
+
+> **Optional** · **Nullable**
+
+The strategy to use when merging `tags` with an inherited task.
+@since 2.3.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`MergeStrategy`](./MergeStrategy) |
+| Default | `"append"` |
+| Values | `"append"`, `"prepend"`, `"preserve"`, `"replace"` |
+
+### `mergeToolchains`
+
+> **Optional** · **Nullable**
+
+The strategy to use when merging `toolchains` with an inherited task.
+@since 2.0.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`MergeStrategy`](./MergeStrategy) |
+| Default | `"append"` |
+| Values | `"append"`, `"prepend"`, `"preserve"`, `"replace"` |
+
+### `mutex`
+
+> **Optional** · **Nullable**
+
+Creates an exclusive lock on a virtual resource, preventing other
+tasks using the same resource from running concurrently.
+@since 1.24.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+
+### `os`
+
+> **Optional** · **Nullable**
+
+The operating system in which to only run this task on.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `TaskOperatingSystem \| TaskOperatingSystem[]` |
+| References | [`TaskOperatingSystem`](./TaskOperatingSystem) |
+
+### `outputStyle`
+
+> **Optional** · **Nullable**
+
+The style in which task output will be printed to the console.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`TaskOutputStyle`](./TaskOutputStyle) |
+| Default | `"buffer"` |
+| Values | `"buffer"`, `"buffer-only-failure"`, `"hash"`, `"none"`, `"stream"` |
+| Environment variable | `MOON_OUTPUT_STYLE` |
+
+### `persistent`
+
+> **Optional** · **Nullable**
+
+Marks the task as persistent (continuously running). This is ideal
+for watchers, servers, or never-ending processes.
+@since 1.6.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+
+### `priority`
+
+> **Optional** · **Nullable**
+
+Marks the task with a certain priority, which determines the order
+in which it is ran within the action pipeline.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`TaskPriority`](./TaskPriority) |
+| Default | `"normal"` |
+| Values | `"critical"`, `"high"`, `"normal"`, `"low"` |
+
+### `retryCount`
+
+> **Optional** · **Nullable**
+
+The number of times a failing task will be retried to succeed.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `number` |
+| Environment variable | `MOON_RETRY_COUNT` |
+
+### `runDepsInParallel`
+
+> **Optional** · **Nullable**
+
+Runs direct task dependencies (via `deps`) in sequential order.
+Each dependency's own dependency subtree is also ordered, so that
+transitive dependencies run after the preceding direct dependency.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+
+### `runFromWorkspaceRoot`
+
+> **Optional** · **Nullable**
+
+Runs the task from the workspace root, instead of the project root.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+
+### `runInCI`
+
+> **Optional** · **Nullable**
+
+Whether to run the task in CI or not, when executing `moon ci`,
+`moon check`, or `moon run`.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean \| string` |
+
+### `runInSyncPhase`
+
+> **Optional** · **Nullable**
+
+Runs the task automatically when executing `moon sync`.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+
+### `shell`
+
+> **Optional** · **Nullable**
+
+Runs the task within a shell. When not defined, runs the task
+directly while relying on native `PATH` resolution.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+
+### `timeout`
+
+> **Optional** · **Nullable**
+
+The maximum time in seconds that a task can run before being cancelled.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `number` |
+
+### `unixShell`
+
+> **Optional** · **Nullable**
+
+The shell to run the task in when on a Unix-based machine.
+@since 1.21.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`TaskUnixShell`](./TaskUnixShell) |
+| Default | `"bash"` |
+| Values | `"bash"`, `"elvish"`, `"fish"`, `"ion"`, `"murex"`, `"nu"`, `"pwsh"`, `"sh"`, `"xonsh"`, `"zsh"` |
+
+### `windowsShell`
+
+> **Optional** · **Nullable**
+
+The shell to run the task in when on a Windows machine.
+@since 1.21.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`TaskWindowsShell`](./TaskWindowsShell) |
+| Default | `"pwsh"` |
+| Values | `"bash"`, `"elvish"`, `"fish"`, `"murex"`, `"nu"`, `"pwsh"`, `"powershell"`, `"xonsh"` |
+
+## References
+
+- [`MergeStrategy`](./MergeStrategy)
+- [`TaskOperatingSystem`](./TaskOperatingSystem)
+- [`TaskOptionAffectedFilesEntry`](./TaskOptionAffectedFilesEntry)
+- [`TaskOptionEnvFile`](./TaskOptionEnvFile)
+- [`TaskOutputStyle`](./TaskOutputStyle)
+- [`TaskPriority`](./TaskPriority)
+- [`TaskUnixShell`](./TaskUnixShell)
+- [`TaskWindowsShell`](./TaskWindowsShell)

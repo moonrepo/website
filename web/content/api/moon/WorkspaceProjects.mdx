@@ -1,0 +1,47 @@
+---
+title: WorkspaceProjects
+---
+
+Configures projects in the workspace.
+
+## Index
+
+| Variant | Type | Description |
+| --- | --- | --- |
+| [`both`](#both) | [`WorkspaceProjectsConfig`](./WorkspaceProjectsConfig) | Using both glob patterns and file source paths. |
+| [`globs`](#globs) | `string[]` | Using glob patterns. Suffix with `moon.*` to be distinct. |
+| [`sources`](#sources) | `Record<Id, string>` | Using a map of identifiers to file source paths. |
+
+## Variants
+
+### `both`
+
+Using both glob patterns and file source paths.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`WorkspaceProjectsConfig`](./WorkspaceProjectsConfig) |
+
+### `globs`
+
+Using glob patterns. Suffix with `moon.*` to be distinct.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string[]` |
+
+### `sources`
+
+> **Default**
+
+Using a map of identifiers to file source paths.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Record<Id, string>` |
+| References | [`Id`](./Id) |
+
+## References
+
+- [`Id`](./Id)
+- [`WorkspaceProjectsConfig`](./WorkspaceProjectsConfig)

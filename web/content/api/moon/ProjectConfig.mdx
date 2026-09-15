@@ -1,0 +1,225 @@
+---
+title: ProjectConfig
+---
+
+Configures information and tasks for a project.
+Docs: https://moonrepo.dev/docs/config/project
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`$schema`](#schema) | `string` |  |
+| [`dependsOn`](#dependson) | `ProjectDependsOn[]` | Other projects that this project depends on. |
+| [`docker`](#docker) | [`ProjectDockerConfig`](./ProjectDockerConfig) | Configures Docker integration for this project. @since 1.27.0 |
+| [`env`](#env) | `Record<string, string \| null>` | A map of environment variables that will be inherited by all tasks within the project. |
+| [`fileGroups`](#filegroups) | `Record<Id, Input[]>` | A map of group identifiers to a list of file paths, globs, and environment variables, that can be referenced from tasks. |
+| [`id`](#id) | [`Id`](./Id) | Overrides the identifier within the project graph, as defined in the workspace `projects` setting. @since 1.18.0 |
+| [`language`](#language) | [`LanguageType`](./LanguageType) | The primary programming language of the project. |
+| [`layer`](#layer) | [`LayerType`](./LayerType) | The layer within the technology stack, for categorizing. |
+| [`owners`](#owners) | [`OwnersConfig`](./OwnersConfig) | Defines ownership of source code within the current project, by mapping file paths and globs to owners. An owner is either a user, team, or group. @since 1.8.0 |
+| [`project`](#project) | [`ProjectMetadataConfig`](./ProjectMetadataConfig) | Expanded information about the project. |
+| [`stack`](#stack) | [`StackType`](./StackType) | The technology stack of the project, for categorizing. @since 1.22.0 |
+| [`tags`](#tags) | `Id[]` | A list of tags that this project belongs to, for categorizing, boundary enforcement, and task inheritance. |
+| [`taskOptions`](#taskoptions) | [`TaskOptionsConfig`](./TaskOptionsConfig) | Shared task options for all tasks. Can be overriden per task. @since 2.4.0 |
+| [`tasks`](#tasks) | `Record<Id, TaskConfig>` | A map of identifiers to task objects. Tasks represent the work-unit of a project, and can be ran in the action pipeline. |
+| [`toolchains`](#toolchains) | [`ProjectToolchainsConfig`](./ProjectToolchainsConfig) | Overrides top-level toolchain settings, scoped to this project. |
+| [`workspace`](#workspace) | [`ProjectWorkspaceConfig`](./ProjectWorkspaceConfig) | Overrides top-level workspace settings, scoped to this project. |
+
+## Properties
+
+### `$schema`
+
+> **Required**
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+
+### `dependsOn`
+
+> **Optional**
+
+Other projects that this project depends on.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `ProjectDependsOn[]` |
+| References | [`ProjectDependsOn`](./ProjectDependsOn) |
+| Aliases | `deps` |
+
+### `docker`
+
+> **Required**
+
+Configures Docker integration for this project.
+@since 1.27.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`ProjectDockerConfig`](./ProjectDockerConfig) |
+
+### `env`
+
+> **Optional**
+
+A map of environment variables that will be inherited by
+all tasks within the project.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Record<string, string \| null>` |
+
+### `fileGroups`
+
+> **Optional**
+
+A map of group identifiers to a list of file paths, globs, and
+environment variables, that can be referenced from tasks.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Record<Id, Input[]>` |
+| References | [`Id`](./Id), [`Input`](./Input) |
+
+### `id`
+
+> **Optional** · **Nullable**
+
+Overrides the identifier within the project graph, as defined in
+the workspace `projects` setting.
+@since 1.18.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`Id`](./Id) |
+
+### `language`
+
+> **Required**
+
+The primary programming language of the project.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`LanguageType`](./LanguageType) |
+| Default | `"unknown"` |
+| Values | `"bash"`, `"batch"`, `"cplusplus"`, `"csharp"`, `"dotnet"`, `"go"`, `"java"`, `"javascript"`, `"kotlin"`, `"php"`, `"python"`, `"ruby"`, `"rust"`, `"swift"`, `"typescript"`, `"unknown"` |
+
+### `layer`
+
+> **Required**
+
+The layer within the technology stack, for categorizing.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`LayerType`](./LayerType) |
+| Default | `"unknown"` |
+| Values | `"application"`, `"automation"`, `"configuration"`, `"library"`, `"scaffolding"`, `"tool"`, `"unknown"` |
+
+### `owners`
+
+> **Required**
+
+Defines ownership of source code within the current project, by mapping
+file paths and globs to owners. An owner is either a user, team, or group.
+@since 1.8.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`OwnersConfig`](./OwnersConfig) |
+
+### `project`
+
+> **Optional** · **Nullable**
+
+Expanded information about the project.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`ProjectMetadataConfig`](./ProjectMetadataConfig) |
+
+### `stack`
+
+> **Required**
+
+The technology stack of the project, for categorizing.
+@since 1.22.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`StackType`](./StackType) |
+| Default | `"unknown"` |
+| Values | `"backend"`, `"data"`, `"frontend"`, `"infrastructure"`, `"systems"`, `"unknown"` |
+
+### `tags`
+
+> **Optional**
+
+A list of tags that this project belongs to, for categorizing,
+boundary enforcement, and task inheritance.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Id[]` |
+| References | [`Id`](./Id) |
+
+### `taskOptions`
+
+> **Nullable**
+
+Shared task options for all tasks. Can be overriden per task.
+@since 2.4.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`TaskOptionsConfig`](./TaskOptionsConfig) |
+
+### `tasks`
+
+> **Optional**
+
+A map of identifiers to task objects. Tasks represent the work-unit
+of a project, and can be ran in the action pipeline.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Record<Id, TaskConfig>` |
+| References | [`Id`](./Id), [`TaskConfig`](./TaskConfig) |
+
+### `toolchains`
+
+> **Required**
+
+Overrides top-level toolchain settings, scoped to this project.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`ProjectToolchainsConfig`](./ProjectToolchainsConfig) |
+
+### `workspace`
+
+> **Required**
+
+Overrides top-level workspace settings, scoped to this project.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`ProjectWorkspaceConfig`](./ProjectWorkspaceConfig) |
+
+## References
+
+- [`Id`](./Id)
+- [`Input`](./Input)
+- [`LanguageType`](./LanguageType)
+- [`LayerType`](./LayerType)
+- [`OwnersConfig`](./OwnersConfig)
+- [`ProjectDependsOn`](./ProjectDependsOn)
+- [`ProjectDockerConfig`](./ProjectDockerConfig)
+- [`ProjectMetadataConfig`](./ProjectMetadataConfig)
+- [`ProjectToolchainsConfig`](./ProjectToolchainsConfig)
+- [`ProjectWorkspaceConfig`](./ProjectWorkspaceConfig)
+- [`StackType`](./StackType)
+- [`TaskConfig`](./TaskConfig)
+- [`TaskOptionsConfig`](./TaskOptionsConfig)

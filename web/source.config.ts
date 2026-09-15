@@ -14,6 +14,15 @@ const generator = createGenerator({
 	cache: createFileSystemGeneratorCache('node_modules/.fuma/typescript'),
 });
 
+export const api = defineDocs({
+	dir: 'content/api',
+	docs: {
+		postprocess: {
+			includeProcessedMarkdown: true,
+		},
+	},
+});
+
 export const docs = defineDocs({
 	dir: 'content/docs',
 	docs: {

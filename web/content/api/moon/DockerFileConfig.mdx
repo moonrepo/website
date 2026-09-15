@@ -1,0 +1,93 @@
+---
+title: DockerFileConfig
+---
+
+Configures `Dockerfile` generation. When configured at the workspace-level,
+applies to all projects, but can be overridden at the project-level.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`buildTask`](#buildtask) | [`Id`](./Id) | A task identifier within the current project for building the project. If not defined, will skip the build step. |
+| [`image`](#image) | `string` | The base Docker image to use. If not defined, will use the provided image from the first matching toolchain, otherwise defaults to "scratch". |
+| [`runPrune`](#runprune) | `boolean` | Run the `moon docker prune` command after building the project, but before starting it. @since 2.0.0 |
+| [`runSetup`](#runsetup) | `boolean` | Run the `moon docker setup` command after scaffolding, but before building the project. @since 2.0.0 |
+| [`startTask`](#starttask) | [`Id`](./Id) | A task identifier within the current project for starting the project within the `CMD` instruction. If not defined, will skip the start step and not include the `CMD` instruction. |
+| [`template`](#template) | `string` | A custom template file, relative from the workspace root, to use when rendering the `Dockerfile`. Powered by Tera. @since 2.0.0 |
+
+## Properties
+
+### `buildTask`
+
+> **Optional** · **Nullable**
+
+A task identifier within the current project for building the project.
+If not defined, will skip the build step.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`Id`](./Id) |
+
+### `image`
+
+> **Optional** · **Nullable**
+
+The base Docker image to use. If not defined, will use the provided image
+from the first matching toolchain, otherwise defaults to "scratch".
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+
+### `runPrune`
+
+> **Optional** · **Nullable**
+
+Run the `moon docker prune` command after building the
+project, but before starting it.
+@since 2.0.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+
+### `runSetup`
+
+> **Optional** · **Nullable**
+
+Run the `moon docker setup` command after scaffolding,
+but before building the project.
+@since 2.0.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+
+### `startTask`
+
+> **Optional** · **Nullable**
+
+A task identifier within the current project for starting the project
+within the `CMD` instruction. If not defined, will skip the start step
+and not include the `CMD` instruction.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`Id`](./Id) |
+
+### `template`
+
+> **Optional** · **Nullable**
+
+A custom template file, relative from the workspace root, to use when
+rendering the `Dockerfile`. Powered by Tera.
+@since 2.0.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+
+## References
+
+- [`Id`](./Id)

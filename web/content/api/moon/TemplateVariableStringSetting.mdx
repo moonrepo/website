@@ -1,0 +1,77 @@
+---
+title: TemplateVariableStringSetting
+---
+
+A string variable.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`default`](#default) | `string` | The default value of the variable if none was provided. |
+| [`internal`](#internal) | `boolean` | Marks the variable as internal, and won't be overwritten via CLI arguments. |
+| [`order`](#order) | `number` | The order in which variables should be prompted for. |
+| [`prompt`](#prompt) | `string` | Prompt the user for a value when the generator is running. |
+| [`required`](#required) | `boolean` | Marks the variable as required, and will not accept an empty value. |
+| [`type`](#type) | `"string"` |  |
+
+## Properties
+
+### `default`
+
+> **Required**
+
+The default value of the variable if none was provided.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+| Aliases | `defaultValue` |
+
+### `internal`
+
+> **Required**
+
+Marks the variable as internal, and won't be overwritten via CLI arguments.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+
+### `order`
+
+> **Nullable**
+
+The order in which variables should be prompted for.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `number` |
+
+### `prompt`
+
+> **Nullable**
+
+Prompt the user for a value when the generator is running.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+
+### `required`
+
+> **Nullable**
+
+Marks the variable as required, and will not accept an empty value.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+
+### `type`
+
+> **Required**
+
+| Attribute | Value |
+| --- | --- |
+| Type | `"string"` |

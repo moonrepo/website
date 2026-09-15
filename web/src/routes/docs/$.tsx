@@ -11,7 +11,7 @@ import {
 import { Suspense } from 'react';
 import browserCollections from '@/generated/browser';
 import { baseOptions } from '@/lib/layout.shared';
-import { source } from '@/lib/source';
+import { docsSource } from '@/lib/source';
 import { getMdxComponents } from '@/mdxComponents';
 
 export const Route = createFileRoute('/docs/$')({
@@ -31,7 +31,7 @@ const serverLoader = createServerFn({
 })
 	.inputValidator((slugs: string[]) => slugs)
 	.handler(async ({ data: slugs }) => {
-		const page = source.getPage(slugs);
+		const page = docsSource.getPage(slugs);
 
 		if (!page) {
 			throw notFound();
@@ -39,7 +39,7 @@ const serverLoader = createServerFn({
 
 		return {
 			path: page.path,
-			pageTree: await source.serializePageTree(source.getPageTree()),
+			pageTree: await docsSource.serializePageTree(docsSource.getPageTree()),
 		};
 	});
 

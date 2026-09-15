@@ -1,0 +1,33 @@
+---
+title: OwnersPaths
+---
+
+A mapping of file paths and file globs to owners.
+
+## Index
+
+| Variant | Type | Description |
+| --- | --- | --- |
+| [`list`](#list) | `string[]` | A list of file paths and glob patterns. The owner of these is the project-level `defaultOwner`. |
+| [`map`](#map) | `Record<string, string[]>` | A map of file paths and glob patterns to owners. |
+
+## Variants
+
+### `list`
+
+> **Default**
+
+A list of file paths and glob patterns. The owner of these
+is the project-level `defaultOwner`.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string[]` |
+
+### `map`
+
+A map of file paths and glob patterns to owners.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Record<string, string[]>` |

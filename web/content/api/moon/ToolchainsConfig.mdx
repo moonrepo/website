@@ -1,0 +1,79 @@
+---
+title: ToolchainsConfig
+---
+
+Configures all toolchains.
+Docs: https://moonrepo.dev/docs/config/toolchain
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`$schema`](#schema) | `string` |  |
+| [`extends`](#extends) | [`ExtendsFrom`](./ExtendsFrom) | Extends one or many toolchain configuration files. Supports a relative file path or a secure URL. @since 1.12.0 |
+| [`moon`](#moon) | [`MoonConfig`](./MoonConfig) | Configures moon itself. |
+| [`plugins`](#plugins) | `Record<Id, ToolchainPluginConfig>` | Configures and integrates toolchains into the system using a unique identifier. |
+| [`proto`](#proto) | [`ProtoConfig`](./ProtoConfig) | Configures how moon integrates with proto. |
+
+## Properties
+
+### `$schema`
+
+> **Optional**
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+| Default | `"./cache/schemas/toolchains.json"` |
+
+### `extends`
+
+> **Optional** · **Nullable**
+
+Extends one or many toolchain configuration files.
+Supports a relative file path or a secure URL.
+@since 1.12.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`ExtendsFrom`](./ExtendsFrom) |
+
+### `moon`
+
+> **Required**
+
+Configures moon itself.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`MoonConfig`](./MoonConfig) |
+
+### `plugins`
+
+> **Flattened**
+
+Configures and integrates toolchains into the system using
+a unique identifier.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Record<Id, ToolchainPluginConfig>` |
+| References | [`Id`](./Id), [`ToolchainPluginConfig`](./ToolchainPluginConfig) |
+
+### `proto`
+
+> **Required**
+
+Configures how moon integrates with proto.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`ProtoConfig`](./ProtoConfig) |
+
+## References
+
+- [`ExtendsFrom`](./ExtendsFrom)
+- [`Id`](./Id)
+- [`MoonConfig`](./MoonConfig)
+- [`ProtoConfig`](./ProtoConfig)
+- [`ToolchainPluginConfig`](./ToolchainPluginConfig)

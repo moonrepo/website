@@ -1,0 +1,38 @@
+---
+title: ExtensionPluginConfig
+---
+
+Configures an individual extension.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`config`](#config) | `Record<string, unknown>` | Arbitrary configuration that'll be passed to the WASM plugin. |
+| [`plugin`](#plugin) | [`PluginLocator`](./PluginLocator) | Location of the WASM plugin to use. |
+
+## Properties
+
+### `config`
+
+> **Flattened**
+
+Arbitrary configuration that'll be passed to the WASM plugin.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Record<string, unknown>` |
+
+### `plugin`
+
+> **Optional** · **Nullable**
+
+Location of the WASM plugin to use.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`PluginLocator`](./PluginLocator) |
+
+## References
+
+- [`PluginLocator`](./PluginLocator)

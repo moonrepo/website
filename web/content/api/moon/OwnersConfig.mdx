@@ -1,0 +1,77 @@
+---
+title: OwnersConfig
+---
+
+Defines ownership of source code within the current project, by mapping
+file paths and glob patterns to owners. An owner is either a user, team, or group.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`customGroups`](#customgroups) | `Record<string, string[]>` | `bitbucket-legacy` only. A map of custom groups (prefixed with `@@@`), to a list of user and normal groups. |
+| [`defaultOwner`](#defaultowner) | `string` | The default owner for `paths`. |
+| [`optional`](#optional) | `boolean` | GitLab only. Marks the code owners section as optional. |
+| [`paths`](#paths) | [`OwnersPaths`](./OwnersPaths) | A list or map of file paths and glob patterns to owners. When a list, the `defaultOwner` is the owner, and each item is a path. When a map, the key is a path, and the value is a list of owners. |
+| [`requiredApprovals`](#requiredapprovals) | `number` | `bitbucket-legacy` and GitLab only. The number of approvals required for the request to be satisfied. For `bitbucket-legacy`, utilizes the `Check()` condition. For GitLab, marks the code owners section as required. |
+
+## Properties
+
+### `customGroups`
+
+> **Optional**
+
+`bitbucket-legacy` only. A map of custom groups (prefixed with `@@@`),
+to a list of user and normal groups.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Record<string, string[]>` |
+
+### `defaultOwner`
+
+> **Optional** · **Nullable**
+
+The default owner for `paths`.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+
+### `optional`
+
+> **Optional**
+
+GitLab only. Marks the code owners section as optional.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+
+### `paths`
+
+> **Required**
+
+A list or map of file paths and glob patterns to owners.
+When a list, the `defaultOwner` is the owner, and each item is a path.
+When a map, the key is a path, and the value is a list of owners.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`OwnersPaths`](./OwnersPaths) |
+
+### `requiredApprovals`
+
+> **Optional** · **Nullable**
+
+`bitbucket-legacy` and GitLab only. The number of approvals required
+for the request to be satisfied. For `bitbucket-legacy`, utilizes the
+`Check()` condition. For GitLab, marks the code owners section as required.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `number` |
+
+## References
+
+- [`OwnersPaths`](./OwnersPaths)

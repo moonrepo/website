@@ -1,0 +1,39 @@
+---
+title: DockerPruneConfig
+---
+
+Configures aspects of the Docker pruning process.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`deleteVendorDirectories`](#deletevendordirectories) | `boolean` | Automatically delete vendor directories (package manager dependencies, build targets, etc) while pruning. This is handled by each toolchain plugin and not moon directly. |
+| [`installToolchainDependencies`](#installtoolchaindependencies) | `boolean` | Automatically install production dependencies for all required toolchain's of the focused projects within the Docker build. |
+
+## Properties
+
+### `deleteVendorDirectories`
+
+> **Optional**
+
+Automatically delete vendor directories (package manager
+dependencies, build targets, etc) while pruning. This is
+handled by each toolchain plugin and not moon directly.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+| Default | `true` |
+
+### `installToolchainDependencies`
+
+> **Optional**
+
+Automatically install production dependencies for all required
+toolchain's of the focused projects within the Docker build.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+| Default | `true` |

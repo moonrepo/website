@@ -1,0 +1,134 @@
+---
+title: PipelineConfig
+---
+
+Configures aspects of the action pipeline.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`autoCleanCache`](#autocleancache) | `boolean` | Automatically clean the cache after every task run. @since 1.24.0 |
+| [`cacheLifetime`](#cachelifetime) | `string` | The lifetime in which task outputs will be cached. |
+| [`inheritColorsForPipedTasks`](#inheritcolorsforpipedtasks) | `boolean` | Automatically inherit color settings for all tasks being ran. |
+| [`installDependencies`](#installdependencies) | [`PipelineActionSwitch`](./PipelineActionSwitch) | Run the `InstallDependencies` actions for each running task when changes to lockfiles and manifests are detected. @since 1.34.0 |
+| [`killProcessThreshold`](#killprocessthreshold) | `number` | A threshold in milliseconds in which to force kill running child processes after the pipeline receives an external signal. A value of 0 will not kill the process and let them run to completion. |
+| [`logRunningCommand`](#logrunningcommand) | `boolean` | Logs the task's command and arguments when running the task. |
+| [`syncProjectDependencies`](#syncprojectdependencies) | `boolean` | When creating `SyncProject` actions, recursively create a `SyncProject` action for each project dependency, and link them as a relationship. @since 1.34.0 |
+| [`syncProjects`](#syncprojects) | [`PipelineActionSwitch`](./PipelineActionSwitch) | Run the `SyncProject` actions in the pipeline for each owning project of a running task. @since 1.34.0 |
+| [`syncWorkspace`](#syncworkspace) | `boolean` | Run the `SyncWorkspace` action before all actions in the pipeline. @since 1.34.0 |
+
+## Properties
+
+### `autoCleanCache`
+
+> **Optional**
+
+Automatically clean the cache after every task run.
+@since 1.24.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+| Default | `true` |
+| Environment variable | `MOON_PIPELINE_AUTO_CLEAN_CACHE` |
+
+### `cacheLifetime`
+
+> **Optional**
+
+The lifetime in which task outputs will be cached.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+| Default | `"7 days"` |
+| Environment variable | `MOON_PIPELINE_CACHE_LIFETIME` |
+
+### `inheritColorsForPipedTasks`
+
+> **Optional**
+
+Automatically inherit color settings for all tasks being ran.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+| Default | `true` |
+
+### `installDependencies`
+
+> **Nullable**
+
+Run the `InstallDependencies` actions for each running task
+when changes to lockfiles and manifests are detected.
+@since 1.34.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`PipelineActionSwitch`](./PipelineActionSwitch) |
+
+### `killProcessThreshold`
+
+> **Optional**
+
+A threshold in milliseconds in which to force kill running child
+processes after the pipeline receives an external signal. A value
+of 0 will not kill the process and let them run to completion.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `number` |
+| Default | `2000` |
+| Environment variable | `MOON_PIPELINE_KILL_PROCESS_THRESHOLD` |
+
+### `logRunningCommand`
+
+> **Optional**
+
+Logs the task's command and arguments when running the task.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+
+### `syncProjectDependencies`
+
+> **Optional**
+
+When creating `SyncProject` actions, recursively create a `SyncProject`
+action for each project dependency, and link them as a relationship.
+@since 1.34.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+| Default | `true` |
+
+### `syncProjects`
+
+> **Nullable**
+
+Run the `SyncProject` actions in the pipeline for each owning project
+of a running task.
+@since 1.34.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`PipelineActionSwitch`](./PipelineActionSwitch) |
+
+### `syncWorkspace`
+
+> **Optional**
+
+Run the `SyncWorkspace` action before all actions in the pipeline.
+@since 1.34.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+| Default | `true` |
+
+## References
+
+- [`PipelineActionSwitch`](./PipelineActionSwitch)

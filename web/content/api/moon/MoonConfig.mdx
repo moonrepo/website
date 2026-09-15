@@ -1,0 +1,36 @@
+---
+title: MoonConfig
+---
+
+Configures how and where moon updates will be received.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`downloadUrl`](#downloadurl) | `string` | A secure URL for downloading the moon binary itself. |
+| [`manifestUrl`](#manifesturl) | `string` | A secure URL to lookup the latest available version. |
+
+## Properties
+
+### `downloadUrl`
+
+> **Optional**
+
+A secure URL for downloading the moon binary itself.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+| Default | `"https://github.com/moonrepo/moon/releases/latest/download/{file}"` |
+
+### `manifestUrl`
+
+> **Optional**
+
+A secure URL to lookup the latest available version.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+| Default | `"https://launch.moonrepo.app/moon/check_version"` |

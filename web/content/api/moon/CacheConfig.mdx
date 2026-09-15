@@ -1,0 +1,48 @@
+---
+title: CacheConfig
+---
+
+Configures aspects of the caching engine and layer.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`cas`](#cas) | [`CacheCasConfig`](./CacheCasConfig) | Configures aspects of the content-addressable storage (CAS) cache. @since 2.3.0 |
+| [`sharedWorktreeCache`](#sharedworktreecache) | `boolean` | Whether to use a shared worktree cache. When enabled, the cache is shared between all VCS worktrees on the same machine. When disabled, each worktree has its own cache. |
+
+## Properties
+
+### `cas`
+
+> **Required**
+
+Configures aspects of the content-addressable storage (CAS) cache.
+@since 2.3.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`CacheCasConfig`](./CacheCasConfig) |
+
+### `sharedWorktreeCache`
+
+> **Required**
+
+Whether to use a shared worktree cache. When enabled, the cache is
+shared between all VCS worktrees on the same machine. When disabled,
+each worktree has its own cache.
+
+Only blobs and manifests will be shared, as they are portable.
+Hashes, locks, states, and more will not be, as they are worktree-specific.
+
+@since 2.5.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+| Aliases | `unstable_sharedWorktreeCache` |
+| Environment variable | `MOON_CACHE_SHARED_WORKTREE_CACHE` |
+
+## References
+
+- [`CacheCasConfig`](./CacheCasConfig)
