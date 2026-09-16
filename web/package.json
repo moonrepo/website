@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build && tsc --noEmit",
+    "lint:links": "node scripts/validateLinks.ts",
     "start": "node .output/server/index.mjs"
   },
   "dependencies": {
@@ -33,6 +34,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.4",
     "hast-util-to-jsx-runtime": "^2.3.6",
+    "next-validate-link": "^1.6.7",
     "style-to-js": "^1.1.21",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.1",
