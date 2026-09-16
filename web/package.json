@@ -16,7 +16,7 @@
     "algoliasearch": "^5.49.1",
     "fumadocs-core": "^16.15.11",
     "fumadocs-mdx": "^14.3.2",
-    "fumadocs-typescript": "^5.3.0",
+    "fumadocs-typescript": "^5.4.1",
     "fumadocs-ui": "npm:@fumadocs/base-ui@^16.15.11",
     "lucide-react": "^0.577.0",
     "lucide-static": "^0.577.0",
