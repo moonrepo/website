@@ -3,6 +3,7 @@ import {
 	defineCollections,
 	defineConfig,
 	defineDocs,
+	frontmatterSchema,
 } from 'fumadocs-mdx/config';
 import {
 	createFileSystemGeneratorCache,
@@ -35,6 +36,7 @@ export const docs = defineDocs({
 export const blog = defineCollections({
 	type: 'doc',
 	dir: 'content/blog',
+	schema: frontmatterSchema,
 	// schema: frontmatterSchema.extend({
 	// 	author: z.string(),
 	// 	date: z.iso.date().or(z.date()),
