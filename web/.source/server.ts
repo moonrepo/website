@@ -6,7 +6,7 @@ import type * as Config from '../source.config';
 const create = server<typeof Config, import("fumadocs-mdx/runtime/types").InternalTypeConfig & {
   DocData: {
   }
-}>({"doc":{"passthroughs":["extractedReferences"]}});
+}>();
 
 export const api = await create.docs("api", "content/api", import.meta.glob(["./**/*.{json,yaml}"], {
   "base": "./../content/api",
