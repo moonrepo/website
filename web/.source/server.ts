@@ -19,6 +19,12 @@ export const api = await create.docs("api", "content/api", import.meta.glob(["./
   "eager": true
 }));
 
+export const blog = await create.doc("blog", "content/blog", import.meta.glob(["./**/*.{mdx,md}"], {
+  "base": "./../content/blog",
+  "query": "?collection=blog",
+  "eager": true
+}));
+
 export const docs = await create.docs("docs", "content/docs", import.meta.glob(["./**/*.{json,yaml}"], {
   "base": "./../content/docs",
   "query": "?collection=docs",
@@ -27,11 +33,5 @@ export const docs = await create.docs("docs", "content/docs", import.meta.glob([
 }), import.meta.glob(["./**/*.{mdx,md}"], {
   "base": "./../content/docs",
   "query": "?collection=docs",
-  "eager": true
-}));
-
-export const blog = await create.doc("blog", "content/blog", import.meta.glob(["./**/*.{mdx,md}"], {
-  "base": "./../content/blog",
-  "query": "?collection=blog",
   "eager": true
 }));
