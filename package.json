@@ -4,11 +4,17 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "deps": "pnpm update --latest --interactive --recursive"
+    "deps": "pnpm update --latest --interactive --recursive",
+    "build": "cd web && pnpm run build",
+    "start": "cd web && pnpm run start"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.13",
     "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=24.9.0",
+    "pnpm": ">=10.18.0"
   },
   "packageManager": "pnpm@10.18.0"
 }
