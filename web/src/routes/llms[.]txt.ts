@@ -6,7 +6,10 @@ export const Route = createFileRoute('/llms.txt')({
 	server: {
 		handlers: {
 			GET() {
-				return new Response(llms(docsSource).index() + "\n\n" + llms(apiSource).index());
+				const docs = llms(docsSource).index();
+				const api = llms(apiSource).index();
+
+				return new Response(`${docs}\n\n${api}`);
 			},
 		},
 	},

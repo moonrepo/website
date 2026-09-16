@@ -1,5 +1,5 @@
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
-import { BookIcon, NewspaperIcon, CodeIcon } from 'lucide-react';
+import { BookIcon, CodeIcon, NewspaperIcon } from 'lucide-react';
 
 export function baseOptions(): BaseLayoutProps {
 	return {
