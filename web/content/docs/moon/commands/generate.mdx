@@ -5,14 +5,14 @@ title: moon generate
 import { TypeLabel } from "@/components/TypeLabel";
 
 The `moon generate` (or `moon g`) command scaffolds files and folders into your workspace from a
-pre-defined [template](../guides/codegen), using an interactive series of prompts. Templates are
-located based on the [`generator.templates`](/api/moon/GeneratorConfig#templates) setting in [`.moon/workspace.config`](../workspace), and can live on the
+pre-defined [template](../guides/codegen.mdx), using an interactive series of prompts. Templates are
+located based on the [`generator.templates`](/api/moon/GeneratorConfig#templates) setting in [`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>), and can live on the
 local file system, a Git repository, or an npm package.
 
 When run, moon will:
 
 1. Prompt you to select which template to generate from, if an `id` argument isn't provided.
-2. Gather values for every variable defined in the template's [`template.config`](../guides/codegen), either from
+2. Gather values for every variable defined in the template's [`template.config`](../guides/codegen.mdx), either from
    passthrough arguments, variable defaults, or interactive prompts.
 3. Determine the destination directory, from `--to`, the template's configured [`destination`](/api/moon/TemplateConfig#destination), or
    an interactive prompt.
@@ -63,8 +63,8 @@ $ moon generate react-app --template
 ## Arguments
 
 - `[ID]` - ID of the template to generate. When omitted, you'll be prompted to select one from
-  the templates available in [`generator.templates`](/api/moon/GeneratorConfig#templates) (see [`moon templates`](./templates) to list
-  them, or [`moon template`](./template) to inspect one).
+  the templates available in [`generator.templates`](/api/moon/GeneratorConfig#templates) (see [`moon templates`](./templates.mdx) to list
+  them, or [`moon template`](./template.mdx) to inspect one).
 - `-- [VARS...]` - Additional arguments, in `--name value` form, to define as template variable
   values, bypassing their interactive prompts.
 

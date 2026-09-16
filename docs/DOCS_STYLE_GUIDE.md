@@ -38,8 +38,10 @@ When referencing settings (fields and variants) within a configuration type (str
 When referencing commands in documentation, like `moon exec`, always link to the relevant command page. For example, instead of just writing `moon exec`, write the following markdown:
 
 ```markdown
-[`moon exec`](../commands/exec)
+[`moon exec`](../commands/exec.mdx)
 ```
+
+Links between pages must be relative paths to the target `.mdx` file (not URLs), including any `(group)` folders, like `../(fundamentals)/task.mdx`. They are resolved to page URLs at build time, and the build fails if the file does not exist.
 
 ## Components
 

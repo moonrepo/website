@@ -4,13 +4,13 @@ title: moon check
 
 import { TypeLabel } from "@/components/TypeLabel";
 
-Run all build and test related [tasks](../task) for one or many projects. This is a convenience
+Run all build and test related [tasks](<../(fundamentals)/task.mdx>) for one or many projects. This is a convenience
 command for verifying the current state of a project (or the entire workspace), without having to
-know or type out every individual [`moon run`](./run) target.
+know or type out every individual [`moon run`](./run.mdx) target.
 
 Internally, `check` scans the requested project(s), collects every task marked with a `type` of
 `build` or `test` (or inferred as such), and funnels them into the same
-[action pipeline](./exec) used by [`moon run`](./run) and [`moon exec`](./exec) — meaning all the
+[action pipeline](./exec.mdx) used by [`moon run`](./run.mdx) and [`moon exec`](./exec.mdx) — meaning all the
 options below (affected checks, caching, parallelism, and so on) behave identically to those
 commands. The pipeline is always run with `--on-failure=bail`, so the first failing task stops the
 remaining ones.
@@ -43,7 +43,7 @@ This command can also be run with the `moon c` alias.
 ## Arguments
 
 - `[IDS...]` - List of explicit project IDs to check, as defined in
-  [`projects`](../workspace#project-discovery). Mutually exclusive with `--all` and `--closest`.
+  [`projects`](<../(fundamentals)/workspace.mdx#project-discovery>). Mutually exclusive with `--all` and `--closest`.
 
 ## Options
 

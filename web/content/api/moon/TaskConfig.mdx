@@ -8,21 +8,21 @@ Configures a task to be ran within the action pipeline.
 
 | Property | Type | Description |
 | --- | --- | --- |
-| [`args`](#args) | [`TaskArgs`](./TaskArgs) | Arguments to pass to the command when it's ran. Can be defined as a string, or a list of individual arguments. |
+| [`args`](#args) | [`TaskArgs`](./TaskArgs.mdx) | Arguments to pass to the command when it's ran. Can be defined as a string, or a list of individual arguments. |
 | [`checks`](#checks) | `TaskCheck[]` | Checks are shell scripts that run before the task is executed, and are categorized into three types: conditions, requirements, and fingerprints. Depending on the result of the script and the type of check, the task may be skipped, will fail, or continue. @since 2.4.0 |
-| [`command`](#command) | [`TaskArgs`](./TaskArgs) | The command line to execute when the task is ran. Supports the command (executable) with or without arguments. Can be defined as a string, or a list of individual arguments. |
+| [`command`](#command) | [`TaskArgs`](./TaskArgs.mdx) | The command line to execute when the task is ran. Supports the command (executable) with or without arguments. Can be defined as a string, or a list of individual arguments. |
 | [`deps`](#deps) | `TaskDependency[]` | Other tasks that this task depends on, and must run to completion before this task is ran. Can depend on sibling tasks, or tasks in other projects, using targets. |
 | [`description`](#description) | `string` | A human-readable description about the task. @since 1.22.0 |
 | [`env`](#env) | `Record<string, string \| null>` | A map of environment variables that will be set in the child process when the task is ran. |
-| [`extends`](#extends) | [`Id`](./Id) | Extends settings from a sibling task by identifier. |
+| [`extends`](#extends) | [`Id`](./Id.mdx) | Extends settings from a sibling task by identifier. |
 | [`inputs`](#inputs) | `Input[]` | A list of inputs that will be hashing and compared against changed files to determine affected status. If affected, the task will run, otherwise it will exit early. An input can be a literal file path, a glob pattern, environment variable, and more. |
-| [`options`](#options) | [`TaskOptionsConfig`](./TaskOptionsConfig) | Options to control task inheritance, execution, and more. |
+| [`options`](#options) | [`TaskOptionsConfig`](./TaskOptionsConfig.mdx) | Options to control task inheritance, execution, and more. |
 | [`outputs`](#outputs) | `Output[]` | A list of outputs that will be created when the task has successfully ran. An output can be a literal file path, or a glob pattern. |
-| [`preset`](#preset) | [`TaskPreset`](./TaskPreset) | The preset to apply for the task. Will inherit default options. |
+| [`preset`](#preset) | [`TaskPreset`](./TaskPreset.mdx) | The preset to apply for the task. Will inherit default options. |
 | [`script`](#script) | `string` | A script to run within a shell. A script is anything from a single command, to multiple commands, or shell specific syntax. Does not support arguments, merging, or inheritance. This overrides `command` and `args`. @since 1.27.0 |
 | [`tags`](#tags) | `Id[]` | A list of tags to categorize this task with. Tags are inherited and can be used for querying and filtering tasks. @since 2.3.0 |
 | [`toolchains`](#toolchains) | `Id \| Id[]` | A toolchain, or list of toolchains, in which the task will inherit functionality from. |
-| [`type`](#type) | [`TaskType`](./TaskType) | The type of task, primarily used for categorical reasons. When not provided, will be automatically determined based on configured outputs. |
+| [`type`](#type) | [`TaskType`](./TaskType.mdx) | The type of task, primarily used for categorical reasons. When not provided, will be automatically determined based on configured outputs. |
 
 ## Properties
 
@@ -35,7 +35,7 @@ defined as a string, or a list of individual arguments.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`TaskArgs`](./TaskArgs) |
+| Type | [`TaskArgs`](./TaskArgs.mdx) |
 
 ### `checks`
 
@@ -50,7 +50,7 @@ type of check, the task may be skipped, will fail, or continue.
 | Attribute | Value |
 | --- | --- |
 | Type | `TaskCheck[]` |
-| References | [`TaskCheck`](./TaskCheck) |
+| References | [`TaskCheck`](./TaskCheck.mdx) |
 
 ### `command`
 
@@ -62,7 +62,7 @@ Can be defined as a string, or a list of individual arguments.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`TaskArgs`](./TaskArgs) |
+| Type | [`TaskArgs`](./TaskArgs.mdx) |
 
 ### `deps`
 
@@ -75,7 +75,7 @@ other projects, using targets.
 | Attribute | Value |
 | --- | --- |
 | Type | `TaskDependency[]` |
-| References | [`TaskDependency`](./TaskDependency) |
+| References | [`TaskDependency`](./TaskDependency.mdx) |
 | Aliases | `dependsOn` |
 
 ### `description`
@@ -108,7 +108,7 @@ Extends settings from a sibling task by identifier.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`Id`](./Id) |
+| Type | [`Id`](./Id.mdx) |
 
 ### `inputs`
 
@@ -126,7 +126,7 @@ explicit list of inputs are considered.
 | Attribute | Value |
 | --- | --- |
 | Type | `Input[]` |
-| References | [`Input`](./Input) |
+| References | [`Input`](./Input.mdx) |
 
 ### `options`
 
@@ -136,7 +136,7 @@ Options to control task inheritance, execution, and more.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`TaskOptionsConfig`](./TaskOptionsConfig) |
+| Type | [`TaskOptionsConfig`](./TaskOptionsConfig.mdx) |
 
 ### `outputs`
 
@@ -148,7 +148,7 @@ An output can be a literal file path, or a glob pattern.
 | Attribute | Value |
 | --- | --- |
 | Type | `Output[]` |
-| References | [`Output`](./Output) |
+| References | [`Output`](./Output.mdx) |
 
 ### `preset`
 
@@ -158,7 +158,7 @@ The preset to apply for the task. Will inherit default options.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`TaskPreset`](./TaskPreset) |
+| Type | [`TaskPreset`](./TaskPreset.mdx) |
 | Values | `"utility"`, `"server"` |
 
 ### `script`
@@ -185,7 +185,7 @@ be used for querying and filtering tasks.
 | Attribute | Value |
 | --- | --- |
 | Type | `Id[]` |
-| References | [`Id`](./Id) |
+| References | [`Id`](./Id.mdx) |
 
 ### `toolchains`
 
@@ -197,7 +197,7 @@ functionality from.
 | Attribute | Value |
 | --- | --- |
 | Type | `Id \| Id[]` |
-| References | [`Id`](./Id) |
+| References | [`Id`](./Id.mdx) |
 | Aliases | `toolchain` |
 
 ### `type`
@@ -209,18 +209,18 @@ will be automatically determined based on configured outputs.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`TaskType`](./TaskType) |
+| Type | [`TaskType`](./TaskType.mdx) |
 | Default | `"test"` |
 | Values | `"build"`, `"run"`, `"test"` |
 
 ## References
 
-- [`Id`](./Id)
-- [`Input`](./Input)
-- [`Output`](./Output)
-- [`TaskArgs`](./TaskArgs)
-- [`TaskCheck`](./TaskCheck)
-- [`TaskDependency`](./TaskDependency)
-- [`TaskOptionsConfig`](./TaskOptionsConfig)
-- [`TaskPreset`](./TaskPreset)
-- [`TaskType`](./TaskType)
+- [`Id`](./Id.mdx)
+- [`Input`](./Input.mdx)
+- [`Output`](./Output.mdx)
+- [`TaskArgs`](./TaskArgs.mdx)
+- [`TaskCheck`](./TaskCheck.mdx)
+- [`TaskDependency`](./TaskDependency.mdx)
+- [`TaskOptionsConfig`](./TaskOptionsConfig.mdx)
+- [`TaskPreset`](./TaskPreset.mdx)
+- [`TaskType`](./TaskType.mdx)

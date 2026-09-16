@@ -4,9 +4,9 @@ title: moon query affected
 
 import { TypeLabel } from "@/components/TypeLabel";
 
-Determine which [projects](../../project) and [tasks](../../task) are affected by changes in the
-current [VCS](../../workspace#version-control-integration) working tree, and print the result as
-JSON, like every other [`moon query`](../query) subcommand. This is the same affected detection logic used internally by [`moon ci`](../ci) and
+Determine which [projects](<../../(fundamentals)/project.mdx>) and [tasks](<../../(fundamentals)/task.mdx>) are affected by changes in the
+current [VCS](<../../(fundamentals)/workspace.mdx#version-control-integration>) working tree, and print the result as
+JSON, like every other [`moon query`](../query.mdx) subcommand. This is the same affected detection logic used internally by [`moon ci`](../ci.mdx) and
 `--affected` flags elsewhere in moon, exposed as a standalone query for scripting and tooling.
 
 Under the hood, this command first collects a list of changed files (from the local index, or a
@@ -15,7 +15,7 @@ project and task graphs to determine which nodes are affected by those files, op
 the result to include upstream dependencies and downstream dependents.
 
 If data is piped into this command via stdin (as produced by
-[`moon query changed-files`](./changed-files)), it's used as the list of changed files instead of
+[`moon query changed-files`](./changed-files.mdx)), it's used as the list of changed files instead of
 querying the VCS directly, allowing the 2 commands to be composed together.
 
 ```shell

@@ -12,7 +12,7 @@ $ moon mcp
 
 This command is not meant to be run manually in a terminal. Instead, your editor or agent client
 spawns `moon mcp` as a subprocess and communicates with it using the MCP protocol. When started,
-the command loads the current [workspace graph](../workspace) in the background, then blocks and
+the command loads the current [workspace graph](<../(fundamentals)/workspace.mdx>) in the background, then blocks and
 listens for tool requests on stdin/stdout until the parent process sends a shutdown signal, at
 which point the server aborts and the command exits.
 
@@ -59,22 +59,22 @@ so they're safe to call repeatedly without mutating the workspace.
   dependencies.
 - `get_tasks` - Get a lightweight fragment of every task in the workspace, optionally including
   internal tasks.
-- `get_template` - Get a [template's](../guides/codegen) full variable schema by `id`,
+- `get_template` - Get a [template's](../guides/codegen.mdx) full variable schema by `id`,
   including types, defaults, prompts, required flags, and enum values, with any [`extends`](/api/moon/TemplateConfig#extends) chain
   already resolved.
 - `get_templates` - List all available templates with their id, title, and description, optionally
-  filtered with a case-insensitive regular expression (mirrors [`moon templates`](./templates)).
+  filtered with a case-insensitive regular expression (mirrors [`moon templates`](./templates.mdx)).
 - `get_changed_files` - Get the list of files changed between a base and head revision, defaulting
   to the workspace's touched files when no revisions are provided (mirrors the logic behind
   `--affected`).
 - `sync_projects` - Run the sync-project action for one, many, or (when no ids are given) all
-  projects, and return the resulting actions (mirrors [`moon sync projects`](./sync)).
+  projects, and return the resulting actions (mirrors [`moon sync projects`](./sync.mdx)).
 - `sync_workspace` - Run the sync-workspace action and return the resulting actions (mirrors
-  [`moon sync workspace`](./sync)).
+  [`moon sync workspace`](./sync.mdx)).
 - `generate` - Generate or scaffold code from a template by shelling out to
-  [`moon generate`](./generate), forwarding a destination path, variables, and `--dry-run` or
+  [`moon generate`](./generate.mdx), forwarding a destination path, variables, and `--dry-run` or
   `--force` as needed.
 
 Because the server is just another moon process, all of these tools respect the same
-[`.moon`](../config) configuration, toolchains, and project/task graph as running the equivalent
+[`.moon`](<../(fundamentals)/config.mdx>) configuration, toolchains, and project/task graph as running the equivalent
 command directly.

@@ -5,10 +5,10 @@ title: moon query changed-files
 import { TypeLabel } from "@/components/TypeLabel";
 
 Query the list of files that have changed according to your
-[VCS](../../workspace#version-control-integration) (Git), and print the result as JSON, like every
-other [`moon query`](../query) subcommand. This is the
-same logic that powers affected detection throughout moon ([`moon ci`](../ci), [`moon check --affected`](../check),
-[`moon query affected`](./affected), and so on), exposed as a standalone command so it can be
+[VCS](<../../(fundamentals)/workspace.mdx#version-control-integration>) (Git), and print the result as JSON, like every
+other [`moon query`](../query.mdx) subcommand. This is the
+same logic that powers affected detection throughout moon ([`moon ci`](../ci.mdx), [`moon check --affected`](../check.mdx),
+[`moon query affected`](./affected.mdx), and so on), exposed as a standalone command so it can be
 inspected or reused independently.
 
 Changed files are gathered using the following logic:
@@ -16,7 +16,7 @@ Changed files are gathered using the following logic:
 - If neither `--base` nor `--head` is provided (or the `MOON_BASE`/`MOON_HEAD` environment
   variables), and the current branch is the workspace's default branch, and `--default-branch` is
   enabled, files are compared against the previous revision (`HEAD~1`). This mirrors what
-  [continuous integration](../ci) uses by default.
+  [continuous integration](../ci.mdx) uses by default.
 - If `--local` is enabled (and neither `--base`, `--head`, nor `MOON_BASE`/`MOON_HEAD` are set),
   only files from your local working tree are returned (equivalent to `git status`).
 - Otherwise, files are diffed between `--base` (defaulting to the workspace's configured [`vcs.defaultBranch`](/api/moon/VcsConfig#defaultbranch))

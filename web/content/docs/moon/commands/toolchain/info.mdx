@@ -2,11 +2,11 @@
 title: moon toolchain info
 ---
 
-Show detailed information about a [toolchain](../../toolchain) plugin registered with
-[`moon toolchain`](../toolchain): its description, ID,
+Show detailed information about a [toolchain](<../../(fundamentals)/toolchain.mdx>) plugin registered with
+[`moon toolchain`](../toolchain.mdx): its description, ID,
 display name, plugin version, configuration schema (if any), and which of the toolchain API tiers
 it implements. To gather this, moon downloads the toolchain's WASM plugin (the same as
-[`moon toolchain add`](./add) would), and inspects which functions it exports.
+[`moon toolchain add`](./add.mdx) would), and inspects which functions it exports.
 
 For moon's built-in toolchains, the `plugin` argument can be omitted, as moon already knows the
 locator to use. For third-party or custom toolchains, `plugin` is required and must be a valid
@@ -30,7 +30,7 @@ The output is broken down into the three toolchain API tiers:
   implemented, which determines whether moon can manage the tool's version for you.
 
 This command does not modify the workspace; it's purely informational, and is useful for verifying
-a toolchain plugin's capabilities before running [`moon toolchain add`](./add).
+a toolchain plugin's capabilities before running [`moon toolchain add`](./add.mdx).
 
 ## Arguments
 

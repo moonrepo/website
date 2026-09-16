@@ -10,6 +10,7 @@ import {
 	createGenerator,
 	remarkAutoTypeTable,
 } from 'fumadocs-typescript';
+import { remarkRelativeLinks } from './src/lib/remarkRelativeLinks';
 
 const generator = createGenerator({
 	cache: createFileSystemGeneratorCache('node_modules/.fuma/typescript'),
@@ -45,6 +46,6 @@ export const blog = defineCollections({
 
 export default defineConfig({
 	mdxOptions: applyMdxPreset({
-		remarkPlugins: [[remarkAutoTypeTable, { generator }]],
+		remarkPlugins: [remarkRelativeLinks, [remarkAutoTypeTable, { generator }]],
 	}),
 });

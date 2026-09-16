@@ -8,11 +8,11 @@ Configures the version control system (VCS).
 
 | Property | Type | Description |
 | --- | --- | --- |
-| [`client`](#client) | [`VcsClient`](./VcsClient) | The VCS client being utilized by the repository. |
+| [`client`](#client) | [`VcsClient`](./VcsClient.mdx) | The VCS client being utilized by the repository. |
 | [`defaultBranch`](#defaultbranch) | `string` | The default branch / base. |
-| [`hookFormat`](#hookformat) | [`VcsHookFormat`](./VcsHookFormat) | The format to use for generated VCS hook files. @since 1.29.0 |
+| [`hookFormat`](#hookformat) | [`VcsHookFormat`](./VcsHookFormat.mdx) | The format to use for generated VCS hook files. @since 1.29.0 |
 | [`hooks`](#hooks) | `Record<string, string[]>` | A map of hooks to a list of commands to run when the hook is triggered. @since 1.9.0 |
-| [`provider`](#provider) | [`VcsProvider`](./VcsProvider) | The upstream version control provider, where the repository source code is stored. @since 1.8.0 |
+| [`provider`](#provider) | [`VcsProvider`](./VcsProvider.mdx) | The upstream version control provider, where the repository source code is stored. @since 1.8.0 |
 | [`remoteCandidates`](#remotecandidates) | `string[]` | List of remote's in which to compare branches against. |
 | [`sync`](#sync) | `boolean` | Automatically generate hooks and scripts during a sync operation, based on the `hooks` setting. @since 1.9.0 |
 
@@ -26,7 +26,7 @@ The VCS client being utilized by the repository.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`VcsClient`](./VcsClient) |
+| Type | [`VcsClient`](./VcsClient.mdx) |
 | Default | `"git"` |
 | Values | `"git"` |
 
@@ -50,7 +50,7 @@ The format to use for generated VCS hook files.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`VcsHookFormat`](./VcsHookFormat) |
+| Type | [`VcsHookFormat`](./VcsHookFormat.mdx) |
 | Default | `"native"` |
 | Values | `"bash"`, `"native"` |
 
@@ -75,7 +75,7 @@ source code is stored.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`VcsProvider`](./VcsProvider) |
+| Type | [`VcsProvider`](./VcsProvider.mdx) |
 | Default | `"github"` |
 | Values | `"bitbucket"`, `"bitbucket-legacy"`, `"github"`, `"gitlab"`, `"other"` |
 
@@ -103,6 +103,6 @@ based on the `hooks` setting.
 
 ## References
 
-- [`VcsClient`](./VcsClient)
-- [`VcsHookFormat`](./VcsHookFormat)
-- [`VcsProvider`](./VcsProvider)
+- [`VcsClient`](./VcsClient.mdx)
+- [`VcsHookFormat`](./VcsHookFormat.mdx)
+- [`VcsProvider`](./VcsProvider.mdx)

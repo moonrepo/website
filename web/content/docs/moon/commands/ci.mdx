@@ -5,8 +5,8 @@ title: moon ci
 import { TypeLabel } from "@/components/TypeLabel";
 
 Run tasks in a continuous integration (CI) environment, with sane defaults tailored for that
-context. Like [`moon check`](./check), this is a thin wrapper around the same
-[action pipeline](./exec) used by [`moon run`](./run) and [`moon exec`](./exec), but it pre-fills a
+context. Like [`moon check`](./check.mdx), this is a thin wrapper around the same
+[action pipeline](./exec.mdx) used by [`moon run`](./run.mdx) and [`moon exec`](./exec.mdx), but it pre-fills a
 handful of options so that a single `moon ci` invocation is typically all a CI pipeline needs.
 
 Compared to running tasks directly, `moon ci`:
@@ -18,7 +18,7 @@ Compared to running tasks directly, `moon ci`:
   `--head` aren't explicitly provided.
 - Always respects each task's [`options.runInCI`](/api/moon/TaskOptionsConfig#runinci) setting, so tasks explicitly excluded
   from CI never run.
-- Forces the pipeline into CI mode (as if `--ci` were passed to [`moon exec`](./exec)), which
+- Forces the pipeline into CI mode (as if `--ci` were passed to [`moon exec`](./exec.mdx)), which
   affects how the console renders output and how other moon features detect a CI environment.
 - Continues running remaining tasks after a failure, instead of bailing on the first one, so a
   single broken task doesn't hide the results of the others.
@@ -46,12 +46,12 @@ $ moon ci --base main --head HEAD
 $ moon ci --job 0 --job-total 2
 ```
 
-See the [continuous integration guide](../guides/ci) for a deeper walkthrough of wiring `moon ci`
+See the [continuous integration guide](../guides/ci.mdx) for a deeper walkthrough of wiring `moon ci`
 into common CI providers, including sharding examples.
 
 ## Arguments
 
-- `[TARGETS...]` - List of explicit task [targets](../target) to run. When omitted, every task in
+- `[TARGETS...]` - List of explicit task [targets](<../(fundamentals)/target.mdx>) to run. When omitted, every task in
   the workspace is considered, subject to affected and [`options.runInCI`](/api/moon/TaskOptionsConfig#runinci) filtering.
 
 ## Options
@@ -77,7 +77,7 @@ into common CI providers, including sharding examples.
 
 - `--downstream` <TypeLabel type="none | direct | deep" /> - Control the depth of downstream
   dependents to include in the action graph. Aliased as `--dependents`. Defaults to `direct` (unlike
-  [`moon run`](./run) and [`moon exec`](./exec), which default to `none`), so tasks that depend on
+  [`moon run`](./run.mdx) and [`moon exec`](./exec.mdx), which default to `none`), so tasks that depend on
   what changed are also verified.
 - `--upstream` <TypeLabel type="none | direct | deep" /> - Control the depth of upstream
   dependencies to include in the action graph. Aliased as `--dependencies`. Defaults to `deep`.
@@ -107,5 +107,5 @@ into common CI providers, including sharding examples.
 - `-s`, `--summary` <TypeLabel type="boolean | string" /> - Print a summary of all actions that were
   ran in the pipeline. Accepts `none`, `minimal`, `normal`, or `detailed`. When passed without a
   value, defaults to `normal`; when omitted entirely, defaults to `detailed` (unlike
-  [`moon run`](./run) and [`moon exec`](./exec), which default to `normal`). Can also be set via the
+  [`moon run`](./run.mdx) and [`moon exec`](./exec.mdx), which default to `normal`). Can also be set via the
   `MOON_SUMMARY` environment variable.

@@ -13,7 +13,7 @@ Tasks are the fundamental building blocks of moon's execution system. They defin
 
 ## Configuration
 
-Tasks are defined with the [`tasks`](./project#tasks) setting in multiple locations. The most common location is within a project's [`moon.config`](./project#configuration), but they can also be defined at the workspace for task inheritance within a [`.moon/tasks/*.config`](./task-inheritance#configuration).
+Tasks are defined with the [`tasks`](./project.mdx#tasks) setting in multiple locations. The most common location is within a project's [`moon.config`](./project.mdx#configuration), but they can also be defined at the workspace for task inheritance within a [`.moon/tasks/*.config`](./task-inheritance.mdx#configuration).
 
 ## Types
 
@@ -71,7 +71,7 @@ To mark a task as local only, disable [`options.runInCI`](#options) or configure
 
 Internal tasks are not meant to be ran explicitly by the user (on the command line), but are used internally as
 dependencies of other tasks. Additionally, internal tasks are not displayed in a project's tasks
-list, but can be inspected with [`moon task`](./commands/task).
+list, but can be inspected with [`moon task`](../commands/task.mdx).
 
 To mark a task as internal, enable [`options.internal`](#options).
 
@@ -145,7 +145,7 @@ To mark a task as persistent, enable [`options.persistent`](#options) or configu
 
 <VersionLabel version="2.1.0" /> Tasks can also run as part of the syncing
 phase, instead of only when explicitly ran or depended on. When [`moon
-sync`](./commands/sync) is executed, it walks every project and queues these
+sync`](../commands/sync.mdx) is executed, it walks every project and queues these
 tasks into the action graph alongside the workspace and project sync actions,
 which makes them a good fit for codegen and other housekeeping that should be
 kept up to date across the repository.
@@ -196,7 +196,7 @@ This setting can also be defined with a list of strings, where each list item is
 
 ### Arguments
 
-The [`args`](/api/moon/TaskConfig#args) setting is a collection of _additional_ arguments to merge into the [`command`](#command), and purely exists for composition when [task inheritance](./task-inheritance) occurs. This setting also supports a string, or a list of strings.
+The [`args`](/api/moon/TaskConfig#args) setting is a collection of _additional_ arguments to merge into the [`command`](#command), and purely exists for composition when [task inheritance](./task-inheritance.mdx) occurs. This setting also supports a string, or a list of strings.
 
 <ConfigTabs
   file="moon"
@@ -212,7 +212,7 @@ The [`args`](/api/moon/TaskConfig#args) setting is a collection of _additional_ 
 <Callout>
   Argument merging is powered by the [`options.mergeArgs`](#options) task
   option, using one of the [merge
-  strategies](./task-inheritance#merge-strategies).
+  strategies](./task-inheritance.mdx#merge-strategies).
 </Callout>
 
 ### Supported syntax
@@ -270,7 +270,7 @@ Script is the opposite of [`command`](#command), in that it supports complex com
 
 Tasks can depend on other tasks, which means that when the task is executed, all of its dependencies will be executed first. This allows you to create complex workflows and ensure that certain tasks are always ran before others.
 
-Dependencies can be defined with the [`deps`](/api/moon/TaskConfig#deps) setting, which accepts a list of [targets](./target) in string or object format. The string format is a simple and concise way to define dependencies, while the object format provides more flexibility and options for each dependency.
+Dependencies can be defined with the [`deps`](/api/moon/TaskConfig#deps) setting, which accepts a list of [targets](./target.mdx) in string or object format. The string format is a simple and concise way to define dependencies, while the object format provides more flexibility and options for each dependency.
 
 <Tabs items={['String', 'Object']}>
 <Tab>
@@ -307,7 +307,7 @@ Dependencies can be defined with the [`deps`](/api/moon/TaskConfig#deps) setting
 
 When using the object format for dependencies, you can also specify parameters to be passed to the dependency task when it's executed. The following parameters are supported:
 
-- [`target`](/api/moon/TaskDependencyConfig#target) <TypeLabel type="string" /> _(required)_ - The [target](./target) of the dependency task(s).
+- [`target`](/api/moon/TaskDependencyConfig#target) <TypeLabel type="string" /> _(required)_ - The [target](./target.mdx) of the dependency task(s).
 - [`args`](/api/moon/TaskDependencyConfig#args) <TypeLabel type="string[]" /> - A list of additional arguments to append to the task's [`command`](#command) when it's executed.
 - [`env`](/api/moon/TaskDependencyConfig#env) <TypeLabel type="Record<string, string>" /> - A map of additional variables to merge into the task's environment when it's executed.
 - [`optional`](/api/moon/TaskDependencyConfig#optional) <TypeLabel type="boolean" /> - Controls how this dependency is treated during task inheritance. When `false` (the default), will error if the task does not exist. When `true`, will be ignored if the task does not exist. This does _not_ allow the task to fail during execution.
@@ -344,7 +344,7 @@ When using the object format for dependencies, you can also specify parameters t
 
 ### Scopes
 
-Dependencies support different [target](./target) scopes to reference tasks flexibly:
+Dependencies support different [target](./target.mdx) scopes to reference tasks flexibly:
 
 #### Current project
 
@@ -378,7 +378,7 @@ Tasks within other/external projects can be referenced using the explicit `<proj
 
 #### Dependency projects
 
-Tasks can be referenced from the current [project's dependencies](./project#dependencies) using the `^:` or `^<type>:` scopes. This will be expanded to all depended on projects of the current project. If you do not want all projects, then you'll need to explicitly define the dependencies.
+Tasks can be referenced from the current [project's dependencies](./project.mdx#dependencies) using the `^:` or `^<type>:` scopes. This will be expanded to all depended on projects of the current project. If you do not want all projects, then you'll need to explicitly define the dependencies.
 
 <VersionLabel version="2.1.0" /> Additionally, dependend on projects can be
 filtered by their dependency type, such as `production`, or `development`. The
@@ -402,7 +402,7 @@ following dependency types are supported:
 
 #### Tagged projects
 
-Tasks can be referenced from [tagged projects](./project#tags) using the `#<tag-id>:` scope. For example, if the target is `#example:build`, then the `build` task in all projects with the tag `example` will be included as a dependency.
+Tasks can be referenced from [tagged projects](./project.mdx#tags) using the `#<tag-id>:` scope. For example, if the target is `#example:build`, then the `build` task in all projects with the tag `example` will be included as a dependency.
 
 <ConfigTabs
   file="moon"
@@ -436,7 +436,7 @@ Environment variables allow you to pass configuration values to your tasks at ex
 <Callout>
   Environment variable merging is powered by the [`options.mergeEnv`](#options)
   task option, using one of the [merge
-  strategies](./task-inheritance#merge-strategies).
+  strategies](./task-inheritance.mdx#merge-strategies).
 </Callout>
 
 ### `.env` files
@@ -569,7 +569,7 @@ Inputs can be defined with the [`inputs`](/api/moon/TaskConfig#inputs) setting, 
 
 <Callout>
   Input merging is powered by the [`options.mergeInputs`](#options) task option,
-  using one of the [merge strategies](./task-inheritance#merge-strategies).
+  using one of the [merge strategies](./task-inheritance.mdx#merge-strategies).
 </Callout>
 
 ### Files
@@ -614,7 +614,7 @@ Files are simply that, project-relative or workspace-relative files on the file 
 
 When using the URI or object formats, the following parameters are supported:
 
-- [`content`](/api/moon/FileInput#content) <TypeLabel type="string" /> - A [regex pattern](./config) to match the file's contents against when determining affected status. Otherwise, any change to the file will mark the task as affected.
+- [`content`](/api/moon/FileInput#content) <TypeLabel type="string" /> - A [regex pattern](./config.mdx) to match the file's contents against when determining affected status. Otherwise, any change to the file will mark the task as affected.
 - [`optional`](/api/moon/FileInput#optional) <TypeLabel type="boolean" /> - Mark the file as optional and log a warning instead of failing with an error when hashing. Files are required by default.
 
 <Tabs items={['String', 'Object']}>
@@ -650,7 +650,7 @@ When using the URI or object formats, the following parameters are supported:
 
 ### File groups
 
-File group inputs allow you to reference the [`fileGroups`](./project#filegroups) setting in the project, effectively including all files within the specified file group as inputs to the task. They can be defined with the `group://` URI protocol, or the [`group`](/api/moon/FileGroupInput#group) property when using the object format.
+File group inputs allow you to reference the [`fileGroups`](./project.mdx#filegroups) setting in the project, effectively including all files within the specified file group as inputs to the task. They can be defined with the `group://` URI protocol, or the [`group`](/api/moon/FileGroupInput#group) property when using the object format.
 
 <Tabs items={['String', 'Object']}>
 <Tab>
@@ -734,7 +734,7 @@ When using the URI or object formats, the following parameters are supported:
 
 ### Globs
 
-Globs are simply that, project-relative or workspace-relative [glob patterns](./config#glob-patterns) that will walk and match files on the file system (within the moon workspace). They can be defined with literal strings, the `glob://` URI protocol, or the [`glob`](/api/moon/GlobInput#glob) property when using the object format.
+Globs are simply that, project-relative or workspace-relative [glob patterns](./config.mdx#glob-patterns) that will walk and match files on the file system (within the moon workspace). They can be defined with literal strings, the `glob://` URI protocol, or the [`glob`](/api/moon/GlobInput#glob) property when using the object format.
 
 <Callout type="warning">
   Be aware that files that match the glob, but are ignored via `.gitignore` (or
@@ -864,7 +864,7 @@ Dependent projects can be scoped further by using `^development`, `^production`,
 When using the URI or object formats, the following parameters are supported:
 
 - [`filter`](/api/moon/ProjectInput#filter) <TypeLabel type="string[]" /> - A list of glob patterns, relative from the project's root, to include as inputs. If not defined, defaults to `**/*`.
-- [`fileGroup`](/api/moon/ProjectInput#group) <TypeLabel type="string" /> - An identifier of a [file group](./project#file-groups) in the external project to include as inputs. If defined, will override `filter`.
+- [`fileGroup`](/api/moon/ProjectInput#group) <TypeLabel type="string" /> - An identifier of a [file group](./project.mdx#file-groups) in the external project to include as inputs. If defined, will override `filter`.
 
 <Tabs items={['String', 'Object']}>
 <Tab>
@@ -946,7 +946,7 @@ With that said, not _all_ outputs that a task produces need to be defined as out
 <Callout>
   Output merging is powered by the [`options.mergeOutputs`](#options) task
   option, using one of the [merge
-  strategies](./task-inheritance#merge-strategies).
+  strategies](./task-inheritance.mdx#merge-strategies).
 </Callout>
 
 ### Files
@@ -1028,7 +1028,7 @@ When using the URI or object formats, the following parameters are supported:
 
 ### Globs
 
-Globs are simply that, project-relative or workspace-relative [glob patterns](./config#glob-patterns) that will walk and match files on the file system (within the moon workspace). They can be defined with literal strings, the `glob://` URI protocol, or the [`glob`](/api/moon/GlobOutput#glob) property when using the object format.
+Globs are simply that, project-relative or workspace-relative [glob patterns](./config.mdx#glob-patterns) that will walk and match files on the file system (within the moon workspace). They can be defined with literal strings, the `glob://` URI protocol, or the [`glob`](/api/moon/GlobOutput#glob) property when using the object format.
 
 <Callout type="warning">
   The same glob caveats that apply to [`inputs`](#inputs) also apply to outputs.
@@ -1181,7 +1181,7 @@ controls how the check lists are combined, using the same merge strategies as th
 
 <VersionLabel version="2.3.0" /> Tasks can be categorized with the
 [`tags`](/api/moon/TaskConfig#tags) setting, in the same spirit as [project
-tags](./project#tags). Task tags are inherited alongside the rest of the task,
+tags](./project.mdx#tags). Task tags are inherited alongside the rest of the task,
 and [`options.mergeTags`](#options) controls how they're combined when a task is
 extended.
 
@@ -1203,9 +1203,9 @@ extended.
 
 Once tagged, tasks can be referenced as a group:
 
-- In [targets](./target), through the task tag scope — `~:#quality` selects every `quality` tagged
+- In [targets](./target.mdx), through the task tag scope — `~:#quality` selects every `quality` tagged
   task in the current project, and `app:#quality` does the same for the `app` project.
-- In [MQL](./advanced/query-lang), through the `taskTag` field.
+- In [MQL](../advanced/query-lang.mdx), through the `taskTag` field.
 - On the command line, with `moon query tasks --tags quality`.
 
 ## Toolchains
@@ -1214,7 +1214,7 @@ Toolchains are a very important concept for tasks, as they define the runtime en
 
 With that said, we suggest _not configuring toolchains explicitly_ for tasks, and instead rely on our internal detection mechanism, which inherits from the project, and is detected based on manifest, lock, and config files, and executable names.
 
-If for some reason you do need to explicitly configure a toolchain for a task, you can do so with the [`toolchains`](/api/moon/TaskConfig#toolchains) setting, which accepts a list of toolchain identifier(s) defined in [`.moon/toolchains.config`](./toolchains#configuration).
+If for some reason you do need to explicitly configure a toolchain for a task, you can do so with the [`toolchains`](/api/moon/TaskConfig#toolchains) setting, which accepts a list of toolchain identifier(s) defined in [`.moon/toolchains.config`](./toolchain.mdx).
 
 <ConfigTabs
   file="moon"

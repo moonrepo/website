@@ -5,7 +5,7 @@ icon: Diamond
 
 import { ConfigTabs } from "@/components/ConfigTabs";
 
-A target is the address of one or more [tasks](./task), in the format of `<project-scope>:<task-scope>`. It tells moon which project or group of
+A target is the address of one or more [tasks](./task.mdx), in the format of `<project-scope>:<task-scope>`. It tells moon which project or group of
 projects to search, and which task or group of tasks to select within those projects.
 
 For example, `app:build` selects the `build` task in the `app` project, while `:test` selects every
@@ -40,7 +40,7 @@ The all scope omits the project scope entirely: `:<task>`. Use it when a command
 In the run context, the all scope may also be narrowed by a query. For example, `:test` with a query
 for frontend projects only resolves `test` tasks in frontend projects.
 
-The all scope is not supported in task [`deps`](./task#dependencies). A task dependency must resolve from a specific
+The all scope is not supported in task [`deps`](./task.mdx#dependencies). A task dependency must resolve from a specific
 owning project, its dependency projects, an explicit project, or tagged projects.
 
 ### Dependencies `^`
@@ -117,7 +117,7 @@ An identifier scope selects one project by ID or alias: `<project-id>:<task>`.
 />
 
 Project identifiers come from the workspace project map, project [`id`](/api/moon/ProjectConfig#id) overrides, or toolchain
-aliases. See [Projects](./project#identifiers) for how project IDs and aliases are assigned.
+aliases. See [Projects](./project.mdx#identifiers) for how project IDs and aliases are assigned.
 
 Identifier targets are the most explicit form and work in both run and config contexts. They are a
 good choice for important cross-project relationships because readers can see the exact project
@@ -206,7 +206,7 @@ The most common task scope is a task ID:
 - `^:lint`
 - `#frontend:typecheck`
 
-Task IDs are defined under a project's [`tasks`](./project#tasks) map. When a project scope resolves more than one
+Task IDs are defined under a project's [`tasks`](./project.mdx#tasks) map. When a project scope resolves more than one
 project, moon only includes projects where that task exists. For explicit project targets like
 `app:build`, a missing task is an error. For fan-out targets like `:build` or `#frontend:build`,
 projects without the task are skipped.

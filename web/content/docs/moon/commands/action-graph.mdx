@@ -4,22 +4,22 @@ title: moon action-graph
 
 import { TypeLabel } from "@/components/TypeLabel";
 
-Generates and serves an interactive visualization of the [action graph](../action-graph)
+Generates and serves an interactive visualization of the [action graph](<../(fundamentals)/action-graph.mdx>)
 (aliased as `moon ag`),
 moon's low-level representation of every unit of work in the pipeline (toolchain setup,
 dependency installation, project syncing, and task execution) and the dependency edges
-between them. This is more granular than the [task graph](./task-graph): each task is
+between them. This is more granular than the [task graph](./task-graph.mdx): each task is
 expanded into one or more discrete actions, and actions for toolchain and workspace
 setup are included as well.
 
 By default, the command starts a local web server and opens it in your browser, streaming
-the graph data to a visualizer UI (the same one used by [`moon project-graph`](./project-graph) and
-[`moon task-graph`](./task-graph)) served from a CDN. Instead of serving the graph, `--dot` or `--json` can
+the graph data to a visualizer UI (the same one used by [`moon project-graph`](./project-graph.mdx) and
+[`moon task-graph`](./task-graph.mdx)) served from a CDN. Instead of serving the graph, `--dot` or `--json` can
 be passed to print the graph in that format to the terminal instead, which is useful for
 piping into other tools or for debugging why a particular action exists (or doesn't).
 
 Without arguments, every task in the workspace is added to the graph. Passing one or more
-[targets](../target) focuses the graph to just those targets and their upstream
+[targets](<../(fundamentals)/target.mdx>) focuses the graph to just those targets and their upstream
 dependencies. Add `--dependents` to also include downstream dependents of the focused
 targets, showing what would be affected if they changed.
 
@@ -42,7 +42,7 @@ $ moon action-graph --json
 
 ## Arguments
 
-- `[TARGETS...]` - Task [targets](../target) to focus the graph around. When omitted, all
+- `[TARGETS...]` - Task [targets](<../(fundamentals)/target.mdx>) to focus the graph around. When omitted, all
   tasks in the workspace are graphed. Dependencies of these targets are always included;
   pass `--dependents` to also include dependents.
 

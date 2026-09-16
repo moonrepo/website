@@ -8,7 +8,7 @@ Using both glob patterns and file source paths.
 
 | Property | Type | Description |
 | --- | --- | --- |
-| [`globFormat`](#globformat) | [`WorkspaceProjectGlobFormat`](./WorkspaceProjectGlobFormat) | The project identifier format for glob located projects. @since 2.0.0 |
+| [`globFormat`](#globformat) | [`WorkspaceProjectGlobFormat`](./WorkspaceProjectGlobFormat.mdx) | The project identifier format for glob located projects. @since 2.0.0 |
 | [`globs`](#globs) | `string[]` | A list of glob patterns in which to locate project directories. Can be suffixed with a `moon.*` config file to only find distinct projects. |
 | [`sources`](#sources) | `Record<Id, string>` | A map of project identifiers to relative file paths to each project directory. |
 
@@ -23,7 +23,7 @@ The project identifier format for glob located projects.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`WorkspaceProjectGlobFormat`](./WorkspaceProjectGlobFormat) |
+| Type | [`WorkspaceProjectGlobFormat`](./WorkspaceProjectGlobFormat.mdx) |
 | Default | `"dir-name"` |
 | Values | `"dir-name"`, `"source-path"` |
 
@@ -47,9 +47,9 @@ A map of project identifiers to relative file paths to each project directory.
 | Attribute | Value |
 | --- | --- |
 | Type | `Record<Id, string>` |
-| References | [`Id`](./Id) |
+| References | [`Id`](./Id.mdx) |
 
 ## References
 
-- [`Id`](./Id)
-- [`WorkspaceProjectGlobFormat`](./WorkspaceProjectGlobFormat)
+- [`Id`](./Id.mdx)
+- [`WorkspaceProjectGlobFormat`](./WorkspaceProjectGlobFormat.mdx)

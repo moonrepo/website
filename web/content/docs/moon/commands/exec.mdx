@@ -4,21 +4,21 @@ title: moon exec
 
 import { TypeLabel } from "@/components/TypeLabel";
 
-The most general and low-level command for executing task [targets](../target) through moon's
-action pipeline. It's the foundation that the higher-level [`moon run`](./run),
-[`moon check`](./check), and [`moon ci`](./ci) commands are built on top of — each of those
+The most general and low-level command for executing task [targets](<../(fundamentals)/target.mdx>) through moon's
+action pipeline. It's the foundation that the higher-level [`moon run`](./run.mdx),
+[`moon check`](./check.mdx), and [`moon ci`](./ci.mdx) commands are built on top of — each of those
 commands internally assembles a set of `exec` arguments (a fixed `--on-failure` mode, a resolved
 list of targets, forced CI flags, and so on) and hands them to this same execution pipeline. Reach
 for `moon exec` directly when you need finer-grained or scriptable control over target selection
 and pipeline behavior than those convenience commands expose.
 
 Targets can be passed as arguments on the command line, using the standard
-[target syntax](../target) (`project:task`, `:task`, `#tag:task`, `~:task`, and so on). When no
+[target syntax](<../(fundamentals)/target.mdx>) (`project:task`, `:task`, `#tag:task`, `~:task`, and so on). When no
 targets are provided, and none are defined by an execution plan either, moon prompts with a
 multi-select list of every task in the workspace.
 
 Instead of (or in addition to) command line flags, a declarative
-[execution plan](../guides/exec-plan) (a JSON file) can be supplied with `--plan`, describing the
+[execution plan](../guides/exec-plan.mdx) (a JSON file) can be supplied with `--plan`, describing the
 targets to run along with affected, graph, and pipeline settings. CLI targets are only used to
 populate the plan when the plan itself doesn't already define any; if both provide targets, the
 plan's targets win and a warning is logged. Values from the plan otherwise take precedence over
@@ -57,7 +57,7 @@ $ moon exec app:start -- --port 8080
 
 ## Arguments
 
-- `[TARGETS...]` - List of task [targets](../target) to execute in the action pipeline. Can be
+- `[TARGETS...]` - List of task [targets](<../(fundamentals)/target.mdx>) to execute in the action pipeline. Can be
   omitted when `--plan` provides its own targets, in which case you're prompted interactively.
 - `-- [PASSTHROUGH...]` - Arguments to pass through to the underlying task command(s) being
   executed.
@@ -74,7 +74,7 @@ $ moon exec app:start -- --port 8080
   [`options.affectedFiles`](/api/moon/TaskOptionsConfig#affectedfiles) task variable). Can also be set via the `MOON_FORCE` environment variable.
 - `-i`, `--interactive` - Run the pipeline and its tasks interactively, allowing tasks to receive
   input from the terminal.
-- `-p`, `--plan` <TypeLabel type="string" /> - Relative path to an [execution plan](../guides/exec-plan)
+- `-p`, `--plan` <TypeLabel type="string" /> - Relative path to an [execution plan](../guides/exec-plan.mdx)
   (JSON) used to declaratively define the targets, affected criteria, graph relations, and pipeline
   settings for this run, instead of (or alongside) the options below. Can also be set via the
   `MOON_EXEC_PLAN` environment variable.
@@ -88,10 +88,10 @@ $ moon exec app:start -- --port 8080
   regardless of whether it's normally intended to run in a CI environment.
 - `--on-failure` <TypeLabel type="bail | continue" /> - When a task fails, either immediately
   bail the entire pipeline (the default), or continue executing the remaining tasks. Can also be
-  set via the `MOON_ON_FAILURE` environment variable. [`moon ci`](./ci) always overrides this to
+  set via the `MOON_ON_FAILURE` environment variable. [`moon ci`](./ci.mdx) always overrides this to
   `continue`.
 - `--query` <TypeLabel type="string" /> - Filter the resolved task targets using a
-  [query language](../advanced/query-lang) expression, only executing targets whose owning project
+  [query language](../advanced/query-lang.mdx) expression, only executing targets whose owning project
   matches.
 - `--no-actions` - Run the pipeline without executing sync and setup related actions (toolchain
   installation, project syncing, etc), running only the requested tasks. Can also be set via the

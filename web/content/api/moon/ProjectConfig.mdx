@@ -11,20 +11,20 @@ Docs: https://moonrepo.dev/docs/config/project
 | --- | --- | --- |
 | [`$schema`](#schema) | `string` |  |
 | [`dependsOn`](#dependson) | `ProjectDependsOn[]` | Other projects that this project depends on. |
-| [`docker`](#docker) | [`ProjectDockerConfig`](./ProjectDockerConfig) | Configures Docker integration for this project. @since 1.27.0 |
+| [`docker`](#docker) | [`ProjectDockerConfig`](./ProjectDockerConfig.mdx) | Configures Docker integration for this project. @since 1.27.0 |
 | [`env`](#env) | `Record<string, string \| null>` | A map of environment variables that will be inherited by all tasks within the project. |
 | [`fileGroups`](#filegroups) | `Record<Id, Input[]>` | A map of group identifiers to a list of file paths, globs, and environment variables, that can be referenced from tasks. |
-| [`id`](#id) | [`Id`](./Id) | Overrides the identifier within the project graph, as defined in the workspace `projects` setting. @since 1.18.0 |
-| [`language`](#language) | [`LanguageType`](./LanguageType) | The primary programming language of the project. |
-| [`layer`](#layer) | [`LayerType`](./LayerType) | The layer within the technology stack, for categorizing. |
-| [`owners`](#owners) | [`OwnersConfig`](./OwnersConfig) | Defines ownership of source code within the current project, by mapping file paths and globs to owners. An owner is either a user, team, or group. @since 1.8.0 |
-| [`project`](#project) | [`ProjectMetadataConfig`](./ProjectMetadataConfig) | Expanded information about the project. |
-| [`stack`](#stack) | [`StackType`](./StackType) | The technology stack of the project, for categorizing. @since 1.22.0 |
+| [`id`](#id) | [`Id`](./Id.mdx) | Overrides the identifier within the project graph, as defined in the workspace `projects` setting. @since 1.18.0 |
+| [`language`](#language) | [`LanguageType`](./LanguageType.mdx) | The primary programming language of the project. |
+| [`layer`](#layer) | [`LayerType`](./LayerType.mdx) | The layer within the technology stack, for categorizing. |
+| [`owners`](#owners) | [`OwnersConfig`](./OwnersConfig.mdx) | Defines ownership of source code within the current project, by mapping file paths and globs to owners. An owner is either a user, team, or group. @since 1.8.0 |
+| [`project`](#project) | [`ProjectMetadataConfig`](./ProjectMetadataConfig.mdx) | Expanded information about the project. |
+| [`stack`](#stack) | [`StackType`](./StackType.mdx) | The technology stack of the project, for categorizing. @since 1.22.0 |
 | [`tags`](#tags) | `Id[]` | A list of tags that this project belongs to, for categorizing, boundary enforcement, and task inheritance. |
-| [`taskOptions`](#taskoptions) | [`TaskOptionsConfig`](./TaskOptionsConfig) | Shared task options for all tasks. Can be overriden per task. @since 2.4.0 |
+| [`taskOptions`](#taskoptions) | [`TaskOptionsConfig`](./TaskOptionsConfig.mdx) | Shared task options for all tasks. Can be overriden per task. @since 2.4.0 |
 | [`tasks`](#tasks) | `Record<Id, TaskConfig>` | A map of identifiers to task objects. Tasks represent the work-unit of a project, and can be ran in the action pipeline. |
-| [`toolchains`](#toolchains) | [`ProjectToolchainsConfig`](./ProjectToolchainsConfig) | Overrides top-level toolchain settings, scoped to this project. |
-| [`workspace`](#workspace) | [`ProjectWorkspaceConfig`](./ProjectWorkspaceConfig) | Overrides top-level workspace settings, scoped to this project. |
+| [`toolchains`](#toolchains) | [`ProjectToolchainsConfig`](./ProjectToolchainsConfig.mdx) | Overrides top-level toolchain settings, scoped to this project. |
+| [`workspace`](#workspace) | [`ProjectWorkspaceConfig`](./ProjectWorkspaceConfig.mdx) | Overrides top-level workspace settings, scoped to this project. |
 
 ## Properties
 
@@ -45,7 +45,7 @@ Other projects that this project depends on.
 | Attribute | Value |
 | --- | --- |
 | Type | `ProjectDependsOn[]` |
-| References | [`ProjectDependsOn`](./ProjectDependsOn) |
+| References | [`ProjectDependsOn`](./ProjectDependsOn.mdx) |
 | Aliases | `deps` |
 
 ### `docker`
@@ -57,7 +57,7 @@ Configures Docker integration for this project.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`ProjectDockerConfig`](./ProjectDockerConfig) |
+| Type | [`ProjectDockerConfig`](./ProjectDockerConfig.mdx) |
 
 ### `env`
 
@@ -80,7 +80,7 @@ environment variables, that can be referenced from tasks.
 | Attribute | Value |
 | --- | --- |
 | Type | `Record<Id, Input[]>` |
-| References | [`Id`](./Id), [`Input`](./Input) |
+| References | [`Id`](./Id.mdx), [`Input`](./Input.mdx) |
 
 ### `id`
 
@@ -92,7 +92,7 @@ the workspace `projects` setting.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`Id`](./Id) |
+| Type | [`Id`](./Id.mdx) |
 
 ### `language`
 
@@ -102,7 +102,7 @@ The primary programming language of the project.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`LanguageType`](./LanguageType) |
+| Type | [`LanguageType`](./LanguageType.mdx) |
 | Default | `"unknown"` |
 | Values | `"bash"`, `"batch"`, `"cplusplus"`, `"csharp"`, `"dotnet"`, `"go"`, `"java"`, `"javascript"`, `"kotlin"`, `"php"`, `"python"`, `"ruby"`, `"rust"`, `"swift"`, `"typescript"`, `"unknown"` |
 
@@ -114,7 +114,7 @@ The layer within the technology stack, for categorizing.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`LayerType`](./LayerType) |
+| Type | [`LayerType`](./LayerType.mdx) |
 | Default | `"unknown"` |
 | Values | `"application"`, `"automation"`, `"configuration"`, `"library"`, `"scaffolding"`, `"tool"`, `"unknown"` |
 
@@ -128,7 +128,7 @@ file paths and globs to owners. An owner is either a user, team, or group.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`OwnersConfig`](./OwnersConfig) |
+| Type | [`OwnersConfig`](./OwnersConfig.mdx) |
 
 ### `project`
 
@@ -138,7 +138,7 @@ Expanded information about the project.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`ProjectMetadataConfig`](./ProjectMetadataConfig) |
+| Type | [`ProjectMetadataConfig`](./ProjectMetadataConfig.mdx) |
 
 ### `stack`
 
@@ -149,7 +149,7 @@ The technology stack of the project, for categorizing.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`StackType`](./StackType) |
+| Type | [`StackType`](./StackType.mdx) |
 | Default | `"unknown"` |
 | Values | `"backend"`, `"data"`, `"frontend"`, `"infrastructure"`, `"systems"`, `"unknown"` |
 
@@ -163,7 +163,7 @@ boundary enforcement, and task inheritance.
 | Attribute | Value |
 | --- | --- |
 | Type | `Id[]` |
-| References | [`Id`](./Id) |
+| References | [`Id`](./Id.mdx) |
 
 ### `taskOptions`
 
@@ -174,7 +174,7 @@ Shared task options for all tasks. Can be overriden per task.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`TaskOptionsConfig`](./TaskOptionsConfig) |
+| Type | [`TaskOptionsConfig`](./TaskOptionsConfig.mdx) |
 
 ### `tasks`
 
@@ -186,7 +186,7 @@ of a project, and can be ran in the action pipeline.
 | Attribute | Value |
 | --- | --- |
 | Type | `Record<Id, TaskConfig>` |
-| References | [`Id`](./Id), [`TaskConfig`](./TaskConfig) |
+| References | [`Id`](./Id.mdx), [`TaskConfig`](./TaskConfig.mdx) |
 
 ### `toolchains`
 
@@ -196,7 +196,7 @@ Overrides top-level toolchain settings, scoped to this project.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`ProjectToolchainsConfig`](./ProjectToolchainsConfig) |
+| Type | [`ProjectToolchainsConfig`](./ProjectToolchainsConfig.mdx) |
 
 ### `workspace`
 
@@ -206,20 +206,20 @@ Overrides top-level workspace settings, scoped to this project.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`ProjectWorkspaceConfig`](./ProjectWorkspaceConfig) |
+| Type | [`ProjectWorkspaceConfig`](./ProjectWorkspaceConfig.mdx) |
 
 ## References
 
-- [`Id`](./Id)
-- [`Input`](./Input)
-- [`LanguageType`](./LanguageType)
-- [`LayerType`](./LayerType)
-- [`OwnersConfig`](./OwnersConfig)
-- [`ProjectDependsOn`](./ProjectDependsOn)
-- [`ProjectDockerConfig`](./ProjectDockerConfig)
-- [`ProjectMetadataConfig`](./ProjectMetadataConfig)
-- [`ProjectToolchainsConfig`](./ProjectToolchainsConfig)
-- [`ProjectWorkspaceConfig`](./ProjectWorkspaceConfig)
-- [`StackType`](./StackType)
-- [`TaskConfig`](./TaskConfig)
-- [`TaskOptionsConfig`](./TaskOptionsConfig)
+- [`Id`](./Id.mdx)
+- [`Input`](./Input.mdx)
+- [`LanguageType`](./LanguageType.mdx)
+- [`LayerType`](./LayerType.mdx)
+- [`OwnersConfig`](./OwnersConfig.mdx)
+- [`ProjectDependsOn`](./ProjectDependsOn.mdx)
+- [`ProjectDockerConfig`](./ProjectDockerConfig.mdx)
+- [`ProjectMetadataConfig`](./ProjectMetadataConfig.mdx)
+- [`ProjectToolchainsConfig`](./ProjectToolchainsConfig.mdx)
+- [`ProjectWorkspaceConfig`](./ProjectWorkspaceConfig.mdx)
+- [`StackType`](./StackType.mdx)
+- [`TaskConfig`](./TaskConfig.mdx)
+- [`TaskOptionsConfig`](./TaskOptionsConfig.mdx)

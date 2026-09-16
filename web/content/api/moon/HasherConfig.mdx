@@ -10,8 +10,8 @@ Configures aspects of the content hashing engine.
 | --- | --- | --- |
 | [`ignoreMissingPatterns`](#ignoremissingpatterns) | `string[]` | When `warnOnMissingInputs` is enabled, filters missing file paths from logging a warning. @since 1.10.0 |
 | [`ignorePatterns`](#ignorepatterns) | `string[]` | Filters file paths that match a configured glob pattern when a hash is being generated. Patterns are workspace relative, so prefixing with `**` is recommended. @since 1.10.0 |
-| [`optimization`](#optimization) | [`HasherOptimization`](./HasherOptimization) | The optimization to use when hashing. |
-| [`walkStrategy`](#walkstrategy) | [`HasherWalkStrategy`](./HasherWalkStrategy) | The strategy to use when walking the file system. |
+| [`optimization`](#optimization) | [`HasherOptimization`](./HasherOptimization.mdx) | The optimization to use when hashing. |
+| [`walkStrategy`](#walkstrategy) | [`HasherWalkStrategy`](./HasherWalkStrategy.mdx) | The strategy to use when walking the file system. |
 | [`warnOnMissingInputs`](#warnonmissinginputs) | `boolean` | Logs a warning when a task has configured an explicit file path input, and that file does not exist when hashing. |
 
 ## Properties
@@ -49,7 +49,7 @@ The optimization to use when hashing.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`HasherOptimization`](./HasherOptimization) |
+| Type | [`HasherOptimization`](./HasherOptimization.mdx) |
 | Default | `"accuracy"` |
 | Values | `"accuracy"`, `"performance"` |
 
@@ -61,7 +61,7 @@ The strategy to use when walking the file system.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`HasherWalkStrategy`](./HasherWalkStrategy) |
+| Type | [`HasherWalkStrategy`](./HasherWalkStrategy.mdx) |
 | Default | `"vcs"` |
 | Values | `"glob"`, `"vcs"` |
 
@@ -79,5 +79,5 @@ input, and that file does not exist when hashing.
 
 ## References
 
-- [`HasherOptimization`](./HasherOptimization)
-- [`HasherWalkStrategy`](./HasherWalkStrategy)
+- [`HasherOptimization`](./HasherOptimization.mdx)
+- [`HasherWalkStrategy`](./HasherWalkStrategy.mdx)

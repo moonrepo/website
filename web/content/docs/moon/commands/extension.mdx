@@ -10,14 +10,14 @@ archives.
 
 This is a parent command and does nothing on its own; use one of the following subcommands:
 
-- [`moon extension add`](./extension/add) - Register a new extension and configure it in
-  [`.moon/extensions.config`](../extension).
-- [`moon extension download`](./extension/download) - Download and cache the WASM plugins for all configured extensions,
+- [`moon extension add`](./extension/add.mdx) - Register a new extension and configure it in
+  [`.moon/extensions.config`](<../(fundamentals)/extension.mdx>).
+- [`moon extension download`](./extension/download.mdx) - Download and cache the WASM plugins for all configured extensions,
   without executing them.
-- [`moon extension info`](./extension/info) - Inspect a registered (or ad-hoc) extension's
+- [`moon extension info`](./extension/info.mdx) - Inspect a registered (or ad-hoc) extension's
   metadata, configuration schema, and supported APIs.
 
-To actually execute an extension's functionality, use [`moon ext`](./ext) instead, which loads the
+To actually execute an extension's functionality, use [`moon ext`](./ext.mdx) instead, which loads the
 extension and calls its `execute_extension` function.
 
 ```shell

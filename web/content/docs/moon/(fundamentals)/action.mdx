@@ -7,7 +7,7 @@ An **action** is a single unit of work that moon executes. Everything moon does 
 action: syncing the workspace, installing a toolchain, installing dependencies, syncing a project,
 and running a task are all the same kind of thing as far as the pipeline is concerned.
 
-Actions are the nodes of the [action graph](./action-graph). The graph decides _what_ needs to
+Actions are the nodes of the [action graph](./action-graph.mdx). The graph decides _what_ needs to
 happen and in what order; an action is the record of one of those things actually happening —
 what it was, how long it took, whether it passed, and what it did along the way.
 
@@ -16,13 +16,13 @@ what it was, how long it took, whether it passed, and what it did along the way.
 There are nine types of action, distinguished by the work they perform:
 
 - `SyncWorkspace` - Syncs the workspace as a whole and installs system-level dependencies.
-- `SyncProject` - Syncs a single [project](./project), applying toolchain and plugin specific
+- `SyncProject` - Syncs a single [project](./project.mdx), applying toolchain and plugin specific
   semantics to its configuration and source files.
 - `SetupProto` - Installs [proto](/docs/proto) itself, at the version the workspace requires.
-- `SetupToolchain` - Installs and prepares a [toolchain](./toolchain) at a specific version.
+- `SetupToolchain` - Installs and prepares a [toolchain](./toolchain.mdx) at a specific version.
 - `SetupEnvironment` - Prepares a toolchain's environment within a specific root.
 - `InstallDependencies` - Installs a toolchain's dependencies in the closest dependency root.
-- `RunTask`, `RunInteractiveTask`, `RunPersistentTask` - Runs one [task](./task), addressed by its [target](./target).
+- `RunTask`, `RunInteractiveTask`, `RunPersistentTask` - Runs one [task](./task.mdx), addressed by its [target](./target.mdx).
 
 Only the run task actions correspond to something you wrote in configuration. The rest are inferred from
 what that task needs, which is why a run often contains far more actions than targets you asked
@@ -36,7 +36,7 @@ explains what happened:
 - `Passed` - The action ran and succeeded.
 - `Failed` - The action ran and failed.
 - `Cached` - The result was restored from the local cache, so nothing was re-executed.
-- `CachedFromRemote` - The result was restored from [remote cache](./advanced/cache).
+- `CachedFromRemote` - The result was restored from [remote cache](../advanced/cache.mdx).
 - `Skipped` - Nothing needed to happen.
 - `Invalid` - The action could not be performed as configured.
 - `TimedOut` - The action exceeded its [`options.timeout`](/api/moon/TaskOptionsConfig#timeout).
@@ -79,7 +79,7 @@ time inside an action actually went.
 
 The operation types are:
 
-- `HashGeneration` - Computing the [hash](./advanced/cache) from the task's inputs.
+- `HashGeneration` - Computing the [hash](../advanced/cache.mdx) from the task's inputs.
 - `MutexAcquisition` - Waiting on a task's [`options.mutex`](/api/moon/TaskOptionsConfig#mutex) lock.
 - `OutputHydration` - Restoring cached outputs, instead of executing.
 - `ProcessExecution` - Running a child process that isn't the task itself.
@@ -98,7 +98,7 @@ After every run, moon writes a machine-readable report of every action to
 error. It's the most complete record available, and useful for building your own tooling around a
 run.
 
-The same data drives the terminal summary. [`moon run --summary`](./commands/run) controls how much
+The same data drives the terminal summary. [`moon run --summary`](../commands/run.mdx) controls how much
 of it is printed, from `none` through `minimal`, `normal`, and `detailed`.
 
 Reports also carry an **estimate** — a comparison of how long the actions would have taken
