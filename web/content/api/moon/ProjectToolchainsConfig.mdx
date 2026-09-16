@@ -1,0 +1,44 @@
+---
+title: ProjectToolchainsConfig
+---
+
+Overrides top-level toolchain settings, scoped to this project.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`default`](#default) | `Id \| Id[]` | A single toolchain, or list of toolchains, to inherit for this project and all of its tasks. @since 1.31.0 |
+| [`plugins`](#plugins) | `Record<Id, ProjectToolchainEntry>` | Overrides workspace-level toolchains by their identifier. |
+
+## Properties
+
+### `default`
+
+> **Optional** · **Nullable**
+
+A single toolchain, or list of toolchains, to inherit for
+this project and all of its tasks.
+@since 1.31.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Id \| Id[]` |
+| References | [`Id`](./Id) |
+| Aliases | `defaults` |
+
+### `plugins`
+
+> **Flattened**
+
+Overrides workspace-level toolchains by their identifier.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Record<Id, ProjectToolchainEntry>` |
+| References | [`Id`](./Id), [`ProjectToolchainEntry`](./ProjectToolchainEntry) |
+
+## References
+
+- [`Id`](./Id)
+- [`ProjectToolchainEntry`](./ProjectToolchainEntry)

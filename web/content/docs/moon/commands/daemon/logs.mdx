@@ -1,0 +1,13 @@
+---
+title: moon daemon logs
+---
+
+Tail the [daemon's](../daemon) log file in real time, streaming new entries as they're written.
+
+The daemon writes trace-level logs to `server.log` inside its cache directory (`.moon/cache/daemon`), covering everything it does in the background: file watcher events, config reloads, project and task graph rebuilds, and RPC requests handled for other `moon` commands. This command is a thin wrapper that follows that file — on Unix it shells out to `tail -f`, and on Windows it runs PowerShell's `Get-Content -Wait` — so it behaves like any other log tail: it blocks and keeps printing until you interrupt it (`Ctrl+C`).
+
+If the daemon isn't currently running, or its log file doesn't exist yet, a warning is printed and the command exits immediately without tailing anything. On Unix, if the `tail` binary can't be found on `PATH`, the command fails with an error instead.
+
+```shell
+$ moon daemon logs
+```

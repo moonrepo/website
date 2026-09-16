@@ -1,0 +1,116 @@
+---
+title: InheritedByConfig
+---
+
+Configures conditions that must match against a project for tasks
+to be inherited. If multiple conditions are defined, then all must match
+for inheritance to occur. If no conditions are defined, then tasks will
+be inherited by all projects.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`files`](#files) | `string \| string[]` | Condition that matches against literal files within a project. If multiple values are provided, at least 1 file needs to exist. |
+| [`languages`](#languages) | `LanguageType \| LanguageType[]` | Condition that matches against a project's `language`. If multiple values are provided, it matches using an OR operator. |
+| [`layers`](#layers) | `LayerType \| LayerType[]` | Condition that matches against a project's `layer`. If multiple values are provided, it matches using an OR operator. |
+| [`order`](#order) | `number` | The order in which this configuration is inherited by a project. Lower is inherited first, while higher is last. |
+| [`stacks`](#stacks) | `StackType \| StackType[]` | Condition that matches against a project's `stack`. If multiple values are provided, it matches using an OR operator. |
+| [`tags`](#tags) | [`InheritedConditionConfig`](./InheritedConditionConfig) | Condition that matches against a tag within the project. |
+| [`toolchains`](#toolchains) | [`InheritedConditionConfig`](./InheritedConditionConfig) | Condition that matches against a toolchain detected for a project. |
+
+## Properties
+
+### `files`
+
+> **Optional** · **Nullable**
+
+Condition that matches against literal files within a project.
+If multiple values are provided, at least 1 file needs to exist.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string \| string[]` |
+| Aliases | `file` |
+
+### `languages`
+
+> **Optional** · **Nullable**
+
+Condition that matches against a project's `language`.
+If multiple values are provided, it matches using an OR operator.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `LanguageType \| LanguageType[]` |
+| References | [`LanguageType`](./LanguageType) |
+| Default | `"unknown"` |
+| Aliases | `language` |
+
+### `layers`
+
+> **Optional** · **Nullable**
+
+Condition that matches against a project's `layer`.
+If multiple values are provided, it matches using an OR operator.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `LayerType \| LayerType[]` |
+| References | [`LayerType`](./LayerType) |
+| Default | `"unknown"` |
+| Aliases | `layer` |
+
+### `order`
+
+> **Optional** · **Nullable**
+
+The order in which this configuration is inherited by a project.
+Lower is inherited first, while higher is last.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `number` |
+
+### `stacks`
+
+> **Optional** · **Nullable**
+
+Condition that matches against a project's `stack`.
+If multiple values are provided, it matches using an OR operator.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `StackType \| StackType[]` |
+| References | [`StackType`](./StackType) |
+| Default | `"unknown"` |
+| Aliases | `stack` |
+
+### `tags`
+
+> **Optional** · **Nullable**
+
+Condition that matches against a tag within the project.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`InheritedConditionConfig`](./InheritedConditionConfig) |
+| Aliases | `tag` |
+
+### `toolchains`
+
+> **Optional** · **Nullable**
+
+Condition that matches against a toolchain detected for a project.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`InheritedConditionConfig`](./InheritedConditionConfig) |
+| Aliases | `toolchain` |
+
+## References
+
+- [`InheritedConditionConfig`](./InheritedConditionConfig)
+- [`LanguageType`](./LanguageType)
+- [`LayerType`](./LayerType)
+- [`StackType`](./StackType)

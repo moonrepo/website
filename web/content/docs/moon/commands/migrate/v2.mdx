@@ -1,0 +1,96 @@
+---
+title: moon migrate v2
+---
+
+The only [`moon migrate`](../migrate) operation currently available. Migrates an existing moon v1
+workspace to moon v2 by rewriting all `.moon` YAML configuration files (workspace, toolchain,
+tasks, and per-project `moon.yml` files) in place to match the v2 schema. Because every touched
+file is parsed and then re-serialized, comments are stripped and formatting is normalized as part
+of the migration, so it's a good idea to run this against a clean git working tree and review
+the diff before committing.
+
+By default the command prompts for confirmation before making any changes:
+
+```shell
+$ moon migrate v2
+```
+
+Pass `--yes` to skip the prompt entirely (useful in CI or scripting):
+
+```shell
+$ moon migrate v2 --yes
+```
+
+`.pkl` based configuration files are detected but cannot be automatically migrated. A
+warning is logged (once per run) for each `toolchain.pkl`, `workspace.pkl`, `tasks.pkl`,
+or `moon.pkl` file found, and that file is left untouched.
+
+The migration touches the following files:
+
+- **`.moon/workspace.yml`** - Renames and removes several settings: `codeowners.syncOnRun`
+  becomes `codeowners.sync`, and a `codeowners.orderBy` value of `project-name` becomes
+  `project-id`. `constraints.enforceProjectTypeRelationships` becomes
+  `constraints.enforceLayerRelationships`. `docker.prune.installToolchainDeps` becomes
+  `docker.prune.installToolchainDependencies`, `docker.scaffold.copyToolchainFiles` is
+  removed, and `docker.scaffold.include` becomes `docker.scaffold.configsPhaseGlobs`.
+  `experiments` and `hasher.batchSize` are removed. The top-level `runner` setting is
+  renamed to `pipeline`, and `pipeline.archivableTargets` is removed.
+  `unstable_remote` becomes `remote`, `vcs.manager` becomes `vcs.client`, and
+  `vcs.syncHooks` becomes `vcs.sync`. If an `extensions` setting is present, it's
+  extracted out of `workspace.yml` entirely and written to a new
+  `.moon/extensions.yml` file.
+- **`.moon/toolchain.yml`** - Deleted and replaced with a new `.moon/toolchains.yml`
+  file. Any top-level setting prefixed with `unstable_` is promoted to its stable name
+  (the prefix is dropped). Toolchain-specific settings are reshuffled into the new
+  per-language toolchains introduced in v2:
+  - `bun.installArgs`, `bun.plugin`, and `bun.version` stay under `bun`; everything
+    else under `bun` (except `packagesRoot`, which is removed) moves to the new
+    `javascript` toolchain settings, with `rootPackageOnly` renamed to
+    `rootPackageDependenciesOnly`.
+  - `deno.depsFile` and `deno.lockfile` are removed; only `deno.installArgs`,
+    `deno.plugin`, and `deno.version` are kept.
+  - `node.addEnginesConstraint` is removed and `node.binExecArgs` is renamed to
+    `node.executeArgs`. `node.installArgs`, `node.plugin`,
+    `node.syncVersionManagerConfig`, and `node.version` stay under `node`. Nested
+    `bun`, `npm`, `pnpm`, and `yarn` settings are hoisted into their own top-level
+    toolchain configs, and any remaining `node.*` settings move to the `javascript`
+    toolchain settings.
+  - `python.rootRequirementsOnly` and `python.rootVenvOnly` are removed.
+    `python.plugin`, `python.version`, and `python.venvName` move under a new
+    `unstable_python` toolchain, and nested `pip`/`uv` settings are hoisted into
+    their own `unstable_pip`/`unstable_uv` toolchain configs.
+- **`.moon/tasks.yml` and any `.moon/tasks/` files** - Each file is migrated (see task
+  setting changes below) and, if it doesn't already declare an `inheritedBy` setting,
+  one is inferred from the file name. A file named `tag-<name>.yml` infers
+  `inheritedBy.tag: <name>`; otherwise each hyphen-separated segment of the file name
+  is checked against known toolchain names (`bun`, `deno`, `node`, `javascript`,
+  `typescript`, `rust`, `python`, `go`), [stack types](/docs/moon/project#stacks), and
+  [layer types](/docs/moon/project#layers), falling back to `inheritedBy.language`
+  when no match is found. After processing, the flat `.moon/tasks.yml` file (if
+  present) is renamed to `.moon/tasks/all.yml`.
+- **`<project>/moon.yml`** (every project config in the workspace) - `toolchain`
+  becomes `toolchains`, `platform` becomes `toolchains.default`, and `type` becomes
+  `layer`. `docker.scaffold.include` becomes `docker.scaffold.sourcesPhaseGlobs`.
+  Under `project`, `name` becomes `title`, and any `project.metadata` fields are
+  flattened directly onto `project`. A `disabled` setting under any entry in
+  `toolchains` is removed. Tasks defined on the project are migrated the same way as
+  tasks config files (see below).
+
+For tasks, defined in either tasks config files or a project's `moon.yml`, the
+following per-task changes are applied:
+
+- `platform` is renamed to `toolchains`.
+- `command` is renamed to `script` when its value looks like a shell expression
+  (contains `||`, `&&`, a pipe, `;`, `<`, `>`, or `>>`).
+- `local: true` is removed; if the task doesn't already declare a `preset`, `preset: server` is added in its place.
+- A `preset` value of `watcher` is removed entirely.
+- Any `deps` entry with a string `args` value has it split on whitespace into an
+  array of strings.
+
+Across every migrated file, the interpolation variables `$projectName`, `$projectType`,
+and `$taskPlatform` are also rewritten to their v2 equivalents, `$projectTitle`,
+`$projectLayer`, and `$taskToolchain`, respectively.
+
+## Options
+
+- `--yes` - Skip the confirmation prompt and apply all migrations immediately.

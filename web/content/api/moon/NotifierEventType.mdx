@@ -1,0 +1,15 @@
+---
+title: NotifierEventType
+---
+
+The types of events in which to send notifications.
+
+## Variants
+
+| Variant | Value | Tags | Description |
+| --- | --- | --- | --- |
+| `never` | `"never"` | **Default** | Never toast. |
+| `always` | `"always"` |  | On pipeline success or failure. |
+| `failure` | `"failure"` |  | On pipeline failure. |
+| `success` | `"success"` |  | On pipeline success. |
+| `task-failure` | `"task-failure"` |  | On each task failure. |

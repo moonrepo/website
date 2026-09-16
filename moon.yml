@@ -7,10 +7,8 @@ tasks:
 
   check-fix:
     command: "biome check --write"
-    options:
-      runInCI: false
+    preset: "utility"
 
   format:
     command: "biome format --write"
-    options:
-      runInCI: false
+    preset: "utility"

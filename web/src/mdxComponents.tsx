@@ -6,7 +6,7 @@ import type { MDXComponents } from 'mdx/types';
 export function getMdxComponents(components?: MDXComponents): MDXComponents {
 	return {
 		...defaultComponents,
-		//ConfigTabs,
+		// ConfigTabs,
 		TypeTable,
 		...components,
 	};

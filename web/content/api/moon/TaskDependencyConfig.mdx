@@ -1,0 +1,76 @@
+---
+title: TaskDependencyConfig
+---
+
+A task referenced by target, with additional parameters to pass through.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`args`](#args) | `string[]` | Additional arguments to pass to this dependency when it's ran. |
+| [`cacheStrategy`](#cachestrategy) | [`TaskDependencyCacheStrategy`](./TaskDependencyCacheStrategy) | Controls how this dependency invalidates the current task's cache. When omitted, defaults to `hash` if the dependency declares outputs, otherwise `ignored`. @since 2.3.0 |
+| [`env`](#env) | `Record<string, string \| null>` | A map of environment variables specific to this dependency. |
+| [`optional`](#optional) | `boolean` | Marks the dependency as optional when being inherited from the top-level. @since 1.20.0 |
+| [`target`](#target) | `string` | The target of the depended on task. |
+
+## Properties
+
+### `args`
+
+> **Required**
+
+Additional arguments to pass to this dependency when it's ran.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string[]` |
+
+### `cacheStrategy`
+
+> **Optional** · **Nullable**
+
+Controls how this dependency invalidates the current task's cache.
+When omitted, defaults to `hash` if the dependency declares outputs,
+otherwise `ignored`.
+@since 2.3.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`TaskDependencyCacheStrategy`](./TaskDependencyCacheStrategy) |
+| Values | `"hash"`, `"ignored"`, `"outputs"` |
+
+### `env`
+
+> **Required**
+
+A map of environment variables specific to this dependency.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Record<string, string \| null>` |
+
+### `optional`
+
+> **Optional** · **Nullable**
+
+Marks the dependency as optional when being inherited from the top-level.
+@since 1.20.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+
+### `target`
+
+> **Required**
+
+The target of the depended on task.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+
+## References
+
+- [`TaskDependencyCacheStrategy`](./TaskDependencyCacheStrategy)

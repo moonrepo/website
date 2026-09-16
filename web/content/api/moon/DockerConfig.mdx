@@ -1,0 +1,52 @@
+---
+title: DockerConfig
+---
+
+Configures our Docker integration.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`file`](#file) | [`DockerFileConfig`](./DockerFileConfig) | Configures aspects of the `Dockerfile` generation process. @since 2.0.0 |
+| [`prune`](#prune) | [`DockerPruneConfig`](./DockerPruneConfig) | Configures aspects of the Docker pruning process. |
+| [`scaffold`](#scaffold) | [`DockerScaffoldConfig`](./DockerScaffoldConfig) | Configures aspects of the Docker scaffolding process. |
+
+## Properties
+
+### `file`
+
+> **Required**
+
+Configures aspects of the `Dockerfile` generation process.
+@since 2.0.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`DockerFileConfig`](./DockerFileConfig) |
+
+### `prune`
+
+> **Required**
+
+Configures aspects of the Docker pruning process.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`DockerPruneConfig`](./DockerPruneConfig) |
+
+### `scaffold`
+
+> **Required**
+
+Configures aspects of the Docker scaffolding process.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`DockerScaffoldConfig`](./DockerScaffoldConfig) |
+
+## References
+
+- [`DockerFileConfig`](./DockerFileConfig)
+- [`DockerPruneConfig`](./DockerPruneConfig)
+- [`DockerScaffoldConfig`](./DockerScaffoldConfig)

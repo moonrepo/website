@@ -1,0 +1,94 @@
+---
+title: TemplateVariableEnumSetting
+---
+
+A string enumerable variable.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`default`](#default) | [`TemplateVariableEnumDefault`](./TemplateVariableEnumDefault) | The default value of the variable if none was provided. |
+| [`internal`](#internal) | `boolean` | Marks the variable as internal, and won't be overwritten via CLI arguments. |
+| [`multiple`](#multiple) | `boolean` | Allows multiple values to be selected. |
+| [`order`](#order) | `number` | The order in which variables should be prompted for. |
+| [`prompt`](#prompt) | `string` | Prompt the user for a value when the generator is running. |
+| [`type`](#type) | `"enum"` |  |
+| [`values`](#values) | `TemplateVariableEnumValue[]` | List of acceptable values for this variable. |
+
+## Properties
+
+### `default`
+
+> **Required**
+
+The default value of the variable if none was provided.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`TemplateVariableEnumDefault`](./TemplateVariableEnumDefault) |
+| Aliases | `defaultValue` |
+
+### `internal`
+
+> **Optional**
+
+Marks the variable as internal, and won't be overwritten via CLI arguments.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+
+### `multiple`
+
+> **Optional** · **Nullable**
+
+Allows multiple values to be selected.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+
+### `order`
+
+> **Optional** · **Nullable**
+
+The order in which variables should be prompted for.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `number` |
+
+### `prompt`
+
+> **Optional** · **Nullable**
+
+Prompt the user for a value when the generator is running.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+
+### `type`
+
+> **Required**
+
+| Attribute | Value |
+| --- | --- |
+| Type | `"enum"` |
+
+### `values`
+
+> **Required**
+
+List of acceptable values for this variable.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `TemplateVariableEnumValue[]` |
+| References | [`TemplateVariableEnumValue`](./TemplateVariableEnumValue) |
+
+## References
+
+- [`TemplateVariableEnumDefault`](./TemplateVariableEnumDefault)
+- [`TemplateVariableEnumValue`](./TemplateVariableEnumValue)

@@ -1,0 +1,55 @@
+---
+title: ProjectWorkspaceInheritedTasksConfig
+---
+
+Controls how workspace-level tasks are inherited.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`exclude`](#exclude) | `Id[]` | Excludes inheriting tasks by their identifier. |
+| [`include`](#include) | `Id[]` | Only inherits tasks with the provided identifiers, and ignores the rest. When not defined, inherits all matching tasks. When an empty list, inherits no tasks. |
+| [`rename`](#rename) | `Record<Id, Id>` | Renames inherited tasks by mapping their existing identifier to a new identifier, scoped to this project. |
+
+## Properties
+
+### `exclude`
+
+> **Optional**
+
+Excludes inheriting tasks by their identifier.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Id[]` |
+| References | [`Id`](./Id) |
+
+### `include`
+
+> **Optional** · **Nullable**
+
+Only inherits tasks with the provided identifiers,
+and ignores the rest. When not defined, inherits
+all matching tasks. When an empty list, inherits no tasks.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Id[]` |
+| References | [`Id`](./Id) |
+
+### `rename`
+
+> **Optional**
+
+Renames inherited tasks by mapping their existing
+identifier to a new identifier, scoped to this project.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Record<Id, Id>` |
+| References | [`Id`](./Id) |
+
+## References
+
+- [`Id`](./Id)

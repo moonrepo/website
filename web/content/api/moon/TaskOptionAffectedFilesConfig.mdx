@@ -1,0 +1,73 @@
+---
+title: TaskOptionAffectedFilesConfig
+---
+
+Expanded information about affected files handling.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`filter`](#filter) | `string[]` | A list of glob patterns to filter the affected files list before passing to the task as arguments or environment variables. Globs must start with `**` to match against absolute paths. |
+| [`ignoreProjectBoundary`](#ignoreprojectboundary) | `boolean` | When matching affected files, ignore the project boundary and include workspace relative files. Otherwise, only files within the project are matched. |
+| [`pass`](#pass) | `boolean \| string` | The pattern in which affected files will be passed to the affected task. |
+| [`passDotWhenNoResults`](#passdotwhennoresults) | `boolean` | When there are no affected files after matching and filtering, use `.` instead of an empty value. |
+| [`passInputsWhenNoMatch`](#passinputswhennomatch) | `boolean` | When there are no affected files after matching, use the task's inputs instead. |
+
+## Properties
+
+### `filter`
+
+> **Optional**
+
+A list of glob patterns to filter the affected files list before
+passing to the task as arguments or environment variables. Globs
+must start with `**` to match against absolute paths.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string[]` |
+
+### `ignoreProjectBoundary`
+
+> **Optional** · **Nullable**
+
+When matching affected files, ignore the project boundary and include
+workspace relative files. Otherwise, only files within the project are matched.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+
+### `pass`
+
+> **Required**
+
+The pattern in which affected files will be passed to the affected task.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean \| string` |
+
+### `passDotWhenNoResults`
+
+> **Optional** · **Nullable**
+
+When there are no affected files after matching and filtering,
+use `.` instead of an empty value.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+| Default | `true` |
+
+### `passInputsWhenNoMatch`
+
+> **Optional** · **Nullable**
+
+When there are no affected files after matching, use the
+task's inputs instead.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |

@@ -1,0 +1,16 @@
+---
+title: moon daemon status
+---
+
+View the status of the running [daemon](../daemon) (alias: `stats`).
+
+Liveness is determined by actually connecting to the daemon's endpoint, not by checking whether a recorded process ID looks alive, so this won't be fooled by a crashed daemon whose PID was later reused by an unrelated process. If no daemon is running, a warning is printed and the command exits. If a daemon appears to be running but the connection attempt fails (for example, it crashed without cleaning up after itself), a different warning is shown instead of a hard error.
+
+When connected, the daemon is asked for its live status over RPC, and the following is printed:
+
+- **Process** - The daemon's process ID, its IPC endpoint (a Unix socket path, or a named pipe on Windows), and how long it's been running.
+- **Paths** - The location of its state file (`.moon/cache/daemon/daemon.json`, an informational record of the pid, version, and start time) and its log file (`.moon/cache/daemon/server.log`, viewable with [`moon daemon logs`](./logs)).
+
+```shell
+$ moon daemon status
+```

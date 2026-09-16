@@ -1,0 +1,66 @@
+---
+title: Task graph
+icon: Waypoints
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+
+The **task graph** is a directed graph of every [task](./task) across every project, connected by
+the dependency relationships between them. Where the [project graph](./project-graph) answers
+"which projects depend on which", the task graph answers the finer-grained question of "which
+units of work depend on which".
+
+Nodes are tasks, addressed by their [target](./target), and edges point from a task to the tasks
+it depends on. The graph is built on top of the project graph — projects have to be discovered and
+their tasks resolved through [inheritance](./task-inheritance) before any task relationships can
+exist — which is why a change to project configuration can reshape the task graph too.
+
+## Relationship to the action graph
+
+The task graph is not what moon executes. It records how tasks relate to one another, but it says
+nothing about installing toolchains, syncing projects, or the order those have to happen in.
+
+When a command runs tasks, moon builds an [action graph](./action-graph) from the task graph,
+expanding each task into the full set of work required to run it. One task node in the task graph
+typically becomes several nodes in the action graph.
+
+## Graph cycles
+
+Unlike the [project graph](./project-graph#graph-partitions), the task graph is not partitioned — it is
+a single acyclic graph, and a cycle anywhere in it is an error. Two tasks that depend on each
+other, directly or through a chain, cannot be ordered, so moon reports the cycle instead of
+guessing.
+
+The error names the tasks involved in the cycle, which is usually enough to find the offending
+[`deps`](/api/moon/TaskConfig#deps) entry. When it isn't, focusing the graph on one of the named targets tends to make the loop
+obvious.
+
+## Focusing
+
+Like the project graph, the task graph can be **focused** on a single target, reducing it to that
+task and the tasks it depends on, and optionally the tasks that depend on it.
+
+```shell
+# The whole graph
+$ moon task-graph
+
+# Just `app:build` and its dependencies
+$ moon task-graph app:build
+
+# Also include tasks that depend on `app:build`
+$ moon task-graph app:build --dependents
+```
+
+Focusing on dependents is the quickest way to answer "what breaks if I change this task?", which
+is a different question from what affected detection answers — affected detection is driven by
+changed files, while the task graph is driven purely by declared relationships.
+
+## Inspecting
+
+- [`moon task-graph`](./commands/task-graph) - Serves the interactive visualizer, or prints the
+  graph with `--dot` (Graphviz) or `--json`.
+- [`moon tasks`](./commands/tasks) - Lists every task as a table.
+- [`moon task <target>`](./commands/task) - Prints one task's fully resolved configuration,
+  including its dependencies and the config layers it inherited from.
+- [`moon query tasks`](./commands/query/tasks) - Queries the graph as JSON, filtered with
+  [MQL](./advanced/query-lang).

@@ -1,0 +1,41 @@
+---
+title: ProjectWorkspaceConfig
+---
+
+Overrides workspace settings, scoped to this project.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`inheritedTasks`](#inheritedtasks) | [`ProjectWorkspaceInheritedTasksConfig`](./ProjectWorkspaceInheritedTasksConfig) | Controls how tasks are inherited. |
+| [`mergeStrategies`](#mergestrategies) | [`ProjectWorkspaceMergeStrategiesConfig`](./ProjectWorkspaceMergeStrategiesConfig) | Controls how project settings are merged with inherited workspace-level settings. @since 2.5.0 |
+
+## Properties
+
+### `inheritedTasks`
+
+> **Required**
+
+Controls how tasks are inherited.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`ProjectWorkspaceInheritedTasksConfig`](./ProjectWorkspaceInheritedTasksConfig) |
+
+### `mergeStrategies`
+
+> **Required**
+
+Controls how project settings are merged with inherited
+workspace-level settings.
+@since 2.5.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`ProjectWorkspaceMergeStrategiesConfig`](./ProjectWorkspaceMergeStrategiesConfig) |
+
+## References
+
+- [`ProjectWorkspaceInheritedTasksConfig`](./ProjectWorkspaceInheritedTasksConfig)
+- [`ProjectWorkspaceMergeStrategiesConfig`](./ProjectWorkspaceMergeStrategiesConfig)

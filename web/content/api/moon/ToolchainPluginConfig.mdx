@@ -1,0 +1,92 @@
+---
+title: ToolchainPluginConfig
+---
+
+Configures an individual toolchain.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`config`](#config) | `Record<string, unknown>` | Arbitrary configuration that'll be passed to the WASM plugin. |
+| [`inheritAliases`](#inheritaliases) | `boolean` | Inherit aliases (name derived from a manifest) for all projects associated with this toolchain. @since 2.1.0 |
+| [`installDependencies`](#installdependencies) | `boolean` | Run the `InstallDependencies` actions for each running task when changes to lockfiles and manifests are detected. @since 2.1.0 |
+| [`plugin`](#plugin) | [`PluginLocator`](./PluginLocator) | Location of the WASM plugin to use. |
+| [`version`](#version) | [`UnresolvedVersionSpec`](./UnresolvedVersionSpec) | The version of the toolchain to download and install. |
+| [`versionFromPrototools`](#versionfromprototools) | [`ToolchainPluginVersionFrom`](./ToolchainPluginVersionFrom) | Inherit the version from the root `.prototools`. When true, matches using the same identifier, otherwise a string can be provided for a custom identifier. |
+
+## Properties
+
+### `config`
+
+> **Flattened**
+
+Arbitrary configuration that'll be passed to the WASM plugin.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `Record<string, unknown>` |
+
+### `inheritAliases`
+
+> **Optional**
+
+Inherit aliases (name derived from a manifest) for all
+projects associated with this toolchain.
+@since 2.1.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+| Default | `true` |
+
+### `installDependencies`
+
+> **Optional**
+
+Run the `InstallDependencies` actions for each running task
+when changes to lockfiles and manifests are detected.
+@since 2.1.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+| Default | `true` |
+
+### `plugin`
+
+> **Optional** · **Nullable**
+
+Location of the WASM plugin to use.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`PluginLocator`](./PluginLocator) |
+
+### `version`
+
+> **Optional** · **Nullable**
+
+The version of the toolchain to download and install.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`UnresolvedVersionSpec`](./UnresolvedVersionSpec) |
+
+### `versionFromPrototools`
+
+> **Required**
+
+Inherit the version from the root `.prototools`.
+When true, matches using the same identifier, otherwise a
+string can be provided for a custom identifier.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`ToolchainPluginVersionFrom`](./ToolchainPluginVersionFrom) |
+
+## References
+
+- [`PluginLocator`](./PluginLocator)
+- [`ToolchainPluginVersionFrom`](./ToolchainPluginVersionFrom)
+- [`UnresolvedVersionSpec`](./UnresolvedVersionSpec)

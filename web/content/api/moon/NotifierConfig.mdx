@@ -1,0 +1,57 @@
+---
+title: NotifierConfig
+---
+
+Configures how and where notifications are sent.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`terminalNotifications`](#terminalnotifications) | [`NotifierEventType`](./NotifierEventType) | Display an OS notification for certain action pipeline events. @since 1.38.0 |
+| [`webhookAcknowledge`](#webhookacknowledge) | `boolean` | Whether webhook requests require acknowledgment (2xx response). When enabled, will bypass the daemon and send webhooks in the main process. @since 1.38.0 |
+| [`webhookUrl`](#webhookurl) | `string` | A secure URL in which to send webhooks to. |
+
+## Properties
+
+### `terminalNotifications`
+
+> **Optional** · **Nullable**
+
+Display an OS notification for certain action pipeline events.
+@since 1.38.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`NotifierEventType`](./NotifierEventType) |
+| Default | `"never"` |
+| Values | `"never"`, `"always"`, `"failure"`, `"success"`, `"task-failure"` |
+
+### `webhookAcknowledge`
+
+> **Optional**
+
+Whether webhook requests require acknowledgment (2xx response).
+When enabled, will bypass the daemon and send webhooks in the
+main process.
+@since 1.38.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+| Environment variable | `MOON_WEBHOOK_ACKNOWLEDGE` |
+
+### `webhookUrl`
+
+> **Optional** · **Nullable**
+
+A secure URL in which to send webhooks to.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+| Environment variable | `MOON_WEBHOOK_URL` |
+
+## References
+
+- [`NotifierEventType`](./NotifierEventType)

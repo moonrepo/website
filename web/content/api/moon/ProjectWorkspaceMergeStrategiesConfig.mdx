@@ -1,0 +1,47 @@
+---
+title: ProjectWorkspaceMergeStrategiesConfig
+---
+
+Controls how project settings are merged with inherited
+workspace-level settings.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`env`](#env) | [`MergeStrategy`](./MergeStrategy) | The strategy to use when merging `env` with inherited environment variables, applied to the entire map. @since 2.5.0 |
+| [`fileGroups`](#filegroups) | [`MergeStrategy`](./MergeStrategy) | The strategy to use when merging `fileGroups` with inherited file groups, applied per group. @since 2.5.0 |
+
+## Properties
+
+### `env`
+
+> **Optional** · **Nullable**
+
+The strategy to use when merging `env` with inherited
+environment variables, applied to the entire map.
+@since 2.5.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`MergeStrategy`](./MergeStrategy) |
+| Default | `"append"` |
+| Values | `"append"`, `"prepend"`, `"preserve"`, `"replace"` |
+
+### `fileGroups`
+
+> **Optional** · **Nullable**
+
+The strategy to use when merging `fileGroups` with
+inherited file groups, applied per group.
+@since 2.5.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`MergeStrategy`](./MergeStrategy) |
+| Default | `"append"` |
+| Values | `"append"`, `"prepend"`, `"preserve"`, `"replace"` |
+
+## References
+
+- [`MergeStrategy`](./MergeStrategy)

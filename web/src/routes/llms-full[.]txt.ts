@@ -1,14 +1,19 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { getLlmText } from '@/lib/llm';
-import { source } from '@/lib/source';
+import { apiSource, docsSource } from '@/lib/source';
 
 export const Route = createFileRoute('/llms-full.txt')({
 	server: {
 		handlers: {
 			GET: async () => {
-				const scanned = await Promise.all(source.getPages().map(getLlmText));
+				const scannedDocs = await Promise.all(
+					docsSource.getPages().map(getLlmText),
+				);
+				const scannedApi = await Promise.all(
+					apiSource.getPages().map(getLlmText),
+				);
 
-				return new Response(scanned.join('\n\n'));
+				return new Response(scannedDocs.concat(scannedApi).join('\n\n'));
 			},
 		},
 	},

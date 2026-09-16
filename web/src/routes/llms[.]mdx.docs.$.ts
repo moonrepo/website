@@ -1,22 +1,23 @@
 import { createFileRoute, notFound } from '@tanstack/react-router';
-import { source } from '@/lib/source';
+import { getLlmText } from '@/lib/llm';
+import { docsSource } from '@/lib/source';
 
-export const Route = createFileRoute('/llms-mdx/$')({
+export const Route = createFileRoute('/llms.mdx/docs/$')({
 	server: {
 		handlers: {
 			GET: async ({ params }) => {
 				const slugs = params._splat?.split('/') ?? [];
-				const page = source.getPage(slugs);
+				const page = docsSource.getPage(slugs);
 
 				if (!page) {
 					throw notFound();
 				}
 
-				return new Response(await page.data.getText('raw'), {
+				return new Response(await getLlmText(page), {
 					headers: {
 						'Content-Type': 'text/markdown',
 					},
-				})
+				});
 			},
 		},
 	},

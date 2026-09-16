@@ -1,0 +1,39 @@
+---
+title: moon projects
+---
+
+Display a table of all [projects](../project) configured in the workspace, as
+registered in [`.moon/workspace.config`](../workspace) or discovered by
+[project discovery](../workspace#project-discovery). This is a quick way to get an
+overview of every project without writing a [query](./query/projects) or inspecting
+each [project](./project) individually.
+
+For each project, the table renders the project ID, its source location (relative to
+the workspace root), its [tech stack](../project#stacks) and
+[layer](../project#layers), the [toolchains](../toolchain) it uses, and the
+description from its [`moon.config`](../project) (when one is set). Projects are always sorted
+alphabetically by ID. If the workspace has no projects configured, an informational
+notice is printed instead of an empty table.
+
+The `Stack`, `Layer`, and `Description` columns are hidden automatically when the
+terminal is too narrow to fit them.
+
+```shell
+$ moon projects
+```
+
+Pass `--json` to print the full list of expanded project objects as JSON instead of
+rendering a table, which is useful for piping into other tools or scripts.
+
+```shell
+$ moon projects --json
+```
+
+Unlike [`moon query projects`](./query/projects), this command has no filtering
+options — it always lists every project in the graph. If you need to filter projects
+by language, stack, layer, tags, tasks, or affected status, use
+[`moon query projects`](./query/projects) instead.
+
+## Options
+
+- `--json` - Print the projects as JSON instead of a table.

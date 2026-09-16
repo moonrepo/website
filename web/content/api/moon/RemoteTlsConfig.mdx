@@ -1,0 +1,51 @@
+---
+title: RemoteTlsConfig
+---
+
+Configures for server-only authentication with TLS.
+@since 1.30.0
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`assumeHttp2`](#assumehttp2) | `boolean` | If true, assume that the server supports HTTP/2, even if it doesn't provide protocol negotiation via ALPN. |
+| [`cert`](#cert) | `string` | A file path, relative from the workspace root, to the certificate authority PEM encoded X509 certificate. |
+| [`domain`](#domain) | `string` | The domain name in which to verify the TLS certificate. |
+
+## Properties
+
+### `assumeHttp2`
+
+> **Optional**
+
+If true, assume that the server supports HTTP/2,
+even if it doesn't provide protocol negotiation via ALPN.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+| Environment variable | `MOON_REMOTE_TLS_HTTP2` |
+
+### `cert`
+
+> **Required**
+
+A file path, relative from the workspace root, to the
+certificate authority PEM encoded X509 certificate.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+| Environment variable | `MOON_REMOTE_TLS_CERT` |
+
+### `domain`
+
+> **Optional** · **Nullable**
+
+The domain name in which to verify the TLS certificate.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+| Environment variable | `MOON_REMOTE_TLS_DOMAIN` |

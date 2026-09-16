@@ -1,0 +1,41 @@
+---
+title: CacheCasConfig
+---
+
+Configures aspects of the content-addressable storage (CAS) cache.
+
+## Index
+
+| Property | Type | Description |
+| --- | --- | --- |
+| [`maxSize`](#maxsize) | `string` | Maximum total size of the local cache, for example "10gb" or "512mib". When exceeded, the least recently used cached task outputs are evicted. Unlimited when unset. @since 2.4.0 |
+| [`verifyIntegrity`](#verifyintegrity) | `boolean` | Verify hash on every read. When enabled, reads are slower but detect on-disk corruption. @since 2.3.0 |
+
+## Properties
+
+### `maxSize`
+
+> **Nullable**
+
+Maximum total size of the local cache, for example "10gb" or
+"512mib". When exceeded, the least recently used cached task outputs
+are evicted. Unlimited when unset.
+@since 2.4.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | `string` |
+| Environment variable | `MOON_CACHE_CAS_MAX_SIZE` |
+
+### `verifyIntegrity`
+
+> **Required**
+
+Verify hash on every read. When enabled, reads are slower
+but detect on-disk corruption.
+@since 2.3.0
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+| Environment variable | `MOON_CACHE_CAS_VERIFY_INTEGRITY` |
