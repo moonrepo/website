@@ -4,22 +4,22 @@ title: moon docker
 
 Operations for integrating moon with Docker and `Dockerfile`s.
 
-moon's Docker support is built around its [project graph](../project-graph) and toolchain
+moon's Docker support is built around its [project graph](<../(fundamentals)/project-graph.mdx>) and toolchain
 plugins, so that multi-stage Docker builds can take full advantage of layer caching, instead
 of copying the entire repository into every stage. The integration is made up of four
 subcommands that are typically chained together, either by hand-writing a `Dockerfile`, or by
-generating one with [`moon docker file`](./docker/file):
+generating one with [`moon docker file`](./docker/file.mdx):
 
-- [`moon docker scaffold`](./docker/scaffold) - Run first, outside of Docker (or in an early
+- [`moon docker scaffold`](./docker/scaffold.mdx) - Run first, outside of Docker (or in an early
   build stage), to copy a minimal skeleton of the repository (manifests, lockfiles, and the
   source files of the projects being built) into `.moon/docker`, ready to be `COPY`'d into the
   image.
-- [`moon docker setup`](./docker/setup) - Run inside the image, after the scaffolded files have
+- [`moon docker setup`](./docker/setup.mdx) - Run inside the image, after the scaffolded files have
   been copied in, to install toolchains and dependencies for the projects that were scaffolded.
-- [`moon docker prune`](./docker/prune) - Run after the project has been built, to strip
+- [`moon docker prune`](./docker/prune.mdx) - Run after the project has been built, to strip
   development-only dependencies and files back down to production-only, shrinking the final
   image.
-- [`moon docker file`](./docker/file) - An optional helper that generates a multi-stage
+- [`moon docker file`](./docker/file.mdx) - An optional helper that generates a multi-stage
   `Dockerfile` for a project, pre-wired to call the three commands above in the correct order.
 
 ```shell

@@ -9,16 +9,16 @@ configured in [`generator.templates`](/api/moon/GeneratorConfig#templates).
 
 For each template, moon renders a table with the following columns:
 
-- **Template** - The unique template ID, used with [`moon generate`](./generate) and
-  [`moon template`](./template).
-- **Title** - The human-readable title defined in the template's [`template.config`](../guides/codegen) file.
+- **Template** - The unique template ID, used with [`moon generate`](./generate.mdx) and
+  [`moon template`](./template.mdx).
+- **Title** - The human-readable title defined in the template's [`template.config`](../guides/codegen.mdx) file.
 - **Location** - The template's root directory, shown relative to the workspace root when
   possible. This column is hidden on narrower terminals.
 - **Variables** - The names of all variables defined by the template, sorted alphabetically.
 - **Description** - The template's description. This column is hidden on narrower terminals.
 
 If no templates have been configured or located, a notice is printed instead, prompting you to
-configure the `generator.templates` setting in [`.moon/workspace.config`](../workspace).
+configure the `generator.templates` setting in [`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>).
 
 ```shell
 $ moon templates

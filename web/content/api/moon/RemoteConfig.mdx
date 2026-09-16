@@ -9,12 +9,12 @@ Configures the remote service, powered by the Bazel Remote Execution API.
 
 | Property | Type | Description |
 | --- | --- | --- |
-| [`api`](#api) | [`RemoteApi`](./RemoteApi) | The API format of the remote service. @since 1.32.0 |
-| [`auth`](#auth) | [`RemoteAuthConfig`](./RemoteAuthConfig) | Connect to the host using basic HTTP authentication. @since 1.32.0 |
-| [`cache`](#cache) | [`RemoteCacheConfig`](./RemoteCacheConfig) | Configures the action cache (AC) and content-addressable cache (CAS). |
+| [`api`](#api) | [`RemoteApi`](./RemoteApi.mdx) | The API format of the remote service. @since 1.32.0 |
+| [`auth`](#auth) | [`RemoteAuthConfig`](./RemoteAuthConfig.mdx) | Connect to the host using basic HTTP authentication. @since 1.32.0 |
+| [`cache`](#cache) | [`RemoteCacheConfig`](./RemoteCacheConfig.mdx) | Configures the action cache (AC) and content-addressable cache (CAS). |
 | [`host`](#host) | `string` | The remote host to connect and send requests to. Supports gRPC protocols. |
-| [`mtls`](#mtls) | [`RemoteMtlsConfig`](./RemoteMtlsConfig) | Connect to the host using server and client authentication with mTLS. This takes precedence over normal TLS. |
-| [`tls`](#tls) | [`RemoteTlsConfig`](./RemoteTlsConfig) | Connect to the host using server-only authentication with TLS. |
+| [`mtls`](#mtls) | [`RemoteMtlsConfig`](./RemoteMtlsConfig.mdx) | Connect to the host using server and client authentication with mTLS. This takes precedence over normal TLS. |
+| [`tls`](#tls) | [`RemoteTlsConfig`](./RemoteTlsConfig.mdx) | Connect to the host using server-only authentication with TLS. |
 
 ## Properties
 
@@ -27,7 +27,7 @@ The API format of the remote service.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`RemoteApi`](./RemoteApi) |
+| Type | [`RemoteApi`](./RemoteApi.mdx) |
 | Default | `"grpc"` |
 | Values | `"grpc"`, `"http"` |
 | Environment variable | `MOON_REMOTE_API` |
@@ -41,7 +41,7 @@ Connect to the host using basic HTTP authentication.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`RemoteAuthConfig`](./RemoteAuthConfig) |
+| Type | [`RemoteAuthConfig`](./RemoteAuthConfig.mdx) |
 
 ### `cache`
 
@@ -51,7 +51,7 @@ Configures the action cache (AC) and content-addressable cache (CAS).
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`RemoteCacheConfig`](./RemoteCacheConfig) |
+| Type | [`RemoteCacheConfig`](./RemoteCacheConfig.mdx) |
 
 ### `host`
 
@@ -74,7 +74,7 @@ This takes precedence over normal TLS.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`RemoteMtlsConfig`](./RemoteMtlsConfig) |
+| Type | [`RemoteMtlsConfig`](./RemoteMtlsConfig.mdx) |
 
 ### `tls`
 
@@ -84,12 +84,12 @@ Connect to the host using server-only authentication with TLS.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`RemoteTlsConfig`](./RemoteTlsConfig) |
+| Type | [`RemoteTlsConfig`](./RemoteTlsConfig.mdx) |
 
 ## References
 
-- [`RemoteApi`](./RemoteApi)
-- [`RemoteAuthConfig`](./RemoteAuthConfig)
-- [`RemoteCacheConfig`](./RemoteCacheConfig)
-- [`RemoteMtlsConfig`](./RemoteMtlsConfig)
-- [`RemoteTlsConfig`](./RemoteTlsConfig)
+- [`RemoteApi`](./RemoteApi.mdx)
+- [`RemoteAuthConfig`](./RemoteAuthConfig.mdx)
+- [`RemoteCacheConfig`](./RemoteCacheConfig.mdx)
+- [`RemoteMtlsConfig`](./RemoteMtlsConfig.mdx)
+- [`RemoteTlsConfig`](./RemoteTlsConfig.mdx)

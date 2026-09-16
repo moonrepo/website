@@ -1,5 +1,6 @@
-import { createFileRoute, notFound } from '@tanstack/react-router';
+import { createFileRoute, notFound, redirect } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
+import { flattenTree } from 'fumadocs-core/page-tree';
 import { useFumadocsLoader } from 'fumadocs-core/source/client';
 import { DocsLayout } from 'fumadocs-ui/layouts/docs';
 import {
@@ -34,6 +35,15 @@ const serverLoader = createServerFn({
 		const page = apiSource.getPage(slugs);
 
 		if (!page) {
+			// No root index page, so send to the first page in the tree
+			const firstPage = slugs.every((slug) => slug === '')
+				? flattenTree(apiSource.getPageTree().children)[0]
+				: undefined;
+
+			if (firstPage) {
+				throw redirect({ href: firstPage.url });
+			}
+
 			throw notFound();
 		}
 

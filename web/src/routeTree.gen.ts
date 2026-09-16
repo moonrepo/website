@@ -9,18 +9,20 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
-import { Route as LlmsFullDottxtRouteImport } from './routes/llms-full[.]txt'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as DocsSplatRouteImport } from './routes/docs/$'
-import { Route as ApiSearchRouteImport } from './routes/api/search'
+import { Route as LlmsFullDottxtRouteImport } from './routes/llms-full[.]txt'
+import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as ApiSplatRouteImport } from './routes/api/$'
-import { Route as LlmsDotmdxDocsSplatRouteImport } from './routes/llms[.]mdx.docs.$'
+import { Route as ApiSearchRouteImport } from './routes/api/search'
+import { Route as BlogIndexRouteImport } from './routes/blog/index'
+import { Route as BlogSplatRouteImport } from './routes/blog/$'
+import { Route as DocsSplatRouteImport } from './routes/docs/$'
 import { Route as LlmsDotmdxApiSplatRouteImport } from './routes/llms[.]mdx.api.$'
+import { Route as LlmsDotmdxDocsSplatRouteImport } from './routes/llms[.]mdx.docs.$'
 
-const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
-  id: '/llms.txt',
-  path: '/llms.txt',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LlmsFullDottxtRoute = LlmsFullDottxtRouteImport.update({
@@ -28,19 +30,9 @@ const LlmsFullDottxtRoute = LlmsFullDottxtRouteImport.update({
   path: '/llms-full.txt',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DocsSplatRoute = DocsSplatRouteImport.update({
-  id: '/docs/$',
-  path: '/docs/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiSearchRoute = ApiSearchRouteImport.update({
-  id: '/api/search',
-  path: '/api/search',
+const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
+  id: '/llms.txt',
+  path: '/llms.txt',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSplatRoute = ApiSplatRouteImport.update({
@@ -48,14 +40,34 @@ const ApiSplatRoute = ApiSplatRouteImport.update({
   path: '/api/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LlmsDotmdxDocsSplatRoute = LlmsDotmdxDocsSplatRouteImport.update({
-  id: '/llms.mdx/docs/$',
-  path: '/llms.mdx/docs/$',
+const ApiSearchRoute = ApiSearchRouteImport.update({
+  id: '/api/search',
+  path: '/api/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogIndexRoute = BlogIndexRouteImport.update({
+  id: '/blog/',
+  path: '/blog/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogSplatRoute = BlogSplatRouteImport.update({
+  id: '/blog/$',
+  path: '/blog/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsSplatRoute = DocsSplatRouteImport.update({
+  id: '/docs/$',
+  path: '/docs/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LlmsDotmdxApiSplatRoute = LlmsDotmdxApiSplatRouteImport.update({
   id: '/llms.mdx/api/$',
   path: '/llms.mdx/api/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LlmsDotmdxDocsSplatRoute = LlmsDotmdxDocsSplatRouteImport.update({
+  id: '/llms.mdx/docs/$',
+  path: '/llms.mdx/docs/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -65,7 +77,9 @@ export interface FileRoutesByFullPath {
   '/llms.txt': typeof LlmsDottxtRoute
   '/api/$': typeof ApiSplatRoute
   '/api/search': typeof ApiSearchRoute
+  '/blog/$': typeof BlogSplatRoute
   '/docs/$': typeof DocsSplatRoute
+  '/blog/': typeof BlogIndexRoute
   '/llms.mdx/api/$': typeof LlmsDotmdxApiSplatRoute
   '/llms.mdx/docs/$': typeof LlmsDotmdxDocsSplatRoute
 }
@@ -75,7 +89,9 @@ export interface FileRoutesByTo {
   '/llms.txt': typeof LlmsDottxtRoute
   '/api/$': typeof ApiSplatRoute
   '/api/search': typeof ApiSearchRoute
+  '/blog/$': typeof BlogSplatRoute
   '/docs/$': typeof DocsSplatRoute
+  '/blog': typeof BlogIndexRoute
   '/llms.mdx/api/$': typeof LlmsDotmdxApiSplatRoute
   '/llms.mdx/docs/$': typeof LlmsDotmdxDocsSplatRoute
 }
@@ -86,7 +102,9 @@ export interface FileRoutesById {
   '/llms.txt': typeof LlmsDottxtRoute
   '/api/$': typeof ApiSplatRoute
   '/api/search': typeof ApiSearchRoute
+  '/blog/$': typeof BlogSplatRoute
   '/docs/$': typeof DocsSplatRoute
+  '/blog/': typeof BlogIndexRoute
   '/llms.mdx/api/$': typeof LlmsDotmdxApiSplatRoute
   '/llms.mdx/docs/$': typeof LlmsDotmdxDocsSplatRoute
 }
@@ -98,7 +116,9 @@ export interface FileRouteTypes {
     | '/llms.txt'
     | '/api/$'
     | '/api/search'
+    | '/blog/$'
     | '/docs/$'
+    | '/blog/'
     | '/llms.mdx/api/$'
     | '/llms.mdx/docs/$'
   fileRoutesByTo: FileRoutesByTo
@@ -108,7 +128,9 @@ export interface FileRouteTypes {
     | '/llms.txt'
     | '/api/$'
     | '/api/search'
+    | '/blog/$'
     | '/docs/$'
+    | '/blog'
     | '/llms.mdx/api/$'
     | '/llms.mdx/docs/$'
   id:
@@ -118,7 +140,9 @@ export interface FileRouteTypes {
     | '/llms.txt'
     | '/api/$'
     | '/api/search'
+    | '/blog/$'
     | '/docs/$'
+    | '/blog/'
     | '/llms.mdx/api/$'
     | '/llms.mdx/docs/$'
   fileRoutesById: FileRoutesById
@@ -129,18 +153,20 @@ export interface RootRouteChildren {
   LlmsDottxtRoute: typeof LlmsDottxtRoute
   ApiSplatRoute: typeof ApiSplatRoute
   ApiSearchRoute: typeof ApiSearchRoute
+  BlogSplatRoute: typeof BlogSplatRoute
   DocsSplatRoute: typeof DocsSplatRoute
+  BlogIndexRoute: typeof BlogIndexRoute
   LlmsDotmdxApiSplatRoute: typeof LlmsDotmdxApiSplatRoute
   LlmsDotmdxDocsSplatRoute: typeof LlmsDotmdxDocsSplatRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/llms.txt': {
-      id: '/llms.txt'
-      path: '/llms.txt'
-      fullPath: '/llms.txt'
-      preLoaderRoute: typeof LlmsDottxtRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/llms-full.txt': {
@@ -150,25 +176,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LlmsFullDottxtRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/docs/$': {
-      id: '/docs/$'
-      path: '/docs/$'
-      fullPath: '/docs/$'
-      preLoaderRoute: typeof DocsSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/search': {
-      id: '/api/search'
-      path: '/api/search'
-      fullPath: '/api/search'
-      preLoaderRoute: typeof ApiSearchRouteImport
+    '/llms.txt': {
+      id: '/llms.txt'
+      path: '/llms.txt'
+      fullPath: '/llms.txt'
+      preLoaderRoute: typeof LlmsDottxtRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/$': {
@@ -178,11 +190,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/llms.mdx/docs/$': {
-      id: '/llms.mdx/docs/$'
-      path: '/llms.mdx/docs/$'
-      fullPath: '/llms.mdx/docs/$'
-      preLoaderRoute: typeof LlmsDotmdxDocsSplatRouteImport
+    '/api/search': {
+      id: '/api/search'
+      path: '/api/search'
+      fullPath: '/api/search'
+      preLoaderRoute: typeof ApiSearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/': {
+      id: '/blog/'
+      path: '/blog'
+      fullPath: '/blog/'
+      preLoaderRoute: typeof BlogIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/$': {
+      id: '/blog/$'
+      path: '/blog/$'
+      fullPath: '/blog/$'
+      preLoaderRoute: typeof BlogSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/$': {
+      id: '/docs/$'
+      path: '/docs/$'
+      fullPath: '/docs/$'
+      preLoaderRoute: typeof DocsSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/llms.mdx/api/$': {
@@ -190,6 +223,13 @@ declare module '@tanstack/react-router' {
       path: '/llms.mdx/api/$'
       fullPath: '/llms.mdx/api/$'
       preLoaderRoute: typeof LlmsDotmdxApiSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/llms.mdx/docs/$': {
+      id: '/llms.mdx/docs/$'
+      path: '/llms.mdx/docs/$'
+      fullPath: '/llms.mdx/docs/$'
+      preLoaderRoute: typeof LlmsDotmdxDocsSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -201,7 +241,9 @@ const rootRouteChildren: RootRouteChildren = {
   LlmsDottxtRoute: LlmsDottxtRoute,
   ApiSplatRoute: ApiSplatRoute,
   ApiSearchRoute: ApiSearchRoute,
+  BlogSplatRoute: BlogSplatRoute,
   DocsSplatRoute: DocsSplatRoute,
+  BlogIndexRoute: BlogIndexRoute,
   LlmsDotmdxApiSplatRoute: LlmsDotmdxApiSplatRoute,
   LlmsDotmdxDocsSplatRoute: LlmsDotmdxDocsSplatRoute,
 }

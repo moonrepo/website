@@ -10,23 +10,23 @@ Docs: https://moonrepo.dev/docs/config/workspace
 | Property | Type | Description |
 | --- | --- | --- |
 | [`$schema`](#schema) | `string` |  |
-| [`cache`](#cache) | [`CacheConfig`](./CacheConfig) | Configures aspects of the caching engine and layer. @since 2.3.0 |
-| [`codeowners`](#codeowners) | [`CodeownersConfig`](./CodeownersConfig) | Configures code ownership rules for generating a `CODEOWNERS` file. @since 1.8.0 |
-| [`constraints`](#constraints) | [`ConstraintsConfig`](./ConstraintsConfig) | Configures boundaries and constraints between projects. |
+| [`cache`](#cache) | [`CacheConfig`](./CacheConfig.mdx) | Configures aspects of the caching engine and layer. @since 2.3.0 |
+| [`codeowners`](#codeowners) | [`CodeownersConfig`](./CodeownersConfig.mdx) | Configures code ownership rules for generating a `CODEOWNERS` file. @since 1.8.0 |
+| [`constraints`](#constraints) | [`ConstraintsConfig`](./ConstraintsConfig.mdx) | Configures boundaries and constraints between projects. |
 | [`daemon`](#daemon) | `boolean` | Enables a daemon that will process heavy tasks in the background, greatly increasing performance of the main thread/executable. @since 2.2.0 |
-| [`defaultProject`](#defaultproject) | [`Id`](./Id) | The default/main project within the workspace. When a task is ran without a project, the default will be used. @since 2.0.0 |
-| [`docker`](#docker) | [`DockerConfig`](./DockerConfig) | Configures Docker integration for the workspace. @since 1.27.0 |
-| [`experiments`](#experiments) | [`ExperimentsConfig`](./ExperimentsConfig) | Configures experiments across the entire moon workspace. @since 1.11.0 |
-| [`extends`](#extends) | [`ExtendsFrom`](./ExtendsFrom) | Extends one or many workspace configuration file. Supports a relative file path or a secure URL. @since 1.12.0 |
-| [`generator`](#generator) | [`GeneratorConfig`](./GeneratorConfig) | Configures the generator for scaffolding from templates. |
-| [`hasher`](#hasher) | [`HasherConfig`](./HasherConfig) | Configures aspects of the content hashing engine. |
-| [`notifier`](#notifier) | [`NotifierConfig`](./NotifierConfig) | Configures how and where notifications are sent. |
-| [`pipeline`](#pipeline) | [`PipelineConfig`](./PipelineConfig) | Configures aspects of the action pipeline. |
-| [`projects`](#projects) | [`WorkspaceProjects`](./WorkspaceProjects) | Configures all projects within the workspace to create a project graph. Accepts a list of globs, a mapping of projects to relative file paths, or both values. |
-| [`remote`](#remote) | [`RemoteConfig`](./RemoteConfig) | Configures aspects of the remote service. |
+| [`defaultProject`](#defaultproject) | [`Id`](./Id.mdx) | The default/main project within the workspace. When a task is ran without a project, the default will be used. @since 2.0.0 |
+| [`docker`](#docker) | [`DockerConfig`](./DockerConfig.mdx) | Configures Docker integration for the workspace. @since 1.27.0 |
+| [`experiments`](#experiments) | [`ExperimentsConfig`](./ExperimentsConfig.mdx) | Configures experiments across the entire moon workspace. @since 1.11.0 |
+| [`extends`](#extends) | [`ExtendsFrom`](./ExtendsFrom.mdx) | Extends one or many workspace configuration file. Supports a relative file path or a secure URL. @since 1.12.0 |
+| [`generator`](#generator) | [`GeneratorConfig`](./GeneratorConfig.mdx) | Configures the generator for scaffolding from templates. |
+| [`hasher`](#hasher) | [`HasherConfig`](./HasherConfig.mdx) | Configures aspects of the content hashing engine. |
+| [`notifier`](#notifier) | [`NotifierConfig`](./NotifierConfig.mdx) | Configures how and where notifications are sent. |
+| [`pipeline`](#pipeline) | [`PipelineConfig`](./PipelineConfig.mdx) | Configures aspects of the action pipeline. |
+| [`projects`](#projects) | [`WorkspaceProjects`](./WorkspaceProjects.mdx) | Configures all projects within the workspace to create a project graph. Accepts a list of globs, a mapping of projects to relative file paths, or both values. |
+| [`remote`](#remote) | [`RemoteConfig`](./RemoteConfig.mdx) | Configures aspects of the remote service. |
 | [`telemetry`](#telemetry) | `boolean` | Collects anonymous usage information, and checks for new moon versions. |
-| [`vcs`](#vcs) | [`VcsConfig`](./VcsConfig) | Configures the version control system (VCS). Also known as source code management (SCM). |
-| [`versionConstraint`](#versionconstraint) | [`Range`](./Range) | Requires a specific version of the `moon` binary. |
+| [`vcs`](#vcs) | [`VcsConfig`](./VcsConfig.mdx) | Configures the version control system (VCS). Also known as source code management (SCM). |
+| [`versionConstraint`](#versionconstraint) | [`Range`](./Range.mdx) | Requires a specific version of the `moon` binary. |
 
 ## Properties
 
@@ -48,7 +48,7 @@ Configures aspects of the caching engine and layer.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`CacheConfig`](./CacheConfig) |
+| Type | [`CacheConfig`](./CacheConfig.mdx) |
 
 ### `codeowners`
 
@@ -59,7 +59,7 @@ Configures code ownership rules for generating a `CODEOWNERS` file.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`CodeownersConfig`](./CodeownersConfig) |
+| Type | [`CodeownersConfig`](./CodeownersConfig.mdx) |
 
 ### `constraints`
 
@@ -69,7 +69,7 @@ Configures boundaries and constraints between projects.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`ConstraintsConfig`](./ConstraintsConfig) |
+| Type | [`ConstraintsConfig`](./ConstraintsConfig.mdx) |
 
 ### `daemon`
 
@@ -95,7 +95,7 @@ ran without a project, the default will be used.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`Id`](./Id) |
+| Type | [`Id`](./Id.mdx) |
 
 ### `docker`
 
@@ -106,7 +106,7 @@ Configures Docker integration for the workspace.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`DockerConfig`](./DockerConfig) |
+| Type | [`DockerConfig`](./DockerConfig.mdx) |
 
 ### `experiments`
 
@@ -117,7 +117,7 @@ Configures experiments across the entire moon workspace.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`ExperimentsConfig`](./ExperimentsConfig) |
+| Type | [`ExperimentsConfig`](./ExperimentsConfig.mdx) |
 
 ### `extends`
 
@@ -129,7 +129,7 @@ Supports a relative file path or a secure URL.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`ExtendsFrom`](./ExtendsFrom) |
+| Type | [`ExtendsFrom`](./ExtendsFrom.mdx) |
 
 ### `generator`
 
@@ -139,7 +139,7 @@ Configures the generator for scaffolding from templates.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`GeneratorConfig`](./GeneratorConfig) |
+| Type | [`GeneratorConfig`](./GeneratorConfig.mdx) |
 
 ### `hasher`
 
@@ -149,7 +149,7 @@ Configures aspects of the content hashing engine.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`HasherConfig`](./HasherConfig) |
+| Type | [`HasherConfig`](./HasherConfig.mdx) |
 
 ### `notifier`
 
@@ -159,7 +159,7 @@ Configures how and where notifications are sent.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`NotifierConfig`](./NotifierConfig) |
+| Type | [`NotifierConfig`](./NotifierConfig.mdx) |
 
 ### `pipeline`
 
@@ -169,7 +169,7 @@ Configures aspects of the action pipeline.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`PipelineConfig`](./PipelineConfig) |
+| Type | [`PipelineConfig`](./PipelineConfig.mdx) |
 
 ### `projects`
 
@@ -181,7 +181,7 @@ or both values.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`WorkspaceProjects`](./WorkspaceProjects) |
+| Type | [`WorkspaceProjects`](./WorkspaceProjects.mdx) |
 
 ### `remote`
 
@@ -191,7 +191,7 @@ Configures aspects of the remote service.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`RemoteConfig`](./RemoteConfig) |
+| Type | [`RemoteConfig`](./RemoteConfig.mdx) |
 
 ### `telemetry`
 
@@ -214,7 +214,7 @@ source code management (SCM).
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`VcsConfig`](./VcsConfig) |
+| Type | [`VcsConfig`](./VcsConfig.mdx) |
 
 ### `versionConstraint`
 
@@ -224,22 +224,22 @@ Requires a specific version of the `moon` binary.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`Range`](./Range) |
+| Type | [`Range`](./Range.mdx) |
 
 ## References
 
-- [`CacheConfig`](./CacheConfig)
-- [`CodeownersConfig`](./CodeownersConfig)
-- [`ConstraintsConfig`](./ConstraintsConfig)
-- [`DockerConfig`](./DockerConfig)
-- [`ExperimentsConfig`](./ExperimentsConfig)
-- [`ExtendsFrom`](./ExtendsFrom)
-- [`GeneratorConfig`](./GeneratorConfig)
-- [`HasherConfig`](./HasherConfig)
-- [`Id`](./Id)
-- [`NotifierConfig`](./NotifierConfig)
-- [`PipelineConfig`](./PipelineConfig)
-- [`Range`](./Range)
-- [`RemoteConfig`](./RemoteConfig)
-- [`VcsConfig`](./VcsConfig)
-- [`WorkspaceProjects`](./WorkspaceProjects)
+- [`CacheConfig`](./CacheConfig.mdx)
+- [`CodeownersConfig`](./CodeownersConfig.mdx)
+- [`ConstraintsConfig`](./ConstraintsConfig.mdx)
+- [`DockerConfig`](./DockerConfig.mdx)
+- [`ExperimentsConfig`](./ExperimentsConfig.mdx)
+- [`ExtendsFrom`](./ExtendsFrom.mdx)
+- [`GeneratorConfig`](./GeneratorConfig.mdx)
+- [`HasherConfig`](./HasherConfig.mdx)
+- [`Id`](./Id.mdx)
+- [`NotifierConfig`](./NotifierConfig.mdx)
+- [`PipelineConfig`](./PipelineConfig.mdx)
+- [`Range`](./Range.mdx)
+- [`RemoteConfig`](./RemoteConfig.mdx)
+- [`VcsConfig`](./VcsConfig.mdx)
+- [`WorkspaceProjects`](./WorkspaceProjects.mdx)

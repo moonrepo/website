@@ -16,8 +16,8 @@ be inherited by all projects.
 | [`layers`](#layers) | `LayerType \| LayerType[]` | Condition that matches against a project's `layer`. If multiple values are provided, it matches using an OR operator. |
 | [`order`](#order) | `number` | The order in which this configuration is inherited by a project. Lower is inherited first, while higher is last. |
 | [`stacks`](#stacks) | `StackType \| StackType[]` | Condition that matches against a project's `stack`. If multiple values are provided, it matches using an OR operator. |
-| [`tags`](#tags) | [`InheritedConditionConfig`](./InheritedConditionConfig) | Condition that matches against a tag within the project. |
-| [`toolchains`](#toolchains) | [`InheritedConditionConfig`](./InheritedConditionConfig) | Condition that matches against a toolchain detected for a project. |
+| [`tags`](#tags) | [`InheritedConditionConfig`](./InheritedConditionConfig.mdx) | Condition that matches against a tag within the project. |
+| [`toolchains`](#toolchains) | [`InheritedConditionConfig`](./InheritedConditionConfig.mdx) | Condition that matches against a toolchain detected for a project. |
 
 ## Properties
 
@@ -43,7 +43,7 @@ If multiple values are provided, it matches using an OR operator.
 | Attribute | Value |
 | --- | --- |
 | Type | `LanguageType \| LanguageType[]` |
-| References | [`LanguageType`](./LanguageType) |
+| References | [`LanguageType`](./LanguageType.mdx) |
 | Default | `"unknown"` |
 | Aliases | `language` |
 
@@ -57,7 +57,7 @@ If multiple values are provided, it matches using an OR operator.
 | Attribute | Value |
 | --- | --- |
 | Type | `LayerType \| LayerType[]` |
-| References | [`LayerType`](./LayerType) |
+| References | [`LayerType`](./LayerType.mdx) |
 | Default | `"unknown"` |
 | Aliases | `layer` |
 
@@ -82,7 +82,7 @@ If multiple values are provided, it matches using an OR operator.
 | Attribute | Value |
 | --- | --- |
 | Type | `StackType \| StackType[]` |
-| References | [`StackType`](./StackType) |
+| References | [`StackType`](./StackType.mdx) |
 | Default | `"unknown"` |
 | Aliases | `stack` |
 
@@ -94,7 +94,7 @@ Condition that matches against a tag within the project.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`InheritedConditionConfig`](./InheritedConditionConfig) |
+| Type | [`InheritedConditionConfig`](./InheritedConditionConfig.mdx) |
 | Aliases | `tag` |
 
 ### `toolchains`
@@ -105,12 +105,12 @@ Condition that matches against a toolchain detected for a project.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`InheritedConditionConfig`](./InheritedConditionConfig) |
+| Type | [`InheritedConditionConfig`](./InheritedConditionConfig.mdx) |
 | Aliases | `toolchain` |
 
 ## References
 
-- [`InheritedConditionConfig`](./InheritedConditionConfig)
-- [`LanguageType`](./LanguageType)
-- [`LayerType`](./LayerType)
-- [`StackType`](./StackType)
+- [`InheritedConditionConfig`](./InheritedConditionConfig.mdx)
+- [`LanguageType`](./LanguageType.mdx)
+- [`LayerType`](./LayerType.mdx)
+- [`StackType`](./StackType.mdx)

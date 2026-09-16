@@ -10,12 +10,12 @@ speak the same JSON format.
 This command is aliased as `moon q`, and does nothing on its own — it exists purely to group the
 following subcommands:
 
-- [`moon query affected`](./query/affected) - Query the projects and tasks affected by changed
+- [`moon query affected`](./query/affected.mdx) - Query the projects and tasks affected by changed
   files.
-- [`moon query changed-files`](./query/changed-files) - Query the list of files changed against the
+- [`moon query changed-files`](./query/changed-files.mdx) - Query the list of files changed against the
   current VCS state.
-- [`moon query projects`](./query/projects) - Query and filter the projects in the project graph.
-- [`moon query tasks`](./query/tasks) - Query and filter the tasks in the task graph, grouped by
+- [`moon query projects`](./query/projects.mdx) - Query and filter the projects in the project graph.
+- [`moon query tasks`](./query/tasks.mdx) - Query and filter the tasks in the task graph, grouped by
   project.
 
 ```shell
@@ -25,6 +25,6 @@ $ moon query changed-files --status added --status modified
 $ moon query affected --upstream deep
 ```
 
-[`moon query projects`](./query/projects) and [`moon query tasks`](./query/tasks) both also accept a
-[query language (MQL)](../advanced/query-lang) statement as an argument, for more advanced and
+[`moon query projects`](./query/projects.mdx) and [`moon query tasks`](./query/tasks.mdx) both also accept a
+[query language (MQL)](../advanced/query-lang.mdx) statement as an argument, for more advanced and
 composable filtering than the individual `--option` flags provide.

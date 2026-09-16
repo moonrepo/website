@@ -11,9 +11,9 @@ Configures an individual toolchain.
 | [`config`](#config) | `Record<string, unknown>` | Arbitrary configuration that'll be passed to the WASM plugin. |
 | [`inheritAliases`](#inheritaliases) | `boolean` | Inherit aliases (name derived from a manifest) for all projects associated with this toolchain. @since 2.1.0 |
 | [`installDependencies`](#installdependencies) | `boolean` | Run the `InstallDependencies` actions for each running task when changes to lockfiles and manifests are detected. @since 2.1.0 |
-| [`plugin`](#plugin) | [`PluginLocator`](./PluginLocator) | Location of the WASM plugin to use. |
-| [`version`](#version) | [`UnresolvedVersionSpec`](./UnresolvedVersionSpec) | The version of the toolchain to download and install. |
-| [`versionFromPrototools`](#versionfromprototools) | [`ToolchainPluginVersionFrom`](./ToolchainPluginVersionFrom) | Inherit the version from the root `.prototools`. When true, matches using the same identifier, otherwise a string can be provided for a custom identifier. |
+| [`plugin`](#plugin) | [`PluginLocator`](./PluginLocator.mdx) | Location of the WASM plugin to use. |
+| [`version`](#version) | [`UnresolvedVersionSpec`](./UnresolvedVersionSpec.mdx) | The version of the toolchain to download and install. |
+| [`versionFromPrototools`](#versionfromprototools) | [`ToolchainPluginVersionFrom`](./ToolchainPluginVersionFrom.mdx) | Inherit the version from the root `.prototools`. When true, matches using the same identifier, otherwise a string can be provided for a custom identifier. |
 
 ## Properties
 
@@ -61,7 +61,7 @@ Location of the WASM plugin to use.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`PluginLocator`](./PluginLocator) |
+| Type | [`PluginLocator`](./PluginLocator.mdx) |
 
 ### `version`
 
@@ -71,7 +71,7 @@ The version of the toolchain to download and install.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`UnresolvedVersionSpec`](./UnresolvedVersionSpec) |
+| Type | [`UnresolvedVersionSpec`](./UnresolvedVersionSpec.mdx) |
 
 ### `versionFromPrototools`
 
@@ -83,10 +83,10 @@ string can be provided for a custom identifier.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`ToolchainPluginVersionFrom`](./ToolchainPluginVersionFrom) |
+| Type | [`ToolchainPluginVersionFrom`](./ToolchainPluginVersionFrom.mdx) |
 
 ## References
 
-- [`PluginLocator`](./PluginLocator)
-- [`ToolchainPluginVersionFrom`](./ToolchainPluginVersionFrom)
-- [`UnresolvedVersionSpec`](./UnresolvedVersionSpec)
+- [`PluginLocator`](./PluginLocator.mdx)
+- [`ToolchainPluginVersionFrom`](./ToolchainPluginVersionFrom.mdx)
+- [`UnresolvedVersionSpec`](./UnresolvedVersionSpec.mdx)

@@ -5,15 +5,15 @@ title: moon docker file
 import { TypeLabel } from "@/components/TypeLabel";
 
 Generates a multi-stage, production-oriented `Dockerfile` for a project, taking full advantage
-of Docker's layer caching. See [`moon docker`](../docker) for how this fits into the wider
+of Docker's layer caching. See [`moon docker`](../docker.mdx) for how this fits into the wider
 Docker workflow. The generated file is split into the following stages:
 
 - `base` - Installs moon into the chosen base image (requires Bash).
 - `skeleton` - Copies in the workspace and source skeletons produced by
-  [`moon docker scaffold`](./scaffold).
+  [`moon docker scaffold`](./scaffold.mdx).
 - `build` - Copies the required sources, installs toolchains and dependencies with
-  [`moon docker setup`](./setup), optionally runs a build task, and optionally strips
-  development dependencies with [`moon docker prune`](./prune).
+  [`moon docker setup`](./setup.mdx), optionally runs a build task, and optionally strips
+  development dependencies with [`moon docker prune`](./prune.mdx).
 - `start` - Runs the project once it has been built, typically an HTTP server or a binary.
 
 The base image is resolved in the following order: the `--image` flag, the project's or
@@ -42,7 +42,7 @@ $ moon docker file app ./docker/Dockerfile --image node:20-slim
 
 ## Arguments
 
-- `<ID>` - ID of the [project](../../project) to generate a `Dockerfile` for.
+- `<ID>` - ID of the [project](<../../(fundamentals)/project.mdx>) to generate a `Dockerfile` for.
 - `[DEST]` - Destination path to write the file to, relative from the project root. Defaults to
   `Dockerfile`.
 
@@ -57,9 +57,9 @@ $ moon docker file app ./docker/Dockerfile --image node:20-slim
 - `--image` <TypeLabel type="string" /> - Base Docker image to use for every stage. When
   omitted, falls back to the project's or workspace's [`docker.file.image`](/api/moon/DockerFileConfig#image) setting, then to an
   image derived from the project's toolchain, then to `scratch`.
-- `--no-prune` - Do not run [`moon docker prune`](./prune) in the `build` stage. Overrides the
+- `--no-prune` - Do not run [`moon docker prune`](./prune.mdx) in the `build` stage. Overrides the
   project's or workspace's [`docker.file.runPrune`](/api/moon/DockerFileConfig#runprune) setting, which defaults to `true`.
-- `--no-setup` - Do not run [`moon docker setup`](./setup) in the `build` stage. Overrides the
+- `--no-setup` - Do not run [`moon docker setup`](./setup.mdx) in the `build` stage. Overrides the
   project's or workspace's [`docker.file.runSetup`](/api/moon/DockerFileConfig#runsetup) setting, which defaults to `true`.
 - `--no-toolchain` - Do not install moon's toolchain into the image, and instead rely on system
   binaries that already exist in the base image.

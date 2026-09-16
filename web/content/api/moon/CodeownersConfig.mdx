@@ -9,7 +9,7 @@ Configures code ownership rules for generating a `CODEOWNERS` file.
 | Property | Type | Description |
 | --- | --- | --- |
 | [`globalPaths`](#globalpaths) | `Record<string, string[]>` | A map of global file paths and glob patterns to a list of owners. Can be relative from the workspace root, or a wildcard match for any depth. |
-| [`orderBy`](#orderby) | [`CodeownersOrderBy`](./CodeownersOrderBy) | How to order ownership rules within the generated file. |
+| [`orderBy`](#orderby) | [`CodeownersOrderBy`](./CodeownersOrderBy.mdx) | How to order ownership rules within the generated file. |
 | [`requiredApprovals`](#requiredapprovals) | `number` | `bitbucket-legacy` and GitLab only. The number of approvals required for the request to be satisfied. This will be applied to all paths. @since 1.28.0 |
 | [`sync`](#sync) | `boolean` | Automatically generate a `CODEOWNERS` file during a sync operation, after aggregating all ownership rules from each project in the workspace. |
 
@@ -34,7 +34,7 @@ How to order ownership rules within the generated file.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`CodeownersOrderBy`](./CodeownersOrderBy) |
+| Type | [`CodeownersOrderBy`](./CodeownersOrderBy.mdx) |
 | Default | `"file-source"` |
 | Values | `"file-source"`, `"project-id"` |
 
@@ -63,4 +63,4 @@ after aggregating all ownership rules from each project in the workspace.
 
 ## References
 
-- [`CodeownersOrderBy`](./CodeownersOrderBy)
+- [`CodeownersOrderBy`](./CodeownersOrderBy.mdx)

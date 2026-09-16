@@ -2,7 +2,7 @@
 title: moon extension info
 ---
 
-Show detailed information about an [extension](../extension) plugin, without executing it. This
+Show detailed information about an [extension](../extension.mdx) plugin, without executing it. This
 command downloads (or loads from cache) the extension's WASM plugin and renders:
 
 - The extension's title, description, and plugin version.
@@ -11,11 +11,11 @@ command downloads (or loads from cache) the extension's WASM plugin and renders:
   required (`register_extension` is always required).
 
 This is useful for auditing what an extension actually supports and does before wiring it up with
-[`moon extension add`](./add) or running it with [`moon ext`](../ext).
+[`moon extension add`](./add.mdx) or running it with [`moon ext`](../ext.mdx).
 
-Just like [`moon extension add`](./add), the `plugin` argument can be omitted for moon's built-in
+Just like [`moon extension add`](./add.mdx), the `plugin` argument can be omitted for moon's built-in
 extensions (`download`, `migrate-nx`, `migrate-turborepo`, and `unpack`), since their locators are
-already known. For any other extension, either configure it in [`.moon/extensions.config`](../../extension) first, or
+already known. For any other extension, either configure it in [`.moon/extensions.config`](<../../(fundamentals)/extension.mdx>) first, or
 pass its plugin locator explicitly.
 
 ```shell
@@ -25,7 +25,7 @@ $ moon extension info my-extension https://example.com/path/to/plugin.wasm
 
 ## Arguments
 
-- `<ID>` - ID of the extension to inspect. If already configured in [`.moon/extensions.config`](../../extension), its
+- `<ID>` - ID of the extension to inspect. If already configured in [`.moon/extensions.config`](<../../(fundamentals)/extension.mdx>), its
   locator will be resolved automatically.
 - `[PLUGIN]` - Plugin locator string used to locate and load the extension's WASM file, when not
   already configured or not a built-in extension.

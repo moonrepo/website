@@ -1,7 +1,8 @@
 import { loader } from 'fumadocs-core/source';
 import { lucideIconsPlugin } from 'fumadocs-core/source/lucide-icons';
 // import * as icons from 'lucide-static';
-import { api, docs } from '@/generated/server';
+import { toFumadocsSource } from 'fumadocs-mdx/runtime/server';
+import { api, blog, docs } from '@/generated/server';
 
 export const apiSource = loader({
 	source: api.toFumadocsSource(),
@@ -19,4 +20,9 @@ export const docsSource = loader({
 	// 		return icons[icon as keyof typeof icons];
 	// 	}
 	// },
+});
+
+export const blogSource = loader({
+	source: toFumadocsSource(blog, []),
+	baseUrl: '/blog',
 });

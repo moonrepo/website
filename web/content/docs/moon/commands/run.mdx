@@ -4,17 +4,17 @@ title: moon run
 
 import { TypeLabel } from "@/components/TypeLabel";
 
-Run one or many [targets](../target) (and their upstream dependencies) through moon's action
+Run one or many [targets](<../(fundamentals)/target.mdx>) (and their upstream dependencies) through moon's action
 pipeline, in topological order. This is the command you'll reach for most often: it resolves the
 tasks that match the given targets, builds an action graph from them (installing dependencies,
 syncing projects, running dependency tasks, and so on), and then executes that graph, caching each
 task's output along the way to speed up subsequent runs. To see the graph a set of targets would
-produce without running anything, use [`moon action-graph`](./action-graph).
+produce without running anything, use [`moon action-graph`](./action-graph.mdx).
 
-`moon run` is a thin, opinionated wrapper around [`moon exec`](./exec): it forwards to the same
+`moon run` is a thin, opinionated wrapper around [`moon exec`](./exec.mdx): it forwards to the same
 execution engine but always fails fast, aborting the entire pipeline as soon as any task fails
 (equivalent to `moon exec --on-failure bail`). If you'd rather continue running unaffected tasks
-after a failure, use [`moon exec`](./exec) directly with `--on-failure continue`.
+after a failure, use [`moon exec`](./exec.mdx) directly with `--on-failure continue`.
 
 If no targets are provided on the command line, moon prompts interactively with a multi-select
 list of all known tasks in the workspace, letting you choose which ones to run.
@@ -47,7 +47,7 @@ $ moon run app:lint --affected --base master
 
 ## Arguments
 
-- `[TARGETS...]` - List of explicit [task targets](../target) to run. When omitted, moon prompts
+- `[TARGETS...]` - List of explicit [task targets](<../(fundamentals)/target.mdx>) to run. When omitted, moon prompts
   interactively for a selection of tasks.
 - `-- [ARGS...]` - Additional arguments to pass through to the underlying task command. Only
   applies to explicit targets, and is ignored when multiple tasks are being run.
@@ -69,7 +69,7 @@ $ moon run app:lint --affected --base master
   of all actions that ran in the pipeline once it completes. Can also be set via the
   `MOON_SUMMARY` environment variable. Defaults to `normal` when passed without a value.
 - `--query` <TypeLabel type="string" /> - Filter the tasks to run based on the result of a
-  [query](./query) statement, further narrowing the resolved targets.
+  [query](./query.mdx) statement, further narrowing the resolved targets.
 - `--no-actions` - Run the pipeline without any sync or setup related actions (toolchain
   installation, project syncing, etc), executing only the requested tasks. Can also be set via the
   `MOON_NO_ACTIONS` environment variable.

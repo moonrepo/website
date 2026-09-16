@@ -3,12 +3,14 @@ import {
 	defineCollections,
 	defineConfig,
 	defineDocs,
+	frontmatterSchema,
 } from 'fumadocs-mdx/config';
 import {
 	createFileSystemGeneratorCache,
 	createGenerator,
 	remarkAutoTypeTable,
 } from 'fumadocs-typescript';
+import { remarkRelativeLinks } from './src/lib/remarkRelativeLinks';
 
 const generator = createGenerator({
 	cache: createFileSystemGeneratorCache('node_modules/.fuma/typescript'),
@@ -35,6 +37,7 @@ export const docs = defineDocs({
 export const blog = defineCollections({
 	type: 'doc',
 	dir: 'content/blog',
+	schema: frontmatterSchema,
 	// schema: frontmatterSchema.extend({
 	// 	author: z.string(),
 	// 	date: z.iso.date().or(z.date()),
@@ -43,6 +46,6 @@ export const blog = defineCollections({
 
 export default defineConfig({
 	mdxOptions: applyMdxPreset({
-		remarkPlugins: [[remarkAutoTypeTable, { generator }]],
+		remarkPlugins: [remarkRelativeLinks, [remarkAutoTypeTable, { generator }]],
 	}),
 });

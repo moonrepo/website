@@ -11,11 +11,11 @@ Configures aspects of the action pipeline.
 | [`autoCleanCache`](#autocleancache) | `boolean` | Automatically clean the cache after every task run. @since 1.24.0 |
 | [`cacheLifetime`](#cachelifetime) | `string` | The lifetime in which task outputs will be cached. |
 | [`inheritColorsForPipedTasks`](#inheritcolorsforpipedtasks) | `boolean` | Automatically inherit color settings for all tasks being ran. |
-| [`installDependencies`](#installdependencies) | [`PipelineActionSwitch`](./PipelineActionSwitch) | Run the `InstallDependencies` actions for each running task when changes to lockfiles and manifests are detected. @since 1.34.0 |
+| [`installDependencies`](#installdependencies) | [`PipelineActionSwitch`](./PipelineActionSwitch.mdx) | Run the `InstallDependencies` actions for each running task when changes to lockfiles and manifests are detected. @since 1.34.0 |
 | [`killProcessThreshold`](#killprocessthreshold) | `number` | A threshold in milliseconds in which to force kill running child processes after the pipeline receives an external signal. A value of 0 will not kill the process and let them run to completion. |
 | [`logRunningCommand`](#logrunningcommand) | `boolean` | Logs the task's command and arguments when running the task. |
 | [`syncProjectDependencies`](#syncprojectdependencies) | `boolean` | When creating `SyncProject` actions, recursively create a `SyncProject` action for each project dependency, and link them as a relationship. @since 1.34.0 |
-| [`syncProjects`](#syncprojects) | [`PipelineActionSwitch`](./PipelineActionSwitch) | Run the `SyncProject` actions in the pipeline for each owning project of a running task. @since 1.34.0 |
+| [`syncProjects`](#syncprojects) | [`PipelineActionSwitch`](./PipelineActionSwitch.mdx) | Run the `SyncProject` actions in the pipeline for each owning project of a running task. @since 1.34.0 |
 | [`syncWorkspace`](#syncworkspace) | `boolean` | Run the `SyncWorkspace` action before all actions in the pipeline. @since 1.34.0 |
 
 ## Properties
@@ -66,7 +66,7 @@ when changes to lockfiles and manifests are detected.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`PipelineActionSwitch`](./PipelineActionSwitch) |
+| Type | [`PipelineActionSwitch`](./PipelineActionSwitch.mdx) |
 
 ### `killProcessThreshold`
 
@@ -115,7 +115,7 @@ of a running task.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`PipelineActionSwitch`](./PipelineActionSwitch) |
+| Type | [`PipelineActionSwitch`](./PipelineActionSwitch.mdx) |
 
 ### `syncWorkspace`
 
@@ -131,4 +131,4 @@ Run the `SyncWorkspace` action before all actions in the pipeline.
 
 ## References
 
-- [`PipelineActionSwitch`](./PipelineActionSwitch)
+- [`PipelineActionSwitch`](./PipelineActionSwitch.mdx)

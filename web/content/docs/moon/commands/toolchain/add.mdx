@@ -2,12 +2,12 @@
 title: moon toolchain add
 ---
 
-Add and configure a [toolchain](../../toolchain) plugin for the current workspace, one of the
-[`moon toolchain`](../toolchain) management commands. This command
+Add and configure a [toolchain](<../../(fundamentals)/toolchain.mdx>) plugin for the current workspace, one of the
+[`moon toolchain`](../toolchain.mdx) management commands. This command
 downloads the toolchain's WASM plugin, extracts its metadata, and (if the plugin implements an
 `initialize_toolchain` function) runs an interactive series of prompts to gather configuration
 values from you. Once complete, a new block is appended to (or updated within)
-[`.moon/toolchains.config`](../../toolchain), persisting the toolchain's plugin locator (for third-party toolchains),
+[`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>), persisting the toolchain's plugin locator (for third-party toolchains),
 detected or confirmed version, and any configured settings, so that it's used going forward.
 
 For moon's built-in toolchains, the `plugin`

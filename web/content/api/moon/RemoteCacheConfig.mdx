@@ -9,7 +9,7 @@ Configures the action cache (AC) and content-addressable cache (CAS).
 
 | Property | Type | Description |
 | --- | --- | --- |
-| [`compression`](#compression) | [`RemoteCompression`](./RemoteCompression) | The compression format to use when uploading/downloading blobs. @since 1.31.0 |
+| [`compression`](#compression) | [`RemoteCompression`](./RemoteCompression.mdx) | The compression format to use when uploading/downloading blobs. @since 1.31.0 |
 | [`instanceName`](#instancename) | `string` | Unique instance name for blobs. Will be used as a folder name. |
 | [`localReadOnly`](#localreadonly) | `boolean` | When local, only download matching blobs and do not upload new blobs. Blobs will only be uploaded in CI environments. @since 1.40.0 |
 | [`verifyIntegrity`](#verifyintegrity) | `boolean` | When downloading blobs, verify the digests/hashes in the response match the associated blob contents. This will reduce performance but ensure partial or corrupted blobs won't cause failures. @since 1.36.0 |
@@ -25,7 +25,7 @@ The compression format to use when uploading/downloading blobs.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`RemoteCompression`](./RemoteCompression) |
+| Type | [`RemoteCompression`](./RemoteCompression.mdx) |
 | Default | `"none"` |
 | Values | `"none"`, `"zstd"` |
 | Environment variable | `MOON_REMOTE_CACHE_COMPRESSION` |
@@ -71,4 +71,4 @@ but ensure partial or corrupted blobs won't cause failures.
 
 ## References
 
-- [`RemoteCompression`](./RemoteCompression)
+- [`RemoteCompression`](./RemoteCompression.mdx)

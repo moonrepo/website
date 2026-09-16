@@ -7,8 +7,8 @@ import { ConfigTabs } from "@/components/ConfigTabs";
 import { TypeLabel } from "@/components/TypeLabel";
 import { VersionLabel } from "@/components/VersionLabel";
 
-Task inheritance is how a [task](./task) defined once, at the workspace level, becomes available to
-many [projects](./project) without being copied into each one. Instead of every project repeating
+Task inheritance is how a [task](./task.mdx) defined once, at the workspace level, becomes available to
+many [projects](./project.mdx) without being copied into each one. Instead of every project repeating
 the same `lint`, `test`, or `build` definition, those tasks live in the workspace and each project
 inherits the ones that apply to it, then adjusts what it needs to.
 
@@ -45,12 +45,12 @@ Each file uses the same shape, and supports the following settings:
 - [`inheritedBy`](/api/moon/InheritedTasksConfig#inheritedby) <VersionLabel version="2.0.0" /> - Conditions that decide which projects inherit
   this file. See [scoping inheritance](#scoping-inheritance).
 - [`tasks`](/api/moon/InheritedTasksConfig#tasks) - A map of task identifiers to task definitions, matching the shape used in a project's
-  [`moon.config`](./project#tasks).
+  [`moon.config`](./project.mdx#tasks).
 - [`taskOptions`](/api/moon/InheritedTasksConfig#taskoptions) <VersionLabel version="1.20.0" /> - Default [task options](/api/moon/TaskOptionsConfig) applied
   to every task inherited from this file.
-- [`implicitDeps`](/api/moon/InheritedTasksConfig#implicitdeps) - Task [dependencies](./task#dependencies) injected into every inherited task.
-- [`implicitInputs`](/api/moon/InheritedTasksConfig#implicitinputs) - Task [inputs](./task#inputs) injected into every inherited task.
-- [`fileGroups`](/api/moon/InheritedTasksConfig#filegroups) - [File groups](./advanced/file-groups) made available to inheriting projects.
+- [`implicitDeps`](/api/moon/InheritedTasksConfig#implicitdeps) - Task [dependencies](./task.mdx#dependencies) injected into every inherited task.
+- [`implicitInputs`](/api/moon/InheritedTasksConfig#implicitinputs) - Task [inputs](./task.mdx#inputs) injected into every inherited task.
+- [`fileGroups`](/api/moon/InheritedTasksConfig#filegroups) - [File groups](../advanced/file-groups.mdx) made available to inheriting projects.
 - [`env`](/api/moon/InheritedTasksConfig#env) <VersionLabel version="2.5.0" /> - Environment variables merged into every inheriting
   project's `env`.
 - [`extends`](/api/moon/InheritedTasksConfig#extends) <VersionLabel version="1.12.0" /> - Extends another tasks configuration file, by
@@ -83,7 +83,7 @@ By default, a tasks file is inherited by _every_ project in the workspace. The [
 setting narrows that down with conditions matched against each project. When multiple conditions
 are defined, **all** of them must match.
 
-- [`toolchains`](/api/moon/InheritedByConfig#toolchains) - Matches against the [toolchains](./toolchain) detected for the project.
+- [`toolchains`](/api/moon/InheritedByConfig#toolchains) - Matches against the [toolchains](./toolchain.mdx) detected for the project.
 - [`languages`](/api/moon/InheritedByConfig#languages) - Matches against the project's [`language`](/api/moon/ProjectConfig#language).
 - [`stacks`](/api/moon/InheritedByConfig#stacks) - Matches against the project's [`stack`](/api/moon/ProjectConfig#stack).
 - [`layers`](/api/moon/InheritedByConfig#layers) - Matches against the project's [`layer`](/api/moon/ProjectConfig#layer).
@@ -154,7 +154,7 @@ one scoped by toolchain alone (50). Files that end up with the same order are so
 so the result is stable across machines. Setting [`inheritedBy.order`](/api/moon/InheritedByConfig#order) explicitly overrides the
 derived value entirely.
 
-The project's own tasks, defined in its [`moon.config`](./project#tasks), are always merged
+The project's own tasks, defined in its [`moon.config`](./project.mdx#tasks), are always merged
 last, and therefore always win against inherited configuration.
 
 ## Merge strategies
@@ -229,7 +229,7 @@ tasks, otherwise configuration will fail to build.
 ## Filtering what a project inherits
 
 A project can opt out of, or rename, the tasks it would otherwise inherit, through the
-[`workspace.inheritedTasks`](/api/moon/ProjectWorkspaceConfig#inheritedtasks) setting in its [`moon.config`](./project#inheritance-overrides).
+[`workspace.inheritedTasks`](/api/moon/ProjectWorkspaceConfig#inheritedtasks) setting in its [`moon.config`](./project.mdx#inheritance-overrides).
 
 - [`include`](/api/moon/ProjectWorkspaceInheritedTasksConfig#include) <TypeLabel type="string[]" /> - Only inherit tasks with these identifiers. When
   undefined, all matching tasks are inherited; when an empty list, none are.
@@ -275,9 +275,9 @@ described above.
 ## Debugging inheritance
 
 Because a single task can be assembled from several files, it's often useful to see what a project
-actually ended up with. [`moon task <target>`](./commands/task) prints a task's fully resolved
+actually ended up with. [`moon task <target>`](../commands/task.mdx) prints a task's fully resolved
 configuration, including the config layers it inherited from, and
-[`moon project <id>`](./commands/project) does the same for a project as a whole.
+[`moon project <id>`](../commands/project.mdx) does the same for a project as a whole.
 
 ```shell
 $ moon task app:lint

@@ -6,7 +6,7 @@ icon: Puzzle
 import { ConfigTabs } from "@/components/ConfigTabs";
 
 **Extensions** are WASM plugins that extend moon with functionality that doesn't belong to a
-[toolchain](./toolchain) or a [task](./task). They're the general purpose escape hatch of the plugin
+[toolchain](./toolchain.mdx) or a [task](./task.mdx). They're the general purpose escape hatch of the plugin
 system: an extension can be invoked directly from the command line as a one-off utility, or it can
 hook into moon's internals to shape the project graph, augment commands before they execute, and
 participate in workspace and project syncing.
@@ -31,7 +31,7 @@ the information moon explicitly passes them, and are portable across every platf
 ### Direct execution
 
 An extension that implements `execute_extension` can be run on demand with
-[`moon ext`](./commands/ext), which loads the plugin and forwards every argument after `--` to it.
+[`moon ext`](../commands/ext.mdx), which loads the plugin and forwards every argument after `--` to it.
 This is the model used by moon's built-in extensions, and is well suited to one-off utilities such
 as downloading a file, unpacking an archive, or migrating configuration from another task runner.
 
@@ -44,14 +44,14 @@ $ moon ext unpack -- --input ./archive.tar.gz --output ./out
 During project graph construction, extensions implementing `extend_project_graph` are given the
 set of discovered project sources and can return additional projects, aliases, and input files to
 register. This allows an extension to teach moon about projects that its own conventions define,
-rather than requiring them to be listed in [`.moon/workspace.config`](./workspace).
+rather than requiring them to be listed in [`.moon/workspace.config`](./workspace.mdx).
 
 ### Command augmentation
 
 Before a process runs, extensions can rewrite it:
 
 - `extend_command` - Applies to any command moon executes.
-- `extend_task_command` - Applies to a [task](./task) that runs a command.
+- `extend_task_command` - Applies to a [task](./task.mdx) that runs a command.
 - `extend_task_script` - Applies to a task that runs a script.
 
 Each hook can prepend arguments, inject environment variables, and contribute additional `PATH`
@@ -61,9 +61,9 @@ task definition.
 ### Workspace and project syncing
 
 Extensions implementing `sync_workspace` or `sync_project` run as part of moon's
-[sync actions](./action), alongside the equivalent toolchain hooks. Both return the list of files
+[sync actions](./action.mdx), alongside the equivalent toolchain hooks. Both return the list of files
 they changed, so syncing stays incremental and the results can be reported to the user. See
-[`moon sync`](./commands/sync).
+[`moon sync`](../commands/sync.mdx).
 
 ## Built-in extensions
 
@@ -75,8 +75,8 @@ alone is enough, and moon resolves the plugin for you:
 - `migrate-turborepo` - Migrate a Turborepo workspace's configuration to moon.
 - `unpack` - Unpack an archive (zip, tar, and so on) to a destination.
 
-These identifiers also work with [`moon ext`](./commands/ext) and
-[`moon extension info`](./commands/extension/info) without being configured first.
+These identifiers also work with [`moon ext`](../commands/ext.mdx) and
+[`moon extension info`](../commands/extension/info.mdx) without being configured first.
 
 ## Configuration
 
@@ -103,9 +103,9 @@ which accepts a relative file path or a secure URL.
 Extensions can be added and inspected from the command line, instead of editing the configuration
 file by hand:
 
-- [`moon extension add`](./commands/extension/add) - Register an extension and write it to
+- [`moon extension add`](../commands/extension/add.mdx) - Register an extension and write it to
   `.moon/extensions.config`.
-- [`moon extension info`](./commands/extension/info) - Print an extension's metadata, settings
+- [`moon extension info`](../commands/extension/info.mdx) - Print an extension's metadata, settings
   schema, and the plugin functions it implements.
-- [`moon extension download`](./commands/extension/download) - Download and cache the WASM plugins
+- [`moon extension download`](../commands/extension/download.mdx) - Download and cache the WASM plugins
   for every configured extension, without executing them.

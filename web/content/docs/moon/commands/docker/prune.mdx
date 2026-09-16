@@ -5,12 +5,12 @@ title: moon docker prune
 Reduces the size of a Docker image by removing development artifacts and reinstalling
 production-only dependencies for the projects that were previously scaffolded. This is intended
 to be run inside a `Dockerfile`, after a project has been built, as the final step before the
-`start` stage, and is the last of the [`moon docker`](../docker) commands to run.
+`start` stage, and is the last of the [`moon docker`](../docker.mdx) commands to run.
 
 The command reads the `dockerManifest.json` file from the workspace root, which is written by
-[`moon docker scaffold`](./scaffold) and records which projects were explicitly focused on
+[`moon docker scaffold`](./scaffold.mdx) and records which projects were explicitly focused on
 versus pulled in as dependencies. If this manifest doesn't exist, the command fails and suggests
-running [`moon docker scaffold`](./scaffold) first.
+running [`moon docker scaffold`](./scaffold.mdx) first.
 
 For every toolchain-specific dependency workspace used by the focused projects (for example, a
 Yarn workspace root or a Cargo workspace root), moon runs two steps in parallel across

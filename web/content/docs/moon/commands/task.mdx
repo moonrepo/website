@@ -2,8 +2,8 @@
 title: moon task
 ---
 
-Display detailed information about a single [task](../task), after it's been merged
-with [inherited configuration](../task-inheritance), token resolution, and toolchain
+Display detailed information about a single [task](<../(fundamentals)/task.mdx>), after it's been merged
+with [inherited configuration](<../(fundamentals)/task-inheritance.mdx>), token resolution, and toolchain
 detection have all been applied.
 
 If a `target` argument isn't provided, moon prompts you interactively to select a task
@@ -12,17 +12,17 @@ when you don't remember the exact target format of the task you want to inspect.
 
 The default output is a human-readable breakdown split into three sections:
 
-- **About** — the task's target, owning project, ID, enabled [toolchain(s)](../toolchain),
-  [type](../task#types) (`run`, `build`, or `test`), applied [preset](../task#presets) (if
+- **About** — the task's target, owning project, ID, enabled [toolchain(s)](<../(fundamentals)/toolchain.mdx>),
+  [type](<../(fundamentals)/task.mdx#types>) (`run`, `build`, or `test`), applied [preset](<../(fundamentals)/task.mdx#presets>) (if
   any), special modes (`internal`, `interactive`, `persistent`), and the list of
-  [task dependencies](../task#dependencies) it runs before itself.
+  [task dependencies](<../(fundamentals)/task.mdx#dependencies>) it runs before itself.
 - **Process** — the resolved command (or script) that's actually executed, the shell used
   when [`shell`](/api/moon/TaskOptionsConfig#shell) is enabled, declared environment variables, the working directory the task
   runs from, the lookup paths used to resolve the binary, whether dependencies run in
   parallel or serial, and whether the task is configured to run in CI.
 - **Configuration** — which inherited configuration layers the task's settings came from,
-  its [tags](../project#tags), and its fully expanded [inputs](../task#inputs) and
-  [outputs](../task#outputs) (file paths, globs, and `$ENV_VAR` references), sorted
+  its [tags](<../(fundamentals)/project.mdx#tags>), and its fully expanded [inputs](<../(fundamentals)/task.mdx#inputs>) and
+  [outputs](<../(fundamentals)/task.mdx#outputs>) (file paths, globs, and `$ENV_VAR` references), sorted
   alphabetically.
 
 Pass `--json` to skip the formatted view entirely and print the fully resolved task as
@@ -40,12 +40,12 @@ $ moon task app:build --json
 ```
 
 For a graph-based view of how this task relates to other tasks, use
-[`moon task-graph`](./task-graph) instead. To list every task across the workspace, or
-scoped to a project, use [`moon tasks`](./tasks).
+[`moon task-graph`](./task-graph.mdx) instead. To list every task across the workspace, or
+scoped to a project, use [`moon tasks`](./tasks.mdx).
 
 ## Arguments
 
-- `[TARGET]` - The task [target](../target) to inspect, in the format `project:task`. If
+- `[TARGET]` - The task [target](<../(fundamentals)/target.mdx>) to inspect, in the format `project:task`. If
   omitted, moon prompts you to select one interactively.
 
 ## Options
