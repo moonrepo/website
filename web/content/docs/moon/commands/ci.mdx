@@ -16,7 +16,7 @@ Compared to running tasks directly, `moon ci`:
   below. When running inside a supported CI provider, the base and head revisions (and whether the
   build is for a pull request) are automatically extracted from the CI environment if `--base` and
   `--head` aren't explicitly provided.
-- Always respects each task's [`runInCI`](../task#runinci) setting, so tasks explicitly excluded
+- Always respects each task's [`options.runInCI`](/api/moon/TaskOptionsConfig#runinci) setting, so tasks explicitly excluded
   from CI never run.
 - Forces the pipeline into CI mode (as if `--ci` were passed to [`moon exec`](./exec)), which
   affects how the console renders output and how other moon features detect a CI environment.
@@ -28,7 +28,7 @@ Compared to running tasks directly, `moon ci`:
   CI logs always contain a full breakdown of what ran.
 
 When no explicit targets are passed and no `--plan` is provided, every task in the workspace is
-queued up as a candidate, and the affected and `runInCI` checks above determine which of them
+queued up as a candidate, and the affected and [`options.runInCI`](/api/moon/TaskOptionsConfig#runinci) checks above determine which of them
 actually execute. Passing explicit targets narrows this candidate list down first, but the same
 affected and `runInCI` filtering is still applied on top.
 
@@ -52,7 +52,7 @@ into common CI providers, including sharding examples.
 ## Arguments
 
 - `[TARGETS...]` - List of explicit task [targets](../target) to run. When omitted, every task in
-  the workspace is considered, subject to affected and `runInCI` filtering.
+  the workspace is considered, subject to affected and [`options.runInCI`](/api/moon/TaskOptionsConfig#runinci) filtering.
 
 ## Options
 

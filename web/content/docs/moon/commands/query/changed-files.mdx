@@ -19,7 +19,7 @@ Changed files are gathered using the following logic:
   [continuous integration](../ci) uses by default.
 - If `--local` is enabled (and neither `--base`, `--head`, nor `MOON_BASE`/`MOON_HEAD` are set),
   only files from your local working tree are returned (equivalent to `git status`).
-- Otherwise, files are diffed between `--base` (defaulting to the workspace's configured `vcs.defaultBranch`)
+- Otherwise, files are diffed between `--base` (defaulting to the workspace's configured [`vcs.defaultBranch`](/api/moon/VcsConfig#defaultbranch))
   and `--head` (defaulting to `HEAD`).
 - When `--head` is not explicitly provided, files from your local working tree are merged into the
   result as well, since the comparison is implicitly against your current checkout. An explicit

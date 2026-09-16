@@ -116,7 +116,7 @@ An identifier scope selects one project by ID or alias: `<project-id>:<task>`.
   }}
 />
 
-Project identifiers come from the workspace project map, project `id` overrides, or toolchain
+Project identifiers come from the workspace project map, project [`id`](/api/moon/ProjectConfig#id) overrides, or toolchain
 aliases. See [Projects](./project#identifiers) for how project IDs and aliases are assigned.
 
 Identifier targets are the most explicit form and work in both run and config contexts. They are a
@@ -206,7 +206,7 @@ The most common task scope is a task ID:
 - `^:lint`
 - `#frontend:typecheck`
 
-Task IDs are defined under a project's `tasks` map. When a project scope resolves more than one
+Task IDs are defined under a project's [`tasks`](./project#tasks) map. When a project scope resolves more than one
 project, moon only includes projects where that task exists. For explicit project targets like
 `app:build`, a missing task is an error. For fan-out targets like `:build` or `#frontend:build`,
 projects without the task are skipped.
@@ -260,7 +260,7 @@ First, a bare task ID selects that task from the default project:
 - `moon run build`
 - `moon run test`
 
-The default project is the project associated with the `defaultProject` setting. If you do not have a default project, use an explicit target like `app:build`.
+The default project is the project associated with the [`defaultProject`](/api/moon/WorkspaceConfig#defaultproject) setting. If you do not have a default project, use an explicit target like `app:build`.
 
 Second, run targets support glob-like matching:
 
@@ -332,11 +332,11 @@ Task dependencies may also use object form when a target needs extra options:
   }}
 />
 
-The `optional` field controls whether a target that expands to no tasks is allowed. Self and
+The [`optional`](/api/moon/TaskDependencyConfig#optional) field controls whether a target that expands to no tasks is allowed. Self and
 explicit project targets are required by default. Dependency and project-tag scopes are optional by
 default because not every dependency or tagged project is expected to expose the same task.
 
 When an explicit project target or project tag target creates a cross-project task dependency, moon
 also records an implicit project dependency for graph correctness. This helps affected detection and
 execution ordering understand that the owning project relies on the referenced project, even if it
-was not listed manually in `dependsOn`.
+was not listed manually in [`dependsOn`](/api/moon/ProjectConfig#dependson).

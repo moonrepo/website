@@ -26,7 +26,7 @@ The [`moon ci`](../commands/ci) command does all the heavy lifting necessary for
 
 By default, _all tasks_ run in CI, as you should always be building, linting, typechecking, testing,
 so on and so forth. However, this isn't always true, so this can be disabled on a per-task basis
-through [`options.runInCI`](../task#runinci).
+through [`options.runInCI`](/api/moon/TaskOptionsConfig#runinci).
 
 ```yaml
 tasks:
@@ -124,11 +124,11 @@ script: "moon ci"
 
 ## Choosing explicit tasks
 
-By default [`moon ci`](../commands/ci) will run _all_ tasks from _all_ projects that are affected by changed files and have [`options.runInCI`](../task#runinci) enabled. This is a great catch-all solution, but may not vibe with your workflow or requirements.
+By default [`moon ci`](../commands/ci) will run _all_ tasks from _all_ projects that are affected by changed files and have [`options.runInCI`](/api/moon/TaskOptionsConfig#runinci) enabled. This is a great catch-all solution, but may not vibe with your workflow or requirements.
 
 If you'd prefer more control, you can pass a list of targets to [`moon ci`](../commands/ci), instead of moon
 attempting to detect them. When providing targets, [`moon ci`](../commands/ci) will still only run them if affected by
-changed files, but will still filter with [`options.runInCI`](../task#runinci).
+changed files, but will still filter with [`options.runInCI`](/api/moon/TaskOptionsConfig#runinci).
 
 ```shell
 # Run all builds
@@ -143,7 +143,7 @@ $ moon ci :test :lint
 By default the command will attempt to detect the base and head revisions automatically based on the
 current CI provider (powered by the [`ci_env`](https://github.com/milesj/rust-cicd-env) Rust crate).
 If nothing was detected, this will fallback to the configured
-[`vcs.defaultBranch`](../workspace#defaultbranch) for the base revision, and `HEAD` for the
+[`vcs.defaultBranch`](/api/moon/VcsConfig#defaultbranch) for the base revision, and `HEAD` for the
 head revision.
 
 These values can be customized with the `--base` and `--head` command line options, or the

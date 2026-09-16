@@ -24,7 +24,7 @@ nodes that must come first:
 3. `RunTask` also requires its toolchains' dependencies, adding `InstallDependencies`.
 4. `InstallDependencies` requires `SetupEnvironment`, which requires `SetupToolchain`, which
    requires `SetupProto` when a version is involved — each also depending on `SyncWorkspace`.
-5. Finally, the task's own [dependencies](./task-graph#dependencies) are added as further
+5. Finally, the task's own [dependencies](./task#dependencies) are added as further
    `RunTask` nodes, recursively.
 
 Every one of these steps is conditional. A toolchain that manages no versioned tool contributes no
@@ -44,7 +44,7 @@ which defaults to the number of available CPU cores.
 
 ### Priority
 
-Task nodes carry a priority, set through `options.priority`, and the sorted graph is grouped by it
+Task nodes carry a priority, set through [`options.priority`](/api/moon/TaskOptionsConfig#priority), and the sorted graph is grouped by it
 before dispatch:
 
 | Priority   | Level |

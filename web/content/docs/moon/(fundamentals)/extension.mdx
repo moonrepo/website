@@ -81,7 +81,7 @@ These identifiers also work with [`moon ext`](./commands/ext) and
 ## Configuration
 
 Extensions are configured through `.moon/extensions.config`, where each top-level key is the unique
-identifier the extension will be referenced by. The `plugin` setting is the locator moon uses to
+identifier the extension will be referenced by. The [`plugin`](/api/moon/ExtensionPluginConfig#plugin) setting is the locator moon uses to
 find and download the WASM file, and every other key is arbitrary configuration passed through to
 the plugin itself.
 
@@ -97,7 +97,7 @@ the plugin itself.
 />
 
 The `plugin` setting can be omitted entirely for [built-in extensions](#built-in-extensions), as
-moon knows where to find them. Configuration files can also be composed with the `extends` setting,
+moon knows where to find them. Configuration files can also be composed with the [`extends`](/api/moon/ExtensionsConfig#extends) setting,
 which accepts a relative file path or a secure URL.
 
 Extensions can be added and inspected from the command line, instead of editing the configuration

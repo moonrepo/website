@@ -17,7 +17,7 @@ The default output is a human-readable breakdown split into three sections:
   any), special modes (`internal`, `interactive`, `persistent`), and the list of
   [task dependencies](../task#dependencies) it runs before itself.
 - **Process** — the resolved command (or script) that's actually executed, the shell used
-  when `shell` is enabled, declared environment variables, the working directory the task
+  when [`shell`](/api/moon/TaskOptionsConfig#shell) is enabled, declared environment variables, the working directory the task
   runs from, the lookup paths used to resolve the binary, whether dependencies run in
   parallel or serial, and whether the task is configured to run in CI.
 - **Configuration** — which inherited configuration layers the task's settings came from,

@@ -42,18 +42,18 @@ organize them however suits your repository.
 
 Each file uses the same shape, and supports the following settings:
 
-- `inheritedBy` <VersionLabel version="2.0.0" /> - Conditions that decide which projects inherit
+- [`inheritedBy`](/api/moon/InheritedTasksConfig#inheritedby) <VersionLabel version="2.0.0" /> - Conditions that decide which projects inherit
   this file. See [scoping inheritance](#scoping-inheritance).
-- `tasks` - A map of task identifiers to task definitions, matching the shape used in a project's
+- [`tasks`](/api/moon/InheritedTasksConfig#tasks) - A map of task identifiers to task definitions, matching the shape used in a project's
   [`moon.config`](./project#tasks).
-- `taskOptions` <VersionLabel version="1.20.0" /> - Default [task options](./task#options) applied
+- [`taskOptions`](/api/moon/InheritedTasksConfig#taskoptions) <VersionLabel version="1.20.0" /> - Default [task options](/api/moon/TaskOptionsConfig) applied
   to every task inherited from this file.
-- `implicitDeps` - Task [dependencies](./task#dependencies) injected into every inherited task.
-- `implicitInputs` - Task [inputs](./task#inputs) injected into every inherited task.
-- `fileGroups` - [File groups](./advanced/file-groups) made available to inheriting projects.
-- `env` <VersionLabel version="2.5.0" /> - Environment variables merged into every inheriting
+- [`implicitDeps`](/api/moon/InheritedTasksConfig#implicitdeps) - Task [dependencies](./task#dependencies) injected into every inherited task.
+- [`implicitInputs`](/api/moon/InheritedTasksConfig#implicitinputs) - Task [inputs](./task#inputs) injected into every inherited task.
+- [`fileGroups`](/api/moon/InheritedTasksConfig#filegroups) - [File groups](./advanced/file-groups) made available to inheriting projects.
+- [`env`](/api/moon/InheritedTasksConfig#env) <VersionLabel version="2.5.0" /> - Environment variables merged into every inheriting
   project's `env`.
-- `extends` <VersionLabel version="1.12.0" /> - Extends another tasks configuration file, by
+- [`extends`](/api/moon/InheritedTasksConfig#extends) <VersionLabel version="1.12.0" /> - Extends another tasks configuration file, by
   relative path or secure URL.
 
 <ConfigTabs
@@ -79,17 +79,17 @@ Each file uses the same shape, and supports the following settings:
 
 ## Scoping inheritance
 
-By default, a tasks file is inherited by _every_ project in the workspace. The `inheritedBy`
+By default, a tasks file is inherited by _every_ project in the workspace. The [`inheritedBy`](/api/moon/InheritedTasksConfig#inheritedby)
 setting narrows that down with conditions matched against each project. When multiple conditions
 are defined, **all** of them must match.
 
-- `toolchains` - Matches against the [toolchains](./toolchain) detected for the project.
-- `languages` - Matches against the project's `language`.
-- `stacks` - Matches against the project's [stack](./project#stacks).
-- `layers` - Matches against the project's [layer](./project#layers).
-- `tags` - Matches against the project's [tags](./project#tags).
-- `files` - Matches when at least one of the listed files exists in the project.
-- `order` <TypeLabel type="number" /> - Explicitly sets this file's position in the inheritance
+- [`toolchains`](/api/moon/InheritedByConfig#toolchains) - Matches against the [toolchains](./toolchain) detected for the project.
+- [`languages`](/api/moon/InheritedByConfig#languages) - Matches against the project's [`language`](/api/moon/ProjectConfig#language).
+- [`stacks`](/api/moon/InheritedByConfig#stacks) - Matches against the project's [`stack`](/api/moon/ProjectConfig#stack).
+- [`layers`](/api/moon/InheritedByConfig#layers) - Matches against the project's [`layer`](/api/moon/ProjectConfig#layer).
+- [`tags`](/api/moon/InheritedByConfig#tags) - Matches against the project's [`tags`](/api/moon/ProjectConfig#tags).
+- [`files`](/api/moon/InheritedByConfig#files) - Matches when at least one of the listed files exists in the project.
+- [`order`](/api/moon/InheritedByConfig#order) <TypeLabel type="number" /> - Explicitly sets this file's position in the inheritance
   chain. See [inheritance order](#inheritance-order).
 
 <ConfigTabs
@@ -111,9 +111,9 @@ are defined, **all** of them must match.
 The `toolchains` and `tags` conditions accept a single value, a list of values (matched with OR),
 or a clause object for finer control:
 
-- `and` - Every value must match.
-- `or` - At least one value must match.
-- `not` - No value may match.
+- [`and`](/api/moon/InheritedClauseConfig#and) - Every value must match.
+- [`or`](/api/moon/InheritedClauseConfig#or) - At least one value must match.
+- [`not`](/api/moon/InheritedClauseConfig#not) - No value may match.
 
 <ConfigTabs
   file=".moon/tasks/node-only"
@@ -130,8 +130,8 @@ or a clause object for finer control:
 />
 
 <Callout>
-  When a file's `inheritedBy.toolchains` condition resolves to exactly one
-  toolchain, that toolchain is also applied as the default `toolchains` value
+  When a file's [`inheritedBy.toolchains`](/api/moon/InheritedByConfig#toolchains) condition resolves to exactly one
+  toolchain, that toolchain is also applied as the default [`toolchains`](/api/moon/TaskConfig#toolchains) value
   for every task the file defines, unless the task sets its own.
 </Callout>
 
@@ -151,7 +151,7 @@ conditions it declares:
 
 Because the values add together, a file scoped by both toolchain and layer (200) is applied after
 one scoped by toolchain alone (50). Files that end up with the same order are sorted by their path,
-so the result is stable across machines. Setting `inheritedBy.order` explicitly overrides the
+so the result is stable across machines. Setting [`inheritedBy.order`](/api/moon/InheritedByConfig#order) explicitly overrides the
 derived value entirely.
 
 The project's own tasks, defined in its [`moon.config`](./project#tasks), are always merged
@@ -160,9 +160,9 @@ last, and therefore always win against inherited configuration.
 ## Merge strategies
 
 When the same task is defined in more than one place, its settings are merged rather than
-replaced outright. Collection settings — `args`, `checks`, `deps`, `env`, `inputs`, `outputs`,
-`tags`, and `toolchains` — are combined using a merge strategy, while scalar settings like
-`command` and `script` are simply overwritten by the last definition in the chain.
+replaced outright. Collection settings — [`args`](/api/moon/TaskConfig#args), [`checks`](/api/moon/TaskConfig#checks), [`deps`](/api/moon/TaskConfig#deps), [`env`](/api/moon/TaskConfig#env), [`inputs`](/api/moon/TaskConfig#inputs), [`outputs`](/api/moon/TaskConfig#outputs),
+[`tags`](/api/moon/TaskConfig#tags), and [`toolchains`](/api/moon/TaskConfig#toolchains) — are combined using a merge strategy, while scalar settings like
+[`command`](/api/moon/TaskConfig#command) and [`script`](/api/moon/TaskConfig#script) are simply overwritten by the last definition in the chain.
 
 Four strategies are available:
 
@@ -172,12 +172,12 @@ Four strategies are available:
 - `preserve` - Keep the values from the first (most global) configuration in the chain, and
   discard everything merged after it.
 
-Strategies are configured per task, through [task options](./task#options). The `merge` option
+Strategies are configured per task, through [task options](/api/moon/TaskOptionsConfig). The [`merge`](/api/moon/TaskOptionsConfig#merge) option
 sets the default for every collection, and the field-specific options override it:
 
-- `merge` - Default for all of the below.
-- `mergeArgs`, `mergeChecks` <VersionLabel version="2.4.0" />, `mergeDeps`, `mergeEnv`,
-  `mergeInputs`, `mergeOutputs`, `mergeTags` <VersionLabel version="2.3.0" />, `mergeToolchains`
+- [`merge`](/api/moon/TaskOptionsConfig#merge) - Default for all of the below.
+- [`mergeArgs`](/api/moon/TaskOptionsConfig#mergeargs), [`mergeChecks`](/api/moon/TaskOptionsConfig#mergechecks) <VersionLabel version="2.4.0" />, [`mergeDeps`](/api/moon/TaskOptionsConfig#mergedeps), [`mergeEnv`](/api/moon/TaskOptionsConfig#mergeenv),
+  [`mergeInputs`](/api/moon/TaskOptionsConfig#mergeinputs), [`mergeOutputs`](/api/moon/TaskOptionsConfig#mergeoutputs), [`mergeTags`](/api/moon/TaskOptionsConfig#mergetags) <VersionLabel version="2.3.0" />, [`mergeToolchains`](/api/moon/TaskOptionsConfig#mergetoolchains)
   <VersionLabel version="2.0.0" />
 
 <ConfigTabs
@@ -202,7 +202,7 @@ sets the default for every collection, and the field-specific options override i
 
 ## Extending a task
 
-A task can also inherit from a _sibling_ task, rather than from the workspace, using the `extends`
+A task can also inherit from a _sibling_ task, rather than from the workspace, using the [`extends`](/api/moon/TaskConfig#extends)
 setting. The extended task is resolved first and its configuration is placed earlier in the merge
 chain, so the extending task's settings win.
 
@@ -229,12 +229,12 @@ tasks, otherwise configuration will fail to build.
 ## Filtering what a project inherits
 
 A project can opt out of, or rename, the tasks it would otherwise inherit, through the
-`workspace.inheritedTasks` setting in its [`moon.config`](./project#inheritance-overrides).
+[`workspace.inheritedTasks`](/api/moon/ProjectWorkspaceConfig#inheritedtasks) setting in its [`moon.config`](./project#inheritance-overrides).
 
-- `include` <TypeLabel type="string[]" /> - Only inherit tasks with these identifiers. When
+- [`include`](/api/moon/ProjectWorkspaceInheritedTasksConfig#include) <TypeLabel type="string[]" /> - Only inherit tasks with these identifiers. When
   undefined, all matching tasks are inherited; when an empty list, none are.
-- `exclude` <TypeLabel type="string[]" /> - Inherit everything except these identifiers.
-- `rename` <TypeLabel type="Record<string, string>" /> - Map an inherited task's identifier to a
+- [`exclude`](/api/moon/ProjectWorkspaceInheritedTasksConfig#exclude) <TypeLabel type="string[]" /> - Inherit everything except these identifiers.
+- [`rename`](/api/moon/ProjectWorkspaceInheritedTasksConfig#rename) <TypeLabel type="Record<string, string>" /> - Map an inherited task's identifier to a
   new one, scoped to this project.
 
 <ConfigTabs
@@ -256,8 +256,8 @@ locally shouldn't stop it from running upstream. Dependencies using the task tag
 (`~:#tag`) have no identifier to match against, so they're never excluded or renamed.
 
 <VersionLabel version="2.5.0" /> Projects can additionally control how inherited
-`env` and `fileGroups` are combined with their own, through the
-`workspace.mergeStrategies` setting, which accepts the same four strategies
+[`env`](/api/moon/ProjectConfig#env) and [`fileGroups`](/api/moon/ProjectConfig#filegroups) are combined with their own, through the
+[`workspace.mergeStrategies`](/api/moon/ProjectWorkspaceConfig#mergestrategies) setting, which accepts the same four strategies
 described above.
 
 <ConfigTabs

@@ -15,18 +15,14 @@ between — along with the [tasks](./task) that operate on it. Every project is 
 [project graph](./project-graph), and the relationships between projects are what power moon's
 dependency ordering, affected detection, and task inheritance.
 
-Projects are configured with an optional [`moon.config`](#configuration) file at the root of the
-project directory. A project without one is still a project; the file only exists to add
-dependencies, tasks, categorization, and overrides on top of what moon can already detect.
-
 ## Discovery
 
-Projects are located through the `projects` setting in [`.moon/workspace.config`](./workspace),
+Projects are located through the [`projects`](/api/moon/WorkspaceConfig#projects) setting in [`.moon/workspace.config`](./workspace),
 which accepts three shapes:
 
 - **A map** of project identifiers to their source paths, for explicit control.
 - **A list of globs**, for convention-based discovery.
-- **Both**, using the `sources` and `globs` keys together.
+- **Both**, using the [`sources`](/api/moon/WorkspaceProjectsConfig#sources) and [`globs`](/api/moon/WorkspaceProjectsConfig#globs) keys together.
 
 <ConfigTabs
   file=".moon/workspace"
@@ -41,7 +37,7 @@ which accepts three shapes:
 />
 
 When a project is found by a glob, its identifier is inferred from the matched path. By default
-that's the directory name, but `projects.globFormat` <VersionLabel version="2.0.0" /> can switch it
+that's the directory name, but [`projects.globFormat`](/api/moon/WorkspaceProjectsConfig#globformat) <VersionLabel version="2.0.0" /> can switch it
 to the full workspace-relative source path instead, which is useful when directory names collide
 across the repository.
 
@@ -56,14 +52,45 @@ to discovery through their `extend_project_graph` hook, registering additional p
 and input files. This is how a toolchain can teach moon about projects that its own ecosystem
 already defines, such as a package manager's workspace members.
 
+### Default project
+
+In a workspace built around one primary application, having to name that project in every command
+gets repetitive. The [`defaultProject`](/api/moon/WorkspaceConfig#defaultproject) <VersionLabel version="2.0.0" /> setting in [`.moon/workspace.config`](./workspace) nominates a
+project as the default, so tasks can be run without a project scope at all.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    defaultProject: "app",
+  }}
+/>
+
+With the above configured, a bare task identifier resolves against `app`, making these two
+commands equivalent:
+
+```shell
+$ moon run build
+$ moon run app:build
+```
+
+The value must be the identifier of an existing project, otherwise configuration will fail to
+build. When no default is configured, running a bare task identifier errors instead of guessing,
+and an explicit [target](./target) is required.
+
+## Configuration
+
+Projects are configured with an optional [`moon.config`](#configuration) file at the root of the
+project directory. A project without one is still a project; the file only exists to add
+dependencies, tasks, categorization, and overrides on top of what moon can already detect.
+
 ## Identifiers
 
 Every project has an ID — the stable, unique handle moon uses to refer to it in configs, in
 the CLI, and in other projects' dependencies. Whenever you see a project mentioned,
 you're seeing its ID.
 
-An ID comes from one of two places. First, through the `projects` setting in
-[`.moon/workspace.config`](./workspace), which is either derived from the folder path, or explicitly defined. Otherwise, you can override it by configuring [`id`](#id).
+An ID comes from one of two places. First, through the [`projects`](/api/moon/WorkspaceConfig#projects) setting in
+[`.moon/workspace.config`](./workspace), which is either derived from the folder path, or explicitly defined. Otherwise, you can override it by configuring [`id`](/api/moon/ProjectConfig#id).
 
 <ConfigTabs
   file="moon"
@@ -112,7 +139,7 @@ and what [`moon docker scaffold`](./commands/docker/scaffold) copies into a buil
 
 Dependencies come from two sources:
 
-- **Explicit** - Declared with the `dependsOn` setting, by project ID or [alias](#aliases).
+- **Explicit** - Declared with the [`dependsOn`](#dependencies) setting, by project ID or [alias](#aliases).
 - **Implicit** - Inferred by [toolchains](#toolchains) from the project's manifest files. For
   example, the `javascript` toolchain reads `dependencies` from `package.json`, so workspace
   packages that depend on each other are connected automatically.
@@ -133,8 +160,8 @@ Dependencies come from two sources:
 ### Scopes
 
 Every dependency has a scope, describing _why_ the relationship exists. When using the string
-format, the scope defaults to `production`. To change it, use the object format with the `id` and
-`scope` fields.
+format, the scope defaults to `production`. To change it, use the object format with the [`id`](/api/moon/ProjectDependencyConfig#id) and
+[`scope`](/api/moon/ProjectDependencyConfig#scope) fields.
 
 - `production` - Required at runtime. **This is the default.**
 - `development` - Required only during development, such as testing or linting utilities.
@@ -165,7 +192,7 @@ belong to multiple toolchains, and its tasks inherit those toolchains unless con
 
 A project's toolchains are resolved in the following order:
 
-- Explicitly configured with the `toolchains.default` setting.
+- Explicitly configured with the [`toolchains.default`](/api/moon/ProjectToolchainsConfig#default) setting.
 - Inferred from the project's [`language`](#language).
 - Detected by each toolchain plugin, based on manifest files, lock files, and config files within
   the project. For example, a `Cargo.toml` associates the project with the `rust` toolchain.
@@ -182,7 +209,7 @@ match your intent, configure the defaults explicitly.
   }}
 />
 
-The resolved toolchains are also what the [`inheritedBy.toolchains`](./task-inheritance#scoping-inheritance)
+The resolved toolchains are also what the [`inheritedBy.toolchains`](/api/moon/InheritedByConfig#toolchains)
 condition matches against, so they determine which workspace tasks a project inherits.
 
 ### Overrides
@@ -192,7 +219,7 @@ project can override them by toolchain ID. Each entry supports the following val
 
 - `false` or `null` - Disables the toolchain for this project, even if it was detected.
 - `true` - Enables the toolchain for this project, even if it wasn't detected.
-- An object - Enables the toolchain, and overrides workspace-level settings, such as `version`.
+- An object - Enables the toolchain, and overrides workspace-level settings, such as [`version`](/api/moon/ToolchainPluginConfig#version).
 
 <ConfigTabs
   file="moon"
@@ -208,7 +235,7 @@ project can override them by toolchain ID. Each entry supports the following val
 
 ## Tasks
 
-A project's [tasks](./task) are defined with the `tasks` setting, a map of task identifiers to task
+A project's [tasks](./task) are defined with the [`tasks`](/api/moon/ProjectConfig#tasks) setting, a map of task identifiers to task
 configuration. Tasks defined here are merged with any tasks the project
 [inherits](./task-inheritance) from the workspace, with the project's configuration taking
 precedence.
@@ -231,8 +258,9 @@ precedence.
 />
 
 <VersionLabel version="2.4.0" /> To apply the same [options](./task#options) to
-every task in the project, both local and inherited, configure the `taskOptions`
-setting. Each task can still override these values individually.
+every task in the project, both local and inherited, configure the
+[`taskOptions`](/api/moon/ProjectConfig#taskoptions) setting. Each task can
+still override these values individually.
 
 <ConfigTabs
   file="moon"
@@ -246,7 +274,7 @@ setting. Each task can still override these values individually.
 
 ### Environment variables
 
-The `env` setting defines environment variables that are inherited by every task in the project.
+The [`env`](/api/moon/ProjectConfig#env) setting defines environment variables that are inherited by every task in the project.
 It's a convenient way to avoid repeating the same variables across many tasks.
 
 <ConfigTabs
@@ -262,15 +290,18 @@ Project variables act as the base for each task's environment, so a task that de
 variable in its own `env` will overwrite the project value. System variables still take precedence
 over both; refer to [task environment variables](./task#precedence) for the full order.
 
-<VersionLabel version="2.5.0" /> Projects also inherit variables from the `env`
-setting in [`.moon/tasks/*.config`](./task-inheritance#configuration) files. By
-default, project variables are appended on top of inherited ones, which can be
-changed with the `workspace.mergeStrategies.env` setting.
+<VersionLabel version="2.5.0" /> Projects also inherit variables from the
+[`env`](/api/moon/InheritedTasksConfig#env) setting in
+[`.moon/tasks/*.config`](./task-inheritance#configuration) files. By default,
+project variables are appended on top of inherited ones, which can be changed
+with the
+[`workspace.mergeStrategies.env`](/api/moon/ProjectWorkspaceMergeStrategiesConfig#env)
+setting.
 
 ### File groups
 
 File groups are named collections of file paths, globs, and environment variables, defined with the
-`fileGroups` setting. They exist to avoid repeating the same list of [inputs](./task#inputs)
+[`fileGroups`](/api/moon/ProjectConfig#filegroups) setting. They exist to avoid repeating the same list of [inputs](./task#inputs)
 across multiple tasks.
 
 <ConfigTabs
@@ -295,17 +326,17 @@ be used depending on what's needed.
 Like environment variables, file groups can be inherited from
 [`.moon/tasks/*.config`](./task-inheritance#configuration) files. Groups with the same identifier
 are merged per group, and <VersionLabel version="2.5.0" /> the strategy used can be changed with the
-`workspace.mergeStrategies.fileGroups` setting. Refer to [file groups](./advanced/file-groups) for
+[`workspace.mergeStrategies.fileGroups`](/api/moon/ProjectWorkspaceMergeStrategiesConfig#filegroups) setting. Refer to [file groups](./advanced/file-groups) for
 more information.
 
 ### Inheritance overrides
 
 Projects inherit tasks from the workspace automatically, but not every inherited task makes sense
-for every project. The `workspace.inheritedTasks` setting controls this on a per-project basis:
+for every project. The [`workspace.inheritedTasks`](/api/moon/ProjectWorkspaceConfig#inheritedtasks) setting controls this on a per-project basis:
 
-- `include` - Only inherit tasks with these identifiers.
-- `exclude` - Inherit all tasks except these identifiers.
-- `rename` - Rename inherited tasks, scoped to this project.
+- [`include`](/api/moon/ProjectWorkspaceInheritedTasksConfig#include) - Only inherit tasks with these identifiers.
+- [`exclude`](/api/moon/ProjectWorkspaceInheritedTasksConfig#exclude) - Inherit all tasks except these identifiers.
+- [`rename`](/api/moon/ProjectWorkspaceInheritedTasksConfig#rename) - Rename inherited tasks, scoped to this project.
 
 <ConfigTabs
   file="moon"
@@ -332,7 +363,7 @@ get the most out of moon.
 
 ### Stacks
 
-The `stack` setting describes _which broad technology stack the project belongs to_. It's used for
+The [`stack`](/api/moon/ProjectConfig#stack) setting describes _which broad technology stack the project belongs to_. It's used for
 categorization and querying, and it also scopes [layer constraints](#layers), which are only
 enforced between projects in the same stack.
 
@@ -354,7 +385,7 @@ Supported values:
 
 ### Layers
 
-The `layer` setting describes _what role the project plays within its stack_.
+The [`layer`](/api/moon/ProjectConfig#layer) setting describes _what role the project plays within its stack_.
 
 Supported values:
 
@@ -373,7 +404,7 @@ Supported values:
   }}
 />
 
-Layers aren't purely descriptive — they're enforced. When the `constraints.enforceLayerRelationships`
+Layers aren't purely descriptive — they're enforced. When the [`constraints.enforceLayerRelationships`](/api/moon/ConstraintsConfig#enforcelayerrelationships)
 setting in [`.moon/workspace.config`](./workspace) is enabled (the default), a project can only
 depend on projects in the same layer or a lower one, preventing, for example, a library from
 depending on an application.
@@ -399,7 +430,7 @@ automation projects cannot depend on other projects of their own layer.
 
 ### Tags
 
-The `tags` setting is a list of arbitrary identifiers for grouping projects however you see fit,
+The [`tags`](/api/moon/ProjectConfig#tags) setting is a list of arbitrary identifiers for grouping projects however you see fit,
 such as by team, domain, or deployment target. Unlike stacks and layers, tags have no predefined
 values.
 
@@ -414,11 +445,11 @@ Tags are used throughout moon:
 
 - In [targets](./target), with the tag scope — `#payments:build` runs `build` in every project
   tagged `payments`.
-- In [task inheritance](./task-inheritance#scoping-inheritance), with the `inheritedBy.tags`
+- In [task inheritance](./task-inheritance#scoping-inheritance), with the [`inheritedBy.tags`](/api/moon/InheritedByConfig#tags)
   condition.
 - In [MQL](./advanced/query-lang), with the `projectTag` field.
 
-Tags can also enforce boundaries, through the `constraints.tagRelationships` setting in
+Tags can also enforce boundaries, through the [`constraints.tagRelationships`](/api/moon/ConstraintsConfig#tagrelationships) setting in
 [`.moon/workspace.config`](./workspace). It maps a tag to a list of allowed tags, and a project with
 that tag may only depend on projects that share the tag, or have one of the allowed tags.
 
@@ -439,7 +470,7 @@ that tag may only depend on projects that share the tag, or have one of the allo
 
 ### Language
 
-The `language` setting describes _what the code is written in_. moon will try to auto-detect this from config
+The [`language`](/api/moon/ProjectConfig#language) setting describes _what the code is written in_. moon will try to auto-detect this from config
 files in the project — a `package.json` implies `javascript`, a `Cargo.toml` implies `rust`, and so
 on — but an explicit value in `moon.config` always takes precedence.
 
@@ -461,16 +492,16 @@ be synced to your VCS provider.
 
 ### Metadata
 
-The `project` setting provides information about the project for humans: what it is, who owns it,
+The [`project`](/api/moon/ProjectConfig#project) setting provides information about the project for humans: what it is, who owns it,
 and where to go for help. It has no effect on how moon runs tasks, but it's displayed by
 [`moon project`](./commands/project), and is available to the [MCP server](./commands/mcp) and
 anything else consuming the project graph.
 
-- `title` - A human-readable name for the project.
-- `description` - What the project does, and why it exists.
-- `owner` - The owning individual, team, or organization. The format is unspecified.
-- `maintainers` - A list of individual maintainers. The format is unspecified.
-- `channel` - A Slack, Discord, IRC, etc channel to discuss the project. Must start with `#`.
+- [`title`](/api/moon/ProjectMetadataConfig#title) - A human-readable name for the project.
+- [`description`](/api/moon/ProjectMetadataConfig#description) - What the project does, and why it exists.
+- [`owner`](/api/moon/ProjectMetadataConfig#owner) - The owning individual, team, or organization. The format is unspecified.
+- [`maintainers`](/api/moon/ProjectMetadataConfig#maintainers) - A list of individual maintainers. The format is unspecified.
+- [`channel`](/api/moon/ProjectMetadataConfig#channel) - A Slack, Discord, IRC, etc channel to discuss the project. Must start with `#`.
 
 <ConfigTabs
   file="moon"
@@ -489,7 +520,7 @@ Any additional fields are also accepted, and are preserved as custom metadata.
 
 ### Codeowners
 
-The `owners` setting defines which users, teams, or groups own the source code within the project,
+The [`owners`](/api/moon/ProjectConfig#owners) setting defines which users, teams, or groups own the source code within the project,
 by mapping file paths and globs, relative to the project root, to owners. moon aggregates these
 rules from every project into a single `CODEOWNERS` file, formatted for your configured
 [VCS provider](./workspace).
@@ -508,7 +539,7 @@ Paths can be defined as a map, where each path has its own list of owners:
   }}
 />
 
-Or as a list, where every path is owned by the `defaultOwner`:
+Or as a list, where every path is owned by the [`defaultOwner`](/api/moon/OwnersConfig#defaultowner):
 
 <ConfigTabs
   file="moon"
@@ -522,14 +553,14 @@ Or as a list, where every path is owned by the `defaultOwner`:
 
 Some settings only apply to specific providers:
 
-- `optional` - GitLab only. Marks the code owners section as optional.
-- `requiredApprovals` - BitBucket (legacy) and GitLab only. The number of approvals required for a
+- [`optional`](/api/moon/OwnersConfig#optional) - GitLab only. Marks the code owners section as optional.
+- [`requiredApprovals`](/api/moon/OwnersConfig#requiredapprovals) - BitBucket (legacy) and GitLab only. The number of approvals required for a
   request to be satisfied.
-- `customGroups` - BitBucket (legacy) only. A map of custom groups (prefixed with `@@@`) to lists of
+- [`customGroups`](/api/moon/OwnersConfig#customgroups) - BitBucket (legacy) only. A map of custom groups (prefixed with `@@@`) to lists of
   users and groups.
 
 The `CODEOWNERS` file is generated with [`moon sync code-owners`](./commands/sync/code-owners), or
-automatically during syncing when the `codeowners.sync` setting is enabled in
+automatically during syncing when the [`codeowners.sync`](/api/moon/CodeownersConfig#sync) setting is enabled in
 [`.moon/workspace.config`](./workspace).
 
 ## Ecosystem
@@ -538,23 +569,23 @@ Beyond running tasks, projects can be configured for the tools and platforms the
 
 ### Docker
 
-moon's [Docker integration](./commands/docker) builds on top of the project graph, and the `docker`
+moon's [Docker integration](./commands/docker) builds on top of the project graph, and the [`docker`](/api/moon/ProjectConfig#docker)
 setting customizes how it treats this project.
 
-The `docker.file` settings configure the `Dockerfile` generated by
+The [`docker.file`](/api/moon/ProjectDockerConfig#file) settings configure the `Dockerfile` generated by
 [`moon docker file`](./commands/docker/file):
 
-- `image` - The base Docker image. Defaults to the image provided by the first matching toolchain,
+- [`image`](/api/moon/DockerFileConfig#image) - The base Docker image. Defaults to the image provided by the first matching toolchain,
   otherwise `scratch`.
-- `buildTask` - A task in this project to run when building the image. If not defined, the build
+- [`buildTask`](/api/moon/DockerFileConfig#buildtask) - A task in this project to run when building the image. If not defined, the build
   step is skipped.
-- `startTask` - A task in this project to run in the `CMD` instruction. If not defined, the
+- [`startTask`](/api/moon/DockerFileConfig#starttask) - A task in this project to run in the `CMD` instruction. If not defined, the
   instruction is omitted.
-- `runSetup` <VersionLabel version="2.0.0" /> - Run [`moon docker setup`](./commands/docker/setup)
+- [`runSetup`](/api/moon/DockerFileConfig#runsetup) <VersionLabel version="2.0.0" /> - Run [`moon docker setup`](./commands/docker/setup)
   after scaffolding, but before building.
-- `runPrune` <VersionLabel version="2.0.0" /> - Run [`moon docker prune`](./commands/docker/prune)
+- [`runPrune`](/api/moon/DockerFileConfig#runprune) <VersionLabel version="2.0.0" /> - Run [`moon docker prune`](./commands/docker/prune)
   after building, but before starting.
-- `template` <VersionLabel version="2.0.0" /> - A custom [Tera](https://keats.github.io/tera/)
+- [`template`](/api/moon/DockerFileConfig#template) <VersionLabel version="2.0.0" /> - A custom [Tera](https://keats.github.io/tera/)
   template file, relative from the workspace root, to render the `Dockerfile` with.
 
 <ConfigTabs
@@ -570,12 +601,12 @@ The `docker.file` settings configure the `Dockerfile` generated by
   }}
 />
 
-The `docker.scaffold` settings configure [`moon docker scaffold`](./commands/docker/scaffold), which
+The [`docker.scaffold`](/api/moon/ProjectDockerConfig#scaffold) settings configure [`moon docker scaffold`](./commands/docker/scaffold), which
 copies files into the build context in two phases:
 
-- `configsPhaseGlobs` <VersionLabel version="2.0.0" /> - Globs of additional files to include in
+- [`configsPhaseGlobs`](/api/moon/DockerScaffoldConfig#configsphaseglobs) <VersionLabel version="2.0.0" /> - Globs of additional files to include in
   the configs skeleton, which is used to install dependencies.
-- `sourcesPhaseGlobs` <VersionLabel version="2.0.0" /> - Globs of files to include in the sources
+- [`sourcesPhaseGlobs`](/api/moon/DockerScaffoldConfig#sourcesphaseglobs) <VersionLabel version="2.0.0" /> - Globs of files to include in the sources
   skeleton, which is used to build the project.
 
 <ConfigTabs

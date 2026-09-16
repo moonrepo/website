@@ -13,18 +13,18 @@ what it was, how long it took, whether it passed, and what it did along the way.
 
 ## Types
 
-There are seven types of action, distinguished by the work they perform:
+There are nine types of action, distinguished by the work they perform:
 
-- **SyncWorkspace** - Syncs the workspace as a whole and installs system-level dependencies.
-- **SyncProject** - Syncs a single [project](./project), applying toolchain and plugin specific
+- `SyncWorkspace` - Syncs the workspace as a whole and installs system-level dependencies.
+- `SyncProject` - Syncs a single [project](./project), applying toolchain and plugin specific
   semantics to its configuration and source files.
-- **SetupProto** - Installs [proto](/docs/proto) itself, at the version the workspace requires.
-- **SetupToolchain** - Installs and prepares a [toolchain](./toolchain) at a specific version.
-- **SetupEnvironment** - Prepares a toolchain's environment within a specific root.
-- **InstallDependencies** - Installs a toolchain's dependencies in the closest dependency root.
-- **RunTask** - Runs one [task](./task), addressed by its [target](./target).
+- `SetupProto` - Installs [proto](/docs/proto) itself, at the version the workspace requires.
+- `SetupToolchain` - Installs and prepares a [toolchain](./toolchain) at a specific version.
+- `SetupEnvironment` - Prepares a toolchain's environment within a specific root.
+- `InstallDependencies` - Installs a toolchain's dependencies in the closest dependency root.
+- `RunTask`, `RunInteractiveTask`, `RunPersistentTask` - Runs one [task](./task), addressed by its [target](./target).
 
-Only `RunTask` corresponds to something you wrote in configuration. The rest are inferred from
+Only the run task actions correspond to something you wrote in configuration. The rest are inferred from
 what that task needs, which is why a run often contains far more actions than targets you asked
 for.
 
@@ -39,7 +39,7 @@ explains what happened:
 - `CachedFromRemote` - The result was restored from [remote cache](./advanced/cache).
 - `Skipped` - Nothing needed to happen.
 - `Invalid` - The action could not be performed as configured.
-- `TimedOut` - The action exceeded its `options.timeout`.
+- `TimedOut` - The action exceeded its [`options.timeout`](/api/moon/TaskOptionsConfig#timeout).
 - `Aborted` - The action was terminated by the pipeline, typically because something else failed
   hard.
 
@@ -54,12 +54,12 @@ explains what happened:
 A failing action normally bails the pipeline, aborting the work that hasn't started yet. Two
 things change that.
 
-A task with `options.allowFailure` enabled is permitted to fail without stopping anything else.
+A task with [`options.allowFailure`](/api/moon/TaskOptionsConfig#allowfailure) enabled is permitted to fail without stopping anything else.
 Its action is still recorded as failed, and a warning is logged, but the pipeline carries on. Note
 that tasks marked this way cannot be depended on by other tasks, since their success can't be
 relied upon.
 
-A task with `options.retryCount` set is re-executed on failure, up to that many additional
+A task with [`options.retryCount`](/api/moon/TaskOptionsConfig#retrycount) set is re-executed on failure, up to that many additional
 attempts. Each attempt is recorded, so the full history is preserved rather than replaced.
 
 ### Flaky actions
@@ -80,7 +80,7 @@ time inside an action actually went.
 The operation types are:
 
 - `HashGeneration` - Computing the [hash](./advanced/cache) from the task's inputs.
-- `MutexAcquisition` - Waiting on a task's `options.mutex` lock.
+- `MutexAcquisition` - Waiting on a task's [`options.mutex`](/api/moon/TaskOptionsConfig#mutex) lock.
 - `OutputHydration` - Restoring cached outputs, instead of executing.
 - `ProcessExecution` - Running a child process that isn't the task itself.
 - `TaskExecution` - Running the task's own command or script. One per attempt.

@@ -18,9 +18,9 @@ workspaces:
 
 1. Each toolchain plugin's own pruning logic is invoked first, which typically deletes vendor
    directories (`node_modules`, build caches, and similar) and other files not needed at
-   runtime. This step is controlled by the `docker.prune.deleteVendorDirectories` setting
+   runtime. This step is controlled by the [`docker.prune.deleteVendorDirectories`](/api/moon/DockerPruneConfig#deletevendordirectories) setting
    (`true` by default).
-2. If `docker.prune.installToolchainDependencies` is enabled (`true` by default), dependencies
+2. If [`docker.prune.installToolchainDependencies`](/api/moon/DockerPruneConfig#installtoolchaindependencies) is enabled (`true` by default), dependencies
    are reinstalled with production-only flags, scoped to just the packages used by the focused
    and related projects, with the install output streamed to the console.
 

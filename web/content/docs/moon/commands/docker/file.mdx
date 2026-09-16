@@ -17,10 +17,10 @@ Docker workflow. The generated file is split into the following stages:
 - `start` - Runs the project once it has been built, typically an HTTP server or a binary.
 
 The base image is resolved in the following order: the `--image` flag, the project's or
-workspace's `docker.file.image` setting, an image provided by the project's toolchain (via its
+workspace's [`docker.file.image`](/api/moon/DockerFileConfig#image) setting, an image provided by the project's toolchain (via its
 `defineDockerMetadata` hook), and finally `scratch` if nothing else matches. The build and start
-tasks work the same way, falling back to the project's or workspace's `docker.file.buildTask`
-and `docker.file.startTask` settings. When a value isn't supplied through a flag or config,
+tasks work the same way, falling back to the project's or workspace's [`docker.file.buildTask`](/api/moon/DockerFileConfig#buildtask)
+and [`docker.file.startTask`](/api/moon/DockerFileConfig#starttask) settings. When a value isn't supplied through a flag or config,
 and `--defaults` isn't passed, moon prompts interactively in the terminal for the image and for
 which of the project's tasks to use for the build and start steps (an option to select "none" is
 always available).
@@ -52,22 +52,22 @@ $ moon docker file app ./docker/Dockerfile --image node:20-slim
   instead of prompting for the image and build/start tasks in the terminal.
 - `--build-task` <TypeLabel type="string" /> - ID of a task within the project to run in the
   `build` stage. When omitted, falls back to the project's or workspace's
-  `docker.file.buildTask` setting, or prompts for a task (or none) interactively. When no build
+  [`docker.file.buildTask`](/api/moon/DockerFileConfig#buildtask) setting, or prompts for a task (or none) interactively. When no build
   task is used, the build step is skipped entirely.
 - `--image` <TypeLabel type="string" /> - Base Docker image to use for every stage. When
-  omitted, falls back to the project's or workspace's `docker.file.image` setting, then to an
+  omitted, falls back to the project's or workspace's [`docker.file.image`](/api/moon/DockerFileConfig#image) setting, then to an
   image derived from the project's toolchain, then to `scratch`.
 - `--no-prune` - Do not run [`moon docker prune`](./prune) in the `build` stage. Overrides the
-  project's or workspace's `docker.file.runPrune` setting, which defaults to `true`.
+  project's or workspace's [`docker.file.runPrune`](/api/moon/DockerFileConfig#runprune) setting, which defaults to `true`.
 - `--no-setup` - Do not run [`moon docker setup`](./setup) in the `build` stage. Overrides the
-  project's or workspace's `docker.file.runSetup` setting, which defaults to `true`.
+  project's or workspace's [`docker.file.runSetup`](/api/moon/DockerFileConfig#runsetup) setting, which defaults to `true`.
 - `--no-toolchain` - Do not install moon's toolchain into the image, and instead rely on system
   binaries that already exist in the base image.
 - `--start-task` <TypeLabel type="string" /> - ID of a task within the project to run via the
   `CMD` instruction in the `start` stage. When omitted, falls back to the project's or
-  workspace's `docker.file.startTask` setting, or prompts for a task (or none) interactively.
+  workspace's [`docker.file.startTask`](/api/moon/DockerFileConfig#starttask) setting, or prompts for a task (or none) interactively.
   When no start task is used, the `CMD` instruction is omitted from the file.
 - `--template` <TypeLabel type="string" /> - Path to a custom [Tera](https://keats.github.io/tera/)
   template, relative from the workspace root, used to render the `Dockerfile` instead of moon's
-  built-in template. Falls back to the project's or workspace's `docker.file.template` setting.
+  built-in template. Falls back to the project's or workspace's [`docker.file.template`](/api/moon/DockerFileConfig#template) setting.
   Errors if the resolved path does not exist.

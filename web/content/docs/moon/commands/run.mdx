@@ -56,7 +56,7 @@ $ moon run app:lint --affected --base master
 
 - `-f`, `--force` - Force run the pipeline, bypassing the cache, ignoring changed files, and
   skipping affected checks. Can also be set via the `MOON_FORCE` environment variable. Forcing
-  still tracks affected files for the `affectedFiles` task variable, it only bypasses the affected
+  still tracks affected files for the [`options.affectedFiles`](/api/moon/TaskOptionsConfig#affectedfiles) task variable, it only bypasses the affected
   _selection_ filter, so unaffected tasks still run.
 - `-i`, `--interactive` - Run the pipeline and its tasks interactively, allowing tasks to read from
   and write to `stdin`/`stdout` directly instead of being captured.

@@ -15,9 +15,9 @@ Once confirmed, moon inspects the destination's Git repository to detect useful 
 
 - The upstream provider is detected from repository files — a `.gitlab` directory implies GitLab, a
   `bitbucket-pipelines.yml` file implies Bitbucket, and everything else falls back to GitHub — and
-  written to the `vcs.provider` setting in [`.moon/workspace.config`](../workspace).
+  written to the [`vcs.provider`](/api/moon/VcsConfig#provider) setting in [`.moon/workspace.config`](../workspace).
 - The default branch is detected from the local Git checkout (or Git's global default when the
-  repository has no commits yet) and written to the `vcs.defaultBranch` setting in
+  repository has no commits yet) and written to the [`vcs.defaultBranch`](/api/moon/VcsConfig#defaultbranch) setting in
   [`.moon/workspace.config`](../workspace).
 
 The generated [`.moon/workspace.config`](../workspace) also includes a commented out `projects` setting (pre-filled

@@ -13,7 +13,7 @@ When invoked without a subcommand, `moon sync` performs a full workspace sync:
   schemas, depending on what's configured).
 - Syncs every project in the workspace, linking cross-project dependencies and ensuring
   language-specific configuration files are present and accurate.
-- Runs any task across the workspace whose `runInSyncPhase` option is enabled, since these tasks
+- Runs any task across the workspace whose [`options.runInSyncPhase`](/api/moon/TaskOptionsConfig#runinsyncphase) option is enabled, since these tasks
   are considered part of the sync process itself (for example, generating a lockfile or
   manifest).
 

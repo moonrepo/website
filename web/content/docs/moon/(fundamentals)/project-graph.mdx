@@ -13,7 +13,7 @@ layered on top of it, the [action graph](./action-graph) is built from both, and
 detection, syncing, and Docker scaffolding all walk it.
 
 Nodes are projects, and edges are dependencies pointing from a project to the projects it depends
-on. Each edge is labelled with the [scope](#dependency-scopes) of that dependency, which is what
+on. Each edge is labelled with the [scope](./project#scopes) of that dependency, which is what
 allows moon to answer questions like "what does this project need in production?" separately from
 "what does it need to be developed?".
 

@@ -65,13 +65,13 @@ $ moon exec app:start -- --port 8080
 ## Options
 
 - `--ci` <TypeLabel type="boolean" /> - Execute the pipeline as though it's running in a CI
-  environment, which enables `runInCI` task checks, syncs the workspace, and attempts to extract
+  environment, which enables [`options.runInCI`](/api/moon/TaskOptionsConfig#runinci) task checks, syncs the workspace, and attempts to extract
   base/head revisions from the detected CI provider. Passing the flag alone is equivalent to
   `--ci true`; use `--ci false` to force it off. Defaults to auto-detecting the current environment
   when omitted.
 - `-f`, `--force` - Force run and bypass the cache, ignore changed files, and skip affected checks
   (tasks still run even when unaffected, while affected files continue to be tracked for the
-  `affectedFiles` task variable). Can also be set via the `MOON_FORCE` environment variable.
+  [`options.affectedFiles`](/api/moon/TaskOptionsConfig#affectedfiles) task variable). Can also be set via the `MOON_FORCE` environment variable.
 - `-i`, `--interactive` - Run the pipeline and its tasks interactively, allowing tasks to receive
   input from the terminal.
 - `-p`, `--plan` <TypeLabel type="string" /> - Relative path to an [execution plan](../guides/exec-plan)
@@ -84,7 +84,7 @@ $ moon exec app:start -- --port 8080
 
 ### Workflow
 
-- `--ignore-ci-checks` - Ignore each task's "run in CI" (`runInCI`) setting, forcing it to execute
+- `--ignore-ci-checks` - Ignore each task's "run in CI" ([`options.runInCI`](/api/moon/TaskOptionsConfig#runinci)) setting, forcing it to execute
   regardless of whether it's normally intended to run in a CI environment.
 - `--on-failure` <TypeLabel type="bail | continue" /> - When a task fails, either immediately
   bail the entire pipeline (the default), or continue executing the remaining tasks. Can also be

@@ -6,7 +6,7 @@ import { TypeLabel } from "@/components/TypeLabel";
 
 Generates and displays the [project graph](../project) for the entire workspace (or a subset of
 it), which represents every configured project as a node, and the relationships between them
-(based on `dependsOn` and detected implicit dependencies) as edges.
+(based on [`dependsOn`](/api/moon/ProjectConfig#dependson) and detected implicit dependencies) as edges.
 
 By default, moon starts a local web server and opens an interactive visualizer for exploring the
 graph in the browser. Alternatively, the graph can be printed to the terminal in

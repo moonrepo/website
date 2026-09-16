@@ -6,7 +6,7 @@ import { TypeLabel } from "@/components/TypeLabel";
 
 Generates and displays the [task graph](../task) for the entire workspace (or a subset of it),
 which represents every configured task (across all projects) as a node, and the dependencies
-between them (based on a task's `deps`) as edges.
+between them (based on a task's [`deps`](/api/moon/TaskConfig#deps)) as edges.
 
 By default, moon starts a local web server and opens an interactive visualizer for exploring the
 graph in the browser. Alternatively, the graph can be printed to the terminal in

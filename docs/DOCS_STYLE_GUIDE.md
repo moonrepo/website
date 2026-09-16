@@ -29,6 +29,10 @@ Additionally, all file references (wrapped with inline code ticks), should link 
 - `moon.config` - project configuration file, `project` fundamentals page
 - `template.config` - codegen template configuration file, `codegen` guides page
 
+#### Settings
+
+When referencing settings (fields and variants) within a configuration type (struct or enum), like task `options.merge` in `TaskOptionsConfig`, always link to the relevant API reference page with anchor tag. For moon this is `web/content/api/moon`, and proto is `web/content/api/proto`.
+
 ### Commands
 
 When referencing commands in documentation, like `moon exec`, always link to the relevant command page. For example, instead of just writing `moon exec`, write the following markdown:
