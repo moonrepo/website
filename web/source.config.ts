@@ -1,5 +1,4 @@
 import {
-	applyMdxPreset,
 	defineCollections,
 	defineConfig,
 	defineDocs,
@@ -11,6 +10,8 @@ import {
 	remarkAutoTypeTable,
 } from 'fumadocs-typescript';
 import { remarkRelativeLinks } from './src/lib/remarkRelativeLinks';
+// Allows TypeScript to name zod types in the exported collections.
+import type {} from 'zod';
 
 const generator = createGenerator({
 	cache: createFileSystemGeneratorCache('node_modules/.fuma/typescript'),
@@ -45,7 +46,7 @@ export const blog = defineCollections({
 });
 
 export default defineConfig({
-	mdxOptions: applyMdxPreset({
+	mdxOptions: {
 		remarkPlugins: [remarkRelativeLinks, [remarkAutoTypeTable, { generator }]],
-	}),
+	},
 });

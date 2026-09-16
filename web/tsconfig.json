@@ -1,5 +1,5 @@
 {
-  "include": ["**/*.ts", "**/*.tsx", "**/*.mdx"],
+  "include": ["**/*.ts", "**/*.tsx", "**/*.mdx", ".source/*.ts"],
   "compilerOptions": {
     "allowJs": true,
     "baseUrl": ".",

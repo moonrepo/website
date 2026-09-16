@@ -108,6 +108,9 @@ importers:
       vitest:
         specifier: ^4.0.18
         version: 4.0.18(@types/node@24.9.1)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.20.6)(yaml@2.9.1)
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
 
 packages:
 

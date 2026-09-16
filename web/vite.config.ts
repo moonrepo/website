@@ -23,7 +23,11 @@ export default defineConfig({
 				enabled: true,
 			},
 		}),
-		nitro(),
+		nitro({
+			// Nitro's `unwasm` export condition resolves `shiki/wasm` to a raw
+			// `.wasm` file, which the Vite SSR build can't load.
+			wasm: false,
+		}),
 		react(),
 	],
 	resolve: {
