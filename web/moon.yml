@@ -16,3 +16,6 @@ tasks:
 
   test:
     command: "vitest run"
+
+  typecheck:
+    command: "tsc --noEmit"

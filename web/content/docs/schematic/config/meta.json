@@ -1,0 +1,14 @@
+{
+  "title": "Configuration",
+  "pages": [
+    "index",
+    "settings",
+    "partial",
+    "nested",
+    "context",
+    "generics",
+    "struct",
+    "enum",
+    "experimental"
+  ]
+}

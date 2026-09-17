@@ -1,5 +1,5 @@
 {
   "title": "moon",
-  "description": "The description of moon folder (optional)",
+  "description": "Build system for managing monorepos and codebases",
   "root": true
 }

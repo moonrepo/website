@@ -12,3 +12,14 @@ tasks:
   format:
     command: "biome format --write"
     preset: "utility"
+
+  prettier:
+    command: 'prettier --check "**/*.{md,mdx}"'
+    inputs:
+      - "**/*.{md,mdx}"
+      - ".prettierignore"
+      - ".prettierrc.json"
+
+  prettier-fix:
+    command: 'prettier --write "**/*.{md,mdx}"'
+    preset: "utility"

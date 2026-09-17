@@ -1,0 +1,23 @@
+{
+  "title": "Schemas",
+  "pages": [
+    "index",
+    "generator",
+    "---Types---",
+    "types",
+    "array",
+    "boolean",
+    "enum",
+    "float",
+    "integer",
+    "literal",
+    "null",
+    "object",
+    "string",
+    "struct",
+    "tuple",
+    "union",
+    "unknown",
+    "external"
+  ]
+}

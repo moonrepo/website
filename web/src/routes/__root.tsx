@@ -5,8 +5,12 @@ import {
 	Scripts,
 } from '@tanstack/react-router';
 import { RootProvider } from 'fumadocs-ui/provider/tanstack';
-import SearchDialog from '@/components/Search';
+import { lazy } from 'react';
 import appCss from '@/styles/app.css?url';
+
+// The search dialog bundles a markdown renderer for results, so keep it out
+// of the main chunk. Fumadocs renders it within `<Suspense />`.
+const SearchDialog = lazy(() => import('@/components/Search'));
 
 export const Route = createRootRoute({
 	head: () => ({

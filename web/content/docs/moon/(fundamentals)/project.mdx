@@ -257,8 +257,8 @@ precedence.
   }}
 />
 
-<VersionLabel version="2.4.0" /> To apply the same [options](./task.mdx#options) to
-every task in the project, both local and inherited, configure the
+<VersionLabel version="2.4.0" /> To apply the same [options](./task.mdx#options)
+to every task in the project, both local and inherited, configure the
 [`taskOptions`](/api/moon/ProjectConfig#taskoptions) setting. Each task can
 still override these values individually.
 
@@ -292,9 +292,9 @@ over both; refer to [task environment variables](./task.mdx#precedence) for the 
 
 <VersionLabel version="2.5.0" /> Projects also inherit variables from the
 [`env`](/api/moon/InheritedTasksConfig#env) setting in
-[`.moon/tasks/*.config`](./task-inheritance.mdx#configuration) files. By default,
-project variables are appended on top of inherited ones, which can be changed
-with the
+[`.moon/tasks/*.config`](./task-inheritance.mdx#configuration) files. By
+default, project variables are appended on top of inherited ones, which can be
+changed with the
 [`workspace.mergeStrategies.env`](/api/moon/ProjectWorkspaceMergeStrategiesConfig#env)
 setting.
 

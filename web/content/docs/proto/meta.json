@@ -1,5 +1,5 @@
 {
   "title": "proto",
-  "description": "The description of proto folder (optional)",
+  "description": "Multi-language toolchain version manager",
   "root": true
 }
