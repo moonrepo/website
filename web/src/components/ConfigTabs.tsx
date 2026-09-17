@@ -1,8 +1,12 @@
-import { DynamicCodeBlock as Code } from 'fumadocs-ui/components/dynamic-codeblock';
+import {
+	DynamicCodeBlock,
+	type DynamicCodeblockProps,
+} from 'fumadocs-ui/components/dynamic-codeblock.core';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import TOML from 'smol-toml';
 import YAML from 'yaml';
 import HCL, { type HclOptions } from '@/utils/hcl';
+import { getHighlighter } from '@/utils/highlighter';
 import PKL, { type PklOptions } from '@/utils/pkl';
 
 export interface ConfigTabsProps {
@@ -78,6 +82,16 @@ export function ConfigTabs({ comments = {}, config, file }: ConfigTabsProps) {
 				/>
 			</Tab>
 		</Tabs>
+	);
+}
+
+function Code(props: Omit<DynamicCodeblockProps, 'highlighter' | 'options'>) {
+	return (
+		<DynamicCodeBlock
+			highlighter={getHighlighter}
+			options={{ themes: { dark: 'github-dark', light: 'github-light' } }}
+			{...props}
+		/>
 	);
 }
 

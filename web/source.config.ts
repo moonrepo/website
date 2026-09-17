@@ -11,7 +11,7 @@ import {
 } from 'fumadocs-typescript';
 // Allows TypeScript to name zod types in the exported collections.
 import type {} from 'zod';
-import { remarkRelativeLinks } from './src/lib/remarkRelativeLinks';
+import { remarkRelativeLinks } from './src/lib/remarkRelativeLinks.ts';
 
 const generator = createGenerator({
 	cache: createFileSystemGeneratorCache('node_modules/.fuma/typescript'),

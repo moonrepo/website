@@ -4,7 +4,6 @@ import react from '@vitejs/plugin-react';
 import mdx from 'fumadocs-mdx/vite';
 import { nitro } from 'nitro/vite';
 import { defineConfig } from 'vite';
-import tsConfigPaths from 'vite-tsconfig-paths';
 
 const fumadocsDeps = ['fumadocs-core', 'fumadocs-ui', '@fumadocs/base-ui'];
 
@@ -13,10 +12,7 @@ export default defineConfig({
 		port: 3000,
 	},
 	plugins: [
-		tsConfigPaths({
-			projects: ['./tsconfig.json'],
-		}),
-		mdx(await import('./source.config')),
+		mdx(await import('./source.config.ts')),
 		tailwindCss(),
 		tanstackStart({
 			prerender: {
@@ -32,6 +28,16 @@ export default defineConfig({
 	],
 	resolve: {
 		noExternal: fumadocsDeps,
+		tsconfigPaths: true,
+	},
+	build: {
+		rolldownOptions: {
+			checks: {
+				// Dependencies mark modules with `"use client"` for React Server
+				// Components, which don't apply to this app and are safely ignored
+				moduleLevelDirective: false,
+			},
+		},
 	},
 	// optimizeDeps: {
 	// 	include: ['style-to-js', 'hast-util-to-jsx-runtime'],

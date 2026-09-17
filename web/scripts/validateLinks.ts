@@ -11,7 +11,6 @@ import {
 	validateFiles,
 } from 'next-validate-link';
 import { createServer } from 'vite';
-import tsConfigPaths from 'vite-tsconfig-paths';
 
 type Sources = typeof import('../src/lib/source');
 type AnySource = Sources['apiSource'] | Sources['blogSource'];
@@ -22,7 +21,8 @@ const server = await createServer({
 	appType: 'custom',
 	logLevel: 'warn',
 	server: { middlewareMode: true, hmr: false, ws: false },
-	plugins: [tsConfigPaths({ projects: ['./tsconfig.json'] }), mdx()],
+	plugins: [mdx()],
+	resolve: { tsconfigPaths: true },
 });
 
 try {

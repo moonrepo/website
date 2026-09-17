@@ -23,7 +23,7 @@ export const Route = createFileRoute('/blog/$')({
 const serverLoader = createServerFn({
 	method: 'GET',
 })
-	.inputValidator((slugs: string[]) => slugs)
+	.validator((slugs: string[]) => slugs)
 	.handler(({ data: slugs }) => {
 		const page = blogSource.getPage(slugs);
 
