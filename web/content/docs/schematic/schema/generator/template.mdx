@@ -1,13 +1,13 @@
 ---
-title: Config templates (experimental)
-icon: FileText
+title: Config templates
+icon: LayoutDashboard
 ---
 
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
 <Callout>
-Requires the `template` and desired [format](../../config/index.mdx#supported-source-formats) Cargo
-feature.
+  Requires the `template` and desired
+  [format](../../config/index.mdx#supported-source-formats) Cargo feature.
 </Callout>
 
 With our [format renderers](#support-formats), you can generate a config template in a specific
@@ -145,12 +145,12 @@ Would render the following formats:
 
 ```json
 {
-	// The base URL to serve from.
-	"base_url": "/",
+  // The base URL to serve from.
+  "base_url": "/",
 
-	// The default port to listen on.
-	// @env PORT
-	"port": 8080
+  // The default port to listen on.
+  // @env PORT
+  "port": 8080
 }
 ```
 
@@ -194,8 +194,8 @@ port: 8080
 </Tabs>
 
 <Callout>
-Applying the desired casing for field names should be done with serde `rename_all` on the
-container.
+  Applying the desired casing for field names should be done with serde
+  `rename_all` on the container.
 </Callout>
 
 ## Options
@@ -212,9 +212,7 @@ JsoncTemplateRenderer::new(TemplateOptions {
 });
 ```
 
-<Callout type="warning">
-The `format` option is required!
-</Callout>
+<Callout type="warning">The `format` option is required!</Callout>
 
 ### Indentation
 
@@ -296,7 +294,7 @@ TemplateOptions {
 ```
 
 <Callout>
-Field names use the serde cased name, not the Rust struct field name.
+  Field names use the serde cased name, not the Rust struct field name.
 </Callout>
 
 ### Field expansion
@@ -319,7 +317,7 @@ Here's an example of how this works:
 
 ```json
 {
-	"proxies": []
+  "proxies": []
 }
 ```
 
@@ -328,13 +326,13 @@ Here's an example of how this works:
 
 ```json
 {
-	"proxies": [
-		// An example proxy configuration.
-		{
-			"host": "",
-			"port": 8080
-		}
-	]
+  "proxies": [
+    // An example proxy configuration.
+    {
+      "host": "",
+      "port": 8080
+    }
+  ]
 }
 ```
 
@@ -360,5 +358,6 @@ TemplateOptions {
 ```
 
 <Callout type="warning">
-If the custom schema type does not match the field type, it will trigger a panic.
+  If the custom schema type does not match the field type, it will trigger a
+  panic.
 </Callout>

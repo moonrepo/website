@@ -1,11 +1,9 @@
 ---
 title: JSON schemas
-icon: FileJson
+icon: Braces
 ---
 
-<Callout>
-Requires the `json_schema` Cargo feature.
-</Callout>
+<Callout>Requires the `json_schema` Cargo feature.</Callout>
 
 With our
 [`JsonSchemaRenderer`](https://docs.rs/schematic/latest/schematic/schema/json_schema/struct.JsonSchemaRenderer.html),
@@ -25,8 +23,8 @@ generator.generate(output_dir.join("schema.json"), JsonSchemaRenderer::default()
 ```
 
 <Callout>
-For a reference implementation, check out
-[moonrepo/moon](https://github.com/moonrepo/moon/blob/master/nextgen/config/src/main.rs).
+  For a reference implementation, check out
+  [moonrepo/moon](https://github.com/moonrepo/moon/blob/master/crates/config/src/main.rs).
 </Callout>
 
 ## Root document
@@ -50,15 +48,15 @@ When rendered, will look something like the following:
 
 ```json
 {
-	"$schema": "http://json-schema.org/draft-07/schema#",
-	"title": "LastType",
-	"type": "object",
-	"properties": {
-		// Fields in LastType...
-	},
-	"definitions": {
-		// Other types...
-	}
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LastType",
+  "type": "object",
+  "properties": {
+    // Fields in LastType...
+  },
+  "definitions": {
+    // Other types...
+  }
 }
 ```
 
@@ -77,15 +75,16 @@ JsonSchemaRenderer::new(JsonSchemaOptions {
 ```
 
 <Callout>
-This type also carries some fields from the upstream
-[`SchemaSettings`](https://docs.rs/schemars/latest/schemars/generate/struct.SchemaSettings.html)
-type in the `schemars` crate — `meta_schema`, `transforms`, and `inline_subschemas`. Refer to
-their documentation for more information.
+  This type also carries some fields from the upstream
+  [`SchemaSettings`](https://docs.rs/schemars/latest/schemars/generate/struct.SchemaSettings.html)
+  type in the `schemars` crate — `meta_schema`, `transforms`, and
+  `inline_subschemas`. Refer to their documentation for more information.
 </Callout>
 
 <Callout>
-`definitions_path` is the prefix each `$ref` is built from, such as `#/definitions/`. Schemars
-models its own field of that name as a JSON pointer instead, so the two are not interchangeable.
+  `definitions_path` is the prefix each `$ref` is built from, such as
+  `#/definitions/`. Schemars models its own field of that name as a JSON pointer
+  instead, so the two are not interchangeable.
 </Callout>
 
 ### Markdown descriptions
@@ -104,7 +103,7 @@ JsonSchemaOptions {
 ```
 
 <Callout>
-This is a non-standard extension to the JSON schema specification.
+  This is a non-standard extension to the JSON schema specification.
 </Callout>
 
 ### Required fields

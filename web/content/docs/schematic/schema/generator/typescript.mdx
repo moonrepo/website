@@ -1,11 +1,9 @@
 ---
 title: TypeScript types
-icon: FileType
+icon: Type
 ---
 
-<Callout>
-Requires the `typescript` Cargo feature.
-</Callout>
+<Callout>Requires the `typescript` Cargo feature.</Callout>
 
 With our
 [`TypeScriptRenderer`](https://docs.rs/schematic/latest/schematic/schema/typescript/struct.TypeScriptRenderer.html),
@@ -22,8 +20,8 @@ generator.generate(output_dir.join("types.ts"), TypeScriptRenderer::default())?;
 ```
 
 <Callout>
-For a reference implementation, check out
-[moonrepo/moon](https://github.com/moonrepo/moon/blob/master/nextgen/config/src/main.rs).
+  For a reference implementation, check out
+  [moonrepo/moon](https://github.com/moonrepo/moon/blob/master/crates/config/src/main.rs).
 </Callout>
 
 ## Options
@@ -73,9 +71,9 @@ export type LogLevel = "debug" | "info" | "error";
 
 // As enum
 export enum LogLevel {
-	Debug,
-	Info,
-	Error,
+  Debug,
+  Info,
+  Error,
 }
 ```
 
@@ -114,12 +112,12 @@ TypeScriptOptions {
 ```ts
 // Default
 export interface User {
-	name: string;
+  name: string;
 }
 
 // As alias
 export type User = {
-	name: string;
+  name: string;
 };
 ```
 
@@ -141,17 +139,17 @@ TypeScriptOptions {
 ```ts
 // Default / required
 export interface User {
-	name: string;
+  name: string;
 }
 
 // Optional
 export interface User {
-	name?: string;
+  name?: string;
 }
 
 // Optional with undefined union
 export interface User {
-	name?: string | undefined;
+  name?: string | undefined;
 }
 ```
 
@@ -165,7 +163,7 @@ another type by name.
 export type UserStatus = "active" | "inactive";
 
 export interface User {
-	status: UserStatus;
+  status: UserStatus;
 }
 ```
 
@@ -184,7 +182,7 @@ TypeScriptOptions {
 export type UserStatus = "active" | "inactive";
 
 export interface User {
-	status: "active" | "inactive";
+  status: "active" | "inactive";
 }
 ```
 
@@ -200,7 +198,7 @@ TypeScriptOptions {
 
 ```ts
 export interface User {
-	status: "active" | "inactive";
+  status: "active" | "inactive";
 }
 ```
 
@@ -226,6 +224,6 @@ TypeScriptOptions {
 import type { UserStatus } from "./states";
 
 export interface User {
-	status: UserStatus;
+  status: UserStatus;
 }
 ```

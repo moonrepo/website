@@ -1,6 +1,6 @@
 ---
 title: Structs
-icon: Boxes
+icon: Box
 ---
 
 The [`StructType`][struct] can be used to represent a struct with explicitly named fields and typed
@@ -63,8 +63,9 @@ schema.structure(StructType::new([
 ```
 
 <Callout>
-Automatically implemented for `Duration`, `SystemTime`, `Range`, and `RangeInclusive`. These look
-like scalars but serde encodes them as maps, so the schema describes the map.
+  Automatically implemented for `Duration`, `SystemTime`, `Range`, and
+  `RangeInclusive`. These look like scalars but serde encodes them as maps, so
+  the schema describes the map.
 </Callout>
 
 Fields keep the order they were inserted in, which is the declaration order when the schema comes
@@ -87,8 +88,6 @@ StructType {
 }
 ```
 
-<Callout>
-This is primarily used by JSON Schema.
-</Callout>
+<Callout>This is primarily used by JSON Schema.</Callout>
 
 [struct]: https://docs.rs/schematic/latest/schematic/schema/struct.StructType.html

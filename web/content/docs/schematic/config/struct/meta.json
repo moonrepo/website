@@ -1,4 +1,12 @@
 {
   "title": "Structs & enums",
-  "pages": ["index", "default", "transform", "env", "extend", "merge", "validate"]
+  "pages": [
+    "index",
+    "default",
+    "transform",
+    "env",
+    "extend",
+    "merge",
+    "validate"
+  ]
 }

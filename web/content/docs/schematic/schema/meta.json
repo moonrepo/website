@@ -2,6 +2,7 @@
   "title": "Schemas",
   "pages": [
     "index",
+    "generator",
     "---Types---",
     "types",
     "array",
@@ -17,8 +18,6 @@
     "tuple",
     "union",
     "unknown",
-    "---Other---",
-    "external",
-    "generator"
+    "external"
   ]
 }
