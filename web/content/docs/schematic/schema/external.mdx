@@ -1,0 +1,139 @@
+---
+title: External types
+icon: Package
+---
+
+Schematic provides schema implementations for third-party [crates](https://crates.io) through a
+concept known as external types. This functionality is opt-in through Cargo features.
+
+## chrono
+
+<Callout>
+Requires the `type_chrono` Cargo feature.
+</Callout>
+
+Implements schemas for `Date`, `DateTime`, `Duration`, `Days`, `Months`, `IsoWeek`, `NaiveWeek`,
+`NaiveDate`, `NaiveDateTime`, and `NaiveTime` from the [chrono](https://crates.io/crates/chrono)
+crate.
+
+## indexmap
+
+<Callout>
+Requires the `type_indexmap` Cargo feature.
+</Callout>
+
+Implements a schema for `IndexMap` and `IndexSet` from the
+[indexmap](https://crates.io/crates/indexmap) crate.
+
+## regex
+
+<Callout>
+Requires the `type_regex` Cargo feature.
+</Callout>
+
+Implements a schema for `Regex` from the [regex](https://crates.io/crates/regex) crate.
+
+<Callout>
+To use `Regex` as a [setting](../config/settings.mdx#third-party-types), reach for `RegexSetting`, which
+supplies the `Default` a required setting needs.
+</Callout>
+
+## relative-path
+
+<Callout>
+Requires the `type_relative_path` Cargo feature.
+</Callout>
+
+Implements schemas for `RelativePath` and `RelativePathBuf` from the
+[relative-path](https://crates.io/crates/relative-path) crate.
+
+## rpkl
+
+<Callout>
+Requires the `pkl` Cargo feature.
+</Callout>
+
+Implements a schema for `Value` from the [rpkl](https://crates.io/crates/rpkl) crate.
+
+## rust_decimal
+
+<Callout>
+Requires the `type_rust_decimal` Cargo feature.
+</Callout>
+
+Implements a schema for `Decimal` from the [rust_decimal](https://crates.io/crates/rust_decimal)
+crate.
+
+## semver
+
+<Callout>
+Requires the `type_semver` Cargo feature.
+</Callout>
+
+Implements schemas for `Version` and `VersionReq` from the [semver](https://crates.io/crates/semver)
+crate.
+
+<Callout>
+To use `Version` as a [setting](../config/settings.mdx#third-party-types), reach for `VersionSetting`, which
+supplies the `Default` a required setting needs.
+</Callout>
+
+## ron
+
+<Callout>
+Requires the `ron` Cargo feature.
+</Callout>
+
+Implements a schema for `Value` from the [ron](https://crates.io/crates/ron) crate.
+
+## serde_json
+
+<Callout>
+Requires the `json` Cargo feature.
+</Callout>
+
+Implements schemas for `Value`, `Number`, and `Map` from the
+[serde_json](https://crates.io/crates/serde_json) crate.
+
+## serde_yaml
+
+<Callout>
+Requires the `serde_yaml` Cargo feature on `schematic_types` directly. The `schematic` crate does
+not enable it, as its `yaml` feature uses `serde_norway` instead.
+</Callout>
+
+Implements schemas for `Value`, `Number`, and `Mapping` from the
+[serde_yaml](https://crates.io/crates/serde_yaml) crate.
+
+## serde_yaml_norway
+
+<Callout>
+Requires the `yaml` Cargo feature.
+</Callout>
+
+Implements schemas for `Value`, `Number`, and `Mapping` from the
+[serde_norway](https://crates.io/crates/serde_norway) crate.
+
+## toml
+
+<Callout>
+Requires the `toml` Cargo feature.
+</Callout>
+
+Implements schemas for `Value` and `Map` from the [toml](https://crates.io/crates/toml) crate.
+
+## url
+
+<Callout>
+Requires the `type_url` Cargo feature.
+</Callout>
+
+Implements a schema for `Url` from the [url](https://crates.io/crates/url) crate.
+
+## uuid
+
+<Callout>
+Requires the `type_uuid` Cargo feature.
+</Callout>
+
+Implements a schema for `Uuid` from the [uuid](https://crates.io/crates/uuid) crate.

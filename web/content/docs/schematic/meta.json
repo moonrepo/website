@@ -1,0 +1,6 @@
+{
+  "title": "Schematic",
+  "description": "Layered configuration and schema modeling for Rust",
+  "root": true,
+  "pages": ["index", "config", "schema"]
+}
