@@ -43,17 +43,18 @@ A bare path is ambiguous — `LevelFilter::Debug` names a value, while `find_unu
 [handler function](#handler-function) to call. Nothing at compile time can tell them apart, so
 Schematic goes by Rust's naming conventions:
 
-| Last segment of the path        | Treated as       | Example                  |
-| ------------------------------- | ---------------- | ------------------------ |
-| Starts uppercase                | A value          | `LevelFilter::Debug`     |
-| Starts lowercase                | A handler function | `find_unused_port`     |
+| Last segment of the path | Treated as         | Example              |
+| ------------------------ | ------------------ | -------------------- |
+| Starts uppercase         | A value            | `LevelFilter::Debug` |
+| Starts lowercase         | A handler function | `find_unused_port`   |
 
 That covers enum variants, unit structs, and constants on one side, and functions on the other,
 since a name breaking those conventions would already be earning a compiler lint.
 
 <Callout>
-A handler function that must keep a non-conventional name can be reached through a `snake_case`
-wrapper, or called directly with `default = my_wrapper()` when it needs no context.
+  A handler function that must keep a non-conventional name can be reached
+  through a `snake_case` wrapper, or called directly with `default =
+  my_wrapper()` when it needs no context.
 </Callout>
 
 For enums, the `default` field takes no value, and simply marks which variant to use as the default.

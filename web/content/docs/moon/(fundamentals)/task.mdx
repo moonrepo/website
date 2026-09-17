@@ -145,10 +145,10 @@ To mark a task as persistent, enable [`options.persistent`](#options) or configu
 
 <VersionLabel version="2.1.0" /> Tasks can also run as part of the syncing
 phase, instead of only when explicitly ran or depended on. When [`moon
-sync`](../commands/sync.mdx) is executed, it walks every project and queues these
-tasks into the action graph alongside the workspace and project sync actions,
-which makes them a good fit for codegen and other housekeeping that should be
-kept up to date across the repository.
+sync`](../commands/sync.mdx) is executed, it walks every project and queues
+these tasks into the action graph alongside the workspace and project sync
+actions, which makes them a good fit for codegen and other housekeeping that
+should be kept up to date across the repository.
 
 To run a task in the sync phase, enable [`options.runInSyncPhase`](#options).
 
@@ -1181,9 +1181,9 @@ controls how the check lists are combined, using the same merge strategies as th
 
 <VersionLabel version="2.3.0" /> Tasks can be categorized with the
 [`tags`](/api/moon/TaskConfig#tags) setting, in the same spirit as [project
-tags](./project.mdx#tags). Task tags are inherited alongside the rest of the task,
-and [`options.mergeTags`](#options) controls how they're combined when a task is
-extended.
+tags](./project.mdx#tags). Task tags are inherited alongside the rest of the
+task, and [`options.mergeTags`](#options) controls how they're combined when a
+task is extended.
 
 <ConfigTabs
   file="moon"

@@ -4,7 +4,7 @@ icon: Settings
 ---
 
 <Callout>
-Requires the `config` Cargo feature, which is enabled by default.
+  Requires the `config` Cargo feature, which is enabled by default.
 </Callout>
 
 The primary feature of Schematic is a layered serde-driven configuration solution, and is powered
@@ -35,8 +35,9 @@ struct ExampleConfig {
 ```
 
 <Callout>
-This pattern provides the optimal developer experience, as you can reference the settings as-is,
-without having to unwrap them, or use `match` or `if-let` statements!
+  This pattern provides the optimal developer experience, as you can reference
+  the settings as-is, without having to unwrap them, or use `match` or `if-let`
+  statements!
 </Callout>
 
 ## Usage
@@ -95,7 +96,7 @@ loader.url("https://ordomain.com/to/config.yaml")?;
 ```
 
 <Callout>
-The formats to use are derived from the trailing file extension.
+  The formats to use are derived from the trailing file extension.
 </Callout>
 
 And lastly call the

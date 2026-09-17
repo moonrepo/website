@@ -30,8 +30,8 @@ also allows for [`Config`][config] functionality, like partials, merging, and va
 applied to the contents of each variant.
 
 <Callout>
-If you'd like to support unit-only enums, you can use the [`ConfigEnum` trait](../enum/index.mdx)
-instead.
+  If you'd like to support unit-only enums, you can use the [`ConfigEnum`
+  trait](../enum/index.mdx) instead.
 </Callout>
 
 ## Attribute fields
@@ -81,8 +81,8 @@ struct Example {
 ```
 
 <Callout>
-These values can also be applied using `#[serde]`, which is useful if you want to apply them to
-the main struct as well, and not just the partial struct.
+  These values can also be applied using `#[serde]`, which is useful if you want
+  to apply them to the main struct as well, and not just the partial struct.
 </Callout>
 
 ### Enum tagging
@@ -104,8 +104,8 @@ The derive registers `serde` as a helper attribute, so this is accepted even whe
 only [`Config`][config] and not `Serialize` or `Deserialize`.
 
 <Callout>
-A unit-only enum is always externally tagged, no matter what you set. Marking one `untagged`
-would leave its variants deserializable only from `null`.
+  A unit-only enum is always externally tagged, no matter what you set. Marking
+  one `untagged` would leave its variants deserializable only from `null`.
 </Callout>
 
 [config]: https://docs.rs/schematic/latest/schematic/trait.Config.html

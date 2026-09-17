@@ -3,9 +3,7 @@ title: API documentation
 icon: BookText
 ---
 
-<Callout>
-Requires the `renderer_api_docs` Cargo feature.
-</Callout>
+<Callout>Requires the `renderer_api_docs` Cargo feature.</Callout>
 
 With our
 [`ApiDocsRenderer`](https://docs.rs/schematic/latest/schematic/schema/api_docs/struct.ApiDocsRenderer.html),
@@ -88,10 +86,10 @@ title: Index
 
 ## Types
 
-| Type | Kind | Description |
-| --- | --- | --- |
-| [`ServerConfig`](./ServerConfig.md) | Struct | Configures the HTTP server. |
-| [`TlsConfig`](./TlsConfig.md) | Struct | TLS settings, when serving over HTTPS. |
+| Type                                | Kind   | Description                            |
+| ----------------------------------- | ------ | -------------------------------------- |
+| [`ServerConfig`](./ServerConfig.md) | Struct | Configures the HTTP server.            |
+| [`TlsConfig`](./TlsConfig.md)       | Struct | TLS settings, when serving over HTTPS. |
 ```
 
 The `index_page` option names the file, and `None` skips it. When generating pages one at a time,
@@ -219,7 +217,7 @@ ApiDocsOptions {
 Links to other pages are rendered by the `render_link` function, which receives the name of the
 referenced type and returns the whole link, label included. The default labels the link with the
 name as inline code and links to a markdown file named after the type in the same directory, such
-as `` [`Name`](./Name.mdx) ``. Documentation tools that route on a path rather than a file, pages
+as ``[`Name`](./Name.md)``. Documentation tools that route on a path rather than a file, pages
 split across directories, or a site with its own link component can return whatever they need. The
 same function renders the inline links and the references list.
 
@@ -258,8 +256,8 @@ ApiDocsOptions {
 ```
 
 <Callout>
-Tags in the table are rendered as labels, not through the `render_tags` function, as its output is
-a block that cannot sit inside a table cell.
+  Tags in the table are rendered as labels, not through the `render_tags`
+  function, as its output is a block that cannot sit inside a table cell.
 </Callout>
 
 ### Index

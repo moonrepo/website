@@ -130,9 +130,11 @@ or a clause object for finer control:
 />
 
 <Callout>
-  When a file's [`inheritedBy.toolchains`](/api/moon/InheritedByConfig#toolchains) condition resolves to exactly one
-  toolchain, that toolchain is also applied as the default [`toolchains`](/api/moon/TaskConfig#toolchains) value
-  for every task the file defines, unless the task sets its own.
+  When a file's
+  [`inheritedBy.toolchains`](/api/moon/InheritedByConfig#toolchains) condition
+  resolves to exactly one toolchain, that toolchain is also applied as the
+  default [`toolchains`](/api/moon/TaskConfig#toolchains) value for every task
+  the file defines, unless the task sets its own.
 </Callout>
 
 ## Inheritance order
@@ -256,9 +258,11 @@ locally shouldn't stop it from running upstream. Dependencies using the task tag
 (`~:#tag`) have no identifier to match against, so they're never excluded or renamed.
 
 <VersionLabel version="2.5.0" /> Projects can additionally control how inherited
-[`env`](/api/moon/ProjectConfig#env) and [`fileGroups`](/api/moon/ProjectConfig#filegroups) are combined with their own, through the
-[`workspace.mergeStrategies`](/api/moon/ProjectWorkspaceConfig#mergestrategies) setting, which accepts the same four strategies
-described above.
+[`env`](/api/moon/ProjectConfig#env) and
+[`fileGroups`](/api/moon/ProjectConfig#filegroups) are combined with their own,
+through the
+[`workspace.mergeStrategies`](/api/moon/ProjectWorkspaceConfig#mergestrategies)
+setting, which accepts the same four strategies described above.
 
 <ConfigTabs
   file="moon"

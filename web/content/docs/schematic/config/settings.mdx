@@ -14,9 +14,9 @@ implement `Default`. Plenty of third-party types don't, and being foreign, can't
 
 For the two we support directly, we provide a newtype that does:
 
-| Setting                                                                              | Wraps            | Default | Cargo feature  |
-| ------------------------------------------------------------------------------------ | ---------------- | ------- | -------------- |
-| [`RegexSetting`](https://docs.rs/schematic/latest/schematic/struct.RegexSetting.html) | `regex::Regex`   | `.`     | `type_regex`   |
+| Setting                                                                                   | Wraps             | Default | Cargo feature |
+| ----------------------------------------------------------------------------------------- | ----------------- | ------- | ------------- |
+| [`RegexSetting`](https://docs.rs/schematic/latest/schematic/struct.RegexSetting.html)     | `regex::Regex`    | `.`     | `type_regex`  |
 | [`VersionSetting`](https://docs.rs/schematic/latest/schematic/struct.VersionSetting.html) | `semver::Version` | `0.0.0` | `type_semver` |
 
 ```rust
@@ -33,8 +33,9 @@ Each derefs to the type it wraps, so its methods can be called directly, and eac
 string, so the wrapper works without the upstream crate's `serde` feature.
 
 <Callout>
-`semver::VersionReq` needs no wrapper, as it already defaults to `*`. Types that are only ever
-optional don't need one either, since an `Option` setting defaults to `None`.
+  `semver::VersionReq` needs no wrapper, as it already defaults to `*`. Types
+  that are only ever optional don't need one either, since an `Option` setting
+  defaults to `None`.
 </Callout>
 
 ## Attribute fields
@@ -86,9 +87,10 @@ struct Example {
 ```
 
 <Callout>
-These values can also be applied using `#[serde]`, which is useful if you want to apply them to
-the main struct as well, and not just the partial struct. When a field is set through both, the
-`#[setting]` value wins, except for `alias`, where the two lists are merged.
+  These values can also be applied using `#[serde]`, which is useful if you want
+  to apply them to the main struct as well, and not just the partial struct.
+  When a field is set through both, the `#[setting]` value wins, except for
+  `alias`, where the two lists are merged.
 </Callout>
 
 Names are used exactly as written. There is no default casing, so a field named `allowed_hosts` is

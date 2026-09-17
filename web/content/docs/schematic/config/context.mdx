@@ -45,8 +45,9 @@ let result = ConfigLoader::<ExampleConfig>::new()
 ```
 
 <Callout>
-Refer to the [default values](./struct/default.mdx), [merge strategies](./struct/merge.mdx), and
-[validation rules](./struct/validate.mdx) sections for more information on how to use context.
+  Refer to the [default values](./struct/default.mdx), [merge
+  strategies](./struct/merge.mdx), and [validation rules](./struct/validate.mdx)
+  sections for more information on how to use context.
 </Callout>
 
 ## Metadata
@@ -74,7 +75,7 @@ Each entry carries the setting's `type_alias` (the Rust type as written), its `e
 `nested` map when the setting holds another [nested config](./nested.mdx).
 
 <Callout>
-A key derived from an [`env_prefix`](./struct/env.mdx#container-prefixes) is reported with the
-container's own prefix. A parent's `#[setting(nested, env_prefix)]` override is applied at
-runtime, so it isn't reflected here.
+  A key derived from an [`env_prefix`](./struct/env.mdx#container-prefixes) is
+  reported with the container's own prefix. A parent's `#[setting(nested,
+  env_prefix)]` override is applied at runtime, so it isn't reflected here.
 </Callout>
