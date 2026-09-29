@@ -1,4 +1,4 @@
-Write a moon documentation page in markdown about `____` and save it to `web/content/docs/moon/(fundamentals)/_____.mdx`.
+Write a moon documentation page in markdown about `____` and save it to `web/content/moon/docs/(fundamentals)/_____.mdx`.
 
 ## Requirements
 

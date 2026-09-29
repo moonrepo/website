@@ -1,5 +1,6 @@
-import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
-import { BookIcon, CodeIcon, NewspaperIcon } from 'lucide-react';
+import type { BaseLayoutProps, LinkItemType } from 'fumadocs-ui/layouts/shared';
+import { NewspaperIcon } from 'lucide-react';
+import { PRODUCTS } from '@/lib/products';
 
 export function baseOptions(): BaseLayoutProps {
 	return {
@@ -8,20 +9,14 @@ export function baseOptions(): BaseLayoutProps {
 			title: 'Tanstack Start',
 		},
 		links: [
-			{
-				text: 'Documentation',
-				url: '/docs',
-				active: 'nested-url',
-				icon: <BookIcon />,
-				description: 'Learn more',
-			},
-			{
-				text: 'API',
-				url: '/api',
-				active: 'nested-url',
-				icon: <CodeIcon />,
-				description: 'Learn more',
-			},
+			...Object.entries(PRODUCTS).map(
+				([product, { title, description }]): LinkItemType => ({
+					text: title,
+					url: `/${product}/docs`,
+					active: 'nested-url',
+					description,
+				}),
+			),
 			{
 				text: 'Blog',
 				url: '/blog',

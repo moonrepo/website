@@ -1,4 +1,4 @@
-For each command documentation page at `web/content/docs/moon/commands`, spawn a sonnet subagent to generate and implement the content.
+For each command documentation page at `web/content/moon/docs/commands`, spawn a sonnet subagent to generate and implement the content.
 
 ## Requirements
 

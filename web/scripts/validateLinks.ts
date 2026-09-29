@@ -13,7 +13,9 @@ import {
 import { createServer } from 'vite';
 
 type Sources = typeof import('../src/lib/source');
-type AnySource = Sources['apiSource'] | Sources['blogSource'];
+type AnySource =
+	| Sources['blogSource']
+	| Sources['productSources'][keyof Sources['productSources']];
 type AnyPage = AnySource['$inferPage'];
 
 const server = await createServer({
@@ -26,32 +28,37 @@ const server = await createServer({
 });
 
 try {
-	const { apiSource, blogSource, docsSource } = (await server.ssrLoadModule(
+	const { blogSource, productSources } = (await server.ssrLoadModule(
 		'/src/lib/source.ts',
 	)) as Sources;
 
-	// Keys are the splat routes in `src/routes`
-	const sources: Record<string, AnySource> = {
-		'api/[[..._splat]]': apiSource,
-		'blog/[[..._splat]]': blogSource,
-		'docs/[[..._splat]]': docsSource,
-	};
+	const products = Object.entries(productSources);
 
+	// Keys are the dynamic routes in `src/routes`
 	const scanned = await scanURLs({
 		preset: 'tanstack-start',
-		populate: Object.fromEntries(
-			Object.entries(sources).map(([route, source]) => [
-				route,
+		populate: {
+			'[product]': products.map(([product]) => ({ value: { product } })),
+			'[product]/[[..._splat]]': products.flatMap(([product, source]) =>
 				source.getPages().map((page) => ({
-					value: { _splat: page.slugs },
+					value: { product, _splat: page.slugs },
 					hashes: getHeadings(page),
 				})),
-			]),
-		),
+			),
+			'blog/[[..._splat]]': blogSource.getPages().map((page) => ({
+				value: { _splat: page.slugs },
+				hashes: getHeadings(page),
+			})),
+		},
 	});
 
+	const sources: AnySource[] = [
+		blogSource,
+		...products.map(([, source]) => source),
+	];
+
 	const files = await Promise.all(
-		Object.values(sources).flatMap((source) => source.getPages().map(getFile)),
+		sources.flatMap((source) => source.getPages().map(getFile)),
 	);
 
 	printErrors(

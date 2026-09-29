@@ -4,12 +4,14 @@ Guidance for agents writing and editing documentation in this repository (the mo
 
 ## Repository layout
 
-- `web/content/docs/moon` - moon documentation (MDX). This is where most writing happens.
+- `web/content/moon/docs` - moon documentation (MDX). This is where most writing happens.
   - `(fundamentals)` - core concepts (projects, tasks, targets, workspace, etc). The `(group)` folder does not appear in URLs.
   - `commands` - one page per CLI command; sub-commands live in sub-directories.
   - `guides`, `advanced`, `toolchains`, `editors` - topic pages.
-- `web/content/docs/proto` - proto documentation.
-- `web/content/api/moon` (and `api/proto`) - configuration API reference, one page per config type (struct or enum). Link to these pages; don't edit them while writing docs.
+- `web/content/proto/docs` - proto documentation.
+- `web/content/schematic/docs` - schematic documentation.
+- `web/content/moon/api` (and `proto/api`) - configuration API reference, one page per config type (struct or enum). Link to these pages; don't edit them while writing docs.
+- Content paths map to URLs, with `(group)` folders and `index` files removed. For example, `web/content/moon/docs/(fundamentals)/task.mdx` is served at `/moon/docs/task`.
 - `web/content/blog` - blog posts.
 - `meta.json` - controls sidebar order and titles for each folder. Add new pages to the `pages` list.
 - `docs/` - prompts and the style guide ([`DOCS_STYLE_GUIDE.md`](docs/DOCS_STYLE_GUIDE.md), [`COMMAND_PROMPT.md`](docs/COMMAND_PROMPT.md), [`NEW_PAGE_PROMPT.md`](docs/NEW_PAGE_PROMPT.md)). Read the style guide before writing.
@@ -19,7 +21,7 @@ Guidance for agents writing and editing documentation in this repository (the mo
 - The moon source code at `/Users/miles/Projects/moon` (primarily `crates/`) is the source of truth. Verify behavior, defaults, and setting names there before documenting them.
   - Commands: `crates/app/src/commands`.
   - Configuration: `crates/config`.
-- The API reference pages under `web/content/api/moon` are the source of truth for setting names, types, and anchors.
+- The API reference pages under `web/content/moon/api` are the source of truth for setting names, types, and anchors.
 - The old website docs can be used for tone and context, but are outdated. Never copy content from them.
 
 ## Tone and audience
@@ -72,7 +74,7 @@ Links are the backbone of these docs. Link generously, but deliberately.
   [targets](<../(fundamentals)/target.mdx>)
   ```
 - **Sections in the current page**: `[inputs](#inputs)`.
-- **API reference**: absolute URLs, `/api/moon/<TypeName>#<anchor>`.
+- **API reference**: absolute URLs, `/moon/api/<TypeName>#<anchor>`.
 - Anchors are the heading text slugified: lowercase, spaces to `-`, code ticks and punctuation removed. For example `### \`runInCI\``is`#runinci`and`## Environment variables`is`#environment-variables`. Always confirm the heading exists; never guess.
 
 ### Configuration files
@@ -93,7 +95,7 @@ Always write configuration file names with the `.config` extension (moon support
 When referencing a setting (a field or variant of a config struct/enum), link it. Choose the target in this order:
 
 1. **A relevant section in the current page.** If the page has a section that explains the setting, link there. For example, on the task page, `preset` links to `#presets` and `command` links to `#command`.
-2. **The API reference page.** Otherwise, link to `/api/moon/<Type>#<anchor>`. For example, `options.runInCI` links to `/api/moon/TaskOptionsConfig#runinci`.
+2. **The API reference page.** Otherwise, link to `/moon/api/<Type>#<anchor>`. For example, `options.runInCI` links to `/moon/api/TaskOptionsConfig#runinci`.
 
 Rules:
 
@@ -149,7 +151,7 @@ Use for type strings (TypeScript-like syntax), typically for settings and CLI op
 Mark newer features with the version they were introduced in, inline after the setting or heading text:
 
 ```tsx
-[`options.mergeChecks`](/api/moon/TaskOptionsConfig#mergechecks) <VersionLabel version="2.4.0" />
+[`options.mergeChecks`](/moon/api/TaskOptionsConfig#mergechecks) <VersionLabel version="2.4.0" />
 ```
 
 Check the moon changelog or source history for the correct version.
@@ -177,7 +179,7 @@ For notes, caveats, and warnings that readers shouldn't miss. Use sparingly.
 Before finishing:
 
 1. Confirm every setting name, default, and behavior against the moon source.
-2. Confirm every API anchor exists as a heading in `web/content/api/moon/<Type>.mdx`.
+2. Confirm every API anchor exists as a heading in `web/content/moon/api/<Type>.mdx`.
 3. Validate links (run from `web/`):
    ```shell
    $ node scripts/validateLinks.ts

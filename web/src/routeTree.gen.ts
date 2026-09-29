@@ -10,19 +10,24 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ProductRouteImport } from './routes/$product'
 import { Route as LlmsFullDottxtRouteImport } from './routes/llms-full[.]txt'
 import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
-import { Route as ApiSplatRouteImport } from './routes/api/$'
+import { Route as ProductIndexRouteImport } from './routes/$product/index'
+import { Route as ProductSplatRouteImport } from './routes/$product/$'
 import { Route as ApiSearchRouteImport } from './routes/api/search'
 import { Route as BlogIndexRouteImport } from './routes/blog/index'
 import { Route as BlogSplatRouteImport } from './routes/blog/$'
-import { Route as DocsSplatRouteImport } from './routes/docs/$'
-import { Route as LlmsDotmdxApiSplatRouteImport } from './routes/llms[.]mdx.api.$'
-import { Route as LlmsDotmdxDocsSplatRouteImport } from './routes/llms[.]mdx.docs.$'
+import { Route as LlmsDotmdxProductSplatRouteImport } from './routes/llms[.]mdx.$product.$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductRoute = ProductRouteImport.update({
+  id: '/$product',
+  path: '/$product',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LlmsFullDottxtRoute = LlmsFullDottxtRouteImport.update({
@@ -35,10 +40,15 @@ const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
   path: '/llms.txt',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiSplatRoute = ApiSplatRouteImport.update({
-  id: '/api/$',
-  path: '/api/$',
-  getParentRoute: () => rootRouteImport,
+const ProductIndexRoute = ProductIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ProductRoute,
+} as any)
+const ProductSplatRoute = ProductSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => ProductRoute,
 } as any)
 const ApiSearchRoute = ApiSearchRouteImport.update({
   id: '/api/search',
@@ -55,109 +65,95 @@ const BlogSplatRoute = BlogSplatRouteImport.update({
   path: '/blog/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DocsSplatRoute = DocsSplatRouteImport.update({
-  id: '/docs/$',
-  path: '/docs/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LlmsDotmdxApiSplatRoute = LlmsDotmdxApiSplatRouteImport.update({
-  id: '/llms.mdx/api/$',
-  path: '/llms.mdx/api/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LlmsDotmdxDocsSplatRoute = LlmsDotmdxDocsSplatRouteImport.update({
-  id: '/llms.mdx/docs/$',
-  path: '/llms.mdx/docs/$',
+const LlmsDotmdxProductSplatRoute = LlmsDotmdxProductSplatRouteImport.update({
+  id: '/llms.mdx/$product/$',
+  path: '/llms.mdx/$product/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/$product': typeof ProductRouteWithChildren
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
-  '/api/$': typeof ApiSplatRoute
+  '/$product/$': typeof ProductSplatRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
-  '/docs/$': typeof DocsSplatRoute
+  '/$product/': typeof ProductIndexRoute
   '/blog/': typeof BlogIndexRoute
-  '/llms.mdx/api/$': typeof LlmsDotmdxApiSplatRoute
-  '/llms.mdx/docs/$': typeof LlmsDotmdxDocsSplatRoute
+  '/llms.mdx/$product/$': typeof LlmsDotmdxProductSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
-  '/api/$': typeof ApiSplatRoute
+  '/$product/$': typeof ProductSplatRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
-  '/docs/$': typeof DocsSplatRoute
+  '/$product': typeof ProductIndexRoute
   '/blog': typeof BlogIndexRoute
-  '/llms.mdx/api/$': typeof LlmsDotmdxApiSplatRoute
-  '/llms.mdx/docs/$': typeof LlmsDotmdxDocsSplatRoute
+  '/llms.mdx/$product/$': typeof LlmsDotmdxProductSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/$product': typeof ProductRouteWithChildren
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
-  '/api/$': typeof ApiSplatRoute
+  '/$product/$': typeof ProductSplatRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
-  '/docs/$': typeof DocsSplatRoute
+  '/$product/': typeof ProductIndexRoute
   '/blog/': typeof BlogIndexRoute
-  '/llms.mdx/api/$': typeof LlmsDotmdxApiSplatRoute
-  '/llms.mdx/docs/$': typeof LlmsDotmdxDocsSplatRoute
+  '/llms.mdx/$product/$': typeof LlmsDotmdxProductSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/$product'
     | '/llms-full.txt'
     | '/llms.txt'
-    | '/api/$'
+    | '/$product/$'
     | '/api/search'
     | '/blog/$'
-    | '/docs/$'
+    | '/$product/'
     | '/blog/'
-    | '/llms.mdx/api/$'
-    | '/llms.mdx/docs/$'
+    | '/llms.mdx/$product/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/llms-full.txt'
     | '/llms.txt'
-    | '/api/$'
+    | '/$product/$'
     | '/api/search'
     | '/blog/$'
-    | '/docs/$'
+    | '/$product'
     | '/blog'
-    | '/llms.mdx/api/$'
-    | '/llms.mdx/docs/$'
+    | '/llms.mdx/$product/$'
   id:
     | '__root__'
     | '/'
+    | '/$product'
     | '/llms-full.txt'
     | '/llms.txt'
-    | '/api/$'
+    | '/$product/$'
     | '/api/search'
     | '/blog/$'
-    | '/docs/$'
+    | '/$product/'
     | '/blog/'
-    | '/llms.mdx/api/$'
-    | '/llms.mdx/docs/$'
+    | '/llms.mdx/$product/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ProductRoute: typeof ProductRouteWithChildren
   LlmsFullDottxtRoute: typeof LlmsFullDottxtRoute
   LlmsDottxtRoute: typeof LlmsDottxtRoute
-  ApiSplatRoute: typeof ApiSplatRoute
   ApiSearchRoute: typeof ApiSearchRoute
   BlogSplatRoute: typeof BlogSplatRoute
-  DocsSplatRoute: typeof DocsSplatRoute
   BlogIndexRoute: typeof BlogIndexRoute
-  LlmsDotmdxApiSplatRoute: typeof LlmsDotmdxApiSplatRoute
-  LlmsDotmdxDocsSplatRoute: typeof LlmsDotmdxDocsSplatRoute
+  LlmsDotmdxProductSplatRoute: typeof LlmsDotmdxProductSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -167,6 +163,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$product': {
+      id: '/$product'
+      path: '/$product'
+      fullPath: '/$product'
+      preLoaderRoute: typeof ProductRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/llms-full.txt': {
@@ -183,12 +186,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LlmsDottxtRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/$': {
-      id: '/api/$'
-      path: '/api/$'
-      fullPath: '/api/$'
-      preLoaderRoute: typeof ApiSplatRouteImport
-      parentRoute: typeof rootRouteImport
+    '/$product/': {
+      id: '/$product/'
+      path: '/'
+      fullPath: '/$product/'
+      preLoaderRoute: typeof ProductIndexRouteImport
+      parentRoute: typeof ProductRoute
+    }
+    '/$product/$': {
+      id: '/$product/$'
+      path: '/$'
+      fullPath: '/$product/$'
+      preLoaderRoute: typeof ProductSplatRouteImport
+      parentRoute: typeof ProductRoute
     }
     '/api/search': {
       id: '/api/search'
@@ -211,41 +221,38 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/docs/$': {
-      id: '/docs/$'
-      path: '/docs/$'
-      fullPath: '/docs/$'
-      preLoaderRoute: typeof DocsSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/llms.mdx/api/$': {
-      id: '/llms.mdx/api/$'
-      path: '/llms.mdx/api/$'
-      fullPath: '/llms.mdx/api/$'
-      preLoaderRoute: typeof LlmsDotmdxApiSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/llms.mdx/docs/$': {
-      id: '/llms.mdx/docs/$'
-      path: '/llms.mdx/docs/$'
-      fullPath: '/llms.mdx/docs/$'
-      preLoaderRoute: typeof LlmsDotmdxDocsSplatRouteImport
+    '/llms.mdx/$product/$': {
+      id: '/llms.mdx/$product/$'
+      path: '/llms.mdx/$product/$'
+      fullPath: '/llms.mdx/$product/$'
+      preLoaderRoute: typeof LlmsDotmdxProductSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
 }
 
+interface ProductRouteChildren {
+  ProductSplatRoute: typeof ProductSplatRoute
+  ProductIndexRoute: typeof ProductIndexRoute
+}
+
+const ProductRouteChildren: ProductRouteChildren = {
+  ProductSplatRoute: ProductSplatRoute,
+  ProductIndexRoute: ProductIndexRoute,
+}
+
+const ProductRouteWithChildren =
+  ProductRoute._addFileChildren(ProductRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ProductRoute: ProductRouteWithChildren,
   LlmsFullDottxtRoute: LlmsFullDottxtRoute,
   LlmsDottxtRoute: LlmsDottxtRoute,
-  ApiSplatRoute: ApiSplatRoute,
   ApiSearchRoute: ApiSearchRoute,
   BlogSplatRoute: BlogSplatRoute,
-  DocsSplatRoute: DocsSplatRoute,
   BlogIndexRoute: BlogIndexRoute,
-  LlmsDotmdxApiSplatRoute: LlmsDotmdxApiSplatRoute,
-  LlmsDotmdxDocsSplatRoute: LlmsDotmdxDocsSplatRoute,
+  LlmsDotmdxProductSplatRoute: LlmsDotmdxProductSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
