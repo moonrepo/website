@@ -1,0 +1,336 @@
+---
+title: pip
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+import { TypeLabel } from "@/components/TypeLabel";
+
+[pip](https://pip.pypa.io) is the package installer that ships with Python. With the pip toolchain,
+moon manages dependencies from plain requirements files. Before your tasks run, moon creates a
+virtual environment with `python -m venv`, installs into it with `python -m pip install`, and
+reinstalls when your requirements change.
+
+The toolchain itself is intentionally thin. It holds pip's settings, while the
+[Python toolchain](./index.mdx) does the actual work when its `packageManager` setting is `pip`.
+pip ships with Python, so moon never downloads or installs it separately.
+
+Choose pip when your projects already use `requirements.txt` files, or when you want a setup with
+nothing to install beyond Python. If you'd like a lockfile-driven workflow, look at [uv](./uv.mdx)
+or [Poetry](./poetry.mdx) instead. Of the three, only uv supports workspaces in moon.
+
+<Callout type="warning">
+  The pip toolchain is **unstable**, so it's enabled with the `unstable_pip`
+  identifier instead of `pip`. Its settings and behavior may change between moon
+  releases.
+</Callout>
+
+## Prerequisites
+
+- **The Python toolchain** - `unstable_python` must be enabled with `packageManager` set to `pip`
+  (see [installation](#installation)).
+- **Python** - When a version is configured for `unstable_python`, moon installs Python for you.
+  Otherwise, a `python` executable must be available on `PATH`. moon runs `python` itself, not
+  `python3`, so systems that only provide `python3` (common on macOS and Debian-based Linux) need a
+  `python` alias, or a moon-managed Python.
+- **The `venv` module** - Virtual environments are created with `python -m venv`, which also
+  bootstraps pip into the environment. Some Linux distributions ship this module separately from
+  their system Python (for example, the `python3-venv` package on Debian and Ubuntu). A Python
+  installed by moon already includes it.
+
+### Repository structure
+
+pip has no concept of a workspace or a lockfile of its own, so moon works from your requirements
+files. The directory that contains them is the _dependencies root_: the virtual environment is
+created there, and dependencies are installed from there. For each project, moon finds this root by
+walking up from the project's directory:
+
+1. The closest directory containing a `requirements.txt` or `pylock.toml`.
+2. Otherwise, the closest directory containing a `pyproject.toml` or `requirements.in`.
+
+If neither is found, moon doesn't create an environment or install anything for the project.
+
+#### Requirements files
+
+The classic layout lists dependencies in a `requirements.txt`, optionally with a `constraints.txt`
+that caps the versions of transitive dependencies.
+
+```text
+./
+├── .venv/
+├── src/
+├── constraints.txt
+├── requirements.in
+└── requirements.txt
+```
+
+If you compile pinned requirements with a tool like [pip-tools](https://pip-tools.readthedocs.io),
+list your direct dependencies in `requirements.in` and commit the compiled `requirements.txt`.
+moon installs from `requirements.txt`, and only falls back to `requirements.in` when no
+`requirements.txt` exists. With this layout, moon can also hash the pinned versions of your
+dependencies (see [task hashing](#task-hashing)).
+
+#### `pyproject.toml`
+
+A project can declare its dependencies in the `[project]` table of `pyproject.toml` instead, with
+no requirements files.
+
+```text
+./
+├── .venv/
+├── src/
+└── pyproject.toml
+```
+
+As there's no requirements file to pass, moon runs a bare `python -m pip install`, which pip
+rejects. Install the project itself instead, by adding it to `installArgs` (see
+[project overrides](#project-overrides)).
+
+#### Multiple projects
+
+Each project owns its requirements files, and gets its own virtual environment and install. moon
+only installs dependencies for projects whose tasks are running, and each project can pin a
+different Python version through a project override of `unstable_python`.
+
+```text
+./
+├── .moon/
+├── apps/
+│   └── api/
+│       ├── .venv/
+│       ├── pyproject.toml
+│       └── requirements.txt
+└── packages/
+    └── utils/
+        ├── .venv/
+        └── requirements.txt
+```
+
+<Callout type="warning">
+  A shared `requirements.txt` at the repository root doesn't install
+  dependencies for nested projects. Nested projects without their own
+  `requirements.txt` resolve to the root, but moon only creates the environment
+  and installs for a project that _is_ the dependencies root, like a root-level
+  project. Tasks in nested projects still use the root's `.venv`, as moon
+  searches upwards for it, but they never trigger an install.
+</Callout>
+
+## Installation
+
+Enable two toolchains in [`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>):
+`unstable_python` with `packageManager` set to `pip`, and `unstable_pip`. pip has nothing to
+install, so an empty entry is enough to enable it.
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    unstable_python: {
+      version: "3.13.1",
+      packageManager: "pip",
+    },
+    unstable_pip: {},
+  }}
+/>
+
+Both entries are required, as each toolchain requires the other. When one is missing, moon fails
+with an error like "Toolchain unstable_python requires the toolchain unstable_pip, but it has not
+been configured!". Refer to the [Python toolchain](./index.mdx) for its settings, like `version`
+and `venvName`.
+
+Alternatively, run [`moon toolchain add`](../../commands/toolchain/add.mdx) for each toolchain,
+which writes the entries for you:
+
+```shell
+# Add Python, and select pip as the package manager
+$ moon toolchain add unstable_python
+
+# Add pip, which has nothing to prompt for
+$ moon toolchain add unstable_pip
+```
+
+When adding `unstable_python`, `pip` is pre-selected as the package manager if the current
+directory contains a `requirements.txt`, `Pipfile`, or `Pipfile.lock`, and no uv or Poetry files.
+
+## Configuration
+
+The following settings are configured under `unstable_pip` in
+[`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>). The Python toolchain reads them
+when it creates the virtual environment and installs dependencies.
+
+- `installArgs` <TypeLabel type="string[]" /> - Arguments appended to the `python -m pip install`
+  command, after the `-r` and `-c` arguments. Defaults to `[]`.
+- `venvArgs` <TypeLabel type="string[]" /> - Arguments appended to the `python -m venv` command,
+  such as `--upgrade-deps` or `--system-site-packages`. Defaults to `[]`.
+- [`version`](/moon/api/ToolchainPluginConfig#version) <TypeLabel type="string" /> - Accepted like
+  any toolchain's `version`, but moon never downloads or installs pip. The pip that Python
+  bootstraps into the virtual environment is always used.
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    unstable_pip: {
+      installArgs: ["--disable-pip-version-check", "--no-input"],
+      venvArgs: ["--upgrade-deps"],
+    },
+  }}
+/>
+
+When the Python toolchain's `packageManager` is `uv-pip`, `installArgs` is also appended to the
+`uv pip install` command, so keep `unstable_pip` enabled in that mode. `venvArgs` is read from
+`unstable_uv` instead. Refer to the [uv toolchain](./uv.mdx) for details.
+
+Installs are run by the Python toolchain, so to disable them, set
+[`installDependencies`](/moon/api/ToolchainPluginConfig#installdependencies) to `false` for
+`unstable_python`. Setting it for `unstable_pip` has no effect.
+
+### Project overrides
+
+Projects can override any of these settings through
+[toolchain overrides](<../../(fundamentals)/project.mdx#overrides>) in their
+[`moon.config`](<../../(fundamentals)/project.mdx>). Overrides apply when the project is its own
+dependencies root, which is the typical pip layout.
+
+For example, a `pyproject.toml` project without requirements files can be installed in editable
+mode, which runs `python -m pip install -e .`. If the project also has a `requirements.txt`, both
+are installed with `python -m pip install -r requirements.txt -e .`.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    toolchains: {
+      unstable_pip: {
+        installArgs: ["-e", "."],
+      },
+    },
+  }}
+/>
+
+## Tiers
+
+The pip toolchain implements usage detection, and declares its relationship to Python. Everything
+else, like creating the virtual environment and installing dependencies, is implemented by the
+[Python toolchain](./index.mdx), which branches on `packageManager`. That behavior is described
+below as it applies to pip. pip doesn't implement tier 3, as it's provided by Python.
+
+```shell
+# Show the pip toolchain's settings and supported tiers
+$ moon toolchain info unstable_pip
+```
+
+### 1) Usage detection
+
+A project is associated with the pip toolchain when its root contains any of the following files.
+Through [requirements](#requirements), the project is associated with `unstable_python` as well.
+
+- `requirements.txt`, `requirements.in`, or `constraints.txt`
+- `pyproject.toml` or `pylock.toml`
+- `pip.conf` or `pip.ini`
+
+A task that doesn't configure [`toolchains`](/moon/api/TaskConfig#toolchains) is associated with
+pip (and Python) when its command is `pip`. As the Python toolchain prepends the virtual
+environment to `PATH`, `pip` resolves to the environment's pip. Other commands, like `pytest`,
+inherit their project's toolchains.
+
+[`moon docker scaffold`](../../commands/docker/scaffold.mdx) copies the files above into the
+skeleton, so dependencies can be installed in Docker before sources are copied.
+
+### 2) Ecosystem integration
+
+#### Requirements
+
+`unstable_pip` requires `unstable_python`, so Python is always set up first, and any project or
+task associated with pip is associated with Python too. When `packageManager` is `pip`, the Python
+toolchain requires `unstable_pip` in turn. Before a task in a pip project runs, moon:
+
+1. Installs Python, if a version is configured for `unstable_python`.
+2. Creates the virtual environment (see [virtual environment](#virtual-environment)).
+3. Installs dependencies (see [installing dependencies](#installing-dependencies)).
+4. Runs the task.
+
+#### Virtual environment
+
+The Python toolchain creates the virtual environment in the dependencies root, with `venvArgs`
+appended:
+
+```shell
+# Run from the dependencies root
+$ python -m venv .venv
+```
+
+The directory name is the Python toolchain's `venvName` (`.venv` by default). `python` is the
+Python installed by moon when a version is configured, or the one on `PATH`. For every command that
+follows, including the install and your tasks, the environment's `bin` directory (`Scripts` on
+Windows) is prepended to `PATH`. That's why `python -m pip` installs into the environment, and
+tools like `pytest` run without activating it.
+
+If the directory already exists, it's left as-is. To recreate it whenever moon re-runs environment
+setup, for example after the Python `version` changes, add `--clear` to `venvArgs`. Adding `--clear`
+itself also recreates the environment without reinstalling dependencies, so install them yourself
+once afterwards. See [environment setup](./index.mdx#environment-setup).
+
+#### Installing dependencies
+
+The Python toolchain then installs dependencies from the dependencies root, with `installArgs`
+appended:
+
+```shell
+# Run from the dependencies root
+$ python -m pip install -r requirements.txt -c constraints.txt
+```
+
+Arguments are only passed for files that exist in the dependencies root:
+
+| File               | Argument                                       |
+| ------------------ | ---------------------------------------------- |
+| `requirements.txt` | `-r requirements.txt`                          |
+| `requirements.in`  | `-r requirements.in`, if no `requirements.txt` |
+| `constraints.txt`  | `-c constraints.txt`                           |
+| `pylock.toml`      | None, it's never passed to pip                 |
+
+The install is skipped when nothing has changed since the last run. It re-runs when the lockfile
+changes, which is the first of `pylock.toml`, `constraints.txt`, or `requirements.txt` that exists,
+or when the dependencies in a `pyproject.toml` or `requirements.in` change.
+
+When [`moon docker prune`](../../commands/docker/prune.mdx) reinstalls dependencies with
+[`docker.prune.installToolchainDependencies`](/moon/api/DockerPruneConfig#installtoolchaindependencies),
+the same command runs. pip has no concept of production-only dependencies, so everything is
+installed.
+
+#### Task hashing
+
+When hashing a task, the Python toolchain parses the `requirements.txt` and `pylock.toml` in the
+dependencies root (when [`hasher.optimization`](/moon/api/HasherConfig#optimization) is
+`accuracy`, the default). Each requirement with a version specifier in the project's
+`requirements.in` or `pyproject.toml` (like `requests>=2.31`) is resolved against them, and the
+pinned version (or the `sha256` hash from `pylock.toml`) is included in the hash. With a pip-tools
+layout, updating a pinned dependency changes the hash of tasks that depend on it, even when the
+requirements files aren't among a task's [`inputs`](/moon/api/TaskConfig#inputs).
+
+`requirements.txt` is parsed line by line. Lines with options (like `-e`), inline comments, or `\`
+continuations (as written by `pip-compile --generate-hashes`) are ignored. Requirements without a
+version specifier aren't resolved at all.
+
+## Caveats
+
+- **Unstable identifier** - Configure the toolchain as `unstable_pip`, but use `pip` in
+  [`inheritedBy.toolchains`](/moon/api/InheritedByConfig#toolchains) conditions, as task
+  inheritance matches stable identifiers.
+- **Nothing to install** - A dependencies root without a `requirements.txt` or `requirements.in`
+  runs a bare `python -m pip install`, and pip exits with an error. This includes
+  `pyproject.toml`-only projects, and roots with only a `pylock.toml`. Configure `installArgs`,
+  like `["-e", "."]`, to give pip something to install.
+- **Parent requirements files take priority** - The search for a `requirements.txt` or
+  `pylock.toml` covers every parent directory before a `pyproject.toml` is considered. A project
+  with only a `pyproject.toml`, nested below a directory with a `requirements.txt`, resolves to
+  that directory, and won't have dependencies installed for it.
+- **Reinstall detection** - Only the first of `pylock.toml`, `constraints.txt`, or
+  `requirements.txt` that exists is checked for changes. With both a `constraints.txt` and a
+  `requirements.txt`, editing only `requirements.txt` doesn't trigger a reinstall, and neither
+  does changing `installArgs` or deleting the virtual environment. In these cases, install with
+  the environment's interpreter yourself, for example
+  `.venv/bin/python -m pip install -r requirements.txt`.
+- **pip isn't version managed** - Configuring `version` doesn't change which pip is used. Pin pip
+  in your requirements instead, or add `--upgrade-deps` to `venvArgs` to upgrade it to the latest
+  release when the environment is created.
+- **No Pipfile support** - `Pipfile` and `Pipfile.lock` are used to pre-select pip when adding the
+  Python toolchain, but pip can't install from them, and they're not used to locate the dependencies
+  root. Export a `requirements.txt` instead, for example with `pipenv requirements`.

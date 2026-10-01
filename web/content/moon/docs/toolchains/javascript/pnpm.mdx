@@ -1,0 +1,397 @@
+---
+title: pnpm
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+import { TypeLabel } from "@/components/TypeLabel";
+
+The pnpm toolchain integrates [pnpm](https://pnpm.io) into moon. Once enabled, moon downloads and
+installs a pinned version of pnpm through [proto](../../../../proto/docs/index.mdx), so every
+developer and CI machine runs the same pnpm. It also detects which projects and tasks use pnpm, and
+lets you customize how dependencies are installed.
+
+pnpm is one piece of moon's JavaScript support. The heavy lifting, like running `pnpm install`,
+reading `pnpm-workspace.yaml`, and parsing `pnpm-lock.yaml`, is done by the
+[JavaScript toolchain](./index.mdx) when its `packageManager` setting is `pnpm`, while pnpm
+itself runs on top of the [Node.js toolchain](./node.mdx). This page covers everything that's
+specific to pnpm, wherever it's implemented. Behavior that's shared by every package manager, like
+project relationships and task inference, is documented on the JavaScript toolchain page.
+
+Enable it whenever your repository uses pnpm, whether that's a pnpm workspace or a single
+`package.json` with a `pnpm-lock.yaml`. The toolchain is built into moon, so there's no plugin to
+locate or install.
+
+## Prerequisites
+
+- **Node.js toolchain** - pnpm runs on Node.js, so the pnpm toolchain requires the
+  [`node` toolchain](./node.mdx). moon installs Node.js before pnpm, and fails with an error like
+  _"Toolchain pnpm requires the toolchain node, but it has not been configured!"_ when it's not
+  enabled.
+- **JavaScript toolchain** - Set the [JavaScript toolchain's](./index.mdx) `packageManager`
+  setting to `pnpm`. Without it, the pnpm toolchain only installs pnpm and detects usage, but
+  dependencies aren't installed and `pnpm-lock.yaml` isn't read.
+- **pnpm** - If you configure a [`version`](/moon/api/ToolchainPluginConfig#version), moon installs
+  pnpm for you. Otherwise, a `pnpm` binary must be available on your `PATH`, for example from a
+  global install or Corepack.
+- **Version-gated behavior** - Deduping with `pnpm dedupe` requires pnpm v7.26 or later, and
+  lockfile parsing requires the lockfile format written by pnpm v9 and later. See
+  [caveats](#caveats) for details.
+
+### Repository structure
+
+The JavaScript toolchain installs dependencies once per _dependencies root_. For pnpm, the root is
+located by walking up from each project's directory, and stopping at the first directory that
+contains:
+
+1. A `pnpm-lock.yaml` file.
+2. A `pnpm-workspace.yaml` file that defines `packages`, or a `package.json` that defines
+   `workspaces`.
+3. A `package.json` file.
+
+A project belongs to a dependencies root when it _is_ the root, or when it matches one of the
+root's member globs.
+
+#### pnpm workspace
+
+A monorepo with a `pnpm-workspace.yaml` at the root, and a single `pnpm-lock.yaml` shared by every
+package. Every project in the workspace shares a single install.
+
+```text
+/
+├── .moon/
+├── apps/
+│   └── web/
+│       └── package.json
+├── packages/
+│   └── utils/
+│       └── package.json
+├── package.json
+├── pnpm-lock.yaml
+└── pnpm-workspace.yaml
+```
+
+Workspace members are read from `packages` in `pnpm-workspace.yaml`. The default `catalog` and named
+`catalogs` are read as well, so that `catalog:` and `catalog:<name>` versions in `package.json` can
+be resolved when [hashing tasks](#lockfile-parsing-and-task-hashing). Other settings in the file are
+ignored.
+
+```yaml title="pnpm-workspace.yaml"
+packages:
+  - "apps/*"
+  - "packages/*"
+
+catalog:
+  react: ^19.0.0
+
+catalogs:
+  legacy:
+    react: ^18.3.0
+```
+
+When `pnpm-workspace.yaml` doesn't exist, or doesn't define `packages` (or any catalogs), moon falls
+back to the `workspaces`, `catalog`, and `catalogs` fields in the root `package.json`.
+
+#### Single or isolated packages
+
+A `package.json` with its own `pnpm-lock.yaml` that isn't part of a workspace, like a polyrepo
+with a single package at the root, or projects that each manage their own dependencies. Each one is
+its own dependencies root and is installed individually, and because the root is a project,
+[project overrides](#project-overrides) apply when installing.
+
+```text
+/
+├── .moon/
+├── apps/
+│   ├── api/
+│   │   ├── package.json
+│   │   └── pnpm-lock.yaml
+│   └── web/
+│       ├── package.json
+│       └── pnpm-lock.yaml
+└── package.json
+```
+
+## Installation
+
+Enable pnpm alongside the JavaScript and Node.js toolchains in
+[`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>), either manually or with
+[`moon toolchain add`](../../commands/toolchain/add.mdx).
+
+```shell
+# Add the toolchains for Node.js and pnpm
+$ moon toolchain add javascript
+$ moon toolchain add node
+$ moon toolchain add pnpm
+```
+
+When adding `javascript`, moon sets `packageManager` to `pnpm` when the `packageManager` field in
+`package.json` names pnpm, or when a `pnpm-lock.yaml` or `pnpm-workspace.yaml` exists in the current
+directory (lockfiles of other package managers are checked first). When adding `pnpm`, moon detects
+the version from `package.json` (see [version detection](#version-detection)), and otherwise prompts
+for it.
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    javascript: {
+      packageManager: "pnpm",
+    },
+    node: {
+      version: "24.12.0",
+    },
+    pnpm: {
+      version: "10.24.0",
+    },
+  }}
+/>
+
+To use the `pnpm` binary on your `PATH` instead, omit `version`. If `version` isn't set but your root
+`.prototools` pins `pnpm`, moon inherits that version, which is controlled by the
+[`versionFromPrototools`](/moon/api/ToolchainPluginConfig#versionfromprototools) setting.
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    javascript: {
+      packageManager: "pnpm",
+    },
+    node: {},
+    pnpm: {},
+  }}
+  comments={{
+    pnpm: "Uses `pnpm` from `PATH`",
+  }}
+/>
+
+## Configuration
+
+The following settings are configured within the `pnpm` entry of
+[`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>).
+
+- `installArgs` <TypeLabel type="string[]" /> - Arguments to append to the `pnpm install` command
+  that the JavaScript toolchain runs, including production installs during
+  [`moon docker prune`](../../commands/docker/prune.mdx). They're not passed to `pnpm dedupe`.
+  Defaults to `[]`.
+- [`version`](/moon/api/ToolchainPluginConfig#version) <TypeLabel type="string" /> - The version of
+  pnpm to download and install through proto. When not defined, the `pnpm` binary on your `PATH` is
+  used. The version also determines [version-gated behavior](#caveats), and is synced to the
+  `packageManager` field in `package.json` (see [environment setup](#environment-setup)).
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    pnpm: {
+      version: "10.24.0",
+      installArgs: ["--prefer-offline"],
+    },
+  }}
+/>
+
+### Project overrides
+
+Both settings can be [overridden per project](<../../(fundamentals)/project.mdx#overrides>) in a
+project's [`moon.config`](<../../(fundamentals)/project.mdx>). A `version` override applies to the
+project's tasks, and its hashes. An `installArgs` override only applies when the project is its own
+dependencies root ([single or isolated packages](#single-or-isolated-packages)). Projects in a
+pnpm workspace share a single install, which always uses the workspace-level settings.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    toolchains: {
+      pnpm: {
+        version: "9.15.9",
+        installArgs: ["--ignore-scripts"],
+      },
+    },
+  }}
+/>
+
+## Tiers
+
+The pnpm toolchain implements usage detection, a requirement on Node.js, and tool management. The
+rest of the ecosystem integration, like installing dependencies and parsing the lockfile, is
+implemented by the JavaScript toolchain, and its pnpm-specific behavior is documented below. Run
+[`moon toolchain info`](../../commands/toolchain/info.mdx) to inspect what each toolchain
+implements.
+
+```shell
+# Show the toolchain's settings and supported tiers
+$ moon toolchain info pnpm
+```
+
+### 1) Usage detection
+
+#### Projects and tasks
+
+A project is associated with the pnpm toolchain when its root contains a `package.json`,
+`pnpm-lock.yaml`, `pnpm-workspace.yaml`, `.npmrc`, or `.pnpmfile.*` (like `.pnpmfile.cjs`) file.
+Because pnpm requires Node.js, the `node` toolchain is associated as well.
+
+A task is associated with the pnpm toolchain when its command is `pnpm` or `pnpx`, unless the task
+configures [`toolchains`](/moon/api/TaskConfig#toolchains) explicitly. The JavaScript toolchain also
+recognizes pnpm v11's `pn` and `pnx` shorthands, and when `packageManager` is `pnpm`, it pulls in
+the `pnpm` and `node` toolchains through its requirements. When the JavaScript toolchain's
+`inferTasksFromScripts` setting is enabled, tasks inferred from `package.json` scripts run as
+`pnpm run <script>`, with the `javascript`, `pnpm`, and `node` toolchains.
+
+#### Version detection
+
+When running [`moon toolchain add`](../../commands/toolchain/add.mdx), the version is detected from
+the `package.json` in the current directory. The first valid version is used, checked in the
+following order:
+
+1. `devEngines.packageManager` - The entry whose `name` is `pnpm`.
+2. `packageManager` - Like `pnpm@10.24.0`. A Corepack hash suffix (`+sha512...`) is removed, and a
+   value without a version (`pnpm`) becomes `latest`.
+3. `volta.pnpm` - Following `volta.extends` to another `package.json` when needed.
+4. `engines.pnpm`.
+
+```json title="package.json"
+{
+  "packageManager": "pnpm@10.24.0+sha512.9c3f4bd2...",
+  "engines": {
+    "pnpm": ">=10"
+  }
+}
+```
+
+<Callout>
+  These fields are only read when adding the toolchain. When running tasks, moon
+  uses the configured [`version`](/moon/api/ToolchainPluginConfig#version), and
+  may write it back to the `packageManager` field.
+</Callout>
+
+#### Docker
+
+When running [`moon docker scaffold`](../../commands/docker/scaffold.mdx), the `package.json`,
+`pnpm-lock.yaml`, `pnpm-workspace.yaml`, `.npmrc`, and `.pnpmfile.*` files are copied into the
+configs skeleton, while `node_modules` directories are excluded. This is everything `pnpm install`
+needs to run before your sources are copied. The base image for
+[`moon docker file`](../../commands/docker/file.mdx) comes from the [Node.js toolchain](./node.mdx).
+
+### 2) Ecosystem integration
+
+The pnpm toolchain itself only defines a requirement on the `node` toolchain, which ensures Node.js
+is installed before pnpm. Everything else in this section is implemented by the
+[JavaScript toolchain](./index.mdx) when `packageManager` is `pnpm`, which in turn requires
+both the `node` and `pnpm` toolchains.
+
+#### Dependency installation
+
+Before a task runs, the JavaScript toolchain installs dependencies in the project's
+[dependencies root](#repository-structure), with `installArgs` appended. Refer to the
+[JavaScript toolchain](./index.mdx) for when the install runs, and when it's skipped.
+
+```shell
+# Install dependencies
+$ pnpm install
+
+# Then dedupe them (locally only)
+$ pnpm dedupe
+```
+
+- The same command runs locally and in CI. moon doesn't pass `--frozen-lockfile`, as pnpm already
+  enables it in CI environments when a lockfile exists.
+- When the JavaScript toolchain's `dedupeOnLockfileChange` setting is enabled (the default),
+  `pnpm dedupe` runs after the install. It only runs locally, never in CI, and is skipped on the
+  very first install. For pnpm versions below 7.26, which don't have `pnpm dedupe`, moon runs
+  `npx --quiet --package pnpm-deduplicate -- pnpm-deduplicate` instead.
+
+When running [`moon docker prune`](../../commands/docker/prune.mdx) with
+[`docker.prune.installToolchainDependencies`](/moon/api/DockerPruneConfig#installtoolchaindependencies)
+enabled, only production dependencies of the focused projects are re-installed. Each project is
+filtered by its package name, and the trailing `...` includes its workspace dependencies.
+
+```shell
+# Production install for the focused `@acme/web` package
+$ pnpm install --prod --filter-prod @acme/web...
+```
+
+#### Environment setup
+
+Before dependencies are installed, and when the JavaScript toolchain's `syncPackageManagerField`
+setting is enabled (the default), the `packageManager` field in the `package.json` at the
+dependencies root is set to the configured pnpm `version`. This keeps tools that read the field,
+like Corepack and pnpm itself, aligned with the version moon installs.
+
+```json title="package.json"
+{
+  "packageManager": "pnpm@10.24.0"
+}
+```
+
+The field is only written when `version` is fully qualified, like `10.24.0`. Partial versions
+(`10`), ranges (`^10.0.0`), and aliases (`latest`) are skipped.
+
+#### Lockfile parsing and task hashing
+
+When hashing a task with the default
+[`hasher.optimization`](/moon/api/HasherConfig#optimization) of `accuracy`, the JavaScript toolchain
+parses the `pnpm-lock.yaml` at the dependencies root, and resolves each dependency in the project's
+`package.json` against it. The resolved integrity hash is included in the task's hash, so upgrading
+a dependency invalidates the cache of tasks that depend on it, while unrelated lockfile changes
+don't.
+
+- Each entry in `packages` is keyed by name and version, like
+  `@jest/core@29.7.0(@babel/types@7.26.10)`, and the peer dependency suffix in parentheses is
+  ignored.
+- The integrity hash is used when available, otherwise the commit of Git dependencies.
+- Lockfiles with multiple YAML documents, which pnpm v10 can write when it manages its own version,
+  are supported, and the packages from every document are merged.
+- `catalog:` versions are resolved through the workspace's catalogs.
+
+The configured pnpm `version` is also included in the hash of every task that uses the pnpm
+toolchain, so changing versions invalidates their caches.
+
+### 3) Tool management
+
+When a [`version`](/moon/api/ToolchainPluginConfig#version) is configured, moon installs pnpm with
+proto in a `SetupToolchain` action, which runs after Node.js is installed, before any task that uses
+the pnpm toolchain, and during [`moon setup`](../../commands/setup.mdx). If the version is already
+installed, nothing is downloaded.
+
+- Available versions are loaded from the `pnpm` package on the npm registry, and its dist-tags,
+  like `latest`, can be used as version aliases.
+- pnpm v11 and earlier are downloaded as the `pnpm` package tarball from the npm registry, and run
+  with the Node.js version managed by the `node` toolchain.
+- pnpm v12 and later (experimental) are downloaded as native binaries from the npm registry's
+  `@pnpm/exe.<os>-<arch>` packages, with musl builds used on musl-based Linux.
+- Installing is supported on Linux, macOS, and Windows, on x64 and arm64 machines.
+- The `pnpm` and `pnpx` executables are made available, with `pnpm` as the primary executable.
+  pnpm v11 and later also provide `pn` and `pnx`.
+- To download from a private registry or mirror, configure `registry-url` under `[tools.pnpm]` in
+  `.prototools`. Credentials for the registry are read from `.npmrc` files in the workspace and
+  your home directory.
+
+```shell
+# Print the path to the pnpm binary managed by moon
+$ moon bin pnpm
+```
+
+For tasks that use the pnpm toolchain, moon prepends the installed pnpm's directory and pnpm's
+global binaries directory (`$PNPM_HOME`, or pnpm's default location for your operating system) to
+`PATH`, and sets the `PROTO_PNPM_VERSION` environment variable, so tasks and proto shims always use
+the pinned version. To temporarily use a different version, set `MOON_PNPM_VERSION`. To use the
+`pnpm` binary on your `PATH` instead, set `MOON_TOOLCHAIN_FORCE_GLOBALS=pnpm`.
+
+The toolchain doesn't perform any additional setup or teardown beyond installing pnpm.
+[`moon teardown`](../../commands/teardown.mdx) uninstalls the configured version from proto.
+
+## Caveats
+
+- **Only pnpm v9+ lockfiles are supported.** Lockfile parsing expects the format written by pnpm v9
+  and later (`lockfileVersion: '9.0'`). The `6.0` format written by pnpm v8 prefixes package keys
+  with `/`, which fails to parse when the lockfile contains scoped packages, causing task hashing to
+  error. Upgrade pnpm, or set [`hasher.optimization`](/moon/api/HasherConfig#optimization) to
+  `performance` to skip lockfile parsing.
+- **Dedupe detection uses the minimum of a version range.** When `version` is a partial version or
+  requirement, like `7` or `^7.0.0`, it's compared by its lowest version, so `pnpm-deduplicate` is
+  used even if a newer 7.x is installed. Without a `version`, or with an alias like `latest`, moon
+  assumes `pnpm dedupe` exists.
+- **Syncing `packageManager` drops Corepack hashes.** When `syncPackageManagerField` is enabled, a
+  value like `pnpm@10.24.0+sha512...` is replaced with `pnpm@10.24.0`. Disable the setting in the
+  JavaScript toolchain to manage the field yourself.
+- **Workspace installs ignore project overrides.** `installArgs` configured in a project's
+  [`moon.config`](<../../(fundamentals)/project.mdx>) is only used when that project is its own
+  dependencies root, never for a pnpm workspace.

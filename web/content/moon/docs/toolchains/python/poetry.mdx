@@ -1,0 +1,373 @@
+---
+title: Poetry
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+import { TypeLabel } from "@/components/TypeLabel";
+import { VersionLabel } from "@/components/VersionLabel";
+
+<VersionLabel version="2.4.0" /> The Poetry toolchain lets moon manage your
+Python dependencies with [Poetry](https://python-poetry.org). It's intentionally
+thin: it installs and pins the Poetry version through
+[proto](../../../../proto/docs/index.mdx), and holds the arguments for the
+Poetry commands that moon runs. The [Python toolchain](./index.mdx) does the
+rest when its `packageManager` is set to `poetry`. It creates the virtual
+environment, runs `poetry install` before your tasks, parses `poetry.lock` for
+task hashing, and infers project relationships from `pyproject.toml`.
+
+Enable it when your Python projects are managed by Poetry, typically when they contain a
+`poetry.lock` file.
+
+<Callout type="warning">
+  The Poetry toolchain is **unstable**, so it's enabled with the
+  `unstable_poetry` identifier instead of `poetry`. Its settings and behavior
+  may change between moon releases.
+</Callout>
+
+## Prerequisites
+
+- **The Python toolchain** - `unstable_poetry` requires `unstable_python`, and only takes effect
+  when the Python toolchain's `packageManager` is `poetry`. See the
+  [Python toolchain](./index.mdx#configuration) for its settings.
+- **Python** - Poetry's installer and the virtual environment both run on Python, which is
+  installed by moon when `unstable_python` has a `version`, and otherwise found on `PATH`. The
+  `venv` module must be available. Some Linux distributions ship it separately from their system
+  Python (for example, the `python3-venv` package on Debian and Ubuntu).
+- **Poetry** - When a [`version`](/moon/api/ToolchainPluginConfig#version) is configured, moon
+  installs Poetry for you (see [tool management](#3-tool-management)). Otherwise, a `poetry` binary
+  must be available on `PATH`.
+
+moon doesn't enforce a minimum Poetry version, but Poetry 2 or later is recommended. moon reads the
+standard `[project]` table of `pyproject.toml`, which Poetry 1 doesn't use for dependencies (see
+[caveats](#caveats)).
+
+### Repository structure
+
+Poetry has no concept of a workspace, so every Poetry project is its own _dependencies root_: the
+directory containing its `pyproject.toml`, `poetry.lock`, and virtual environment. To find the root
+for a project, the Python toolchain walks upwards from the project's directory to the closest
+`poetry.lock`, and otherwise to the closest `pyproject.toml`. Refer to the
+[Python toolchain](./index.mdx#repository-structure) for how roots work in general.
+
+#### Single project
+
+The repository is a single Poetry project, typically configured as a root-level project. A project
+without a lockfile works too, as `poetry install` creates `poetry.lock` on the first run.
+
+```text
+./
+├── .moon/
+├── .venv/
+├── src/
+├── poetry.lock
+└── pyproject.toml
+```
+
+#### Multiple projects
+
+Each project owns its manifest, lockfile, and virtual environment. moon installs dependencies per
+project, and only for the projects whose tasks are running. Each project can also pin a different
+Python or Poetry version through [project overrides](#project-overrides).
+
+```text
+./
+├── .moon/
+├── apps/
+│   └── api/
+│       ├── .venv/
+│       ├── poetry.lock
+│       └── pyproject.toml
+└── packages/
+    └── utils/
+        ├── .venv/
+        ├── poetry.lock
+        └── pyproject.toml
+```
+
+<Callout type="warning">
+  A `poetry.lock` in a parent directory, such as the workspace root, becomes the
+  dependencies root of every nested project that doesn't have its own lockfile.
+  moon only installs dependencies for the project located _at_ that root, so
+  nested projects never trigger an install, even though their tasks can use the
+  parent's `.venv`. Give each project its own `poetry.lock`.
+</Callout>
+
+## Installation
+
+The toolchain is built into moon, so no `plugin` locator is required. Enable it alongside the
+Python toolchain in [`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>), set
+`packageManager` to `poetry`, and optionally pin the Poetry version with
+[`version`](/moon/api/ToolchainPluginConfig#version).
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    unstable_python: {
+      version: "3.13.1",
+      packageManager: "poetry",
+    },
+    unstable_poetry: {
+      version: "2.1.3",
+    },
+  }}
+/>
+
+Both entries are required. If either is missing, moon fails with an error like "Toolchain
+unstable_poetry requires the toolchain unstable_python, but it has not been configured!".
+
+Alternatively, run [`moon toolchain add`](../../commands/toolchain/add.mdx) for each toolchain.
+When a `poetry.lock` or `poetry.toml` exists in the current directory, `packageManager` is set to
+`poetry` automatically, and the Poetry version is detected where possible (see
+[version detection](#version-detection)).
+
+```shell
+# Add Python, which detects Poetry from `poetry.lock`
+$ moon toolchain add unstable_python
+
+# Add Poetry, which detects the version or prompts for one
+$ moon toolchain add unstable_poetry
+```
+
+When `version` isn't set, moon inherits it from the `poetry` entry in the root `.prototools`
+file, as [`versionFromPrototools`](/moon/api/ToolchainPluginConfig#versionfromprototools) is
+enabled by default. If neither is set, moon doesn't manage Poetry, and uses the `poetry` found on
+`PATH`.
+
+```toml title=".prototools"
+poetry = "2.1.3"
+```
+
+## Configuration
+
+The following settings can be configured under `unstable_poetry` in
+[`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>). They're only used when the
+Python toolchain's `packageManager` is `poetry`.
+
+- `installArgs` <TypeLabel type="string[]" /> - Arguments appended to every `poetry install`
+  command, including the production install during
+  [`moon docker prune`](../../commands/docker/prune.mdx). Defaults to `[]`.
+- `venvArgs` <TypeLabel type="string[]" /> - Arguments appended to the `python -m venv` command
+  that creates the virtual environment. Defaults to `[]`.
+- [`version`](/moon/api/ToolchainPluginConfig#version) <TypeLabel type="string" /> - The version of
+  Poetry to download and install. When not defined, Poetry is not managed by moon.
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    unstable_poetry: {
+      version: "2.1.3",
+      installArgs: ["--with", "test"],
+      venvArgs: ["--upgrade-deps"],
+    },
+  }}
+/>
+
+Dependency installation is driven by the Python toolchain, so settings like
+[`installDependencies`](/moon/api/ToolchainPluginConfig#installdependencies) must be configured on
+`unstable_python`. They have no effect on `unstable_poetry`.
+
+### Project overrides
+
+Projects can override any of these settings in their
+[`moon.config`](<../../(fundamentals)/project.mdx>) through
+[toolchain overrides](<../../(fundamentals)/project.mdx#overrides>). For example, to install an
+extra dependency group, or pin a different Poetry version, for a single project:
+
+<ConfigTabs
+  file="moon"
+  config={{
+    toolchains: {
+      unstable_poetry: {
+        version: "2.0.1",
+        installArgs: ["--with", "docs"],
+      },
+    },
+  }}
+/>
+
+Overrides apply to the virtual environment and install when the project is its own dependencies
+root, which is the norm with Poetry.
+
+## Tiers
+
+The Poetry toolchain implements tiers 1 and 3 itself. For tier 2, it only declares its requirement
+on `unstable_python`, which implements everything else on Poetry's behalf. That behavior is
+described below for completeness.
+
+```shell
+# Show the Poetry toolchain's settings and supported tiers
+$ moon toolchain info unstable_poetry
+```
+
+### 1) Usage detection
+
+#### Projects and tasks
+
+A project is associated with the Poetry toolchain when its root contains a `pyproject.toml`,
+`poetry.lock`, or `poetry.toml` file. Since a `pyproject.toml` alone matches, every Python project
+with a manifest is associated while the toolchain is enabled.
+
+A task is associated with the toolchain when its command is `poetry`. Other tasks, like `pytest`,
+inherit their project's toolchains instead. Because the Poetry toolchain requires the Python
+toolchain, anything associated with `unstable_poetry` is also associated with `unstable_python`.
+
+Tasks can run tools installed in the virtual environment directly, as the Python toolchain prepends
+the environment's `bin` directory to `PATH`, or through `poetry run`. When scoping
+[task inheritance](<../../(fundamentals)/task-inheritance.mdx>) with
+[`inheritedBy.toolchains`](/moon/api/InheritedByConfig#toolchains), use the stable `poetry`
+identifier.
+
+<ConfigTabs
+  file=".moon/tasks/poetry"
+  config={{
+    inheritedBy: {
+      toolchains: "poetry",
+    },
+    tasks: {
+      "check-lock": {
+        command: "poetry check --lock",
+      },
+    },
+  }}
+  comments={{
+    toolchains: "Not `unstable_poetry`!",
+  }}
+/>
+
+#### Version detection
+
+When running [`moon toolchain add`](../../commands/toolchain/add.mdx), the Poetry version is
+detected from a `.poetry-version` file, or the `requires-poetry` field in the `[tool.poetry]` table
+of `pyproject.toml`. PEP 440 specifiers are converted to their moon equivalents, so `~=2.1` becomes
+`~2.1`, and `==2.1.3` becomes `=2.1.3`.
+
+#### Docker
+
+- [`moon docker scaffold`](../../commands/docker/scaffold.mdx) - Copies `pyproject.toml`,
+  `poetry.lock`, and `poetry.toml` into the configs skeleton, so dependencies can be installed
+  before sources are copied.
+- [`moon docker prune`](../../commands/docker/prune.mdx) - When
+  [`docker.prune.installToolchainDependencies`](/moon/api/DockerPruneConfig#installtoolchaindependencies)
+  is enabled, the Python toolchain reinstalls production dependencies with
+  `poetry install --only main`, plus `installArgs`, so dependency groups like `dev` and `test` are
+  left out of the image.
+
+### 2) Ecosystem integration
+
+The Poetry toolchain requires `unstable_python`, and is set up after it, as Poetry's installer needs
+Python to run. In turn, the Python toolchain requires `unstable_poetry` when its `packageManager`
+is `poetry`, so Poetry is installed before the virtual environment is created. Before a task in a
+Poetry project runs, moon:
+
+1. Installs Python, if a version is configured.
+2. Installs Poetry, if a version is configured.
+3. Creates the virtual environment.
+4. Installs dependencies with `poetry install`.
+5. Runs the task.
+
+#### Environment setup
+
+The Python toolchain creates the virtual environment in the dependencies root with Python's `venv`
+module, appending `venvArgs`. The directory name comes from the Python toolchain's `venvName`
+setting (`.venv` by default).
+
+```shell
+$ python -m venv .venv
+```
+
+If the directory already exists, it's left as-is, unless `venvArgs` includes `--clear`.
+
+Poetry then installs into this environment, as it uses an existing `.venv` in the project directory
+by default, instead of creating its own in Poetry's cache directory.
+
+#### Dependency installation
+
+The Python toolchain runs `poetry install` in the dependencies root, appending `installArgs`.
+For example, with `installArgs` set to `["--with", "test"]`:
+
+```shell
+$ poetry install --with test
+```
+
+The install is skipped when nothing has changed since the last run, and re-runs when `poetry.lock`
+changes, or when the dependencies in a `pyproject.toml` change. To disable automatic installs, set
+[`installDependencies`](/moon/api/ToolchainPluginConfig#installdependencies) to `false` for
+`unstable_python`.
+
+#### Task hashing
+
+The Python toolchain parses `poetry.lock`, and records the version and checksum (the SHA-256 hash
+of the first listed file) of every locked package. For each dependency with a version requirement
+in the `[project]` table's `dependencies` field, the locked checksum (or version) is included in
+the hash of the project's Python tasks. Updating a locked dependency only invalidates the tasks of
+projects that depend on it.
+
+Lockfiles are only parsed when [`hasher.optimization`](/moon/api/HasherConfig#optimization) in
+[`.moon/workspace.config`](<../../(fundamentals)/workspace.mdx>) is `accuracy` (the default).
+
+#### Project relationships
+
+The Python toolchain reads the `[project]` table of each `pyproject.toml` to set project aliases
+and infer dependencies between projects, as described in the
+[Python toolchain](./index.mdx#2-ecosystem-integration). For a local package to become a
+dependency, list it by name only, without a version specifier or URL.
+
+```toml title="apps/api/pyproject.toml"
+[project]
+name = "api"
+version = "1.0.0"
+dependencies = ["utils", "requests (>=2.32,<3.0)"]
+```
+
+Here, `api` depends on the `utils` project, while `requests` is treated as an external package.
+
+### 3) Tool management
+
+When a `version` is configured, moon installs Poetry through proto before any Poetry task runs, or
+when running [`moon setup`](../../commands/setup.mdx).
+
+- **Versions** - Fully-qualified (`2.1.3`) and partial (`2.1`) versions are supported, and are
+  resolved against the Git tags of the [Poetry repository](https://github.com/python-poetry/poetry).
+- **Installation** - Poetry doesn't publish pre-built binaries, so moon downloads Poetry's official
+  installer script (from `install.python-poetry.org`) and runs it with `python`, with
+  `POETRY_HOME` set to the installation directory and `POETRY_VERSION` set to the version. This is
+  why the Python toolchain is set up first.
+- **Configuration** - After installing, moon configures Poetry to use the active Python (the one
+  managed by moon, or found on `PATH`) instead of the Python it was installed with. It sets
+  `virtualenvs.use-poetry-python` to `false` for Poetry 2 and above, or
+  `virtualenvs.prefer-active-python` to `true` for Poetry 1.2 and above.
+- **Store** - Poetry is installed into proto's store under the `poetry` tool identifier (for
+  example `~/.proto/tools/poetry/2.1.3`), which is shared with proto.
+- **Execution** - Tasks run with the installation's `bin` directory on `PATH`, and with the
+  `PROTO_POETRY_VERSION` environment variable set to the configured version.
+
+When running [`moon teardown`](../../commands/teardown.mdx), the configured Poetry version is
+uninstalled from proto's store. Virtual environments and Poetry's global configuration are left
+untouched.
+
+## Caveats
+
+- **Unstable** - The toolchain must be enabled as `unstable_poetry`, and its settings may change in
+  future releases. Use `poetry` in
+  [`inheritedBy.toolchains`](/moon/api/InheritedByConfig#toolchains) conditions.
+- **Two toolchains required** - `unstable_python` with `packageManager: "poetry"`, and
+  `unstable_poetry`, must both be enabled. Without `packageManager`, Poetry's settings are never
+  used, and nothing is installed.
+- **No workspaces** - Each Poetry project must be its own dependencies root to have its dependencies
+  installed automatically. A shared lockfile in a parent directory isn't supported.
+- **Keep the environment at `.venv`** - Poetry only adopts an existing in-project environment when
+  it's named `.venv`. If you change the Python toolchain's `venvName`, or set Poetry's `virtualenvs.in-project` to
+  `false`, Poetry installs into a separate environment that your tasks don't use.
+- **PEP 621 manifests only** - Only the `[project]` table of `pyproject.toml` is read. Dependencies
+  declared in `[tool.poetry.dependencies]` (Poetry 1 style) or dependency groups
+  (`[tool.poetry.group.*]`) aren't used for project relationships or task hashing. Declare
+  relationships that moon can't infer with [`dependsOn`](/moon/api/ProjectConfig#dependson).
+- **Changing arguments doesn't reinstall** - The install is cached by the lockfile, the manifests,
+  and the Python toolchain's settings, so changing `installArgs` alone doesn't re-run it. Run
+  `poetry install` yourself after changing them.
+- **Stale virtual environments** - An existing virtual environment isn't recreated, even when the
+  Python `version` changes. Recreate it yourself, for example with `python -m venv --clear .venv`
+  followed by `poetry install`.
+- **Global Poetry configuration** - The Poetry settings moon applies after installing are written
+  to your user-level Poetry configuration, so they also affect Poetry installations that moon
+  doesn't manage.

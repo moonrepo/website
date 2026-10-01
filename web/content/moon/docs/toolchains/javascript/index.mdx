@@ -1,0 +1,537 @@
+---
+title: JavaScript
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+import { TypeLabel } from "@/components/TypeLabel";
+
+The JavaScript toolchain (`javascript`) brings the JavaScript ecosystem into moon. It understands
+`package.json` manifests, lockfiles, and workspaces for every supported package manager, and uses
+them to install dependencies whenever they change, turn package relationships into
+[project dependencies](<../../(fundamentals)/project.mdx#dependencies>), infer tasks from scripts, keep
+manifests in sync with your moon configuration, and hash locked dependency versions so task caches
+invalidate at the right time.
+
+What it doesn't do is install any tools. That's the job of the runtime and package manager
+[toolchains](<../../(fundamentals)/toolchain.mdx>), each configured under its own key in
+[`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>), which download and manage the actual
+binaries through [proto](../../../../proto/docs/index.mdx). The `javascript` toolchain is the glue
+between them, and is documented on this page.
+
+| Toolchain             | ID             | Role                                  |
+| --------------------- | -------------- | ------------------------------------- |
+| JavaScript            | `javascript`   | Ecosystem integration (this page)     |
+| [Node.js](./node.mdx) | `node`         | Runtime                               |
+| [Bun](./bun.mdx)      | `bun`          | Runtime and package manager           |
+| [Deno](./deno.mdx)    | `deno`         | Runtime and package manager           |
+| [npm](./npm.mdx)      | `npm`          | Package manager, runs on Node.js      |
+| [pnpm](./pnpm.mdx)    | `pnpm`         | Package manager, runs on Node.js      |
+| [Yarn](./yarn.mdx)    | `yarn`         | Package manager, runs on Node.js      |
+| [Nub](./nub.mdx)      | `unstable_nub` | Standalone package manager (unstable) |
+
+The `javascript` toolchain's `packageManager` setting ties everything together. When set, the
+`javascript` toolchain _requires_ the matching package manager toolchain, and for npm, pnpm, and
+Yarn, the `node` toolchain as well. Bun, Deno, and Nub are standalone binaries, so they need nothing
+else. For common setups, enable the following:
+
+| Setup                         | Toolchains                   | `packageManager` |
+| ----------------------------- | ---------------------------- | ---------------- |
+| Node.js with npm              | `javascript`, `node`, `npm`  | `npm`            |
+| Node.js with pnpm             | `javascript`, `node`, `pnpm` | `pnpm`           |
+| Node.js with Yarn             | `javascript`, `node`, `yarn` | `yarn`           |
+| Bun                           | `javascript`, `bun`          | `bun`            |
+| Deno                          | `javascript`, `deno`         | `deno`           |
+| Node.js runtime, Bun installs | `javascript`, `node`, `bun`  | `bun`            |
+
+Writing TypeScript? Enable the [TypeScript toolchain](../typescript.mdx) alongside these for
+TypeScript-specific integration, which is documented separately.
+
+## Prerequisites
+
+- A `package.json` in each JavaScript project, and at the root of your package manager workspace.
+  Deno projects may use a `deno.json` or `deno.jsonc` instead.
+- The `packageManager` setting, as the toolchain doesn't install dependencies, sync manifests, or
+  infer tasks without it.
+- The runtime and package manager toolchains that `packageManager` requires, configured in
+  [`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>). If one is missing, moon fails with
+  an error like _"Toolchain javascript requires the toolchain pnpm, but it has not been
+  configured!"_.
+- The runtime and package manager binaries. When those toolchains configure a
+  [`version`](/moon/api/ToolchainPluginConfig#version), moon installs them for you through proto.
+  Otherwise, whichever `node`, `pnpm`, `bun`, etc. is found on `PATH` is used. Refer to each
+  toolchain's page for details.
+
+### Repository structure
+
+For each project, the `javascript` toolchain locates a _dependencies root_, the directory where
+dependencies are installed and the lockfile lives, by walking up from the project's directory and
+stopping at the first match:
+
+1. A directory containing the package manager's lockfile, like `pnpm-lock.yaml` or `bun.lock`.
+2. A directory containing a workspace configuration that declares members, like `workspaces` in
+   `package.json`, or `pnpm-workspace.yaml`.
+3. A directory containing a `package.json` (or a `deno.json` or `deno.jsonc` when using Deno).
+
+Which lockfiles and workspace files are considered depends on `packageManager`, and is covered on
+each package manager's page. When `packageManager` isn't set, no root is located at all.
+
+A project belongs to a dependencies root when it _is_ the root, or when it matches one of the
+workspace's member globs. Each root is installed by a single action, shared by all of its projects.
+
+#### Single package
+
+A single `package.json` at the repository root, typical of a polyrepo. The root is both the only
+package and the dependencies root. Because it has no workspace members, project-level toolchain
+settings in the root's [`moon.config`](<../../(fundamentals)/project.mdx>) apply when installing.
+
+```text
+/
+├── .moon/
+├── src/
+├── package.json
+└── package-lock.json
+```
+
+#### Package manager workspaces
+
+A monorepo where the root declares its members, and a single lockfile at the root is shared by every
+package. Most package managers read members from the `workspaces` field in `package.json` (either an
+array of globs, or an object with `packages`).
+
+```text
+/
+├── .moon/
+├── apps/
+│   └── web/
+│       └── package.json
+├── packages/
+│   └── utils/
+│       └── package.json
+├── package.json         # "workspaces": ["apps/*", "packages/*"]
+└── yarn.lock
+```
+
+The exceptions are [pnpm](./pnpm.mdx) and [Nub](./nub.mdx), which read
+members from `pnpm-workspace.yaml`, and [Deno](./deno.mdx), which reads them from the
+`workspace` field in `deno.json`. Each falls back to `package.json` when those aren't found.
+
+Catalogs are also read from the workspace root, from the same file as the members (or `.yarnrc.yml`
+for Yarn), falling back to `package.json`, so that `catalog:` versions can be resolved when
+[hashing](#hashing).
+
+#### Nested workspaces
+
+The workspace doesn't need to live at the repository root. Since moon walks up from each project,
+a workspace in a sub-directory works the same, and a repository can contain multiple workspaces,
+each with its own lockfile and install.
+
+```text
+/
+├── .moon/
+├── backend/
+├── frontend/
+│   ├── apps/web/package.json
+│   ├── packages/utils/package.json
+│   ├── package.json     # "workspaces": ["apps/*", "packages/*"]
+│   └── package-lock.json
+└── package.json
+```
+
+#### Isolated packages
+
+Projects that aren't part of a workspace and have their own lockfile are installed individually,
+each within its own directory. Like a single package, project-level toolchain settings apply to
+each install.
+
+```text
+/
+├── .moon/
+├── apps/
+│   ├── api/
+│   │   ├── package.json
+│   │   └── pnpm-lock.yaml
+│   └── web/
+│       ├── package.json
+│       └── pnpm-lock.yaml
+└── package.json
+```
+
+## Installation
+
+The JavaScript toolchain is built into moon, so no
+[`plugin`](/moon/api/ToolchainPluginConfig#plugin) locator is required. Enable it, along with a
+runtime and package manager, by adding each to
+[`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>), either manually or with
+[`moon toolchain add`](../../commands/toolchain/add.mdx).
+
+```shell
+# Node.js with pnpm
+$ moon toolchain add javascript
+$ moon toolchain add node
+$ moon toolchain add pnpm
+
+# Bun
+$ moon toolchain add javascript
+$ moon toolchain add bun
+```
+
+When adding `javascript`, moon detects `packageManager` from the `packageManager` field in
+`package.json`, or from an existing lockfile, and otherwise prompts for it. It also prompts for
+`dedupeOnLockfileChange`, `syncProjectWorkspaceDependencies`, and `inferTasksFromScripts`.
+
+For Node.js with pnpm, the configuration looks like the following:
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    javascript: {
+      packageManager: "pnpm",
+    },
+    node: {
+      version: "24.12.0",
+    },
+    pnpm: {
+      version: "10.24.0",
+    },
+  }}
+/>
+
+For Bun, only the `bun` toolchain is needed alongside `javascript`, as it's both the runtime and
+the package manager:
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    javascript: {
+      packageManager: "bun",
+    },
+    bun: {
+      version: "1.3.5",
+    },
+  }}
+/>
+
+To use binaries that are already installed on your machine, omit `version` from the runtime and
+package manager toolchains.
+
+## Configuration
+
+Settings are defined within the `javascript` entry of
+[`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>), alongside the common
+[toolchain settings](/moon/api/ToolchainPluginConfig), like
+[`installDependencies`](/moon/api/ToolchainPluginConfig#installdependencies) and
+[`inheritAliases`](/moon/api/ToolchainPluginConfig#inheritaliases). Runtime and package manager
+settings, like `version` and `installArgs`, are configured on their own toolchains.
+
+- `dedupeOnLockfileChange` <TypeLabel type="boolean" /> - Dedupe the lockfile after dependencies
+  have been installed, removing duplicate packages that accumulate as dependencies change. Only runs
+  locally (never in CI), and is skipped on the very first install. Not every package manager
+  supports deduping. Defaults to `true`.
+- `dependencyVersionFormat` <TypeLabel type="file | link | star | version | version-caret | version-tilde | workspace | workspace-caret | workspace-tilde" /> -
+  The version format used when [syncing](#syncing) project relationships into `package.json`, for
+  example `workspace:*`, `file:../utils`, `*`, or `^1.2.3`. Formats that the package manager doesn't
+  support are substituted: npm uses `file` in place of `link` and the `workspace` formats, and Bun
+  uses `workspace` in place of `workspace-caret` and `workspace-tilde`. Defaults to `workspace`.
+- `inferTasksFromScripts` <TypeLabel type="boolean" /> - Infer moon tasks from `package.json`
+  scripts, or `deno.json` tasks when using Deno. Requires `packageManager`. Refer to
+  [task inference](#task-inference) for details. Defaults to `false`.
+- `packageManager` <TypeLabel type="bun | deno | npm | nub | pnpm | yarn" /> - The package manager
+  used to install dependencies and run inferred tasks, which also determines the toolchains that
+  `javascript` requires: [`bun`](./bun.mdx), [`deno`](./deno.mdx),
+  [`npm`](./npm.mdx), [`nub`](./nub.mdx) (configured as `unstable_nub`),
+  [`pnpm`](./pnpm.mdx), or [`yarn`](./yarn.mdx). Has no default, and when not
+  set, moon won't install dependencies, sync `package.json` files, infer tasks, or hash locked
+  dependency versions.
+- `rootPackageDependenciesOnly` <TypeLabel type="boolean" /> - Enforce a "one version policy", where
+  dependencies can only be declared in the root `package.json`. When enabled, syncing a project
+  whose `package.json` declares `dependencies`, `devDependencies`, `peerDependencies`, or
+  `optionalDependencies` fails with an error. Defaults to `false`.
+- `syncPackageManagerField` <TypeLabel type="boolean" /> - Sync the package manager toolchain's
+  `version` into the `packageManager` field of the `package.json` at the dependencies root, for
+  example `"pnpm@10.24.0"`. Only applies to npm, pnpm, Yarn, and Nub, and only when the version is
+  fully qualified (not a range or alias). Defaults to `true`.
+- `syncProjectWorkspaceDependencies` <TypeLabel type="boolean" /> - Sync each project's moon
+  [dependencies](<../../(fundamentals)/project.mdx#dependencies>) into its `package.json`. Refer to
+  [syncing](#syncing) for details. Defaults to `true`.
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    javascript: {
+      packageManager: "pnpm",
+      dependencyVersionFormat: "workspace-caret",
+      inferTasksFromScripts: true,
+    },
+  }}
+/>
+
+These settings can also be [overridden per project](<../../(fundamentals)/project.mdx#overrides>) in
+[`moon.config`](<../../(fundamentals)/project.mdx>). Overrides apply when syncing the project, and when
+installing a dependencies root that the project owns (a single or isolated package), but not when
+installing a shared workspace. `inferTasksFromScripts` is read while building the project graph,
+so it can only be configured at the workspace level. For example, to opt a project out of
+`package.json` syncing:
+
+<ConfigTabs
+  file="moon"
+  config={{
+    toolchains: {
+      javascript: {
+        syncProjectWorkspaceDependencies: false,
+      },
+    },
+  }}
+/>
+
+## Tiers
+
+The `javascript` toolchain supports tiers 1 and 2. It has no tier 3, as it has no tool of its own to
+install. Instead, the [Node.js](./node.mdx), [Bun](./bun.mdx), and
+[Deno](./deno.mdx) runtimes, and the [npm](./npm.mdx),
+[pnpm](./pnpm.mdx), [Yarn](./yarn.mdx), and [Nub](./nub.mdx)
+package managers, are installed by their own toolchains. Run
+[`moon toolchain info`](../../commands/toolchain/info.mdx) to inspect the APIs each toolchain
+implements.
+
+```shell
+# Show the toolchain's settings and supported tiers
+$ moon toolchain info javascript
+```
+
+### 1) Usage detection
+
+#### Projects
+
+A project is associated with the `javascript` toolchain when its root directory contains any of the
+following files. Only toolchains that are enabled in
+[`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>) are considered.
+
+- `package.json`
+- A lockfile: `bun.lock`, `bun.lockb`, `deno.lock`, `package-lock.json`, `npm-shrinkwrap.json`,
+  `nub.lock`, `pnpm-lock.yaml`, or `yarn.lock`
+- A package manager configuration file: `bunfig.toml`, `deno.json`, `deno.jsonc`, `.npmrc`,
+  `nub.jsonc`, `pnpm-workspace.yaml`, `.pnpmfile.*`, `.yarnrc`, `.yarnrc.*`, or any file in `.yarn`
+
+The runtime and package manager toolchains detect their own files as well, and the detected
+toolchains are then expanded with their requirements. For example, when `packageManager` is `pnpm`,
+a project with only a `package.json` is associated with the `javascript`, `node`, and `pnpm`
+toolchains. When the project doesn't configure a [`language`](/moon/api/ProjectConfig#language),
+it's inferred as `javascript` (or `typescript`, when the TypeScript toolchain also matches).
+
+To opt a project out of a detected toolchain, set it to `false` in the project's
+[toolchain overrides](<../../(fundamentals)/project.mdx#overrides>).
+
+#### Tasks
+
+A task is associated with the `javascript` toolchain when its
+[`command`](/moon/api/TaskConfig#command) is `bun`, `bunx`, `deno`, `node`, `nodejs`, `npm`, `npx`,
+`nub`, `nubx`, `pnpm`, `pnpx`, `pn`, `pnx`, `yarn`, or `yarnpkg`.
+
+Like projects, the detected toolchains are expanded with their requirements, so a `node server.js`
+task runs with `javascript`, `node`, and the configured package manager. When the command isn't
+recognized, like `vite` or `eslint`, the task inherits the project's toolchains instead, which is
+usually what you want. To configure them explicitly, use the task
+[`toolchains`](<../../(fundamentals)/task.mdx#toolchains>) setting.
+
+#### Syncing
+
+When a project is synced (before its tasks run, or with
+[`moon sync projects`](../../commands/sync/projects.mdx)), the `javascript` toolchain keeps its
+`package.json` aligned with moon's [project graph](<../../(fundamentals)/project-graph.mdx>). With
+`syncProjectWorkspaceDependencies` enabled, every project dependency (for example, from
+[`dependsOn`](<../../(fundamentals)/project.mdx#dependencies>)) that is also a JavaScript project is
+added to `package.json`, based on its dependency [scope](<../../(fundamentals)/project.mdx#scopes>):
+
+- `production` - Added to `dependencies`.
+- `development` - Added to `devDependencies`.
+- `peer` - Added to `peerDependencies`, always as `^<major>.0.0` of the dependency's version.
+- `build` and `root` - Not synced.
+
+The version is formatted with `dependencyVersionFormat`. For example, with the following
+configuration:
+
+<ConfigTabs
+  file="moon"
+  config={{
+    dependsOn: ["utils", { id: "test-utils", scope: "development" }],
+  }}
+/>
+
+The project's `package.json` is updated to the following (where the `utils` and `test-utils`
+packages are named `@acme/utils` and `@acme/test-utils`):
+
+```json
+{
+  "name": "@acme/web",
+  "dependencies": {
+    "@acme/utils": "workspace:*"
+  },
+  "devDependencies": {
+    "@acme/test-utils": "workspace:*"
+  }
+}
+```
+
+A dependency is only synced when its `package.json` has both a `name` and a `version`, and existing
+entries are never overwritten. A project at the workspace root is skipped, both as the project being
+synced and as a dependency. When `rootPackageDependenciesOnly` is enabled, this is also where
+non-root projects that declare their own dependencies fail.
+
+#### Docker
+
+- [`moon docker scaffold`](../../commands/docker/scaffold.mdx) - Copies all of the files listed under
+  [projects](#projects) into the configs skeleton, for the workspace root and every project, while
+  excluding `node_modules` directories. The runtime toolchains copy a few more files, like the
+  scripts used by `postinstall` hooks.
+- [`moon docker prune`](../../commands/docker/prune.mdx) - When
+  [`docker.prune.deleteVendorDirectories`](/moon/api/DockerPruneConfig#deletevendordirectories) is
+  enabled, removes the `node_modules` directory at each dependencies root. Then, when
+  [`docker.prune.installToolchainDependencies`](/moon/api/DockerPruneConfig#installtoolchaindependencies)
+  is enabled, re-installs production dependencies, filtered to the focused projects by their
+  `package.json` names (from [aliases](#project-graph)). The exact command, and whether filtering
+  is supported, depends on the package manager.
+- [`moon docker file`](../../commands/docker/file.mdx) - The default base image comes from the runtime
+  toolchain: [Node.js](./node.mdx), [Bun](./bun.mdx), or
+  [Deno](./deno.mdx).
+
+### 2) Ecosystem integration
+
+#### Project graph
+
+When building the [project graph](<../../(fundamentals)/project-graph.mdx>), the `javascript` toolchain
+reads the `package.json` of every project, and extends each project with the following. These
+manifests are tracked as inputs to the graph, so changing any of them invalidates the cached graph.
+
+- **Aliases** - The `name` field becomes the project's [alias](<../../(fundamentals)/project.mdx#aliases>),
+  so `@acme/utils` can be used anywhere the project's ID can. Disable with the
+  [`inheritAliases`](/moon/api/ToolchainPluginConfig#inheritaliases) setting.
+- **Dependencies** - Dependencies on other packages in the repository become implicit
+  [project dependencies](<../../(fundamentals)/project.mdx#dependencies>), so they don't need to be
+  repeated in `dependsOn`. The dependency's field determines the scope: `dependencies` is
+  `production`, `devDependencies` is `development`, `peerDependencies` is `peer`, and
+  `optionalDependencies` is `build`.
+- **Tasks** - When `inferTasksFromScripts` is enabled, scripts become tasks. Refer to
+  [task inference](#task-inference) below.
+
+A dependency is only considered local, and linked to a project, when its version uses the
+`workspace:` protocol, a `file:`, `link:`, or `portal:` path that points to the project, or `*`.
+Regular version ranges like `^1.2.3` never create a relationship, even when a package with that
+name exists in the repository. Only `package.json` is read here, never `deno.json`.
+
+```json title="apps/web/package.json"
+{
+  "name": "@acme/web",
+  "dependencies": {
+    "@acme/utils": "workspace:*",
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@acme/test-utils": "file:../../packages/test-utils"
+  }
+}
+```
+
+#### Task inference
+
+With `inferTasksFromScripts` enabled, each `package.json` script is converted into a task that runs
+through the package manager, like `pnpm run build`. When `packageManager` is `deno`, tasks are
+inferred from `deno.json` tasks instead, as described on the [Deno](./deno.mdx) page.
+
+- Lifecycle scripts (like `install`, `prepare`, and `publish`), and any script whose name starts
+  with `pre` or `post`, are skipped.
+- Script names are converted into valid task IDs, so `:` becomes `-` (`build:types` becomes
+  `build-types`).
+- Outputs are detected from `-o`, `--out`, `--output`, `--outfile`, `--outdir`, `--out-file`,
+  `--out-dir`, and `--dist` arguments, as long as the path is within the project.
+- Scripts named `dev`, `start`, or `serve` (or prefixed or suffixed with them, like `dev:app` or
+  `app:dev`) use the [`server`](<../../(fundamentals)/task.mdx#server>) preset. If the script also
+  watches, it's instead made [persistent](<../../(fundamentals)/task.mdx#persistent>), uncached, and
+  [local only](<../../(fundamentals)/task.mdx#local-only>).
+- Scripts that watch (`--watch` or `-w`), or print help or version information (`--help` or
+  `--version`), don't run in CI.
+- The task's toolchains are set to `javascript`, the package manager, and the runtime (a single
+  toolchain for Bun, Deno, and Nub).
+
+Inferred tasks never replace tasks with the same ID that are configured in a project's
+[`moon.config`](<../../(fundamentals)/project.mdx>).
+
+#### Task execution
+
+Before a task's command or script runs, the `javascript` toolchain prepends `node_modules/.bin`
+from the project's directory, every parent directory, and the workspace root to `PATH`, so locally
+installed binaries like `vite` or `eslint` can be used directly as a task's command. The runtime
+toolchains further augment their own commands, for example with `executeArgs`.
+
+#### Dependency installation
+
+Before a task runs, moon inserts an action that installs dependencies for each of the task's
+toolchains that supports it, which for this ecosystem is the `javascript` toolchain. The action is
+scoped to the project's [dependencies root](#repository-structure), so every project sharing a root
+shares a single install. It only runs when something has changed since the last install:
+
+- The contents of the lockfile.
+- The dependencies declared in any `package.json` within the workspace (only re-checked when a
+  `package.json` is among the changed files).
+- The toolchain's configuration.
+- `node_modules` doesn't exist yet.
+
+The install command is determined by `packageManager`, like `pnpm install`, or `npm ci` in CI, and
+the package manager toolchain's `installArgs` are appended to it. When `dedupeOnLockfileChange` is
+enabled, a dedupe follows the install. Refer to each package manager's page for the exact commands,
+CI behavior, and the versions they require.
+
+The install is skipped entirely when:
+
+- Running in CI, and a non-empty `node_modules` already exists at the dependencies root, as it's
+  assumed dependencies were restored from a cache or installed in a previous step.
+- There's no internet connection.
+- Running against affected files locally (outside of CI), or forcing a run with `--force`.
+- The `MOON_SKIP_INSTALL_DEPS` environment variable is set to `true`, `*`, or a list of toolchain IDs
+  that includes `javascript`.
+- [`installDependencies`](/moon/api/ToolchainPluginConfig#installdependencies) is disabled for the
+  `javascript` toolchain, or [`pipeline.installDependencies`](/moon/api/PipelineConfig#installdependencies)
+  is disabled in [`.moon/workspace.config`](<../../(fundamentals)/workspace.mdx>).
+
+```shell
+# Run a task without installing dependencies
+$ MOON_SKIP_INSTALL_DEPS=javascript moon run web:build
+```
+
+#### Environment setup
+
+Before dependencies are installed, the `javascript` toolchain sets up the dependencies root. When
+`syncPackageManagerField` is enabled, and npm, pnpm, Yarn, or Nub has a fully-qualified `version`,
+the `packageManager` field in the root's `package.json` is set to match, like `"pnpm@10.24.0"`.
+This keeps tools that read the field, like Corepack, aligned with the version moon installs.
+
+#### Hashing
+
+When hashing a task, moon parses the project's `package.json`, and with the default
+[`hasher.optimization`](/moon/api/HasherConfig#optimization) of `accuracy`, resolves each dependency
+against the lockfile at the dependencies root. The resolved integrity hash (or version) is included
+in the task's hash, so upgrading a dependency in the lockfile invalidates the cache of tasks that
+depend on it, while unrelated lockfile changes don't. With `performance`, the lockfile isn't parsed
+and the version requirements from `package.json` are hashed instead. Versions that reference a
+catalog (`catalog:`) are resolved through the workspace's catalogs.
+
+The configured `version` of each of the task's toolchains, like `node` and `pnpm`, is also included
+in the hash, so changing versions invalidates the cache.
+
+## Caveats
+
+- **Regular version ranges don't link projects.** Only `workspace:`, path, and `*` versions create
+  [project relationships](#project-graph). This mostly affects npm, which doesn't support the
+  `workspace:` protocol, so use `*` or `file:` versions there, or declare the relationship with
+  [`dependsOn`](<../../(fundamentals)/project.mdx#dependencies>).
+- **Projects outside of the workspace members aren't installed.** If a project's directory doesn't
+  match a member glob of its dependencies root (and isn't the root itself), no install action is
+  created for it.
+- **Version-gated behavior needs a configured version.** Some install behavior depends on the
+  package manager's version, like CI-specific commands and dedupe support. When a package manager
+  has no `version` (or uses an alias like `latest`), moon can't tell which features are available,
+  so those that require a minimum version (like `bun ci`, or Yarn's focused installs) aren't used.
+  Refer to each package manager's page for specifics.
+- **Task inference is heuristic.** Any script starting with `pre` or `post` is skipped, including
+  names like `prettier`, `preview`, and `postcss`. Watch detection is a substring match on `-w`, so
+  scripts with flags like `--write` are also excluded from CI. Inference is only configurable at the
+  workspace level, not per project.

@@ -1,3 +1,404 @@
 ---
-title: Ruby toolchain
+title: Ruby
 ---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+import { TypeLabel } from "@/components/TypeLabel";
+
+The Ruby toolchain teaches moon how Ruby repositories are put together. Ruby has no native
+workspace concept: each application or gem has its own `Gemfile`, gems are installed with
+[Bundler](https://bundler.io), and local gems are wired together with `path:` declarations. The
+toolchain understands that layout, so moon can install gems before your tasks run, connect projects
+that depend on each other, and pin the Ruby version used on every machine.
+
+With the toolchain enabled, moon:
+
+- Detects Ruby projects (from files like `Gemfile` and `*.gemspec`) and Ruby tasks (from commands
+  like `bundle` and `rake`).
+- Configures Bundler to install gems into a local `vendor/bundle` directory, and runs
+  `bundler install` before tasks whenever the lockfile changes.
+- Infers [project dependencies](<../(fundamentals)/project.mdx#dependencies>) from `path:` gems in
+  each `Gemfile`.
+- Adds binstubs (the `bin` directory next to a `Gemfile`) to `PATH` for tasks.
+- Optionally downloads and installs a specific Ruby version through [proto](../../../proto/docs/index.mdx).
+
+Enable it when your workspace contains Ruby applications, services, or gems, such as a Rails app
+alongside a handful of internal gems, or scripts driven by `rake`.
+
+<Callout type="warning">
+  The Ruby toolchain is **unstable**, so it's enabled with the `unstable_ruby`
+  identifier instead of `ruby`. Its settings and behavior may change between
+  moon releases.
+</Callout>
+
+## Prerequisites
+
+- **Ruby** - When a [`version`](/moon/api/ToolchainPluginConfig#version) is configured, moon
+  installs Ruby for you (see [tool management](#3-tool-management)). Otherwise, Ruby must already be
+  installed and available on `PATH`, and moon uses whichever `ruby` it finds.
+- **Bundler** - The toolchain runs `bundler` to configure Bundler and install gems. Bundler ships
+  with Ruby as a default gem, so a Ruby installed by moon already includes it.
+- **A supported platform** (moon-managed Ruby only) - Ruby is installed from pre-built binaries,
+  which are available for Linux (x64 and arm64) and macOS on Apple Silicon, for Ruby 3.2.1 and
+  newer. Windows isn't supported. On other platforms, install Ruby yourself and leave `version`
+  unset.
+
+### Repository structure
+
+Everything in this toolchain revolves around the _dependency root_: the directory containing a
+`Gemfile` (or Bundler's alternative `gems.rb`) and its lockfile. Bundler has no workspaces, so every
+`Gemfile` is an independent root. To find the root for a project, moon walks up from the project's
+directory to the closest directory containing a `Gemfile.lock`, `gems.locked`, `Gemfile`, or
+`gems.rb`.
+
+#### Single application
+
+The repository is a single Ruby application or gem, typically configured as a root-level project.
+
+```text
+./
+├── app/
+├── bin/
+├── config/
+├── Gemfile
+└── Gemfile.lock
+```
+
+The project and the dependency root are the same directory, so moon configures Bundler and
+installs gems there before the project's tasks run.
+
+#### A `Gemfile` per project
+
+Each application and gem owns its `Gemfile` and lockfile, and applications reference local gems
+with `path:`. This is the layout the toolchain is designed around.
+
+```text
+./
+├── apps/
+│   ├── api/
+│   │   ├── Gemfile
+│   │   └── Gemfile.lock
+│   └── web/
+│       ├── Gemfile
+│       └── Gemfile.lock
+└── gems/
+    └── billing/
+        ├── billing.gemspec
+        ├── Gemfile
+        └── Gemfile.lock
+```
+
+Every project is its own dependency root, with its own lockfile and `vendor/bundle` directory. moon
+installs gems per project, only for the projects whose tasks are running, and turns `path:` gems
+into [project dependencies](#project-graph).
+
+#### A shared root `Gemfile`
+
+A single `Gemfile` at the workspace root provides gems for every project.
+
+```text
+./
+├── Gemfile
+├── Gemfile.lock
+├── apps/
+│   └── api/
+└── gems/
+    └── billing/
+        └── billing.gemspec
+```
+
+Every project resolves to the root as its dependency root, but moon only configures Bundler and
+installs gems for a project that _owns_ the root, such as a root-level project. Ruby tasks in
+nested projects still run with the root's binstubs on `PATH`, but won't trigger an install. See
+[caveats](#caveats).
+
+## Installation
+
+The toolchain is built into moon, so no `plugin` locator is required. Enable it by adding
+`unstable_ruby` to [`.moon/toolchains.config`](<../(fundamentals)/toolchain.mdx>), and optionally
+pin the Ruby version with [`version`](/moon/api/ToolchainPluginConfig#version).
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    unstable_ruby: {
+      version: "3.4.7",
+    },
+  }}
+/>
+
+Alternatively, run [`moon toolchain add`](../commands/toolchain/add.mdx), which appends the
+configuration for you. If a `.ruby-version` file exists in the current directory, its version is
+used to pre-fill `version`, otherwise you're prompted for one.
+
+```shell
+# Enable the Ruby toolchain
+$ moon toolchain add unstable_ruby
+```
+
+When `version` isn't set, moon inherits it from the `ruby` entry in the root `.prototools` file, as
+[`versionFromPrototools`](/moon/api/ToolchainPluginConfig#versionfromprototools) is enabled by
+default. The `unstable_` prefix is dropped for this lookup, so no custom identifier is needed.
+
+```toml title=".prototools"
+ruby = "3.4.7"
+```
+
+If neither is set, moon doesn't manage Ruby at all, and tasks use the `ruby` found on `PATH`.
+Projects can also [override](<../(fundamentals)/project.mdx#overrides>) the version, or any other
+setting, in their [`moon.config`](<../(fundamentals)/project.mdx>).
+
+<ConfigTabs
+  file="moon"
+  config={{
+    toolchains: {
+      unstable_ruby: {
+        version: "3.3.9",
+      },
+    },
+  }}
+/>
+
+When scoping [task inheritance](<../(fundamentals)/task-inheritance.mdx>) with
+[`inheritedBy.toolchains`](/moon/api/InheritedByConfig#toolchains), use the stable `ruby`
+identifier instead, as inheritance is matched against stable identifiers. The matched toolchain is
+then applied to each inherited task automatically.
+
+<ConfigTabs
+  file=".moon/tasks/ruby"
+  config={{
+    inheritedBy: {
+      toolchains: "ruby",
+    },
+    tasks: {
+      lint: {
+        command: "bundle exec rubocop",
+      },
+      test: {
+        command: "bundle exec rspec",
+      },
+    },
+  }}
+  comments={{
+    toolchains: "Not `unstable_ruby`!",
+  }}
+/>
+
+## Configuration
+
+The following settings can be configured under `unstable_ruby` in
+[`.moon/toolchains.config`](<../(fundamentals)/toolchain.mdx>), and overridden per project.
+
+- `bundlePath` <TypeLabel type="string" /> - Where Bundler installs gems, relative to the
+  dependency root. Applied with `bundler config set --local path` during
+  [environment setup](#environment-setup), and also treated as the vendor directory (see
+  [installing gems](#installing-gems)). Defaults to `vendor/bundle`.
+- `bundlerInstallArgs` <TypeLabel type="string[]" /> - Extra arguments appended to the
+  `bundler install` command, such as `["--jobs", "4"]`. Defaults to an empty list.
+- `frozen` <TypeLabel type="boolean" /> - Configure Bundler in frozen mode during
+  [environment setup](#environment-setup), so installs never modify the lockfile, and fail if it's
+  out of sync with the `Gemfile`. Useful for reproducible installs, especially in CI. Defaults to
+  `false`.
+- `packageManager` <TypeLabel type="bundler" /> - The dependency manager used to install gems.
+  Bundler is currently the only option. Defaults to `bundler`.
+- `productionWithoutGroups` <TypeLabel type="string[]" /> - Gem groups to exclude during a
+  production install, and to treat as development-only when inferring
+  [project dependencies](#project-graph). Defaults to `development` and `test` when empty.
+- [`version`](/moon/api/ToolchainPluginConfig#version) <TypeLabel type="string" /> - The version of
+  Ruby to download and install. When not defined, Ruby is not managed by moon.
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    unstable_ruby: {
+      version: "3.4.7",
+      bundlePath: "vendor/gems",
+      bundlerInstallArgs: ["--jobs", "4"],
+      frozen: true,
+      productionWithoutGroups: ["development", "test", "ci"],
+    },
+  }}
+/>
+
+## Tiers
+
+### 1) Usage detection
+
+A project is associated with the Ruby toolchain, and its [`language`](/moon/api/ProjectConfig#language)
+is detected as `ruby`, when any of the following files exist in the project's root:
+
+- `Gemfile` or `gems.rb`
+- `Gemfile.lock` or `gems.locked`
+- `.ruby-version`, `*.gemspec`, or `.rubocop.yml`
+
+Explicitly setting `language` to `ruby` associates the project as well.
+
+A task that doesn't configure [`toolchains`](/moon/api/TaskConfig#toolchains) is associated with
+the toolchain when its command is `ruby`, `bundle`, `bundler`, `gem`, `rake`, or `irb`. Other
+commands, like `rspec` or `rails`, inherit their project's toolchains instead, so they're still
+treated as Ruby tasks within a Ruby project.
+
+For every command moon runs with the Ruby toolchain, the `bin` directory of the dependency root is
+prepended to `PATH`. If you've generated binstubs with `bundle binstubs`, tasks can call them
+directly. Otherwise, prefix commands with `bundle exec`, as moon doesn't rewrite task commands.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      test: {
+        command: "bundle exec rspec",
+      },
+      lint: {
+        command: "rubocop",
+      },
+    },
+  }}
+  comments={{
+    lint: "Resolves to `bin/rubocop` when a binstub exists",
+  }}
+/>
+
+For Docker, the toolchain integrates with the following commands:
+
+- [`moon docker file`](../commands/docker/file.mdx) - Suggests `ruby:<version>` as the base image
+  for Ruby projects, using the configured `version` (for example `ruby:3.4.7`), or `ruby:latest`
+  when no version is configured.
+- [`moon docker scaffold`](../commands/docker/scaffold.mdx) - Copies `Gemfile`, `gems.rb`,
+  `Gemfile.lock`, `gems.locked`, `*.gemspec`, `.ruby-version`, and `.rubocop.yml` from the workspace
+  root and each project into the skeleton, excluding the `bundlePath` directory, so gems can be
+  installed before sources are copied.
+- [`moon docker prune`](../commands/docker/prune.mdx) - Installs production gems only. See
+  [installing gems](#installing-gems).
+
+### 2) Ecosystem integration
+
+Bundler is integrated into moon's [action pipeline](<../(fundamentals)/action.mdx>), so gems are
+ready before tasks run, and `path:` gems are used to build the
+[project graph](<../(fundamentals)/project-graph.mdx>).
+
+#### Environment setup
+
+Before gems are installed in a dependency root for the first time, the `SetupEnvironment` action
+configures Bundler locally in that root, which writes a `.bundle/config` file.
+
+```shell
+# Always runs, using `bundlePath`
+$ bundler config set --local path vendor/bundle
+
+# Only runs when `frozen` is enabled
+$ bundler config set --local frozen true
+```
+
+Installing gems into a local directory, instead of a shared Ruby installation, keeps each root
+isolated and easy to cache. Add the `bundlePath` directory (and typically `.bundle`) to your
+`.gitignore`, so installed gems aren't treated as source files.
+
+If a `.bundle/config` file already exists in the root, environment setup is skipped entirely, so
+moon never overwrites Bundler configuration you've created yourself.
+
+#### Installing gems
+
+The `InstallDependencies` action runs `bundler install` (with `bundlerInstallArgs` appended) in the
+dependency root, before any task that depends on it. The action is skipped unless something
+changed: the lockfile (`Gemfile.lock` or `gems.locked`), a modified `Gemfile`, the toolchain's
+settings, or a missing (or empty) `bundlePath` directory.
+
+In CI, if the `bundlePath` directory already exists and isn't empty, moon assumes gems were restored
+from a cache and skips the install entirely. To disable automatic installs altogether, set
+[`installDependencies`](/moon/api/ToolchainPluginConfig#installdependencies) to `false`.
+
+When running [`moon docker prune`](../commands/docker/prune.mdx) with
+[`docker.prune.installToolchainDependencies`](/moon/api/DockerPruneConfig#installtoolchaindependencies)
+enabled (the default), moon runs a production install instead, which sets `BUNDLE_WITHOUT` to the
+`productionWithoutGroups` setting (`development:test` by default).
+
+#### Project graph
+
+Internal relationships in Ruby are expressed with `path:` gems, so moon scans each project's
+`Gemfile` for them. When a gem's path resolves to another project's root directory, that project
+becomes an implicit [dependency](<../(fundamentals)/project.mdx#dependencies>).
+
+```ruby title="apps/api/Gemfile"
+source "https://rubygems.org"
+
+gem "rails", "~> 8.0"
+gem "billing", path: "../../gems/billing"
+
+group :development, :test do
+  gem "test_support", path: "../../gems/test_support"
+end
+```
+
+The dependency's [scope](<../(fundamentals)/project.mdx#scopes>) is derived from the gem's groups,
+whether declared with a `group` block or the `group:` and `groups:` options. If any group is listed
+in `productionWithoutGroups` (`development` and `test` by default), the scope is `development`,
+otherwise it's `production`. In the example above, `api` depends on `billing` in production and
+`test_support` in development.
+
+Every `Gemfile` scanned is also tracked by the project graph cache, so editing one rebuilds the
+graph on the next run.
+
+#### Task hashing
+
+Every Ruby task's hash includes the configured `version`, `bundlePath`, and `frozen` settings, so
+changing any of them invalidates the cache of those tasks.
+
+The toolchain also parses `Gemfile.lock` into resolved gems (versions, platforms, git revisions,
+local paths, and checksums). However, moon only hashes resolved versions for dependencies that a
+manifest declares with a version requirement, and the toolchain doesn't extract requirements from a
+`Gemfile`, so gem versions aren't currently part of task hashes. See [caveats](#caveats).
+
+### 3) Tool management
+
+When a `version` is configured, moon installs Ruby through proto in the `SetupToolchain` action,
+before any Ruby task runs, or when running [`moon setup`](../commands/setup.mdx).
+
+- **Versions** - Fully-qualified versions (`3.4.7`) and partial versions (`3.4`) are supported,
+  and are resolved against Ruby's official releases.
+- **Installation** - A pre-built, portable Ruby is downloaded for the current platform. The
+  toolchain doesn't build Ruby from source, so if no pre-built exists for the version and platform,
+  setup fails.
+- **Store** - Ruby is installed into proto's store under the `ruby` tool identifier (for example
+  `~/.proto/tools/ruby/3.4.7`). This store is shared with proto, so a version previously installed
+  with `proto install ruby` is reused as-is.
+- **Execution** - Tasks run with the installation's `bin` directory on `PATH`, providing `ruby`,
+  `gem`, `bundle`, `rake`, and `irb`, and with the `PROTO_RUBY_VERSION` environment variable set to
+  the configured version.
+
+When running [`moon teardown`](../commands/teardown.mdx), the configured Ruby version is uninstalled
+from proto's store. Installed gems and `.bundle/config` files in each dependency root are left
+untouched.
+
+## Caveats
+
+- **Unstable** - The toolchain must be enabled as `unstable_ruby`, and its settings may change in
+  future releases. Use `ruby` in [`inheritedBy.toolchains`](/moon/api/InheritedByConfig#toolchains)
+  conditions.
+- **Shared root `Gemfile`** - Environment setup and installs only happen for a project whose root
+  _is_ the dependency root. Projects nested under a shared root `Gemfile` don't trigger them, so run
+  `bundle install` at the root yourself (for example, as a CI step), or give each project its own
+  `Gemfile`. [`moon setup`](../commands/setup.mdx) configures Bundler when the dependency root is
+  the workspace root, but doesn't install gems.
+- **`Gemfile` scanning is best-effort** - A `Gemfile` is Ruby code, and moon doesn't evaluate it.
+  Only literal `gem "name", path: "..."` declarations are recognized; dynamic paths (like
+  `File.expand_path(...)`), `git:` gems, and the `gemspec` directive are ignored. The project graph
+  only scans files named `Gemfile`, not `gems.rb`. Use
+  [`dependsOn`](/moon/api/ProjectConfig#dependson) for anything moon can't infer.
+- **Gem versions aren't hashed** - Resolved gem versions don't contribute to task hashes. A task
+  with default inputs already includes its own project's lockfile, but if the lockfile lives
+  elsewhere (like a shared root) or you've configured explicit
+  [`inputs`](/moon/api/TaskConfig#inputs), add the lockfile (for example `/Gemfile.lock`) to them.
+- **Existing Bundler config wins** - Because environment setup is skipped when `.bundle/config`
+  exists, `bundlePath` and `frozen` aren't applied to roots that already have one, including after
+  you change these settings. Delete the `.bundle/config` file to let moon configure it again.
+- **Frozen mode persists** - With `frozen` enabled, the setting is written to `.bundle/config`, so
+  it also applies to `bundle` commands you run manually in that root.
+- **Vendor directories aren't pruned** - The toolchain doesn't clean up `bundlePath` directories
+  during [`moon docker prune`](../commands/docker/prune.mdx), so
+  [`docker.prune.deleteVendorDirectories`](/moon/api/DockerPruneConfig#deletevendordirectories) has
+  no effect for Ruby.
+- **Limited platforms for managed Ruby** - Pre-built Ruby binaries only exist for Linux (x64 and
+  arm64) and macOS on Apple Silicon, and Windows isn't supported. On other platforms, either leave
+  `version` unset and install Ruby yourself, or build it ahead of time with proto
+  (`proto install ruby 3.4.7 --build`), which moon will then reuse.

@@ -1,0 +1,388 @@
+---
+title: Node.js
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+import { TypeLabel } from "@/components/TypeLabel";
+
+The `node` toolchain integrates the [Node.js](https://nodejs.org) runtime into moon. It downloads
+and installs a pinned version of Node.js through [proto](../../../../proto/docs/index.mdx), so every
+developer and CI machine runs the same `node`, and it can add arguments (or turn on the V8
+profiler) for tasks that run `node` directly.
+
+It's deliberately small, as it's one part of a family of JavaScript
+[toolchains](<../../(fundamentals)/toolchain.mdx>). The [JavaScript toolchain](./index.mdx)
+handles everything around `package.json`: installing dependencies, inferring project relationships
+and tasks, and hashing lockfiles. The [npm](./npm.mdx), [pnpm](./pnpm.mdx), and [Yarn](./yarn.mdx)
+toolchains manage the package manager, which runs on top of Node.js. A typical Node.js repository
+enables all three: `javascript`, `node`, and a package manager.
+
+## Prerequisites
+
+- **Node.js** - If you configure a [`version`](/moon/api/ToolchainPluginConfig#version), moon
+  installs Node.js for you, and nothing needs to be installed globally. Otherwise, a `node` binary
+  must be available on your `PATH`.
+- **Supported platforms** - When moon installs Node.js, prebuilt archives are available for Linux
+  (x64, arm64, armv7, ppc64le, s390x), macOS (x64, arm64), and Windows (x64, x86, arm64). On Linux
+  with musl (like Alpine), x64 and arm64 builds are downloaded from Node.js's unofficial builds.
+- **The JavaScript toolchain** - Not strictly required, as the `node` toolchain works on its own
+  for tasks that run `node`. However, it's what installs dependencies and puts
+  `node_modules/.bin` on `PATH`, so you'll almost always want it enabled too.
+
+### Repository structure
+
+The `node` toolchain doesn't require a specific layout. Any project with a `package.json` at its
+root is a Node.js project, whether that's a single package at the repository root or one of many
+packages in a workspace. Version files like `.nvmrc` typically live at the root.
+
+```text
+/
+├── .moon/
+├── apps/
+│   └── server/
+│       ├── package.json
+│       └── server.js
+├── packages/
+│   └── utils/
+│       └── package.json
+├── .nvmrc
+└── package.json
+```
+
+How packages are grouped into workspaces, and where dependencies are installed, is decided by the
+JavaScript toolchain and your package manager. Refer to the
+[JavaScript toolchain](./index.mdx) for the supported layouts.
+
+## Installation
+
+The toolchain is built into moon, so no [`plugin`](/moon/api/ToolchainPluginConfig#plugin) locator
+is required. Enable it by adding a `node` entry to
+[`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>), alongside the JavaScript
+toolchain and your package manager.
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    javascript: {
+      packageManager: "pnpm",
+    },
+    node: {
+      version: "24.12.0",
+    },
+    pnpm: {
+      version: "10.24.0",
+    },
+  }}
+/>
+
+The `version` setting accepts a full version (`24.12.0`), a partial version or requirement (`24`,
+`^24.12`), or an alias: `latest` (or `node`), `stable` or `lts` for the latest LTS release, or an
+LTS codename like `jod` (also written as `lts/jod` or `lts-jod`). Prefer a full version, so that
+every machine resolves to the same release.
+
+To use the `node` binary that's already on your `PATH`, enable the toolchain without a `version`.
+If `version` isn't set but your `.prototools` pins `node`, moon inherits that version instead,
+which is controlled by
+[`versionFromPrototools`](/moon/api/ToolchainPluginConfig#versionfromprototools).
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    node: {},
+  }}
+  comments={{
+    node: "Uses `node` from `PATH`",
+  }}
+/>
+
+Alternatively, run [`moon toolchain add`](../../commands/toolchain/add.mdx), which writes the entry
+for you. It detects the version from [version files](#version-detection) in the current directory,
+and otherwise asks whether moon should manage Node.js.
+
+```shell
+# Add the toolchain, answering each prompt
+$ moon toolchain add node
+
+# Add the toolchain with default settings, without prompting
+$ moon toolchain add node --yes
+```
+
+## Configuration
+
+The following settings are configured within the `node` entry of
+[`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>).
+
+- `executeArgs` <TypeLabel type="string[]" /> - Arguments to pass to `node` when a task's
+  [`command`](/moon/api/TaskConfig#command) is `node` or `nodejs`. They're inserted after the
+  executable, but before the task's own arguments. See [task commands](#task-commands). Defaults to
+  `[]`.
+- `profileExecution` <TypeLabel type="cpu | heap" /> - Run `node` tasks with the V8 CPU or heap
+  profiler enabled. See [profiling](#profiling). Intended for temporary debugging, not to be left
+  enabled. Not enabled by default.
+- `syncVersionManagerConfig` <TypeLabel type="nodenv | nvm" /> - **Deprecated**, as it never worked
+  correctly. It has no effect, and can be removed from your configuration.
+- [`version`](/moon/api/ToolchainPluginConfig#version) <TypeLabel type="string" /> - The version of
+  Node.js to download and install through proto. When not defined, the `node` binary on your
+  `PATH` is used.
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    node: {
+      version: "24.12.0",
+      executeArgs: ["--enable-source-maps"],
+    },
+  }}
+/>
+
+### Project overrides
+
+Projects can override any of these settings through
+[toolchain overrides](<../../(fundamentals)/project.mdx#overrides>) in their
+[`moon.config`](<../../(fundamentals)/project.mdx>). For example, to run a legacy service on an older
+Node.js release while the rest of the repository moves forward:
+
+<ConfigTabs
+  file="moon"
+  config={{
+    toolchains: {
+      node: {
+        version: "22.20.0",
+        executeArgs: ["--max-old-space-size=4096"],
+      },
+    },
+  }}
+/>
+
+Overrides are merged into the workspace settings, but lists are replaced rather than combined, so a
+project's `executeArgs` takes the place of the workspace's.
+
+## Tiers
+
+The `node` toolchain implements usage detection and tool management. Of the ecosystem integration
+tier, it only augments task commands, as everything else is implemented once in the
+[JavaScript toolchain](./index.mdx). Run
+[`moon toolchain info`](../../commands/toolchain/info.mdx) to inspect it.
+
+```shell
+# Show the toolchain's settings and supported tiers
+$ moon toolchain info node
+```
+
+### 1) Usage detection
+
+#### Projects and tasks
+
+A project is associated with the `node` toolchain when its root contains a `package.json`. The
+toolchain can also be associated explicitly with
+[`toolchains.default`](/moon/api/ProjectToolchainsConfig#default), as described in
+[project toolchains](<../../(fundamentals)/project.mdx#toolchains>). Since only `package.json` is
+checked, every project with one is associated with `node` while it's enabled, even when Bun or Deno
+is the package manager.
+
+A task is associated with the `node` toolchain when its command is `node` or `nodejs`, unless the
+task configures [`toolchains`](/moon/api/TaskConfig#toolchains) explicitly. Tasks with any other
+command, like `vite` or `eslint`, inherit their project's toolchains. Detected toolchains are also
+expanded with their requirements, so a `node ./server.js` task runs with `javascript`, `node`, and
+the configured package manager.
+
+#### Version detection
+
+When running [`moon toolchain add`](../../commands/toolchain/add.mdx), moon checks the following
+files in the current directory, in order, and uses the first version it finds:
+
+1. `.nvmrc` - The first line that isn't empty or a comment (`#` or `//`). A leading `v`, like
+   `v24.12.0`, is allowed.
+2. `.node-version` - Same format as `.nvmrc`.
+3. `package.json` - The first of these fields that contains a valid version or range:
+   - `devEngines.runtime`, from the entry whose `name` is `node`.
+   - `volta.node`, following `volta.extends` to another `package.json` when set.
+   - `engines.node`.
+
+```json title="package.json"
+{
+  "devEngines": {
+    "runtime": { "name": "node", "version": "^24.12.0" }
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
+```
+
+<Callout>
+  These files are only read when adding the toolchain. When running tasks, moon
+  uses the configured [`version`](/moon/api/ToolchainPluginConfig#version) (or
+  the version inherited from `.prototools`), and ignores `.nvmrc` and similar
+  files. Keep them in sync by hand if other tools rely on them.
+</Callout>
+
+#### Docker
+
+- [`moon docker file`](../../commands/docker/file.mdx) uses `node:<version>` as the default base
+  image, where `<version>` is the configured `version` without its range operator (`^24.12.0`
+  becomes `node:24.12.0`), or `latest` when not configured. Override it with
+  [`docker.file.image`](/moon/api/DockerFileConfig#image).
+- [`moon docker scaffold`](../../commands/docker/scaffold.mdx) copies `package.json` files, along
+  with `*.js`, `*.cjs`, and `*.mjs` files at the root of the workspace and each project, into the
+  configs skeleton. These are commonly needed by `postinstall` scripts and tool configs, before
+  sources are copied. `node_modules` directories are never copied.
+
+Pruning dependencies for Docker is handled by the JavaScript toolchain.
+
+### 2) Ecosystem integration
+
+#### Task commands
+
+When a task's [`command`](<../../(fundamentals)/task.mdx#command>) is `node` or `nodejs`, moon
+inserts `executeArgs` between the executable and the task's own arguments. For example, with
+`executeArgs` set to `["--enable-source-maps"]`, the following task runs
+`node --enable-source-maps ./server.js`.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      start: {
+        command: "node ./server.js",
+      },
+    },
+  }}
+/>
+
+Only the command itself is checked. Tasks that run Node.js indirectly, like `pnpm run build`,
+`vitest`, or a [`script`](<../../(fundamentals)/task.mdx#script>), are left untouched. To pass
+options to those, set the `NODE_OPTIONS` environment variable in the task's
+[`env`](<../../(fundamentals)/task.mdx#environment-variables>) instead (Node.js only accepts some
+options this way).
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      test: {
+        command: "vitest run",
+        env: {
+          NODE_OPTIONS: "--max-old-space-size=4096",
+        },
+      },
+    },
+  }}
+/>
+
+#### Profiling
+
+When `profileExecution` is enabled, `node` tasks also run with the V8 profiler, and write the
+profile to the `.moon` directory within the project's root:
+
+- `cpu` - Passes `--cpu-prof`, and writes a `snapshot.cpuprofile` file.
+- `heap` - Passes `--heap-prof`, and writes a `snapshot.heapprofile` file.
+
+Open these files in the Performance or Memory panel of Chrome DevTools. Each run overwrites the
+previous profile. Like `executeArgs`, this only applies to tasks whose command is `node` or
+`nodejs`.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    toolchains: {
+      node: {
+        profileExecution: "cpu",
+      },
+    },
+  }}
+  comments={{
+    toolchains: "Profile this project's `node` tasks only",
+  }}
+/>
+
+#### Required by other toolchains
+
+The `node` toolchain doesn't require any other toolchains, but other toolchains require it:
+
+- npm, pnpm, and Yarn are Node.js programs, so the `npm`, `pnpm`, and `yarn` toolchains require
+  `node`.
+- When the JavaScript toolchain's `packageManager` is `npm`, `pnpm`, or `yarn`, it requires `node`
+  as well. When it's `bun` or `deno`, Node.js isn't needed, but you can still enable `node`
+  alongside them, for example to run your code on Node.js while installing with Bun.
+
+If a required toolchain is missing, moon fails with an error like _"Toolchain pnpm requires the
+toolchain node, but it has not been configured!"_. Requirements also determine the setup order, so
+Node.js is always installed before the package manager that runs on it.
+
+### 3) Tool management
+
+When a [`version`](/moon/api/ToolchainPluginConfig#version) is configured, moon installs Node.js
+with proto in a setup action, which runs before any task that uses the `node` toolchain, and during
+[`moon setup`](../../commands/setup.mdx). If the version is already installed, nothing is
+downloaded. The version is taken from the first of the following that's defined:
+
+1. The `MOON_NODE_VERSION` environment variable.
+2. The `version` setting.
+3. The `node` version pinned in `.prototools`, when `versionFromPrototools` is enabled (the
+   default).
+
+A project's [override](#project-overrides) takes precedence over all of these for that project's
+tasks.
+
+Installation works as follows:
+
+- Available versions and LTS aliases are loaded from the official
+  [Node.js release index](https://nodejs.org/download/release/index.json).
+- Prebuilt archives are downloaded from `https://nodejs.org/download/release`, and verified against
+  the release's `SHASUMS256.txt`. On Apple Silicon, versions older than Node.js 16 (which had no
+  arm64 builds) are downloaded as x64 builds, and run through Rosetta.
+- Tools are stored in proto's store (`~/.proto/tools/node`), and shared with proto and other
+  workspaces. Use [`moon bin`](../../commands/bin.mdx) to locate the binary.
+- The download and index URLs can be customized, for example to use an internal mirror, with the
+  `dist-url`, `dist-url-unofficial`, and `index-url` settings under `[tools.node]` in
+  `.prototools`.
+
+```shell
+# Install Node.js (and all other configured toolchains) ahead of time
+$ moon setup
+
+# Print the path to the Node.js binary managed by moon
+$ moon bin node
+```
+
+For tasks (and commands that moon runs on their behalf, like installing dependencies) that use the
+`node` toolchain, moon adds the Node.js installation's `bin` directory and proto's Node.js globals
+directory to `PATH`, and sets the `PROTO_NODE_VERSION` environment variable, so proto shims resolve
+to the same version. To use the `node` binary on your `PATH` instead, for example to test against a
+newer local version, set `MOON_TOOLCHAIN_FORCE_GLOBALS=node`.
+
+The configured `version` is also included in the hash of every task that uses the `node`
+toolchain, so changing it invalidates cached outputs. The version is hashed as written, not as
+resolved, which is another reason to prefer a full version over a range or alias.
+
+The toolchain doesn't perform any additional setup or teardown beyond installing Node.js.
+[`moon teardown`](../../commands/teardown.mdx) uninstalls the configured version from proto.
+
+#### npm and npx
+
+Every Node.js release ships with a version of npm, and the `bin` directory that moon adds to `PATH`
+contains it. When moon manages Node.js, tasks can run the bundled `npm` and `npx` without any extra
+configuration, and if the [npm toolchain](./npm.mdx) is enabled without a `version`, it's this
+bundled npm that installs your dependencies.
+
+To manage npm separately, configure a `version` for the npm toolchain, which proto installs as its
+own tool. The same applies to [pnpm](./pnpm.mdx) and [Yarn](./yarn.mdx), which never ship with
+Node.js. proto's `bundled-npm` setting doesn't apply when moon installs Node.js, as moon doesn't run
+proto's post-install hooks.
+
+## Caveats
+
+- **`moon toolchain add` still writes `syncVersionManagerConfig`.** The setting is deprecated and
+  has no effect, but adding the toolchain still prompts for it (and writes `nodenv` with `--yes`).
+  It's safe to delete from your configuration.
+- **`lts/*` isn't a valid version.** It can't be parsed, so an `.nvmrc` containing `lts/*` makes
+  `moon toolchain add node` fail, and it can't be used as `version`. Use `lts` (or a specific
+  version) instead.
+- **`executeArgs` and `profileExecution` don't affect task hashes.** Changing them doesn't
+  invalidate cached outputs, so a cached task is restored without running, and no profile is
+  written. Run the task with [`moon run --force`](../../commands/run.mdx) to bypass the cache.
+- **The default Docker image uses `version` as-is.** Aliases are passed through unchanged, and
+  ranges that can't be reduced to a single version (like `>=22 <25`) become `latest`. Configure a
+  full version so the `node` image tag exists, or set
+  [`docker.file.image`](/moon/api/DockerFileConfig#image) explicitly.

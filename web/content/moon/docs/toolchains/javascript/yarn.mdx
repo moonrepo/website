@@ -1,0 +1,334 @@
+---
+title: Yarn
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+import { TypeLabel } from "@/components/TypeLabel";
+
+The Yarn toolchain brings [Yarn](https://yarnpkg.com) into moon. It downloads and pins a version of
+Yarn through [proto](../../../../proto/docs/index.mdx), puts it on `PATH` for your tasks, and
+detects which projects and tasks use it. The work that happens _with_ Yarn, like running
+`yarn install`, reading workspaces, and parsing `yarn.lock`, is done by the
+[JavaScript toolchain](./index.mdx) whenever its `packageManager` is `"yarn"`. This page
+covers both halves, from the point of view of a repository that uses Yarn.
+
+Every Yarn release line is supported: Yarn classic (v1), modern Yarn (v2 and above, also known as
+Berry), and the experimental Rust-based Yarn v6. A few commands differ between classic and modern
+Yarn, like deduping and focused installs, so moon picks them based on the configured version.
+
+## Prerequisites
+
+- **The JavaScript toolchain**, with [`packageManager`](./index.mdx#configuration) set to
+  `"yarn"`. On its own, the `yarn` toolchain only installs Yarn. The `javascript` toolchain is what
+  installs dependencies with it.
+- **The [Node.js toolchain](./node.mdx)**. Yarn runs on Node.js, so the `yarn` toolchain requires
+  `node`, and moon always sets up Node.js before Yarn. This also applies to Yarn v6, even though it's
+  a native binary. If `node` isn't configured, moon fails with an error like _"Toolchain yarn
+  requires the toolchain node, but it has not been configured!"_.
+- **Yarn** - If you configure a [`version`](/moon/api/ToolchainPluginConfig#version), moon installs
+  Yarn for you. Otherwise, a `yarn` binary must be available on your `PATH`, either installed
+  globally or provided by Corepack.
+- **Supported platforms** - Yarn v1 through v4 are JavaScript packages that run anywhere Node.js
+  does. Yarn v6 is a native binary, and is only available for macOS and Linux.
+
+### Repository structure
+
+Yarn repositories use the layouts described in the [JavaScript toolchain](./index.mdx). For
+each project, the JavaScript toolchain locates a _dependencies root_, the directory where
+`yarn install` runs, by walking up from the project's directory and stopping at the first directory
+that contains:
+
+1. A `yarn.lock` file.
+2. A `package.json` with a `workspaces` field.
+3. A `package.json` file.
+
+In a Yarn workspace, the root `package.json` lists its members in `workspaces`, either as an array
+of globs, or as an object with a `packages` array. A single `yarn.lock` at the root is shared by
+every member, and a single install covers all of them.
+
+```text
+/
+├── .moon/
+├── apps/
+│   └── web/
+│       └── package.json
+├── packages/
+│   └── utils/
+│       └── package.json
+├── .yarnrc.yml
+├── package.json         # "workspaces": ["apps/*", "packages/*"]
+└── yarn.lock
+```
+
+A project that isn't the root, and doesn't match a `workspaces` glob, doesn't have dependencies
+installed by moon. A project with its own `yarn.lock` and no `workspaces` is its own root, and is
+installed on its own.
+
+Catalogs (Yarn v4.10+) are read from the `catalog` and `catalogs` settings in the `.yarnrc.yml` at
+the dependencies root, falling back to `package.json`, so that `catalog:` versions can be resolved
+when [hashing](#lockfile-parsing-and-hashing).
+
+## Installation
+
+Enable Yarn alongside the `javascript` and `node` toolchains in
+[`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>). The toolchain is built into moon,
+so there's no plugin to locate.
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    javascript: {
+      packageManager: "yarn",
+    },
+    node: {
+      version: "24.12.0",
+    },
+    yarn: {
+      version: "4.10.3",
+    },
+  }}
+/>
+
+To use the `yarn` binary on your `PATH` instead, omit `version`. If `version` isn't set but your
+root `.prototools` pins `yarn`, moon inherits that version instead, which is controlled by
+[`versionFromPrototools`](/moon/api/ToolchainPluginConfig#versionfromprototools).
+
+Alternatively, run [`moon toolchain add`](../../commands/toolchain/add.mdx). It detects the version
+from the `package.json` in the current directory (see [version detection](#version-detection)),
+and otherwise prompts for one. When adding the `javascript` toolchain, `packageManager` is also
+detected, from a `packageManager` field like `"yarn@4.10.3"`, or from a `yarn.lock`.
+
+```shell
+# Add the toolchain, detecting or prompting for a version
+$ moon toolchain add yarn
+
+# Add the toolchain without prompting
+$ moon toolchain add yarn --yes
+```
+
+## Configuration
+
+The following settings are configured under `yarn` in
+[`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>).
+
+- `installArgs` <TypeLabel type="string[]" /> - Arguments to append to the `yarn install` command
+  that installs dependencies. Not applied to focused installs (`yarn workspaces focus`) during
+  [`moon docker prune`](../../commands/docker/prune.mdx). Defaults to `[]`.
+- `plugins` <TypeLabel type="string[]" /> - Yarn plugins to import with `yarn plugin import`, like
+  `workspace-tools`. Only applies to Yarn v2 through v5. This setting currently has no effect, see
+  [caveats](#caveats). Defaults to `[]`.
+- [`version`](/moon/api/ToolchainPluginConfig#version) <TypeLabel type="string" /> - The version of
+  Yarn to download and install through proto. When not defined, the `yarn` binary on your `PATH` is
+  used. moon also reads it to choose between classic and modern Yarn commands, so prefer a
+  fully-qualified version (`4.10.3`) or a requirement (`4`) over an alias (see [caveats](#caveats)).
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    yarn: {
+      version: "4.10.3",
+      installArgs: ["--inline-builds"],
+    },
+  }}
+/>
+
+### Project overrides
+
+Projects can override `version` and `installArgs` under
+[`toolchains.yarn`](<../../(fundamentals)/project.mdx#overrides>) in their
+[`moon.config`](<../../(fundamentals)/project.mdx>). A `version` override changes the Yarn that's
+installed and used for the project's tasks. An `installArgs` override only applies when the project
+is its own dependencies root (a standalone package without `workspaces`), as a workspace is
+installed once for all of its members, using the workspace-level settings.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    toolchains: {
+      yarn: {
+        version: "1.22.22",
+        installArgs: ["--ignore-engines"],
+      },
+    },
+  }}
+/>
+
+## Tiers
+
+The Yarn toolchain implements tier 1 (usage detection) and tier 3 (tool management). For tier 2, it
+only declares its requirements and an environment setup step. The rest of Yarn's ecosystem
+integration (installing dependencies, workspaces, and `yarn.lock` parsing) is implemented by the
+`javascript` toolchain, and is described below as it applies to Yarn.
+
+```shell
+# Show the toolchain's settings and supported APIs
+$ moon toolchain info yarn
+```
+
+### 1) Usage detection
+
+#### Projects and tasks
+
+A project is associated with the Yarn toolchain when its root contains a `package.json`,
+`yarn.lock`, `.npmrc`, or `.yarnrc.*` file (like `.yarnrc.yml`). Since nearly every JavaScript
+project has a `package.json`, enabling `yarn` effectively associates it with all of them. A task is
+associated with the toolchain when its [`command`](/moon/api/TaskConfig#command) is `yarn` or
+`yarnpkg`.
+
+The `javascript` toolchain recognizes the same files and commands, as well as the classic `.yarnrc`
+file and anything within a `.yarn` directory.
+
+#### Version detection
+
+When running [`moon toolchain add`](../../commands/toolchain/add.mdx), the version is detected from
+the `package.json` in the current directory, using the first valid version found in:
+
+1. `devEngines.packageManager`, from the entry named `yarn`.
+2. `packageManager`, like `"yarn@4.10.3+sha512.…"`, with the Corepack hash removed.
+3. `volta.yarn`, following `volta.extends` when set.
+4. `engines.yarn`.
+
+These fields are only read when adding the toolchain. When running tasks, moon uses the configured
+`version`, or the version inherited from `.prototools`.
+
+#### Docker
+
+- [`moon docker scaffold`](../../commands/docker/scaffold.mdx) copies `package.json`, `yarn.lock`,
+  `.npmrc`, and `.yarnrc.*` files into the skeleton, along with the `javascript` toolchain's
+  `.yarnrc` and `.yarn/**` files, so releases, plugins, and patches committed to `.yarn` are
+  available before installing. `node_modules` directories are excluded.
+- [`moon docker prune`](../../commands/docker/prune.mdx) removes `node_modules` from the
+  dependencies root when
+  [`docker.prune.deleteVendorDirectories`](/moon/api/DockerPruneConfig#deletevendordirectories) is
+  enabled. It then installs production dependencies for the focused projects when
+  [`docker.prune.installToolchainDependencies`](/moon/api/DockerPruneConfig#installtoolchaindependencies)
+  is enabled:
+  - Yarn v2+ - `yarn workspaces focus <names> --production`, where `<names>` are the package names
+    of the focused projects. In Yarn v2 and v3, this command is provided by the `workspace-tools`
+    plugin, which must be imported first. It's built into Yarn v4.
+  - Yarn v1, or no version configured - `yarn install --production`, for the entire workspace.
+
+### 2) Ecosystem integration
+
+#### Requirements
+
+The `yarn` toolchain requires `node`, so Node.js is installed before Yarn. In turn, when
+`packageManager` is `"yarn"`, the `javascript` toolchain requires both `node` and `yarn`, so both
+are set up before any of its actions run.
+
+#### Dependency installation
+
+Before a task that uses the `javascript` toolchain runs, moon installs dependencies in the
+project's dependencies root, as long as something changed since the last install. Refer to the
+[JavaScript toolchain](./index.mdx) for when an install runs or is skipped. With Yarn, the
+install command is:
+
+```shell
+$ yarn install <installArgs>
+```
+
+The same command runs in CI. moon doesn't add a frozen lockfile flag, but Yarn v2+ enables
+immutable installs on CI by default, which fail if `yarn.lock` needs to change.
+
+When the `javascript` toolchain's `dedupeOnLockfileChange` setting is enabled (the default), the
+lockfile is then deduped. This only happens locally, never in CI, and is skipped on the very first
+install.
+
+- Yarn v2+ - `yarn dedupe`.
+- Yarn v1 - `npx --quiet --package yarn-deduplicate -- yarn-deduplicate yarn.lock`, as Yarn v1
+  doesn't provide a dedupe command of its own.
+
+#### Lockfile parsing and hashing
+
+The `javascript` toolchain parses the `yarn.lock` at the dependencies root in both formats: the
+classic v1 format, and the YAML-based format of Yarn v2+. For each package, it extracts the
+resolved version and checksum (`integrity` in v1, `checksum` in v2+), while skipping the
+workspace's own packages.
+
+When hashing a task with the default
+[`hasher.optimization`](/moon/api/HasherConfig#optimization) of `accuracy`, the dependencies in the
+project's `package.json` are resolved against these entries, so upgrading a package in `yarn.lock`
+invalidates the cache of tasks that depend on it. `catalog:` versions are resolved through the
+workspace's catalogs. The configured Yarn `version` is also included in the hash of tasks that use
+the `yarn` toolchain.
+
+#### Environment setup
+
+The `yarn` toolchain defines an environment setup step that imports each of the `plugins` with
+`yarn plugin import <plugin>`, for Yarn v2 through v5. However, moon doesn't currently schedule
+this step for the `yarn` toolchain, so plugins aren't imported (see [caveats](#caveats)).
+
+Separately, the `javascript` toolchain's own setup step writes the configured Yarn `version` to the
+`packageManager` field of the root `package.json`, like `"yarn@4.10.3"`, when its
+`syncPackageManagerField` setting is enabled (the default) and the version is fully-qualified. This
+keeps Corepack aligned with the version moon installs.
+
+### 3) Tool management
+
+When a [`version`](/moon/api/ToolchainPluginConfig#version) is configured, moon installs Yarn with
+proto in a `SetupToolchain` action, after Node.js, and before any task that uses the `javascript`
+or `yarn` toolchain. It also runs during [`moon setup`](../../commands/setup.mdx). If the version is
+already installed, nothing is downloaded.
+
+Yarn is published in three places, and the source is chosen based on the version:
+
+| Version | Source                                                                                                |
+| ------- | ----------------------------------------------------------------------------------------------------- |
+| v1      | The `yarn` package on the npm registry.                                                               |
+| v2-v5   | The `@yarnpkg/cli-dist` package on the npm registry.                                                  |
+| v6+     | Native binaries from the [yarnpkg/zpm](https://github.com/yarnpkg/zpm) releases, for macOS and Linux. |
+
+Available versions are loaded from all three sources, and the following aliases are supported:
+
+- `latest` and `berry` - The latest v4 release.
+- `classic` and `legacy` - The latest v1 release.
+- `rust` and `zpm` - The latest v6 pre-release.
+
+For tasks that use the toolchain, moon prepends Yarn's executable directory and global binaries
+directories (like `~/.yarn/bin`) to `PATH`, and sets the `PROTO_YARN_VERSION` environment variable.
+Yarn v1 through v5 provide the `yarn` and `yarnpkg` executables, while v6 provides `yarn`. Use
+[`moon bin`](../../commands/bin.mdx) to locate it.
+
+```shell
+# Print the path to the Yarn binary managed by moon
+$ moon bin yarn
+```
+
+To use the `yarn` on your `PATH` even when a version is configured, set
+`MOON_TOOLCHAIN_FORCE_GLOBALS=yarn`. The toolchain doesn't perform any additional setup or teardown
+beyond installing Yarn, and [`moon teardown`](../../commands/teardown.mdx) uninstalls it.
+
+## Caveats
+
+- **Configure a precise `version`.** moon chooses between classic and modern Yarn commands based on
+  the configured `version`. With no version (for example, when relying on Corepack), an alias like
+  `latest`, or a range like `>=4 <5`, moon can't tell. Dedupe then assumes Yarn v2+
+  (`yarn dedupe`), while Docker pruning assumes v1 (`yarn install --production`, which Yarn v2+
+  rejects). Use a fully-qualified version like `4.10.3`, or a requirement like `4`.
+- **`plugins` currently has no effect.** Plugins are imported in an environment setup action, which
+  moon only creates for toolchains that locate a dependencies root. The `yarn` toolchain doesn't
+  (the `javascript` toolchain does), so the step never runs, not even with
+  [`moon setup`](../../commands/setup.mdx). Import plugins yourself, and commit the changes to
+  `.yarnrc.yml` and `.yarn/plugins`, for example `yarn plugin import workspace-tools`.
+- **Plug'n'Play works, with some friction.** Yarn v2+ uses Plug'n'Play by default, which doesn't
+  create a `node_modules` directory, and moon relies on one in a few places:
+  - The `javascript` toolchain adds `node_modules/.bin` to `PATH`, so package binaries like `vite`
+    can't be used directly as a task's command. Run them through Yarn instead, like
+    `yarn vite build`.
+  - moon treats a missing or empty `node_modules` at the dependencies root as a first install. So
+    `yarn install` runs every time the install action does, the lockfile is never deduped, and CI
+    never skips the install.
+  - `moon docker prune` only removes `node_modules`.
+
+  Set `nodeLinker: node-modules` in `.yarnrc.yml` to avoid all of these.
+
+- **Yarn v1 doesn't support the `workspace:` protocol.** When syncing project dependencies into
+  `package.json`, the `javascript` toolchain formats versions with its `dependencyVersionFormat`
+  setting, which defaults to `workspace` (`workspace:*`). Yarn v1 can't install these, so set it
+  to `star` (`*`) or `link` instead, which moon still recognizes as project relationships.
+- **Changing Yarn settings doesn't trigger an install.** The install action only runs again when
+  `yarn.lock`, the dependencies in a `package.json`, or the `javascript` toolchain's settings
+  change. After changing `installArgs` or `version`, run `yarn install` yourself.
+- **`yarnPath` takes precedence.** If `.yarnrc.yml` sets `yarnPath` (for example, to a release
+  committed to `.yarn/releases`), Yarn hands off to that file, even when moon installed a different
+  version. Keep `version` in sync with it, or remove `yarnPath` and let moon manage the version.

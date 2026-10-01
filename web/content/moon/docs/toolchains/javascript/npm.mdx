@@ -1,0 +1,366 @@
+---
+title: npm
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+import { TypeLabel } from "@/components/TypeLabel";
+
+The npm toolchain installs and manages [npm](https://docs.npmjs.com), the package manager that ships
+with Node.js. With a version pinned, every developer machine and CI run uses the exact same npm,
+downloaded through [proto](../../../../proto/docs/index.mdx), instead of whichever version happens to
+be installed globally.
+
+It's one member of the [JavaScript toolchain](./index.mdx) family, and has a deliberately
+narrow job: managing the npm binary, and customizing the command that installs dependencies. The
+ecosystem work is done by the `javascript` toolchain when its `packageManager` setting is `npm`:
+locating your workspace, running `npm install` or `npm ci`, parsing `package-lock.json` for task
+hashing, and syncing `package.json` files. This page covers both from the point of view of an npm
+user, while behavior shared by every package manager is documented on the
+[JavaScript toolchain](./index.mdx) page.
+
+## Prerequisites
+
+- **Node.js** - npm is a Node.js program, so the [`node` toolchain](./node.mdx) must also be
+  configured. Otherwise moon fails with _"Toolchain npm requires the toolchain node, but it has not
+  been configured!"_. When both are managed by moon, Node.js is always installed first.
+- **The JavaScript toolchain** - The [`javascript` toolchain](./index.mdx), with
+  `packageManager` set to `npm`. On its own, the npm toolchain only installs npm. It doesn't install
+  dependencies or integrate with the project graph.
+- **A `package.json`** at the root of your package or workspace. A committed `package-lock.json` (or
+  `npm-shrinkwrap.json`) is strongly recommended, as moon only uses `npm ci` in CI when one exists.
+
+### Repository structure
+
+For each project, the `javascript` toolchain locates a _dependencies root_: the directory where
+npm runs, and where `node_modules` is created. With npm, it walks up from the project's directory
+and stops at the first directory that contains:
+
+1. A `package-lock.json` or `npm-shrinkwrap.json`.
+2. A `package.json` with a `workspaces` field.
+3. A `package.json`.
+
+#### Single package
+
+A single `package.json` at the repository root, typical of a polyrepo. The root is both the only
+package and the dependencies root.
+
+```text
+./
+├── .moon/
+├── src/
+├── package.json
+└── package-lock.json
+```
+
+#### npm workspaces
+
+The typical monorepo layout. The root `package.json` lists its members in the
+[`workspaces`](https://docs.npmjs.com/cli/using-npm/workspaces) field, either as an array of globs,
+or as an object with a `packages` array. A single `package-lock.json` at the root is shared by every
+member, and all projects that match a member glob share a single install at the root.
+
+```text
+./
+├── .moon/
+├── apps/
+│   └── web/
+│       └── package.json
+├── packages/
+│   └── utils/
+│       └── package.json
+├── package.json         # "workspaces": ["apps/*", "packages/*"]
+└── package-lock.json
+```
+
+Because the dependencies root is located per project, a workspace doesn't need to live at the
+repository root, and a repository can contain multiple workspaces (or standalone packages with their
+own `package-lock.json`). Each one is installed independently. A project that sits within a
+workspace, but doesn't match one of its member globs, isn't installed at all.
+
+## Installation
+
+The npm toolchain is built into moon, so no [`plugin`](/moon/api/ToolchainPluginConfig#plugin)
+locator is required. Enable it in [`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>),
+together with the `javascript` and `node` toolchains.
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    javascript: {
+      packageManager: "npm",
+    },
+    node: {
+      version: "24.12.0",
+    },
+    npm: {
+      version: "11.6.2",
+    },
+  }}
+/>
+
+Alternatively, run [`moon toolchain add`](../../commands/toolchain/add.mdx) for each toolchain. When
+adding `npm`, the version is detected from the `package.json` in the current directory (see
+[version detection](#version-detection)), and otherwise you're prompted for one. When adding
+`javascript`, `packageManager` is detected from the `packageManager` field in `package.json`, or
+from an existing `package-lock.json` or `npm-shrinkwrap.json`.
+
+```shell
+# Add the toolchains, answering each prompt
+$ moon toolchain add javascript
+$ moon toolchain add node
+$ moon toolchain add npm
+```
+
+If `version` isn't set, but your root `.prototools` pins `npm`, moon inherits that version, which is
+controlled by [`versionFromPrototools`](/moon/api/ToolchainPluginConfig#versionfromprototools).
+
+### Using the npm bundled with Node.js
+
+Every Node.js release ships with its own copy of npm, as described by the
+[Node.js toolchain](./node.mdx). To use that copy instead of pinning npm separately, configure the
+toolchain without a `version`. moon then uses whichever `npm` it finds on `PATH`, and when moon
+manages Node.js, that's the npm bundled with the configured Node.js version, as Node.js's
+executables directory is placed in front of `PATH` for tasks and dependency installs.
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    javascript: {
+      packageManager: "npm",
+    },
+    node: {
+      version: "24.12.0",
+    },
+    npm: {},
+  }}
+  comments={{
+    npm: "Uses the npm that ships with Node.js 24.12.0",
+  }}
+/>
+
+The `npm` entry is still required, even when empty, as the `javascript` toolchain requires it when
+`packageManager` is `npm`.
+
+## Configuration
+
+The following settings are configured within the `npm` entry of
+[`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>), alongside the common
+[toolchain settings](/moon/api/ToolchainPluginConfig).
+
+- `installArgs` <TypeLabel type="string[]" /> - Arguments to append to the `npm install` (or
+  `npm ci`) command that installs dependencies, including the production installs run by
+  [`moon docker prune`](../../commands/docker/prune.mdx). They're not passed to `npm dedupe`.
+  Defaults to `[]`.
+- [`version`](/moon/api/ToolchainPluginConfig#version) <TypeLabel type="string" /> - The npm version
+  to download and install. Accepts a fully-qualified version (`11.6.2`), a partial version or range
+  (`11`, `^11.6`), or one of npm's dist-tags, like `latest` or `next-11`. When not defined, `npm`
+  from `PATH` is used.
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    npm: {
+      version: "11.6.2",
+      installArgs: ["--no-audit", "--no-fund"],
+    },
+  }}
+/>
+
+### Project overrides
+
+Projects can override these settings through the `toolchains.npm` entry in their
+[`moon.config`](<../../(fundamentals)/project.mdx>). A `version` override applies to the project's
+tasks, so moon installs and uses that npm version when running them.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    toolchains: {
+      npm: {
+        version: "10.9.2",
+      },
+    },
+  }}
+/>
+
+Dependencies are installed once per dependencies root, so project-level `installArgs` (and the
+`version` synced to [`packageManager`](#environment-setup)) only apply when the project _is_ its
+dependencies root, and that root has no workspace members, like a [single package](#single-package)
+or a standalone package with its own lockfile. Members of an npm workspace always use the
+workspace-level settings.
+
+## Tiers
+
+The npm toolchain itself implements usage detection, its requirements, and tool management. Most
+of npm's ecosystem integration is implemented by the `javascript` toolchain, and is attributed as
+such below. Run [`moon toolchain info`](../../commands/toolchain/info.mdx) to inspect each one.
+
+```shell
+# Show the toolchain's settings and supported tiers
+$ moon toolchain info npm
+```
+
+### 1) Usage detection
+
+#### Projects and tasks
+
+A project is associated with the `npm` toolchain when its root contains a `package.json`,
+`package-lock.json`, `npm-shrinkwrap.json`, or `.npmrc`. A task is associated with it when its
+command is `npm` or `npx`. Detected toolchains are expanded with their requirements, so these
+projects and tasks also use the `node` toolchain (and the `javascript` toolchain, which detects the
+same files and executables). Tasks with other commands, like `vite`, inherit their project's
+toolchains instead.
+
+Refer to the [project toolchains](<../../(fundamentals)/project.mdx#toolchains>) and
+[task toolchains](<../../(fundamentals)/task.mdx#toolchains>) docs for configuring them explicitly.
+
+#### Version detection
+
+When running [`moon toolchain add`](../../commands/toolchain/add.mdx), the version is detected from
+the `package.json` in the current directory, using the first valid value from:
+
+1. `devEngines.packageManager`, the entry with a `name` of `npm`.
+2. `packageManager`, like `npm@11.6.2` (Corepack's `+sha...` hash suffix is removed).
+3. `volta.npm`, following `volta.extends` if needed.
+4. `engines.npm`.
+
+These fields are only read when adding the toolchain. When running tasks, moon uses the configured
+`version`.
+
+#### Docker
+
+When running [`moon docker scaffold`](../../commands/docker/scaffold.mdx), `package.json`,
+`package-lock.json`, `npm-shrinkwrap.json`, and `.npmrc` files are copied into the configs skeleton,
+for the workspace root and every project, while `node_modules` directories are excluded. This lets
+dependencies be installed in a cached Docker layer, with your registry configuration, before any
+source files are copied.
+
+### 2) Ecosystem integration
+
+#### Requirements
+
+The npm toolchain requires the `node` toolchain, so whenever npm is set up, Node.js is set up
+before it. This ensures the `node` binary that runs npm's scripts is always available.
+
+#### Dependency installation
+
+When `packageManager` is `npm`, the `javascript` toolchain installs dependencies in the dependencies
+root before tasks run, using the following commands:
+
+- `npm install` - Locally, or in CI when no lockfile exists.
+- `npm ci` - In CI, when a `package-lock.json` or `npm-shrinkwrap.json` exists in the dependencies
+  root. This installs exactly what's locked, and fails if the lockfile is out of sync with
+  `package.json`.
+- `npm install --production --workspace <name>` - When running
+  [`moon docker prune`](../../commands/docker/prune.mdx), with a `--workspace` flag for each focused
+  project's package name (or `npm ci --production ...` in CI).
+
+`installArgs` are appended to each of these. For example, with `installArgs` set to
+`["--no-audit"]`, CI runs `npm ci --no-audit`.
+
+After a local install, when the `javascript` toolchain's `dedupeOnLockfileChange` setting is enabled
+(the default), moon runs `npm dedupe` to remove duplicate packages from the lockfile and
+`node_modules`. It's never run in CI, and is skipped on the very first install.
+
+The conditions that trigger or skip the install (like skipping it in CI when `node_modules`
+already exists) are shared by every package manager, and are documented on the
+[JavaScript toolchain](./index.mdx) page.
+
+#### Project relationships
+
+When building the project graph, the `javascript` toolchain turns dependencies on other packages in
+the repository into [project dependencies](<../../(fundamentals)/project.mdx#dependencies>). npm
+doesn't support the `workspace:` protocol, so with npm, a dependency only creates a relationship
+when its version is a `file:` path that points to the other project, or `*`.
+
+```json title="apps/web/package.json"
+{
+  "name": "@acme/web",
+  "dependencies": {
+    "@acme/utils": "file:../../packages/utils",
+    "@acme/ui": "*"
+  }
+}
+```
+
+Version ranges like `^1.2.3` never create a relationship, even though npm itself links the local
+workspace package when its version satisfies the range.
+
+The reverse applies when syncing: relationships declared in moon (like
+[`dependsOn`](/moon/api/ProjectConfig#dependson)) are written to `package.json` using the
+`javascript` toolchain's `dependencyVersionFormat` setting. Because npm can't install them, the
+`link`, `workspace`, `workspace-caret`, and `workspace-tilde` formats are replaced with `file`, so
+by default, npm projects are synced with `file:` paths. Set `dependencyVersionFormat` to `star` to
+write `*` instead.
+
+#### Environment setup
+
+Before dependencies are installed, the `javascript` toolchain writes npm's `version` to the
+`packageManager` field of the `package.json` in the dependencies root, like `"npm@11.6.2"`. This
+keeps tools that read the field, like Corepack, aligned with the version moon installs. It only
+happens when the `javascript` toolchain's `syncPackageManagerField` setting is enabled (the
+default), and when `version` is fully-qualified, so ranges and aliases are never written.
+
+#### Lockfile parsing
+
+When hashing a task, and [`hasher.optimization`](/moon/api/HasherConfig#optimization) is `accuracy`
+(the default), the `javascript` toolchain parses the `package-lock.json` or `npm-shrinkwrap.json` in
+the dependencies root. Each dependency declared in the project's `package.json` is resolved to its
+locked integrity hash (or version), which is included in the task's hash. This means upgrading a
+package in the lockfile invalidates the cache of tasks that depend on it, while unrelated lockfile
+changes don't.
+
+Lockfile versions 1, 2, and 3 are supported. For versions 2 and 3, only top-level
+`node_modules/<name>` entries and workspace packages are read, so when npm nests a different copy of
+a package under a workspace's own `node_modules`, the version requirement from `package.json` is
+hashed instead. The configured npm `version` is also included in the hash of tasks that use the npm
+toolchain.
+
+### 3) Tool management
+
+When a [`version`](/moon/api/ToolchainPluginConfig#version) is configured, moon installs npm through
+proto before running tasks or installing dependencies that require it, or ahead of time with
+[`moon setup`](../../commands/setup.mdx). The version comes from the `version` setting, or a
+project's [override](#project-overrides). The `MOON_NPM_VERSION` environment variable takes
+precedence over the workspace-level setting, and when neither is set, the `npm` version pinned in
+`.prototools` is inherited (unless
+[`versionFromPrototools`](/moon/api/ToolchainPluginConfig#versionfromprototools) is disabled).
+
+npm is downloaded from the npm registry as the `npm` package tarball (for example,
+`https://registry.npmjs.org/npm/-/npm-11.6.2.tgz`), and any credentials configured for the
+registry in an `.npmrc` (project-level, or in your home directory) are sent with the request. As the
+package is plain JavaScript, it's the same on every platform. proto then creates `npm` and `npx`
+executables that run npm's entry scripts with `node`, which resolves to the Node.js managed by the
+`node` toolchain (or the `node` on `PATH` when it isn't managed).
+
+When running a task that uses the npm toolchain, moon sets the `PROTO_NPM_VERSION` environment
+variable, and adds npm's executables and global binaries directories to `PATH`, ahead of your own
+`PATH`. To use the `npm` on your `PATH` instead, set `MOON_TOOLCHAIN_FORCE_GLOBALS=npm`.
+
+```shell
+# Print the path to the npm binary managed by moon
+$ moon bin npm
+```
+
+No additional setup or teardown is performed beyond installing npm.
+[`moon teardown`](../../commands/teardown.mdx) uninstalls the configured version.
+
+## Caveats
+
+- **The `bundled` version doesn't follow the `node` toolchain.** proto's npm plugin accepts
+  `bundled` as a version, which resolves to the npm that ships with the current Node.js. When moon
+  resolves it, the current Node.js is determined by the `PROTO_NODE_VERSION` environment variable,
+  or the `node` binary on `PATH`, of the shell that moon was started from, not by the `node`
+  toolchain's `version`. Resolution fails when neither exists, and falls back to `latest` when the
+  Node.js version can't be matched. To match the managed Node.js,
+  [omit `version`](#using-the-npm-bundled-with-nodejs) instead.
+- **Relationships aren't inferred from version ranges.** Since npm workspaces typically use regular
+  ranges, most projects won't have their relationships inferred. Use `file:` or `*` versions, or
+  declare relationships with [`dependsOn`](/moon/api/ProjectConfig#dependson).
+- **Changing `installArgs` doesn't trigger a reinstall.** moon re-runs the install when the
+  lockfile, manifests, or `javascript` toolchain settings change, but npm's own settings aren't part
+  of that check. New arguments take effect on the next install, so delete `node_modules` to apply
+  them immediately.
+- **CI installs require an up-to-date lockfile.** When a lockfile exists, installs in CI use
+  `npm ci`, which fails if `package.json` and the lockfile disagree. Run `npm install` locally and commit the
+  updated lockfile.

@@ -1,0 +1,514 @@
+---
+title: Python
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+import { TypeLabel } from "@/components/TypeLabel";
+import { VersionLabel } from "@/components/VersionLabel";
+
+The Python toolchain integrates [Python](https://www.python.org) into moon. With it enabled, moon
+detects Python projects and tasks, can install Python through
+[proto](../../../../proto/docs/index.mdx), creates a virtual environment and installs dependencies with
+your package manager of choice, infers project relationships from `pyproject.toml`, and includes
+locked dependency versions in task hashes. Your tasks can run tools like `pytest` or `ruff` straight
+from the virtual environment, without activating it first.
+
+<Callout type="warning">
+  Python support is currently **unstable**. Every Python toolchain identifier is
+  prefixed with `unstable_`, so this toolchain is configured with the
+  `unstable_python` key, and its settings and behavior may change between moon
+  releases.
+</Callout>
+
+Python support isn't a single toolchain, but a family of cooperating
+[toolchains](<../../(fundamentals)/toolchain.mdx>), each with its own key in
+[`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>). This page covers `unstable_python`,
+which does nearly all of the work. The package manager toolchains are intentionally thin: they
+provide the package manager binary and the arguments for its commands.
+
+| Toolchain              | Identifier        | Role                                                                                                                                 |
+| ---------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Python                 | `unstable_python` | Installs Python, selects the package manager, creates the virtual environment, installs dependencies, and extends the project graph. |
+| [pip](./pip.mdx)       | `unstable_pip`    | Configures arguments for `pip install` and `python -m venv`. pip ships with Python, so it isn't installed separately.                |
+| [Poetry](./poetry.mdx) | `unstable_poetry` | Installs and pins Poetry, and configures arguments for `poetry install` and `python -m venv`.                                        |
+| [uv](./uv.mdx)         | `unstable_uv`     | Installs and pins uv, and configures arguments for `uv sync` and `uv venv`.                                                          |
+
+`unstable_python` runs its commands with whichever package manager its
+[`packageManager`](#configuration) setting selects. Because of this, a working setup always needs
+**two** toolchains enabled: `unstable_python`, and the toolchain that matches `packageManager`.
+
+## Prerequisites
+
+- **Python** - When [`version`](/moon/api/ToolchainPluginConfig#version) is configured, moon
+  downloads and installs Python through proto. Otherwise, a `python` binary must be available on
+  `PATH`. moon doesn't enforce a minimum Python version.
+- **A package manager** - pip, Poetry, or uv, enabled with its own toolchain. Refer to the
+  [pip](./pip.mdx), [Poetry](./poetry.mdx), and [uv](./uv.mdx) pages for how
+  each one is provided.
+- **The `venv` module** - With pip and Poetry, virtual environments are created with
+  `python -m venv`. Some Linux distributions ship this module separately from their system Python
+  (for example, the `python3-venv` package on Debian and Ubuntu). This isn't a concern when proto
+  installs Python.
+
+### Repository structure
+
+Python dependencies are installed into a virtual environment that lives in a _dependencies root_,
+the directory that holds the lockfile and the root manifest. For each project, moon locates this
+root by traversing upwards from the project's directory, and stops at the first match of:
+
+1. A lockfile for the configured package manager: `pylock.toml` or `requirements.txt` for pip and
+   `uv-pip`, `poetry.lock` for Poetry, and `uv.lock` for uv.
+2. When `packageManager` is `uv`, a `pyproject.toml` that defines a `[tool.uv.workspace]` table.
+3. A manifest: `pyproject.toml` (or `requirements.in` for pip and `uv-pip`).
+
+The virtual environment (`.venv` by default) is created in, and dependencies are installed from,
+the located root. The following layouts are supported.
+
+#### Single project
+
+The simplest layout is a repository that is itself a single Python project, with the root
+[registered as a project](<../../(fundamentals)/project.mdx#discovery>). The repository root is the
+dependencies root, and contains the manifest, the lockfile, and the virtual environment.
+
+```text
+./
+├── .moon/
+├── .venv/
+├── src/
+├── pyproject.toml
+└── uv.lock
+```
+
+#### Multiple independent projects
+
+Each project has its own manifest (and optionally a lockfile), so each project is its own
+dependencies root, with its own virtual environment and its own install. This works with every package manager, and is the
+only multi-project layout for pip and Poetry (see [caveats](#caveats)). It also allows each project
+to pin a different Python version through [project overrides](#project-overrides).
+
+```text
+./
+├── .moon/
+├── apps/
+│   └── api/
+│       ├── .venv/
+│       ├── poetry.lock
+│       └── pyproject.toml
+└── packages/
+    └── utils/
+        ├── .venv/
+        ├── poetry.lock
+        └── pyproject.toml
+```
+
+#### uv workspaces
+
+With uv, a root `pyproject.toml` can define a
+[workspace](https://docs.astral.sh/uv/concepts/projects/workspaces/). The directory containing it
+becomes the dependencies root for every member project, and all members share one `uv.lock`, one
+virtual environment at the root, and a single install. Refer to the
+[uv toolchain](./uv.mdx) for how members are matched and installed.
+
+```text
+./
+├── .moon/
+├── .venv/
+├── packages/
+│   ├── api/
+│   │   └── pyproject.toml
+│   └── utils/
+│       └── pyproject.toml
+├── pyproject.toml
+└── uv.lock
+```
+
+Because member projects don't contain a virtual environment, their tasks use the root `.venv`, as
+moon searches upwards from each project for the nearest virtual environment (see
+[commands](#commands)).
+
+## Installation
+
+Enable Python by adding an `unstable_python` entry to
+[`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>), along with an entry for the package
+manager selected with `packageManager`. Configure a
+[`version`](/moon/api/ToolchainPluginConfig#version) for a toolchain to have moon download,
+install, and pin that tool for you, or omit it to use the binary on your `PATH`.
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    unstable_python: {
+      version: "3.13.1",
+      packageManager: "uv",
+    },
+    unstable_uv: {
+      version: "0.8.0",
+    },
+  }}
+/>
+
+The common setups are:
+
+| Setup              | Toolchains                                           | `packageManager` |
+| ------------------ | ---------------------------------------------------- | ---------------- |
+| Python with uv     | `unstable_python`, [`unstable_uv`](./uv.mdx)         | `uv`             |
+| Python with pip    | `unstable_python`, [`unstable_pip`](./pip.mdx)       | `pip`            |
+| Python with Poetry | `unstable_python`, [`unstable_poetry`](./poetry.mdx) | `poetry`         |
+
+pip ships with Python and has no version to install, so an empty `unstable_pip: {}` entry is
+enough to enable it.
+
+<Callout>
+  The toolchain matching `packageManager` must be enabled. Otherwise, moon fails
+  when setting up the environment with an error like "Toolchain unstable_python
+  requires the toolchain unstable_uv, but it has not been configured!".
+</Callout>
+
+If `version` isn't set but your root `.prototools` pins `python`, moon inherits that version
+instead, which is controlled by
+[`versionFromPrototools`](/moon/api/ToolchainPluginConfig#versionfromprototools). The `unstable_`
+prefix is stripped when looking up the tool, so the `python` entry in `.prototools` is used (and
+likewise `uv` and `poetry` for those toolchains).
+
+Alternatively, run [`moon toolchain add`](../../commands/toolchain/add.mdx) for each toolchain, which
+writes the entry for you:
+
+```shell
+# Add Python, and select a package manager when prompted
+$ moon toolchain add unstable_python
+
+# Add the matching package manager
+$ moon toolchain add unstable_uv
+```
+
+When adding `unstable_python`, the package manager is detected from files in the current
+directory: `uv.lock` or `uv.toml` selects `uv`, `poetry.lock` or `poetry.toml` selects `poetry`,
+and `requirements.txt`, `Pipfile`, or `Pipfile.lock` selects `pip`. If none exist, you're
+prompted to choose one. The Python version is detected from a `.python-version` file, and
+otherwise prompted for.
+
+## Configuration
+
+The following settings are configured within the `unstable_python` entry of
+[`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>). The entry also supports the common
+toolchain settings, such as
+[`installDependencies`](/moon/api/ToolchainPluginConfig#installdependencies) and
+[`inheritAliases`](/moon/api/ToolchainPluginConfig#inheritaliases). Arguments for the package
+manager's commands, like `installArgs`, `syncArgs`, and `venvArgs`, are configured on the package
+manager's own toolchain.
+
+- `packageManager` <TypeLabel type="pip | poetry | uv | uv-pip" /> - The package manager used to
+  create the virtual environment and install dependencies. Not set by default, and when not set,
+  moon won't create a virtual environment or install dependencies. Supports the following values:
+  - `pip` - Uses [pip](./pip.mdx). Creates the environment with `python -m venv`, and
+    installs with `python -m pip install`.
+  - `poetry` <VersionLabel version="2.4.0" /> - Uses [Poetry](./poetry.mdx). Creates the
+    environment with `python -m venv`, and installs with `poetry install`.
+  - `uv` - Uses [uv](./uv.mdx). Creates the environment with `uv venv`, and installs with
+    `uv sync`.
+  - `uv-pip` <VersionLabel version="2.3.0" /> - Uses [uv](./uv.mdx) through its pip
+    interface. Creates the environment with `uv venv`, and installs with `uv pip install`. Reads
+    `venvArgs` from `unstable_uv`, and `installArgs` from [`unstable_pip`](./pip.mdx). See
+    [caveats](#caveats) before using it.
+- `venvName` <TypeLabel type="string" /> - Name of the virtual environment directory, created in
+  the dependencies root, and searched for when running commands. Defaults to `.venv`.
+- [`version`](/moon/api/ToolchainPluginConfig#version) <TypeLabel type="string" /> - The version of
+  Python to download and install through proto. When not defined, the `python` binary on your
+  `PATH` is used. Refer to [`version`](/moon/api/ToolchainPluginConfig#version) for more
+  information.
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    unstable_python: {
+      version: "3.13.1",
+      packageManager: "uv",
+      venvName: ".venv",
+    },
+  }}
+/>
+
+### Project overrides
+
+Individual projects can override any of these settings, including `version`, through
+[toolchain overrides](<../../(fundamentals)/project.mdx#overrides>) in their
+[`moon.config`](<../../(fundamentals)/project.mdx>).
+
+<ConfigTabs
+  file="moon"
+  config={{
+    toolchains: {
+      unstable_python: {
+        version: "3.12.8",
+      },
+    },
+  }}
+/>
+
+A project's Python `version` always applies to its own tasks. However, the virtual environment and
+dependency install only use a project's overrides (including overrides for the package manager's
+toolchain) when that project is its own dependencies root. Members of a uv workspace share the
+root's environment, so it's configured with workspace-level settings.
+
+## Tiers
+
+The Python toolchain implements all three tiers of toolchain support: usage detection, ecosystem
+integration, and tool management. The package manager toolchains implement their own, which are
+documented on their pages. Run [`moon toolchain info`](../../commands/toolchain/info.mdx) to inspect
+them.
+
+```shell
+# Show the Python toolchain's settings and supported tiers
+$ moon toolchain info unstable_python
+```
+
+### 1) Usage detection
+
+#### Projects
+
+A project is associated with `unstable_python` when its root contains a `pyproject.toml`,
+`requirements.in`, `requirements.txt`, `constraints.txt`, `pylock.toml`, `Pipfile`,
+`Pipfile.lock`, `.python-version`, a `.venv` directory, or any `poetry.*` or `uv.*` file. Unless
+configured, the project's [`language`](/moon/api/ProjectConfig#language) is also detected as
+`python`.
+
+Because `unstable_python` requires the toolchain matching `packageManager` (see
+[requirements](#requirements)), a Python project is also associated with that package manager's
+toolchain. The toolchains can also be associated explicitly with
+[`toolchains.default`](/moon/api/ProjectToolchainsConfig#default), as described in
+[project toolchains](<../../(fundamentals)/project.mdx#toolchains>).
+
+#### Tasks
+
+A task is associated with `unstable_python` when its command is `python`, `python3`, `python2`,
+`python-3`, `python-2`, `pip`, `poetry`, or `uv`. Tasks that don't match, such as `pytest` or
+`ruff`, inherit the toolchains of their project, unless they configure
+[`toolchains`](/moon/api/TaskConfig#toolchains) explicitly.
+
+This makes it easy to share tasks between every Python project with
+[task inheritance](<../../(fundamentals)/task-inheritance.mdx#scoping-inheritance>). Note that
+[`inheritedBy.toolchains`](/moon/api/InheritedByConfig#toolchains) matches against identifiers
+_without_ the `unstable_` prefix, so use `python` (or `pip`, `poetry`, and `uv`).
+
+<ConfigTabs
+  file=".moon/tasks/python"
+  config={{
+    inheritedBy: {
+      toolchains: "python",
+    },
+    tasks: {
+      lint: {
+        command: "ruff check .",
+      },
+      test: {
+        command: "pytest",
+      },
+    },
+  }}
+/>
+
+#### Commands
+
+For every command that moon runs with the Python toolchain, including tasks and the dependency
+install command, moon searches upwards from the project's root for the nearest virtual environment
+directory (named by `venvName`), and prepends its `bin` directory (`Scripts` on Windows) to
+`PATH`. This is how tasks can run executables installed into the environment, like `pytest`, and
+why `python` resolves to the environment's interpreter.
+
+moon only modifies `PATH`. It doesn't run an activation script or set `VIRTUAL_ENV`, so tools that
+rely on that variable fall back to their own discovery, which typically looks for a `.venv`
+directory.
+
+#### Version detection
+
+When running [`moon toolchain add`](../../commands/toolchain/add.mdx), the Python version is detected
+from a `.python-version` file in the current directory. The uv and Poetry toolchains detect their
+own versions, as described on their pages.
+
+#### Docker
+
+- [`moon docker file`](../../commands/docker/file.mdx) uses `python:<version>` as the default base
+  image, where `<version>` is the configured Python `version`, or `latest` when not configured.
+  Override it with [`docker.file.image`](/moon/api/DockerFileConfig#image).
+- [`moon docker scaffold`](../../commands/docker/scaffold.mdx) copies the manifest, lock, and config
+  files listed in [projects](#projects) into the skeleton, so dependencies can be installed before
+  sources are copied.
+- [`moon docker prune`](../../commands/docker/prune.mdx) <VersionLabel version="2.5.0" /> deletes the
+  virtual environment of each scaffolded project that isn't focused when
+  [`docker.prune.deleteVendorDirectories`](/moon/api/DockerPruneConfig#deletevendordirectories) is
+  enabled. When
+  [`docker.prune.installToolchainDependencies`](/moon/api/DockerPruneConfig#installtoolchaindependencies)
+  is enabled, it then reinstalls production dependencies with the package manager's install
+  command. How production dependencies are selected depends on the package manager, so refer to
+  its page.
+
+### 2) Ecosystem integration
+
+#### Requirements
+
+The Python toolchains declare requirements on each other, which moon uses to expand the toolchains
+of projects and tasks, and to order setup actions:
+
+- `unstable_python` requires the toolchain matching `packageManager`, for example `unstable_uv`,
+  to be set up before the virtual environment is created.
+- `unstable_pip`, `unstable_poetry`, and `unstable_uv` each require `unstable_python` to be set up
+  before themselves.
+
+In practice, before a Python task runs, moon:
+
+1. Installs Python, if a version is configured.
+2. Installs the package manager, if a version is configured. This happens after Python, as some
+   package managers (like Poetry) need Python to install.
+3. Creates the virtual environment (see [environment setup](#environment-setup)).
+4. Installs dependencies (see [dependency installation](#dependency-installation)).
+5. Runs the task.
+
+#### Project relationships
+
+When building the [project graph](<../../(fundamentals)/project-graph.mdx>), the toolchain reads the
+`[project]` table of each project's `pyproject.toml`:
+
+- `name` becomes the project's [alias](<../../(fundamentals)/project.mdx#aliases>), so the package
+  name can be used anywhere a project ID can. Disable this with
+  [`inheritAliases`](/moon/api/ToolchainPluginConfig#inheritaliases).
+- Entries in `dependencies` and `optional-dependencies` that name another project in the
+  workspace become implicit `production`
+  [dependencies](<../../(fundamentals)/project.mdx#dependencies>). Names are compared using their
+  normalized form (PEP 503), so `my_utils`, `my-utils`, and `My.Utils` all match.
+
+Only requirements _without_ a version specifier or URL are linked, as these are the requirements
+that refer to a local package, like uv workspace members. For example, with the following
+manifest, `utils` becomes a dependency of the project, while `click` (an external package) and
+`models` (versioned) are ignored.
+
+```toml title="packages/api/pyproject.toml"
+[project]
+name = "api"
+version = "1.0.0"
+dependencies = ["utils", "models>=2.0", "click"]
+
+[tool.uv.sources]
+utils = { workspace = true }
+```
+
+The `pyproject.toml` files that are read are also tracked, so moon rebuilds its cached project
+graph whenever one changes.
+
+#### Dependency installation
+
+For each project, moon locates the dependencies root (see
+[repository structure](#repository-structure)). If the project is that root, or a member of a uv
+workspace rooted there, an `InstallDependencies` [action](<../../(fundamentals)/action.mdx>) runs
+before the project's tasks. Projects that resolve to the same root share a single action.
+
+The action runs the install command of the selected [`packageManager`](#configuration) from the
+dependencies root, with arguments taken from the package manager's toolchain. Refer to the
+[pip](./pip.mdx), [Poetry](./poetry.mdx), and [uv](./uv.mdx) pages for the
+exact commands and arguments.
+
+The action is skipped when nothing has changed since the last install, and re-runs when the
+lockfile's contents change, when dependencies in a manifest change, or when the `unstable_python`
+settings change. Nothing else is tracked, so see [caveats](#caveats) for changes that don't trigger
+a reinstall. To disable automatic installs, set
+[`installDependencies`](/moon/api/ToolchainPluginConfig#installdependencies) to `false` for
+`unstable_python`.
+
+#### Environment setup
+
+Before dependencies are installed, a `SetupEnvironment` action creates the virtual environment in
+the dependencies root, using `venvName` as its directory name. It runs `python -m venv` for pip and
+Poetry, or `uv venv` for uv and `uv-pip`, with the `venvArgs` of the package manager's toolchain
+(`unstable_uv` for `uv-pip`). [`moon setup`](../../commands/setup.mdx) also creates the environment
+when the dependencies root is the workspace root.
+
+If the directory already exists, the environment is left as-is, to avoid the overhead of
+recreating it. To recreate it instead, add `--clear` to the relevant `venvArgs`. The action itself
+only runs when its configuration changes, so with `--clear`, changing the `unstable_python`
+settings (such as its `version`) rebuilds the environment and reinstalls dependencies.
+
+<Callout type="warning">
+  Adding `--clear`, or changing any other `venvArgs` while it's set, also
+  rebuilds the environment, but doesn't reinstall dependencies, because package
+  manager settings aren't tracked by the install action. Run the package
+  manager's install command once afterwards.
+</Callout>
+
+#### Task hashing
+
+A Python task's hash includes the configured Python version, and the project's dependencies. Each
+dependency with a version requirement in the project's `pyproject.toml` (the `[project]`
+`dependencies` field) or `requirements.in` is resolved against the lockfile in the dependencies
+root, which can be `uv.lock`, `poetry.lock`, `pylock.toml`, or `requirements.txt`. The locked
+checksum or version is then hashed, so updating a locked dependency only invalidates the tasks of
+projects that depend on it. Dependencies without a version requirement aren't included.
+
+Lockfiles are only parsed when [`hasher.optimization`](/moon/api/HasherConfig#optimization) in
+[`.moon/workspace.config`](<../../(fundamentals)/workspace.mdx>) is `accuracy` (the default).
+Otherwise, the version requirement from the manifest is hashed instead.
+
+### 3) Tool management
+
+When a [`version`](/moon/api/ToolchainPluginConfig#version) is configured, moon installs Python
+with proto in a `SetupToolchain` action, which runs before any task that uses the Python
+toolchain, and during [`moon setup`](../../commands/setup.mdx). If the version is already installed,
+nothing is downloaded.
+
+- Available versions are loaded from the Git tags of the
+  [python/cpython](https://github.com/python/cpython) repository.
+- Pre-built distributions are downloaded from
+  [python-build-standalone](https://github.com/astral-sh/python-build-standalone), and include
+  pip. moon doesn't build Python from source, so the configured version must have a pre-built
+  distribution for your platform. Canary releases are not supported.
+
+For tasks (and toolchain commands) that use the Python toolchain, moon adds the installation's
+executables directory to `PATH`, and sets the `PROTO_PYTHON_VERSION` environment variable to the
+configured version. Because the virtual environment's `bin` directory is prepended first, its
+interpreter takes precedence over the one installed by proto. To use the `python` binary on your
+`PATH` instead, set `MOON_TOOLCHAIN_FORCE_GLOBALS=python`.
+
+The toolchain doesn't perform any additional setup or teardown beyond installing Python.
+[`moon teardown`](../../commands/teardown.mdx) uninstalls the configured version from proto, but
+doesn't remove virtual environments. Installing uv and Poetry is handled by their own toolchains.
+
+## Caveats
+
+- **Unstable identifiers** - Configuration keys use the `unstable_` prefix, while
+  [`inheritedBy.toolchains`](/moon/api/InheritedByConfig#toolchains) in
+  [`.moon/tasks/*.config`](<../../(fundamentals)/task-inheritance.mdx>) matches the unprefixed
+  identifiers (`python`, `uv`, etc).
+- **Two toolchains required** - `unstable_python` and the toolchain matching `packageManager` must
+  both be enabled.
+- **`uv-pip` requirement** - The toolchain derives its requirement from the `packageManager` value,
+  so `uv-pip` requires a toolchain named `unstable_uv-pip`, which doesn't exist. As a result, moon
+  fails with a "requires the toolchain unstable_uv-pip" error when setting up the environment. Use
+  `uv` or `pip` until this is resolved.
+- **No workspaces for pip and Poetry** - Only uv workspaces are supported. If a pip or Poetry
+  lockfile exists in a parent directory, such as a root `requirements.txt`, nested projects without
+  their own lockfile resolve to that parent directory, and moon will _not_ install dependencies for
+  them. Give each project its own lockfile, or make the directory with the lockfile a moon project
+  itself.
+- **Stale virtual environments** - An existing virtual environment isn't recreated by default, even
+  when the Python `version` changes. Add `--clear` to `venvArgs` to recreate it whenever the
+  configuration changes.
+- **Deleting the virtual environment doesn't reinstall** - moon remembers that the environment was
+  set up and dependencies were installed for the current configuration, so deleting the directory
+  doesn't cause either action to run again. Run the package manager's install command yourself, or
+  reset moon's cache with [`moon clean --all`](../../commands/clean.mdx).
+- **Package manager settings don't trigger installs** - Only the `unstable_python` settings, the
+  lockfile, and manifest dependencies are tracked by the install action. Changing a package
+  manager's arguments (like `installArgs` or `syncArgs`) takes effect the next time dependencies
+  are installed, but doesn't trigger an install on its own.
+- **Only one lockfile is tracked** - The install action only tracks the first of `pylock.toml`,
+  `constraints.txt`, `requirements.txt`, `Pipfile.lock`, `poetry.lock`, and `uv.lock` that exists
+  in the dependencies root. If another of these files sits beside your package manager's lockfile
+  (like an exported `requirements.txt` next to `poetry.lock`), changes to the actual lockfile won't
+  trigger a reinstall.
+- **Custom `venvName`** - moon creates and searches for the configured name, but uv and Poetry look
+  for `.venv` by default, and moon doesn't set `VIRTUAL_ENV` for them. When changing it, configure
+  those tools to match (for example, with uv's `UV_PROJECT_ENVIRONMENT` environment variable).
+- **PEP 621 manifests only** - Only the standard `[project]` table of `pyproject.toml` is read.
+  Dependencies declared in `[tool.poetry.dependencies]` (Poetry 1 style), `[dependency-groups]`,
+  or `[tool.uv] dev-dependencies` aren't used for project relationships or task hashing.
+- **Versioned local requirements** - Requirements with a version specifier, like `utils>=1.0`,
+  don't create project relationships. Declare the relationship with
+  [`dependsOn`](<../../(fundamentals)/project.mdx#dependencies>) if needed.
