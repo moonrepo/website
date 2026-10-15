@@ -21,7 +21,7 @@ The page should use the following structure:
 title: <TITLE>
 ---
 
-DESCRIPTION
+<DESCRIPTION>
 
 ## Prerequisites
 
@@ -45,7 +45,7 @@ DESCRIPTION
 
 ## Core features
 
-<DESCRIBE CORE FEATURES, DERIVED FROM CONFIG, AND USED BY TIERS. FOR EXAMPLE "Project refernces for TypeScript">
+<DESCRIBE CORE FEATURES AS SECTIONS, DERIVED FROM CONFIG, AND USED BY TIERS. FOR EXAMPLE "Project refernces for TypeScript">
 
 ## Tier 1: Syncing and usage detection
 
