@@ -5,39 +5,41 @@ title: Rust
 import { ConfigTabs } from "@/components/ConfigTabs";
 import { TypeLabel } from "@/components/TypeLabel";
 
-The Rust toolchain integrates [Rust](https://www.rust-lang.org) and
-[Cargo](https://doc.rust-lang.org/cargo/) into moon. Once enabled, moon knows which projects and
-tasks are Rust based, infers project aliases and relationships from `Cargo.toml` manifests, factors
-locked crate versions into task hashes, and keeps your environment ready by installing Rust
-toolchains (through rustup), components, targets, and Cargo binaries on demand.
+The Rust toolchain integrates [Rust](https://www.rust-lang.org) and [Cargo](https://doc.rust-lang.org/cargo/) into moon.
+With it enabled, moon:
 
-Enable it for any workspace that contains Rust code, whether that's a single binary crate, a Cargo
-workspace with dozens of members, or a polyglot monorepo where Rust is one language of many.
+- Detects which projects and tasks use Rust, and infers project aliases and dependencies from `Cargo.toml` manifests.
+- Includes the crate versions locked in `Cargo.lock` in task hashes, so upgrading a crate only invalidates the projects that
+  use it.
+- Installs Rust toolchains through rustup, and keeps `rust-toolchain.toml` and the minimum supported Rust version in sync
+  with the configured version.
+- Installs rustup components, targets, and Cargo binaries on demand.
+- Scaffolds and prunes Docker images for Rust projects.
+
+Enable it whenever your repository contains Rust code, whether that's a single binary crate, a Cargo workspace with dozens of
+members, or a polyglot monorepo where Rust is one language of many.
 
 ## Prerequisites
 
-- **rustup** - Manages Rust toolchains. It's required when a [`version`](#installation) is
-  configured (moon installs rustup for you if it's missing), and by the `components` and `targets`
-  settings, which run `rustup` directly.
-- **cargo** - Used for the few commands the toolchain runs itself: `cargo generate-lockfile`,
-  `cargo install` and `cargo binstall` for `bins`, and `cargo metadata` when pruning Docker images.
+Before enabling the Rust toolchain, make sure you have the following:
 
-When `version` is _not_ configured, moon doesn't install anything, and tasks use whichever `cargo`,
-`rustc`, and friends are already on your `PATH`. In that case, Rust must be installed beforehand,
-typically with [rustup](https://rustup.rs). The toolchain doesn't enforce a minimum Rust version.
+- **Rust** - When [`version`](/moon/api/ToolchainPluginConfig#version) is configured, moon installs Rust for you (with
+  rustup, which is installed first if it's missing). Otherwise, a `cargo` binary must be available on your `PATH`, typically
+  installed with [rustup](https://rustup.rs). Besides running tasks, moon runs `cargo` itself to generate lockfiles, install
+  [`bins`](#cargo-binaries), and read package metadata when pruning Docker images. The toolchain doesn't require a minimum
+  Rust version.
+- **rustup** - Required by the [`components` and `targets`](#components-and-targets) settings, which run `rustup` directly.
 
 ### Repository structure
 
-The toolchain works with all of Cargo's standard layouts. Note that crates only become moon
-[projects](<../(fundamentals)/project.mdx>) when they're matched by the
-[`projects`](/moon/api/WorkspaceConfig#projects) setting in
-[`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>). The toolchain does not discover Cargo
-workspace members on its own.
+The Rust toolchain supports the following repository layouts. Directories only become moon
+[projects](<../(fundamentals)/project.mdx>) when they're matched by the [`projects`](/moon/api/WorkspaceConfig#projects)
+setting in [`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>). The toolchain doesn't discover Cargo workspace
+members on its own.
 
 #### Single crate
 
-A single package at the root of the repository. The crate is both the project and the
-[dependencies root](#dependencies-root).
+A single package at the root of the repository.
 
 ```text
 ./
@@ -48,11 +50,12 @@ A single package at the root of the repository. The crate is both the project an
 └── Cargo.toml
 ```
 
+In this layout, the crate is both the project and its own dependencies root.
+
 #### Cargo workspace
 
-The most common layout for monorepos. The root `Cargo.toml` is a virtual manifest that only defines
-a `[workspace]` table, and each member crate is a moon project. The root is the dependencies root
-for every member, and they all share the root `Cargo.lock` and `target` directory.
+The most common layout for monorepos, where the root `Cargo.toml` is a virtual manifest that only defines a `[workspace]`
+table, and each member crate is a moon project.
 
 ```text
 ./
@@ -71,6 +74,9 @@ for every member, and they all share the root `Cargo.lock` and `target` director
 └── Cargo.toml
 ```
 
+In this layout, the root is the dependencies root for every member, and they all share the root `Cargo.lock` and `target`
+directory.
+
 <ConfigTabs
   file=".moon/workspace"
   config={{
@@ -78,15 +84,13 @@ for every member, and they all share the root `Cargo.lock` and `target` director
   }}
 />
 
-If the root `Cargo.toml` defines both `[package]` and `[workspace]` tables (a root package with
-members), it's treated the same way. Map the root crate to a project as well if you want to run
-tasks against it.
+If the root `Cargo.toml` defines both `[package]` and `[workspace]` tables (a root package with members), it's treated the
+same way. Map the root crate to a project as well if you want to run tasks against it.
 
 #### Nested crates and workspaces
 
-Crates and Cargo workspaces don't need to live at the repository root. moon resolves the
-dependencies root for each project separately, so independent crates (each with their own
-`Cargo.lock`) can live alongside other ecosystems in a polyglot monorepo.
+Crates and Cargo workspaces in subdirectories, where independent crates (each with their own `Cargo.lock`) live alongside
+other ecosystems in a polyglot monorepo.
 
 ```text
 ./
@@ -109,39 +113,28 @@ dependencies root for each project separately, so independent crates (each with 
     └── Cargo.toml
 ```
 
-Here `apps/server` is its own dependencies root, while `tools/cli` and `tools/codegen` share the
-`tools` Cargo workspace.
+In this layout, `apps/server` is its own dependencies root, while `tools/cli` and `tools/codegen` share the `tools` Cargo
+workspace.
+
+See [locating dependencies root](#locating-dependencies-root) for how the root is found.
 
 ## Installation
 
-The Rust toolchain is built into moon, so no [`plugin`](/moon/api/ToolchainPluginConfig#plugin)
-locator is required. Enable it by adding a
-`rust` entry to [`.moon/toolchains.config`](<../(fundamentals)/toolchain.mdx>).
-
-<ConfigTabs
-  file=".moon/toolchains"
-  config={{
-    rust: {},
-  }}
-/>
-
-Alternatively, run [`moon toolchain add`](../commands/toolchain/add.mdx), which writes the entry for
-you. It pre-fills the version from a `rust-toolchain.toml` (or legacy `rust-toolchain`) file in the
-current directory, and asks whether to enable `syncToolchainConfig`.
+The Rust toolchain is built into moon, so no [`plugin`](/moon/api/ToolchainPluginConfig#plugin) locator is required. Enable
+it by adding a `rust` entry to [`.moon/toolchains.config`](<../(fundamentals)/toolchain.mdx>), or by running
+[`moon toolchain add`](../commands/toolchain/add.mdx), which writes the entry for you.
 
 ```shell
-# Add the toolchain, answering each prompt
+# Add the Rust toolchain, answering each prompt
 $ moon toolchain add rust
 
-# Add the toolchain with default settings
+# Add the Rust toolchain with default settings
 $ moon toolchain add rust --yes
 ```
 
-To have moon install and manage Rust for you, pin a [`version`](/moon/api/ToolchainPluginConfig#version).
-It accepts a version (`1.90.0`), or a rustup channel like `stable`, `beta`, `nightly`, or a dated
-nightly (`nightly-2025-06-01`). If `version` isn't set, moon inherits the `rust` version from the
-root `.prototools` file, which can be controlled with
-[`versionFromPrototools`](/moon/api/ToolchainPluginConfig#versionfromprototools).
+When adding the toolchain, moon detects the version from `rust-toolchain.toml` or `rust-toolchain` (see
+[version detection](#version-detection)), and otherwise prompts for one. It also asks whether to enable
+[`syncToolchainConfig`](#syncing-rust-toolchaintoml), which `--yes` enables and `--minimal` skips.
 
 <ConfigTabs
   file=".moon/toolchains"
@@ -152,17 +145,101 @@ root `.prototools` file, which can be controlled with
   }}
 />
 
+Configure a [`version`](/moon/api/ToolchainPluginConfig#version) to have moon download and install Rust for you (see
+[tool management](#tier-3-tool-management)). If `version` isn't set, moon inherits the `rust` version pinned in the root
+`.prototools` file, which is controlled by [`versionFromPrototools`](/moon/api/ToolchainPluginConfig#versionfromprototools).
+Otherwise, the `cargo` binary on your `PATH` is used.
+
+## Configuration
+
+The following settings are available under the `rust` entry of
+[`.moon/toolchains.config`](<../(fundamentals)/toolchain.mdx>).
+
+- `addMsrvConstraint` <TypeLabel type="boolean" /> - When `version` is also defined, writes it as the minimum supported Rust
+  version (MSRV) in the dependencies root's `Cargo.toml`. Defaults to `false`. See
+  [minimum supported Rust version](#minimum-supported-rust-version).
+- `bins` <TypeLabel type="(string | { bin: string, force?: boolean, local?: boolean })[]" /> - A list of Cargo binaries to
+  install globally with `cargo-binstall`, such as `cargo-nextest` or `cargo-insta`. An entry can be a crate name, optionally
+  with a version (`cargo-nextest@0.9.100`), or an object with the following fields. Defaults to `[]`. See
+  [Cargo binaries](#cargo-binaries).
+  - `bin` <TypeLabel type="string" /> - The crate name, optionally with a version. Required.
+  - `force` <TypeLabel type="boolean" /> - Always install the binary, even if it already exists. Defaults to `false`.
+  - `local` <TypeLabel type="boolean" /> - Only install the binary locally, and skip it in CI. Defaults to `false`.
+- `binstallVersion` <TypeLabel type="string" /> - The fully-qualified version of `cargo-binstall` to install when it's
+  missing. Not set by default, so the latest version is installed. See [Cargo binaries](#cargo-binaries).
+- `components` <TypeLabel type="string[]" /> - A list of rustup components to install, like `clippy`, `rustfmt`, or
+  `rust-src`. Defaults to `[]`. See [components and targets](#components-and-targets).
+- `syncToolchainConfig` <TypeLabel type="boolean" /> - When `version` is also defined, writes it to the `toolchain.channel`
+  field in `rust-toolchain.toml`. Defaults to `false`. See [syncing `rust-toolchain.toml`](#syncing-rust-toolchaintoml).
+- `targets` <TypeLabel type="string[]" /> - A list of target triples to install with rustup, like `wasm32-unknown-unknown`
+  or `x86_64-unknown-linux-musl`. Defaults to `[]`. See [components and targets](#components-and-targets).
+- [`version`](/moon/api/ToolchainPluginConfig#version) <TypeLabel type="string" /> - The version of Rust to download and
+  install through proto. When not defined, the `cargo` binary on your `PATH` is used. Accepts a Rust release or a rustup
+  channel (see [installing with proto](#installing-with-proto)).
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    rust: {
+      version: "1.90.0",
+      syncToolchainConfig: true,
+      components: ["clippy", "rustfmt"],
+      targets: ["wasm32-unknown-unknown"],
+      bins: ["cargo-nextest", { bin: "cargo-insta", local: true }],
+    },
+  }}
+/>
+
+The entry also supports shared settings, like
+[`installDependencies`](/moon/api/ToolchainPluginConfig#installdependencies) and
+[`inheritAliases`](/moon/api/ToolchainPluginConfig#inheritaliases).
+
+```shell
+# Show the toolchain's settings and supported APIs
+$ moon toolchain info rust
+```
+
+### Project overrides
+
+Projects can override these settings with the `rust` entry of the [`toolchains`](/moon/api/ProjectConfig#toolchains) setting
+in their [`moon.config`](<../(fundamentals)/project.mdx>) (see
+[project toolchain overrides](<../(fundamentals)/project.mdx#overrides>)). Project settings are merged into the workspace
+settings: objects are merged key by key, while lists and other values replace the workspace value. Only `version` and the
+settings listed above can be overridden; shared settings like `installDependencies` are always read from the workspace.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    toolchains: {
+      rust: {
+        version: "1.89.0",
+        targets: ["wasm32-unknown-unknown"],
+      },
+    },
+  }}
+/>
+
+A `version` override installs that version of Rust for the project, and uses it for the project's tasks and their hashes. As
+with the workspace `version`, rustup decides which toolchain actually runs, so pair the override with a `rust-toolchain.toml`
+in the project (see [caveats](#caveats)).
+
+Installing dependencies and setting up the environment only use a project's overrides when the project is its own
+dependencies root. Projects that share a root, like workspace members, are installed with the workspace settings.
+
+Set the entry to `false` to disable the Rust toolchain for the project, even when it's detected.
+
+## Core features
+
 ### Syncing `rust-toolchain.toml`
 
-Tasks run `cargo`, `rustc`, and friends through the rustup proxies in Cargo's bin directory
-(`~/.cargo/bin`), which means rustup decides which installed toolchain actually runs. rustup uses
-the closest `rust-toolchain.toml` file (searching upwards from the working directory), and otherwise
-falls back to your default toolchain. moon installs the configured `version`, but doesn't read
-`rust-toolchain.toml` when running tasks, so the two can drift apart.
+Writes the configured `version` to the `rust-toolchain.toml` file in the dependencies root, so rustup, your editor, and
+anyone running Cargo directly use the same toolchain as moon. Enable it with the `syncToolchainConfig` setting, and it runs
+when moon [sets up the environment](#setting-up-the-environment), before installing dependencies.
 
-To keep them aligned, enable `syncToolchainConfig`. moon writes `version` to the `toolchain.channel`
-field of `rust-toolchain.toml` in the dependencies root, so moon, rustup, your editor, and anyone
-running Cargo directly all use the same toolchain.
+Tasks run `cargo`, `rustc`, and friends through the rustup proxies in Cargo's bin directory (`~/.cargo/bin`), which means
+rustup decides which installed toolchain actually runs. rustup uses the closest `rust-toolchain.toml` file (searching upwards
+from the working directory), and otherwise falls back to your default toolchain. moon installs the configured `version`, but
+doesn't read `rust-toolchain.toml` when running tasks, so the two can drift apart without this setting.
 
 <ConfigTabs
   file=".moon/toolchains"
@@ -179,136 +256,166 @@ running Cargo directly all use the same toolchain.
 channel = "1.90.0"
 ```
 
+When enabled, a legacy `rust-toolchain` file in the dependencies root is also converted to `rust-toolchain.toml`. Its
+contents become the `toolchain.channel` field, or the file is renamed if it already contains a `[toolchain]` table.
+
 <Callout type="warning">
   moon updates an existing `rust-toolchain.toml` (or converts a legacy
-  `rust-toolchain` file), but does not create one from scratch. If neither file
-  exists, environment setup fails when reading it, so create a
-  `rust-toolchain.toml` with an empty `[toolchain]` table before enabling this
-  setting.
+  `rust-toolchain` file), but doesn't create one from scratch. If neither file
+  exists when `version` is configured, setting up the environment fails, so
+  create a `rust-toolchain.toml` with an empty `[toolchain]` table before
+  enabling this setting.
 </Callout>
 
-## Configuration
+### Minimum supported Rust version
 
-Settings are defined within the `rust` entry of
-[`.moon/toolchains.config`](<../(fundamentals)/toolchain.mdx>), alongside the common
-[toolchain settings](/moon/api/ToolchainPluginConfig).
+Writes the configured `version` as the [minimum supported Rust version](https://doc.rust-lang.org/cargo/reference/rust-version.html)
+(MSRV) in the dependencies root's `Cargo.toml`, so Cargo reports a clear error when someone builds with an older toolchain.
+Enable it with the `addMsrvConstraint` setting (it also requires `version`), and it runs when moon
+[sets up the environment](#setting-up-the-environment), before installing dependencies.
 
-- `addMsrvConstraint` <TypeLabel type="boolean" /> - When `version` is also defined, writes it as
-  the minimum supported Rust version (MSRV) in the dependencies root's `Cargo.toml`: to
-  `workspace.package.rust-version` for a Cargo workspace (members can inherit it with
-  `rust-version.workspace = true`), or `package.rust-version` for a standalone crate. The value is
-  written as configured, so use a fully-qualified version. Defaults to `false`.
-- `bins` <TypeLabel type="(string | { bin: string, force?: boolean, local?: boolean })[]" /> - A
-  list of Cargo binaries to install globally with
-  [`cargo-binstall`](https://github.com/cargo-bins/cargo-binstall), such as `cargo-nextest` or
-  `cargo-insta`. An entry can be a crate name, optionally with a version (`cargo-nextest@0.9.100`),
-  or an object with the following fields. Defaults to `[]`.
-  - `bin` <TypeLabel type="string" /> - The crate name, optionally with a version. Required.
-  - `force` <TypeLabel type="boolean" /> - Always install the binary, even if it already exists.
-    Defaults to `false`.
-  - `local` <TypeLabel type="boolean" /> - Only install the binary locally, and skip it in CI.
-    Defaults to `false`.
-- `binstallVersion` <TypeLabel type="string" /> - The fully-qualified version of `cargo-binstall` to
-  install when it's missing. Defaults to the latest version.
-- `components` <TypeLabel type="string[]" /> - A list of
-  [rustup components](https://rust-lang.github.io/rustup/concepts/components.html) to install, like
-  `clippy`, `rustfmt`, or `rust-src`. Defaults to `[]`.
-- `syncToolchainConfig` <TypeLabel type="boolean" /> - When `version` is also defined, writes it to
-  the `toolchain.channel` field in `rust-toolchain.toml`. When enabled, a legacy `rust-toolchain`
-  file is also converted to `rust-toolchain.toml`. Defaults to `false`.
-- `targets` <TypeLabel type="string[]" /> - A list of
-  [target triples](https://doc.rust-lang.org/rustc/platform-support.html) to install with rustup,
-  like `wasm32-unknown-unknown` or `x86_64-unknown-linux-musl`. Defaults to `[]`.
-- [`version`](/moon/api/ToolchainPluginConfig#version) <TypeLabel type="string" /> - The Rust version or channel to install
-  with rustup. When not defined, Rust is not managed by moon.
+- For a Cargo workspace, the version is written to `workspace.package.rust-version`, which members can inherit with
+  `rust-version.workspace = true`.
+- For a standalone crate, or a root package that doesn't inherit `rust-version` from the workspace, the version is written
+  to `package.rust-version`.
+
+The value is written without being resolved, so use a fully-qualified version like `1.90.0`, not a partial version or a
+channel.
 
 <ConfigTabs
   file=".moon/toolchains"
   config={{
     rust: {
       version: "1.90.0",
-      syncToolchainConfig: true,
-      components: ["clippy", "rustfmt"],
-      targets: ["wasm32-unknown-unknown"],
-      bins: ["cargo-nextest", { bin: "cargo-insta", local: true }],
+      addMsrvConstraint: true,
     },
   }}
 />
 
-## Tiers
+```toml title="Cargo.toml"
+[workspace]
+members = ["crates/*"]
 
-The Rust toolchain supports all three tiers. Run
-[`moon toolchain info`](../commands/toolchain/info.mdx) to inspect its settings and the functions it
-implements.
-
-```shell
-# Show the toolchain's settings and supported tiers
-$ moon toolchain info rust
+[workspace.package]
+rust-version = "1.90.0"
 ```
 
-### 1) Usage detection
+### Components and targets
 
-#### Projects
+Installs [rustup components](https://rust-lang.github.io/rustup/concepts/components.html), like `clippy` and `rustfmt`, and
+[compilation targets](https://doc.rust-lang.org/rustc/platform-support.html), like `wasm32-unknown-unknown`, so every machine
+has the tools your tasks expect. Enable it with the `components` and `targets` settings, and it runs when moon
+[sets up the environment](#setting-up-the-environment), before installing dependencies.
 
-A project is associated with the `rust` toolchain when its root directory contains any of the
-following files, and when the project doesn't configure a
-[`language`](/moon/api/ProjectConfig#language), it's inferred as `rust`. Projects that explicitly
-set `language` to `rust` are associated as well.
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    rust: {
+      components: ["clippy", "rustfmt", "rust-src"],
+      targets: ["wasm32-unknown-unknown"],
+    },
+  }}
+/>
 
-- `Cargo.toml` or `Cargo.lock`
-- `rust-toolchain.toml` or `rust-toolchain`
-- A `.cargo/*.toml` file, like `.cargo/config.toml`
+moon runs `rustup component add` and `rustup target add` in the dependencies root, so they're added to whichever toolchain
+rustup resolves there. This is another reason to enable [syncing `rust-toolchain.toml`](#syncing-rust-toolchaintoml).
 
-Refer to the [project toolchains](<../(fundamentals)/project.mdx#toolchains>) docs for how detected
-toolchains combine with explicitly configured ones.
+### Cargo binaries
 
-#### Tasks
+Installs Cargo binaries, like `cargo-nextest` or `cargo-insta`, into Cargo's bin directory with
+[`cargo-binstall`](https://github.com/cargo-bins/cargo-binstall), which downloads prebuilt binaries instead of compiling
+them. Enable it with the `bins` setting, and it runs when moon [sets up the environment](#setting-up-the-environment), before
+installing dependencies.
 
-A task is associated with the `rust` toolchain when its command is `cargo`, `rustc`, `rustdoc`,
-`rustfmt`, or `rustup`. All other tasks inherit their project's toolchains, so a task like
-`nextest run` within a Rust project still runs with the Rust toolchain. Refer to the
-[task toolchains](<../(fundamentals)/task.mdx#toolchains>) docs for more information.
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    rust: {
+      bins: ["cargo-nextest@0.9.100", { bin: "cargo-insta", local: true }],
+    },
+  }}
+/>
 
-#### Version detection
+- If `cargo-binstall` isn't in Cargo's bin directory yet, moon first installs it with
+  `cargo install cargo-binstall --force --locked`, pinned to `binstallVersion` when set.
+- Binaries are then installed with `cargo binstall --no-confirm`.
+- Binaries that already exist in Cargo's bin directory are skipped, unless `force` is enabled. Binaries marked as `local`
+  are skipped in CI.
 
-When running [`moon toolchain add`](../commands/toolchain/add.mdx), the version is detected from the
-`toolchain.channel` field in `rust-toolchain.toml`, or the contents of a legacy `rust-toolchain`
-file.
+Installed `cargo-<name>` binaries can also be run as task commands without the `cargo-` prefix (see
+[extending tasks](#extending-tasks)).
 
-#### Docker
+## Tier 1: Syncing and usage detection
 
-- [`moon docker scaffold`](../commands/docker/scaffold.mdx) - Copies `Cargo.toml`, `Cargo.lock`,
-  `rust-toolchain.toml`, `rust-toolchain`, and `.cargo/*.toml` files into the configs skeleton, and
-  never copies `target` directories. Because Cargo refuses to load a manifest without a build
-  target, empty `src/lib.rs` and `src/main.rs` placeholder files are also created for each Rust
-  project in the configs skeleton, so Cargo commands work before sources are copied.
+Tier 1 makes moon aware of Rust: which projects and tasks use it, which files belong to it, and how it takes part in syncing
+and Docker builds.
+
+### Project and task detection
+
+A project is associated with the Rust toolchain when its root directory contains any of the following files: `Cargo.toml`,
+`Cargo.lock`, `rust-toolchain.toml`, `rust-toolchain`, or a `.cargo/*.toml` file (like `.cargo/config.toml`). Unless the
+project configures a [`language`](/moon/api/ProjectConfig#language), its language is detected as `rust`. Projects that set
+`language` to `rust` are associated with the Rust toolchain as well.
+
+A task is associated with the Rust toolchain when its command (or the first word of its script) is `cargo`, `rustc`,
+`rustdoc`, `rustfmt`, or `rustup`. Tasks that don't match inherit their project's toolchains, so a task like `nextest run` in
+a Rust project still uses the Rust toolchain.
+
+Detection adds to explicit configuration: [`toolchains.default`](/moon/api/ProjectToolchainsConfig#default) adds toolchains
+to a project, and setting `toolchains.rust` to `false` removes one (see
+[project toolchains](<../(fundamentals)/project.mdx#toolchains>)). Tasks that configure
+[`toolchains`](/moon/api/TaskConfig#toolchains) skip detection entirely.
+
+### Docker integration
+
+- [`moon docker scaffold`](../commands/docker/scaffold.mdx) - Copies `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`,
+  `rust-toolchain`, and `.cargo/*.toml` files from the workspace root and the root of each project into the skeleton, so
+  dependencies can be installed before sources are copied. `target` directories are never copied. Because Cargo refuses to
+  load a manifest without a build target, empty `src/lib.rs` and `src/main.rs` placeholder files are also created for each
+  Rust project in the configs skeleton, so Cargo commands work before sources are copied.
+- [`moon docker file`](../commands/docker/file.mdx) - Uses `rust:<version>` (or `rust:latest` when no version is configured)
+  as the default base image, unless [`docker.file.image`](/moon/api/DockerFileConfig#image) is configured.
 - [`moon docker prune`](../commands/docker/prune.mdx) - When
-  [`docker.prune.deleteVendorDirectories`](/moon/api/DockerPruneConfig#deletevendordirectories) is
-  enabled (the default), deletes the `target` directory in the dependencies root to shrink the
-  image. Binaries built by the workspace's packages (found with `cargo metadata`) in
-  `target/release` and `target/debug` are preserved, so the image can still run them.
-- [`moon docker file`](../commands/docker/file.mdx) - Defaults the base image to `rust:<version>`
-  (or `rust:latest` when no version is configured), unless
-  [`docker.file.image`](/moon/api/DockerFileConfig#image) is set.
+  [`docker.prune.deleteVendorDirectories`](/moon/api/DockerPruneConfig#deletevendordirectories) is enabled (the default),
+  deletes the `target` directory in the dependencies root to shrink the image. Binaries built by the workspace's packages
+  (found with `cargo metadata`) in `target/release` and `target/debug` are preserved, so the image can still run them. Then,
+  when [`docker.prune.installToolchainDependencies`](/moon/api/DockerPruneConfig#installtoolchaindependencies) is enabled
+  (the default), moon runs `cargo generate-lockfile` if the dependencies root has no `Cargo.lock`. Cargo has no
+  production-only install, so nothing else runs.
 
-### 2) Ecosystem integration
+### Version detection
 
-#### Project relationships
+When running [`moon toolchain add`](../commands/toolchain/add.mdx), moon detects the Rust version from the following files in
+the current directory, and uses the first match:
 
-For every project with a `Cargo.toml` that defines a `[package]` table, moon extracts the following
-from the manifest. Manifests are also tracked by the project graph cache, so editing one rebuilds
-the graph.
+1. `rust-toolchain.toml` - The `toolchain.channel` field.
+2. `rust-toolchain` - The file's contents, in the legacy plain text format.
 
-- **Alias** - The `package.name` becomes the project's [alias](<../(fundamentals)/project.mdx#aliases>),
-  so a crate named `api_client` can be referenced as `api_client` wherever a project ID is accepted.
-  Disable this with [`inheritAliases`](/moon/api/ToolchainPluginConfig#inheritaliases).
-- **Dependencies** - Local `path` dependencies on other crates that are moon projects become
-  implicit [project dependencies](<../(fundamentals)/project.mdx#dependencies>), scoped by the table
-  they're declared in: `[dependencies]` as `production`, `[dev-dependencies]` as `development`, and
-  `[build-dependencies]` as `build`. Registry and git dependencies are ignored.
+These files are only read when adding the toolchain. When running tasks, moon uses the configured
+[`version`](/moon/api/ToolchainPluginConfig#version).
 
-For example, the following manifest makes `server` depend on `utils` (production) and `test-utils`
-(development), without any [`dependsOn`](/moon/api/ProjectConfig#dependson) configuration.
+## Tier 2: Ecosystem integration
+
+Tier 2 integrates moon with the Rust ecosystem, like its manifests, lockfiles, and dependencies, so that the project graph,
+task execution, and task hashing understand your Rust code.
+
+### Extending projects
+
+When building the [project graph](<../(fundamentals)/project-graph.mdx>), moon asks the Rust toolchain to extend each project
+with information from its `Cargo.toml`:
+
+- **Alias** - The `package.name` becomes a project [alias](<../(fundamentals)/project.mdx#aliases>), so the project can be
+  referenced by it wherever a project ID is accepted. For example, a crate named `api_client` can be referenced as
+  `api_client`. Disable this with [`inheritAliases`](/moon/api/ToolchainPluginConfig#inheritaliases).
+- **Dependencies** - Local `path` dependencies on crates that are moon projects become implicit
+  [project dependencies](<../(fundamentals)/project.mdx#dependencies>), scoped as `production` for `[dependencies]`,
+  `development` for `[dev-dependencies]`, and `build` for `[build-dependencies]`. Registry and git dependencies are ignored.
+
+Changes to these files invalidate the project graph cache.
+
+Only manifests that define a `[package]` table are used, so virtual workspace manifests are skipped. For example, the
+following manifest makes `server` depend on `utils` (production) and `test-utils` (development), without any
+[`dependsOn`](/moon/api/ProjectConfig#dependson) configuration.
 
 ```toml title="crates/server/Cargo.toml"
 [package]
@@ -323,59 +430,15 @@ utils = { path = "../utils" }
 test-utils = { path = "../test-utils" }
 ```
 
-#### Dependencies root
+### Extending tasks
 
-Cargo resolves dependencies for a whole workspace at once, with a single `Cargo.lock` and `target`
-directory, and moon mirrors that. For each project, moon walks up from the project's directory and
-uses the first match as its dependencies root:
+- **Commands** - When a task that uses the Rust toolchain runs a [`command`](/moon/api/TaskConfig#command) that's a Cargo
+  subcommand, it's run through `cargo`. If the command isn't `cargo`, `rls`, or a `rust*` binary, and a matching
+  `cargo-<name>` binary exists in Cargo's bin directory (`$CARGO_INSTALL_ROOT/bin`, `$CARGO_HOME/bin`, or `~/.cargo/bin`),
+  the task is rewritten to `cargo <name> ...`.
 
-1. A directory containing a `Cargo.lock`.
-2. A `Cargo.toml` that defines a `[workspace]` table.
-3. A `Cargo.toml` that defines a `[package]` table (a standalone crate).
-
-When the root is a Cargo workspace, its `workspace.members` globs (minus `workspace.exclude`) decide
-which projects belong to it. Environment setup and dependency installation then run once for the
-root, and are shared by all of its members. A project that isn't a member of its root only has its
-Rust toolchain set up.
-
-#### Environment setup
-
-Before dependencies are installed, moon prepares the environment in the dependencies root, in the
-following order:
-
-1. When `addMsrvConstraint` is enabled, writes `version` to `rust-version` in `Cargo.toml`.
-2. When `syncToolchainConfig` is enabled, writes `version` to `rust-toolchain.toml`.
-3. Installs `components` with `rustup component add`.
-4. Installs `targets` with `rustup target add`.
-5. Installs `bins` with `cargo binstall --no-confirm`. If `cargo-binstall` isn't in Cargo's bin
-   directory yet, it's first installed with `cargo install cargo-binstall --locked` (pinned to
-   `binstallVersion` if set). Binaries that already exist are skipped unless `force` is enabled, and
-   `local` binaries are skipped in CI.
-
-Components and targets are added to whichever toolchain rustup resolves in the dependencies root,
-which is another reason to enable [`syncToolchainConfig`](#syncing-rust-toolchaintoml).
-
-#### Dependency installation
-
-Cargo doesn't have a separate install step, as it downloads crates on demand when building. As
-such, dependency installation is lightweight: if the dependencies root doesn't have a `Cargo.lock`,
-moon runs `cargo generate-lockfile` to create one. Otherwise nothing runs.
-
-This step re-runs when `Cargo.lock` or a member's `Cargo.toml` changes. In CI, it's skipped entirely
-when a non-empty `target` directory already exists in the dependencies root (for example, restored
-from a cache). Disable it with
-[`installDependencies`](/moon/api/ToolchainPluginConfig#installdependencies).
-
-#### Task commands
-
-Cargo's global bin directory (`$CARGO_INSTALL_ROOT/bin`, `$CARGO_HOME/bin`, or `~/.cargo/bin`) is
-included in `PATH` for Rust tasks, for both commands and scripts, so globally installed binaries can
-be executed.
-
-Additionally, Cargo subcommands are run through `cargo`. When a task's command isn't `cargo`, `rls`,
-or a `rust*` binary, and a matching `cargo-<name>` binary exists in Cargo's bin directory, the task
-is rewritten to `cargo <name> ...`. For example, both of the following tasks run
-`cargo nextest run` when `cargo-nextest` is installed.
+For example, both of the following tasks run `cargo nextest run` when `cargo-nextest` is installed (see
+[Cargo binaries](#cargo-binaries)).
 
 <ConfigTabs
   file="moon"
@@ -391,70 +454,155 @@ is rewritten to `cargo <name> ...`. For example, both of the following tasks run
   }}
 />
 
-#### Task hashing
+### Locating dependencies root
 
-On top of a task's inputs, the following are included in the hash of every Rust task:
+The dependencies root is the directory where Cargo resolves dependencies, and where the `Cargo.lock` lives. Cargo resolves
+dependencies for a whole workspace at once, with a single `Cargo.lock` and `target` directory, and moon mirrors that. For each
+project, moon walks up from the project's root looking for each of the following in order, and uses the first directory it
+finds:
 
-- The configured `version`, if any.
-- The host operating system, architecture, and libc. Compiled Rust artifacts are platform specific,
-  so cache entries are never shared across platforms (for example, macOS locally and Linux in CI).
-- The project's `[dependencies]`, `[dev-dependencies]`, and `[build-dependencies]` from
-  `Cargo.toml`, resolved to the exact versions and checksums locked in `Cargo.lock`. Entries in
-  `[dependencies]` that use `workspace = true` take their version requirement from
-  `[workspace.dependencies]` in the root manifest, while `path` dependencies without a version are
-  skipped. Lockfile resolution only happens when
-  [`hasher.optimization`](/moon/api/HasherConfig#optimization) is `accuracy` (the default);
-  otherwise the version requirement is hashed instead.
+1. A directory containing a `Cargo.lock`.
+2. A `Cargo.toml` that defines a `[workspace]` table.
+3. A `Cargo.toml` that defines a `[package]` table (a standalone crate).
 
-This means upgrading a crate in `Cargo.lock` invalidates the cache for the projects that declare it
-in their manifest, but not for unrelated projects.
+When the root is a Cargo workspace, a project belongs to it if it is the root, or its path matches one of the
+`workspace.members` globs (and none of the `workspace.exclude` globs). Projects that share a root share a single install and
+environment setup. A project that isn't a member of its root is skipped, and only has Rust itself set up.
 
-### 3) Tool management
+### Installing and deduping dependencies
 
-When [`version`](/moon/api/ToolchainPluginConfig#version) is configured, moon installs Rust through
-[proto](../../../proto/docs/index.mdx), whose Rust plugin delegates to rustup. This happens automatically before a
-Rust task runs, or ahead of time with [`moon setup`](../commands/setup.mdx).
+Before running a task that uses the Rust toolchain, moon installs dependencies in the project's
+[dependencies root](#locating-dependencies-root):
 
-1. If `rustup` isn't found, moon downloads and runs the official rustup installer (from
-   `sh.rustup.rs`, or `win.rustup.rs` on Windows) with `--default-toolchain none`, so no default
-   toolchain is installed or changed.
-2. If the toolchain isn't installed yet, moon runs
-   `rustup toolchain install <version>-<host triple>`. A broken (empty) toolchain directory is
-   uninstalled and reinstalled.
+```shell
+# Generate a lockfile, when Cargo.lock doesn't exist
+$ cargo generate-lockfile
+```
 
-Toolchains are installed into rustup's own directory (`~/.rustup/toolchains`, or
-`$RUSTUP_HOME/toolchains`) instead of proto's store, so they're shared with your regular rustup
-usage, and no proto shims are created. Partial versions like `1.90` resolve to the latest matching
-Rust release, while `stable`, `beta`, and `nightly` channels are passed to rustup as-is.
+Cargo doesn't have a separate install step, as it downloads crates on demand when building. As such, this step only
+generates a `Cargo.lock` when the dependencies root doesn't have one, and otherwise runs nothing.
 
-To remove the configured toolchain, run [`moon teardown`](../commands/teardown.mdx), which runs
+moon only installs when something has changed since the last install in that root: the contents of the `Cargo.lock`, the
+dependencies declared in `Cargo.toml` files (re-checked when a `Cargo.toml` is among the changed files), or the toolchain's
+configuration. It always installs when `target` doesn't exist yet.
+
+The install is skipped when:
+
+- Running in CI, and a non-empty `target` directory already exists in the dependencies root (for example, restored from a
+  cache).
+- There's no internet connection.
+- Running against affected files locally, or forcing a run with `--force`.
+- The `MOON_SKIP_INSTALL_DEPS` environment variable is set to `true`, `*`, or a list of toolchain IDs that includes `rust`.
+- [`installDependencies`](/moon/api/ToolchainPluginConfig#installdependencies) is disabled for the toolchain, or
+  [`pipeline.installDependencies`](/moon/api/PipelineConfig#installdependencies) is disabled (or doesn't list `rust`) in
+  [`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>). This also skips setting up the environment and installing
+  Rust before tasks.
+
+### Parsing manifest and lock files
+
+When hashing a task, moon parses the project's `Cargo.toml`, and resolves each dependency it declares against the
+`Cargo.lock` in the [dependencies root](#locating-dependencies-root). The resolved checksum (or version, for crates without a
+checksum) is included in the task's hash, so upgrading a dependency only invalidates the tasks of projects that declare it.
+The lockfile is only parsed when [`hasher.optimization`](/moon/api/HasherConfig#optimization) is `accuracy` (the default);
+otherwise, the version requirement from `Cargo.toml` is hashed instead.
+
+- Dependencies are read from the `[dependencies]`, `[dev-dependencies]`, and `[build-dependencies]` tables. Target-specific
+  tables, like `[target.'cfg(unix)'.dependencies]`, aren't read.
+- Entries in `[dependencies]` that use `workspace = true` take their version requirement from `[workspace.dependencies]` in
+  the root manifest. Inherited dev and build dependencies aren't resolved, and are skipped (see [caveats](#caveats)).
+- Dependencies without a version requirement, like `path` and `git` dependencies without a `version`, are skipped.
+
+### Setting up the environment
+
+Before installing dependencies, moon sets up the Rust environment in each [dependencies root](#locating-dependencies-root),
+which syncs configuration files and installs extra tooling. It also runs with [`moon setup`](../commands/setup.mdx) when the
+dependencies root is the workspace root. Commands are only re-run when they, or the toolchain's configuration, change.
+
+Each step only runs when its setting is configured, in the following order:
+
+1. Writes `version` to `rust-version` in `Cargo.toml`, when `addMsrvConstraint` is enabled (see
+   [minimum supported Rust version](#minimum-supported-rust-version)).
+2. Writes `version` to `rust-toolchain.toml`, when `syncToolchainConfig` is enabled (see
+   [syncing `rust-toolchain.toml`](#syncing-rust-toolchaintoml)).
+3. Installs `components` with `rustup component add`, and `targets` with `rustup target add` (see
+   [components and targets](#components-and-targets)).
+4. Installs missing `bins` with `cargo binstall`, installing `cargo-binstall` first when needed (see
+   [Cargo binaries](#cargo-binaries)).
+
+### Hashing task content
+
+When hashing a task that uses the Rust toolchain, moon also includes the following in the task's hash:
+
+- The host operating system, architecture, and libc. Compiled Rust artifacts are platform specific, so cache entries are
+  never shared across platforms (for example, macOS locally and Linux in CI).
+
+## Tier 3: Tool management
+
+Tier 3 lets moon download, install, and pin Rust for you. It's enabled by configuring a
+[`version`](/moon/api/ToolchainPluginConfig#version) (or inheriting one from `.prototools`). Without a version, moon uses the
+`cargo` binary on your `PATH`. The configured version is also included in the hash of every task that uses the Rust
+toolchain, so changing it invalidates their cache.
+
+### Installing with proto
+
+When a [`version`](/moon/api/ToolchainPluginConfig#version) is configured, moon installs Rust through
+[proto](../../../proto/docs/index.mdx), with [rustup](https://rustup.rs). Versions that are already installed are reused.
+
+- The version can be a Rust release (`1.90.0`), a partial version (`1.90`) that resolves to the latest matching release, or
+  a rustup channel: `stable`, `beta`, `nightly`, or a dated nightly like `nightly-2025-06-01`. Channels are passed to rustup
+  as-is.
+- If `rustup` isn't found, moon downloads and runs the official rustup installer (from `sh.rustup.rs`, or `win.rustup.rs` on
+  Windows) with `--default-toolchain none`, so no default toolchain is installed or changed.
+- If the toolchain isn't installed yet, moon runs `rustup toolchain install <version>-<host triple>`. A broken (empty)
+  toolchain directory is uninstalled and reinstalled.
+- Toolchains are installed into rustup's own directory (`~/.rustup/toolchains`, or `$RUSTUP_HOME/toolchains`) instead of
+  proto's store, so they're shared with your regular rustup usage, and no proto shims are created.
+
+For tasks that use the Rust toolchain, moon prepends Cargo's bin directories (`$CARGO_INSTALL_ROOT/bin` and
+`$CARGO_HOME/bin` when those variables are set, and `~/.cargo/bin`), followed by the installed toolchain's `bin` directory,
+to `PATH`, and sets the `PROTO_RUST_VERSION` environment variable. Because Cargo's bin directory comes first, `cargo` and
+`rustc` run through rustup's proxies, so rustup picks the toolchain (see
+[syncing `rust-toolchain.toml`](#syncing-rust-toolchaintoml)). To temporarily use a different version, set the
+`MOON_RUST_VERSION` environment variable. To use the `cargo` binary on your `PATH` instead, set
+`MOON_TOOLCHAIN_FORCE_GLOBALS=rust`.
+
+### Setup and teardown
+
+moon sets up Rust in a `SetupToolchain` action, which runs before tasks that use the Rust toolchain, and when running
+[`moon setup`](../commands/setup.mdx). The action is skipped when no `version` is configured, or when the
+`MOON_SKIP_SETUP_TOOLCHAIN` environment variable is set to `true`, `rust`, or `rust:<version>`.
+
+Running [`moon teardown`](../commands/teardown.mdx) uninstalls the configured version of Rust. The Rust toolchain doesn't
+perform any additional setup or teardown beyond installing Rust. Uninstalling runs
 `rustup toolchain uninstall <version>-<host triple>`.
 
 ## Caveats
 
-- **Configuring `version` doesn't pin the toolchain that runs.** rustup's proxies choose the
-  toolchain, so without a matching `rust-toolchain.toml`, tasks run your default toolchain. On a
-  machine where moon installed rustup (such as a fresh CI runner), there may be no default
-  toolchain at all, in which case rustup errors instead. Enable [`syncToolchainConfig`](#syncing-rust-toolchaintoml) to
-  keep them aligned.
-- **Only direct `path` dependencies become project relationships.** Dependencies inherited from
-  the workspace (`utils = { workspace = true }`), even when `[workspace.dependencies]` declares a
-  `path`, aren't linked. Neither are dependencies in target-specific tables
-  (`[target.'cfg(unix)'.dependencies]`), or renamed dependencies whose key doesn't match the
-  crate's `package.name`. Declare those relationships with
-  [`dependsOn`](/moon/api/ProjectConfig#dependson).
-- **Crates aren't pre-fetched.** Since dependency installation only generates a lockfile, crates
-  are downloaded by the first Cargo command that needs them. In a `Dockerfile`, run `cargo fetch`
-  after [`moon docker setup`](../commands/docker/setup.mdx) if you want crates cached in their own
-  layer.
-- **Docker pruning only preserves `release` and `debug` binaries.** Binaries built with a custom
-  profile or for an explicit `--target` (like `target/x86_64-unknown-linux-musl/release`) are
-  deleted along with the rest of `target`. A custom target directory (`CARGO_TARGET_DIR` or
-  `build.target-dir`) is not pruned at all. Disable
-  [`docker.prune.deleteVendorDirectories`](/moon/api/DockerPruneConfig#deletevendordirectories) if
-  you need these.
-- **`moon teardown` affects rustup globally.** Toolchains live in rustup's shared directory, so
-  tearing down removes that toolchain for every project on the machine, not just this workspace.
-- **Installing `cargo-binstall` compiles from source.** The first environment setup with `bins`
-  runs `cargo install cargo-binstall`, which can take a few minutes. Pre-install `cargo-binstall`
-  in CI images to avoid the delay.
+- **Configuring `version` doesn't pin the toolchain that runs.** rustup's proxies choose the toolchain, so without a matching
+  `rust-toolchain.toml`, tasks run your default toolchain. This also applies to a project's `version` override. On a machine
+  where moon installed rustup (such as a fresh CI runner), there may be no default toolchain at all, in which case rustup
+  errors instead. Enable [`syncToolchainConfig`](#syncing-rust-toolchaintoml) to keep them aligned.
+- **Nested Cargo workspace roots aren't scaffolded unless they're projects.**
+  [`moon docker scaffold`](../commands/docker/scaffold.mdx) only copies files from the workspace root and each project's
+  root, so the `Cargo.toml` and `Cargo.lock` of a Cargo workspace like `tools` in the
+  [nested layout](#nested-crates-and-workspaces) are left out. Map that directory to a project, or add its files to
+  [`docker.scaffold.configsPhaseGlobs`](/moon/api/DockerScaffoldConfig#configsphaseglobs).
+- **Docker pruning only preserves `release` and `debug` binaries.** Binaries built with a custom profile or for an explicit
+  `--target` (like `target/x86_64-unknown-linux-musl/release`) are deleted along with the rest of `target`. A custom target
+  directory (`CARGO_TARGET_DIR` or `build.target-dir`) isn't pruned at all. Disable
+  [`docker.prune.deleteVendorDirectories`](/moon/api/DockerPruneConfig#deletevendordirectories) if you need these.
+- **Some dependencies aren't included in task hashes.** Dev and build dependencies that use `workspace = true`, dependencies
+  in target-specific tables, and git dependencies without a `version` aren't resolved against `Cargo.lock`, so upgrading them
+  doesn't invalidate the cache. Add the root `Cargo.lock` to the task's [inputs](<../(fundamentals)/task.mdx#inputs>) if
+  these matter.
+- **Only direct `path` dependencies become project relationships.** Dependencies inherited from the workspace
+  (`utils = { workspace = true }`), even when `[workspace.dependencies]` declares a `path`, aren't linked. Neither are
+  dependencies in target-specific tables (`[target.'cfg(unix)'.dependencies]`), or renamed dependencies whose key doesn't
+  match the crate's `package.name`. Declare those relationships with [`dependsOn`](/moon/api/ProjectConfig#dependson).
+- **`moon teardown` affects rustup globally.** Toolchains live in rustup's shared directory, so tearing down removes that
+  toolchain for every project on the machine, not only this workspace.
+- **Crates aren't pre-fetched.** Since installing dependencies only generates a lockfile, crates are downloaded by the first
+  Cargo command that needs them. In a `Dockerfile`, run `cargo fetch` after
+  [`moon docker setup`](../commands/docker/setup.mdx) if you want crates cached in their own layer.
+- **Installing `cargo-binstall` compiles from source.** The first environment setup with `bins` runs
+  `cargo install cargo-binstall`, which can take a few minutes. Pre-install `cargo-binstall` in CI images to avoid the delay.
