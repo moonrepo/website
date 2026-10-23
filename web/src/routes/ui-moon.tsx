@@ -32,14 +32,14 @@ export const Route = createFileRoute('/ui-moon')({
 	component: UiMoonPage,
 });
 
-const icon = 'text-moon dark:text-moon-light';
+const icon = 'text-moon dark:text-moon-400';
 
 function MoonLogo() {
 	return (
 		<div className="flex items-center gap-7">
 			<span className="relative size-[72px]">
 				<span className="absolute bottom-0 left-0 size-16 rounded-full bg-moon" />
-				<span className="absolute top-[14px] left-[30px] size-6 rounded-full bg-moon-dark/60" />
+				<span className="absolute top-[14px] left-[30px] size-6 rounded-full bg-moon-800/60" />
 				<span className="absolute top-0 right-0 size-7 rounded-full bg-[#c7b3f7] dark:bg-paper-100" />
 			</span>
 			<span
@@ -149,7 +149,7 @@ function Hero() {
 
 function NumberBadge({ children }: { children: ReactNode }) {
 	return (
-		<span className="flex size-[18px] shrink-0 items-center justify-center rounded-[2px] bg-moon font-bold font-display text-[11px] text-paper-50 dark:bg-moon-light dark:text-graphite-700">
+		<span className="flex size-[18px] shrink-0 items-center justify-center rounded-[2px] bg-moon font-bold font-display text-[11px] text-paper-50 dark:bg-moon-400 dark:text-graphite-700">
 			{children}
 		</span>
 	);
@@ -282,7 +282,7 @@ function Comparison() {
 			{columns.map((col) => (
 				<div className="min-w-0 px-6 py-12 md:px-12" key={col.title}>
 					<h3 className={cn('flex items-center gap-5 text-[36px]', heading)}>
-						<span className="flex size-[26px] items-center justify-center rounded-[3px] bg-moon text-paper-50 dark:bg-moon-light dark:text-graphite-700 [&_svg]:size-4 [&_svg]:stroke-3">
+						<span className="flex size-[26px] items-center justify-center rounded-[3px] bg-moon text-paper-50 dark:bg-moon-400 dark:text-graphite-700 [&_svg]:size-4 [&_svg]:stroke-3">
 							{col.glyph}
 						</span>
 						{col.title}

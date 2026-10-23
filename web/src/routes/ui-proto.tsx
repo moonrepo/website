@@ -34,8 +34,8 @@ function ProtoLogo() {
 		<div className="flex items-center gap-7">
 			<span className="relative size-[72px]">
 				<span className="absolute bottom-0 left-0 size-[66px] rounded-full bg-proto" />
-				<span className="absolute top-[22px] left-[24px] h-8 w-3 rotate-[30deg] rounded-full bg-proto-dark/70" />
-				<Sparkle className="absolute -top-1 -right-1 size-8 fill-proto-light text-proto-light dark:fill-paper-100 dark:text-paper-100" />
+				<span className="absolute top-[22px] left-[24px] h-8 w-3 rotate-[30deg] rounded-full bg-proto-800/70" />
+				<Sparkle className="absolute -top-1 -right-1 size-8 fill-proto-300 text-proto-300 dark:fill-paper-100 dark:text-paper-100" />
 			</span>
 			<span
 				className={cn(

@@ -408,7 +408,7 @@ function SimpleVersion() {
 		'flex size-9 items-center justify-center rounded-[4px] border border-taupe border-b-[3px] bg-sand';
 
 	return (
-		<section className="grid items-center gap-12 bg-paper-200 px-6 py-24 md:grid-cols-2 md:px-12 dark:bg-graphite-850">
+		<section className="grid items-center gap-12 bg-paper-200 px-6 py-24 md:grid-cols-2 md:px-12 dark:bg-graphite-900">
 			<div>
 				<h2 className={cn('text-[44px] leading-tight', heading)}>
 					The simple version
