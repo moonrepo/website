@@ -14,6 +14,7 @@ import { Route as LlmsFullDottxtRouteImport } from './routes/llms-full[.]txt'
 import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as UiRouteImport } from './routes/ui'
 import { Route as UiMoonRouteImport } from './routes/ui-moon'
+import { Route as UiProtoRouteImport } from './routes/ui-proto'
 import { Route as ApiSplatRouteImport } from './routes/api/$'
 import { Route as ApiSearchRouteImport } from './routes/api/search'
 import { Route as BlogIndexRouteImport } from './routes/blog/index'
@@ -45,6 +46,11 @@ const UiRoute = UiRouteImport.update({
 const UiMoonRoute = UiMoonRouteImport.update({
   id: '/ui-moon',
   path: '/ui-moon',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UiProtoRoute = UiProtoRouteImport.update({
+  id: '/ui-proto',
+  path: '/ui-proto',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSplatRoute = ApiSplatRouteImport.update({
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/llms.txt': typeof LlmsDottxtRoute
   '/ui': typeof UiRoute
   '/ui-moon': typeof UiMoonRoute
+  '/ui-proto': typeof UiProtoRoute
   '/api/$': typeof ApiSplatRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
@@ -103,6 +110,7 @@ export interface FileRoutesByTo {
   '/llms.txt': typeof LlmsDottxtRoute
   '/ui': typeof UiRoute
   '/ui-moon': typeof UiMoonRoute
+  '/ui-proto': typeof UiProtoRoute
   '/api/$': typeof ApiSplatRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
@@ -118,6 +126,7 @@ export interface FileRoutesById {
   '/llms.txt': typeof LlmsDottxtRoute
   '/ui': typeof UiRoute
   '/ui-moon': typeof UiMoonRoute
+  '/ui-proto': typeof UiProtoRoute
   '/api/$': typeof ApiSplatRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
@@ -134,6 +143,7 @@ export interface FileRouteTypes {
     | '/llms.txt'
     | '/ui'
     | '/ui-moon'
+    | '/ui-proto'
     | '/api/$'
     | '/api/search'
     | '/blog/$'
@@ -148,6 +158,7 @@ export interface FileRouteTypes {
     | '/llms.txt'
     | '/ui'
     | '/ui-moon'
+    | '/ui-proto'
     | '/api/$'
     | '/api/search'
     | '/blog/$'
@@ -162,6 +173,7 @@ export interface FileRouteTypes {
     | '/llms.txt'
     | '/ui'
     | '/ui-moon'
+    | '/ui-proto'
     | '/api/$'
     | '/api/search'
     | '/blog/$'
@@ -177,6 +189,7 @@ export interface RootRouteChildren {
   LlmsDottxtRoute: typeof LlmsDottxtRoute
   UiRoute: typeof UiRoute
   UiMoonRoute: typeof UiMoonRoute
+  UiProtoRoute: typeof UiProtoRoute
   ApiSplatRoute: typeof ApiSplatRoute
   ApiSearchRoute: typeof ApiSearchRoute
   BlogSplatRoute: typeof BlogSplatRoute
@@ -221,6 +234,13 @@ declare module '@tanstack/react-router' {
       path: '/ui-moon'
       fullPath: '/ui-moon'
       preLoaderRoute: typeof UiMoonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ui-proto': {
+      id: '/ui-proto'
+      path: '/ui-proto'
+      fullPath: '/ui-proto'
+      preLoaderRoute: typeof UiProtoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/$': {
@@ -281,6 +301,7 @@ const rootRouteChildren: RootRouteChildren = {
   LlmsDottxtRoute: LlmsDottxtRoute,
   UiRoute: UiRoute,
   UiMoonRoute: UiMoonRoute,
+  UiProtoRoute: UiProtoRoute,
   ApiSplatRoute: ApiSplatRoute,
   ApiSearchRoute: ApiSearchRoute,
   BlogSplatRoute: BlogSplatRoute,

@@ -7,7 +7,7 @@ export function PageFrame({
 	theme,
 }: {
 	children: ReactNode;
-	theme?: 'moon';
+	theme?: 'moon' | 'proto';
 }) {
 	const themeClass = theme ? `theme-${theme}` : undefined;
 

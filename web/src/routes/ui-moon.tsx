@@ -24,7 +24,7 @@ import type { ReactNode } from 'react';
 import { Footer } from '@/components/site/Footer';
 import { Divider, Hatch, PageFrame } from '@/components/site/Frame';
 import { Header } from '@/components/site/Header';
-import { dashed, heading, muted } from '@/components/site/styles';
+import { codeBox, dashed, heading, muted } from '@/components/site/styles';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/utils/cn';
 
@@ -33,8 +33,6 @@ export const Route = createFileRoute('/ui-moon')({
 });
 
 const icon = 'text-moon dark:text-moon-light';
-const codeBox =
-	'rounded-md border border-paper-300 bg-paper-50 font-mono text-[15px] dark:border-graphite-950 dark:bg-graphite-950';
 
 function MoonLogo() {
 	return (
