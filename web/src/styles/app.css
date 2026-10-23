@@ -1,3 +1,34 @@
 @import "tailwindcss";
 @import "fumadocs-ui/css/neutral.css";
 @import "fumadocs-ui/css/preset.css";
+
+/* moonrepo brand theme */
+@theme {
+	--color-paper-50: #f8f5f1;
+	--color-paper-100: #e6e7e1;
+	--color-paper-200: #dbddd7;
+	--color-paper-300: #d1d3cd;
+	--color-paper-400: #c6c8c2;
+	--color-sand: #ddd3c5;
+	--color-taupe: #9b9080;
+	--color-olive: #787450;
+	--color-graphite-500: #63635e;
+	--color-graphite-600: #353838;
+	--color-graphite-700: #2e3131;
+	--color-graphite-800: #2c2f2f;
+	--color-graphite-850: #282b2b;
+	--color-graphite-900: #262929;
+	--color-graphite-950: #1f2121;
+	--color-graphite-surface: #323535;
+	--color-tangerine: #ec9c46;
+	--color-tangerine-dark: #b37939;
+	--color-moon: #8b5cf6;
+	--color-proto: #ef4f86;
+	--color-yc: #fb651e;
+
+	--font-display: ui-sans-serif, system-ui, sans-serif;
+}
+
+@utility bg-noise {
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
