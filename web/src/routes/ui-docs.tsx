@@ -10,7 +10,6 @@ import {
 	Hammer,
 	House,
 	KeyRound,
-	PanelLeft,
 	Pencil,
 	Puzzle,
 	Rocket,
@@ -18,11 +17,8 @@ import {
 	Triangle,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Footer } from '@/components/site/Footer';
-import { Divider, Hatch, PageFrame } from '@/components/site/Frame';
-import { Header } from '@/components/site/Header';
-import { accent, dashed, heading, muted } from '@/components/site/styles';
-import { Drawer } from '@/components/ui/Drawer';
+import { SidebarLayout } from '@/components/site/SidebarLayout';
+import { accent, heading, muted } from '@/components/site/styles';
 import { cn } from '@/utils/cn';
 
 export const Route = createFileRoute('/ui-docs')({
@@ -192,48 +188,18 @@ function SidebarNav() {
 	);
 }
 
-function Sidebar() {
+function Breadcrumb() {
 	return (
-		<aside
-			className={cn(
-				'hidden w-[291px] shrink-0 border-r bg-paper-200/40 px-12 pt-[52px] pb-16 lg:block dark:bg-graphite-900/50',
-				dashed,
-			)}
+		<nav
+			aria-label="Breadcrumb"
+			className={cn('flex items-center gap-3 text-[15px]', muted)}
 		>
-			<SidebarNav />
-		</aside>
-	);
-}
-
-function TitleBar() {
-	return (
-		<div className="px-6 pt-9 pb-9 md:px-12">
-			<Drawer
-				title="Documentation"
-				trigger={
-					<>
-						<PanelLeft className="size-5" />
-						Menu
-					</>
-				}
-				triggerClassName="mb-6 flex h-9 items-center gap-2 rounded-full border border-paper-300 bg-paper-50 px-3 font-display font-semibold text-graphite-700 text-sm uppercase shadow-sm lg:hidden dark:border-graphite-surface dark:bg-graphite-950 dark:text-paper-50"
-			>
-				<SidebarNav />
-			</Drawer>
-			<nav
-				aria-label="Breadcrumb"
-				className={cn('flex items-center gap-3 text-[15px]', muted)}
-			>
-				<House className="size-4" />
-				<ChevronRight className="size-4" />
-				<a href="/ui-docs">moon</a>
-				<ChevronRight className="size-4" />
-				<span>Getting started</span>
-			</nav>
-			<h1 className={cn('mt-5 text-4xl md:text-[44px]', heading)}>
-				Getting started
-			</h1>
-		</div>
+			<House className="size-4" />
+			<ChevronRight className="size-4" />
+			<a href="/ui-docs">moon</a>
+			<ChevronRight className="size-4" />
+			<span>Getting started</span>
+		</nav>
 	);
 }
 
@@ -325,22 +291,16 @@ function TableOfContents() {
 
 function UiDocsPage() {
 	return (
-		<PageFrame>
-			<Header />
-			<Divider />
-			<div className="flex">
-				<Sidebar />
-				<main className="min-w-0 flex-1">
-					<TitleBar />
-					<Divider />
-					<div className="flex gap-12 px-6 pt-12 pb-12 md:px-12">
-						<Article />
-						<TableOfContents />
-					</div>
-				</main>
+		<SidebarLayout
+			beforeTitle={<Breadcrumb />}
+			drawerTitle="Documentation"
+			sidebar={<SidebarNav />}
+			title="Getting started"
+		>
+			<div className="flex gap-12 px-6 pt-12 pb-12 md:px-12">
+				<Article />
+				<TableOfContents />
 			</div>
-			<Hatch />
-			<Footer />
-		</PageFrame>
+		</SidebarLayout>
 	);
 }
