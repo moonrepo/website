@@ -1,7 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import {
 	ArrowRight,
-	AtSign,
 	CircleQuestionMark,
 	Columns3,
 	FileSearch,
@@ -9,74 +8,22 @@ import {
 	FolderX,
 	Hexagon,
 	Infinity as InfinityIcon,
-	MessageCircle,
 	RefreshCw,
 	Route as RouteIcon,
-	Rss,
-	Search,
 	SquareCode,
 	Zap,
 } from 'lucide-react';
-import { type ReactNode, useId } from 'react';
+import type { ReactNode } from 'react';
+import { Footer } from '@/components/site/Footer';
+import { Divider, Hatch, PageFrame } from '@/components/site/Frame';
+import { Header } from '@/components/site/Header';
+import { accent, dashed, heading, muted } from '@/components/site/styles';
 import { Button } from '@/components/ui/Button';
-import { NavMenu, navLinkClass } from '@/components/ui/NavMenu';
-import { Select } from '@/components/ui/Select';
-import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { cn } from '@/utils/cn';
 
 export const Route = createFileRoute('/ui')({
 	component: UiPage,
 });
-
-// Shared tokens
-
-const heading = 'font-display font-medium text-graphite-700 dark:text-paper-50';
-const muted = 'text-graphite-500 dark:text-sand';
-const accent = 'text-olive dark:text-tangerine';
-const dashed = 'border-dashed border-olive';
-
-// Primitives
-
-function Divider({ className }: { className?: string }) {
-	return (
-		<div className={cn('relative border-t', dashed, className)}>
-			<span className="absolute -top-[3px] -left-[3px] size-[5px] bg-olive" />
-			<span className="absolute -top-[3px] -right-[3px] size-[5px] bg-olive" />
-		</div>
-	);
-}
-
-function Hatch() {
-	const id = useId();
-
-	return (
-		<>
-			<Divider />
-			<svg aria-hidden="true" className="block h-24 w-full text-olive/60">
-				<defs>
-					<pattern
-						height="14"
-						id={id}
-						patternTransform="rotate(-30)"
-						patternUnits="userSpaceOnUse"
-						width="14"
-					>
-						<line
-							stroke="currentColor"
-							strokeDasharray="4 3"
-							x1="0"
-							x2="0"
-							y1="0"
-							y2="14"
-						/>
-					</pattern>
-				</defs>
-				<rect fill={`url(#${id})`} height="100%" width="100%" />
-			</svg>
-			<Divider />
-		</>
-	);
-}
 
 function ListCard({
 	items,
@@ -140,68 +87,6 @@ function Feature({
 }
 
 // Sections
-
-function Header() {
-	const products = [
-		{ description: 'Smart build system', href: '/docs/moon', label: 'moon' },
-		{ description: 'Toolchain manager', href: '/docs/proto', label: 'proto' },
-	];
-	const docs = [
-		{ href: '/docs/moon', label: 'moon' },
-		{ href: '/docs/proto', label: 'proto' },
-		{ href: '/api/moon', label: 'Config reference' },
-	];
-	const links = [
-		{ href: '/docs/moon/guides', label: 'Guides' },
-		{ href: '/blog', label: 'Blog' },
-		{ href: 'https://github.com/moonrepo', label: 'GitHub' },
-	];
-
-	return (
-		<header className="flex h-[100px] items-center gap-12 px-6 md:px-12">
-			<a
-				className="font-display font-medium font-stretch-125% text-[28px] text-graphite-500 tracking-[0.06em] dark:text-tangerine"
-				href="/ui"
-			>
-				MOONREPO
-			</a>
-
-			<nav className="hidden items-center gap-8 lg:flex">
-				<NavMenu items={products} label="Products" />
-				<NavMenu items={docs} label="Docs" />
-				{links.map((link) => (
-					<a className={navLinkClass} href={link.href} key={link.label}>
-						{link.label}
-					</a>
-				))}
-			</nav>
-
-			<div className="ml-auto flex items-center gap-4">
-				<ThemeToggle />
-
-				<button
-					className="hidden h-9 w-56 items-center gap-2 rounded-full border border-paper-300 bg-paper-50 px-2.5 text-graphite-700 shadow-sm sm:flex dark:border-graphite-surface dark:bg-graphite-950 dark:text-paper-50"
-					type="button"
-				>
-					<Search className="size-5" />
-					<span className="flex-1 text-left text-lg text-graphite-600 dark:text-graphite-500">
-						Search
-					</span>
-					<span className="flex gap-0.5">
-						{['⌘', 'K'].map((key) => (
-							<kbd
-								className="flex size-5 items-center justify-center rounded-[4px] border border-taupe/50 bg-paper-300 text-[10px] text-graphite-600 dark:bg-paper-100"
-								key={key}
-							>
-								{key}
-							</kbd>
-						))}
-					</span>
-				</button>
-			</div>
-		</header>
-	);
-}
 
 function Hero() {
 	const craters = [
@@ -611,129 +496,24 @@ function Languages() {
 	);
 }
 
-function Footer() {
-	const columns = [
-		{ title: 'Learn', links: ['Docs', 'Guides', 'Blogs'] },
-		{
-			title: 'Ecosystem',
-			links: [
-				'Releases',
-				'Shared configs',
-				'Developer tools',
-				'Examples repository',
-			],
-		},
-		{ title: 'Support', links: ['GitHub', 'Discord', 'Twitter'] },
-	];
-
-	return (
-		<footer>
-			<div className="flex flex-col gap-12 bg-paper-200 px-6 pt-16 pb-16 lg:flex-row lg:gap-0 md:px-12 dark:bg-graphite-surface">
-				<a
-					className="font-display font-medium font-stretch-125% text-[22px] text-graphite-500 tracking-[0.06em] lg:w-[370px] dark:text-tangerine"
-					href="/ui"
-				>
-					MOONREPO
-				</a>
-
-				<div className="flex flex-wrap gap-x-16 gap-y-10">
-					{columns.map((col) => (
-						<div key={col.title}>
-							<h4 className="font-display font-bold text-graphite-700 text-sm uppercase dark:text-tangerine">
-								{col.title}
-							</h4>
-							<ul className="mt-3 space-y-2">
-								{col.links.map((link) => (
-									<li key={link}>
-										<a
-											className="text-base text-graphite-500 hover:text-graphite-700 dark:text-paper-50 dark:hover:text-tangerine"
-											href="/ui"
-										>
-											{link}
-										</a>
-									</li>
-								))}
-							</ul>
-						</div>
-					))}
-
-					<div>
-						<h4 className="font-display font-bold text-graphite-700 text-sm uppercase dark:text-tangerine">
-							Contact
-						</h4>
-						<p className="mt-3 text-base text-graphite-500 dark:text-paper-50">
-							Want to learn more about moonrepo? Have questions?
-						</p>
-						<form
-							className="mt-3 flex gap-2"
-							onSubmit={(e) => e.preventDefault()}
-						>
-							<Select
-								aria-label="Topic"
-								className="min-w-0 flex-1 sm:w-[326px] sm:flex-none"
-								items={[
-									{ label: 'Sales', value: 'sales' },
-									{ label: 'Support', value: 'support' },
-									{ label: 'Partnerships', value: 'partnerships' },
-								]}
-								name="topic"
-							/>
-							<Button
-								className="shrink-0"
-								size="sm"
-								type="submit"
-								variant="secondary"
-							>
-								Next
-							</Button>
-						</form>
-					</div>
-				</div>
-			</div>
-
-			<Divider />
-
-			<div className="flex h-[120px] items-center justify-between px-6 md:px-12">
-				<p className="text-base text-graphite-600 dark:text-paper-50">
-					Copyright © 2025, moonrepo, inc.
-				</p>
-				<div className="flex gap-6 text-olive dark:text-paper-50">
-					<MessageCircle className="size-6" />
-					<AtSign className="size-6" />
-					<Rss className="size-6" />
-				</div>
-			</div>
-		</footer>
-	);
-}
-
 function UiPage() {
 	return (
-		<div className="relative flex-1 bg-paper-100 font-sans text-graphite-700 dark:bg-graphite-700 dark:text-paper-50">
-			<div className="pointer-events-none absolute inset-0 bg-noise opacity-[0.05] mix-blend-multiply dark:opacity-[0.25] dark:mix-blend-screen" />
-
-			<div
-				className={cn(
-					'relative mx-auto max-w-[1344px] border-x md:mx-12 xl:mx-auto',
-					dashed,
-				)}
-			>
-				<Header />
-				<Divider />
-				<Hero />
-				<Divider />
-				<ProblemSolution />
-				<Hatch />
-				<WhatsIn />
-				<Divider />
-				<Tools />
-				<Divider />
-				<SimpleVersion />
-				<Hatch />
-				<Languages />
-				<Hatch />
-				<Footer />
-			</div>
-		</div>
+		<PageFrame>
+			<Header />
+			<Divider />
+			<Hero />
+			<Divider />
+			<ProblemSolution />
+			<Hatch />
+			<WhatsIn />
+			<Divider />
+			<Tools />
+			<Divider />
+			<SimpleVersion />
+			<Hatch />
+			<Languages />
+			<Hatch />
+			<Footer />
+		</PageFrame>
 	);
 }

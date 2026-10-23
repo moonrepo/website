@@ -23,12 +23,54 @@
 	--color-graphite-surface: #323535;
 	--color-tangerine: #ec9c46;
 	--color-tangerine-dark: #b37939;
-	--color-moon: #8b5cf6;
+	--color-moon: #8b53f3;
+	--color-moon-light: #ac88f0;
+	--color-moon-dark: #5e4195;
 	--color-proto: #ef4f86;
 	--color-yc: #fb651e;
 
+	/* Semantic roles, overridden per product theme */
+	--color-brand: #ec9c46;
+	--color-label: #2e3131;
+	--color-primary: #ec9c46;
+	--color-primary-light: #f3ad5f;
+	--color-primary-dark: #b37939;
+	--color-primary-fg: #2e3131;
+	--color-secondary-glow: #e3dccb;
+
 	--font-display:
 		"Eurostile", "Saira Variable", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* moon product theme: remaps the base palette */
+.theme-moon {
+	--color-paper-50: #f3f1f8;
+	--color-paper-100: #e1dceb;
+	--color-paper-200: #d7d2e0;
+	--color-paper-300: #cdc8d6;
+	--color-paper-400: #c3bdcd;
+	--color-sand: #cdc5dd;
+	--color-taupe: #988dac;
+	--color-olive: #5e4195;
+	--color-graphite-500: #666071;
+	--color-graphite-600: #4b4556;
+	--color-graphite-700: #3d2b30;
+	--color-graphite-950: #171618;
+	--color-graphite-surface: #363042;
+	--color-tangerine: #ac88f0;
+	--color-tangerine-dark: #8b53f3;
+	--color-brand: #f3f1f8;
+	--color-label: #8b53f3;
+	--color-primary: #8b53f3;
+	--color-primary-light: #9d6ef5;
+	--color-primary-dark: #6a3cc4;
+	--color-primary-fg: #ffffff;
+	--color-secondary-glow: #d7d1e3;
+}
+
+.dark .theme-moon {
+	--color-olive: #666071;
+	--color-graphite-700: #312b3d;
 }
 
 @utility bg-noise {

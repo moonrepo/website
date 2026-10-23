@@ -3,9 +3,9 @@ import { cn } from '@/utils/cn';
 
 const variants = {
 	primary:
-		'border-tangerine-dark bg-linear-to-b from-[#f3ad5f] to-tangerine text-graphite-700 shadow-md',
+		'border-primary-dark bg-linear-to-b from-primary-light to-primary text-primary-fg shadow-md',
 	secondary:
-		'border-taupe bg-paper-50 bg-[radial-gradient(ellipse_at_center,#e3dccb_0%,transparent_70%)] text-graphite-500 shadow-sm',
+		'border-taupe bg-paper-50 bg-[radial-gradient(ellipse_at_center,var(--color-secondary-glow)_0%,transparent_70%)] text-graphite-500 shadow-sm',
 };
 
 const sizes = {
