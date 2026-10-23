@@ -1,9 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
 import {
-	AppWindow,
 	ArrowRight,
 	AtSign,
 	CircleQuestionMark,
+	Columns3,
 	FileSearch,
 	FolderCode,
 	FolderX,
@@ -11,10 +11,10 @@ import {
 	Infinity as InfinityIcon,
 	MessageCircle,
 	RefreshCw,
+	Route as RouteIcon,
 	Rss,
 	Search,
-	SquareKanban,
-	Workflow,
+	SquareCode,
 	Zap,
 } from 'lucide-react';
 import { type ReactNode, useId } from 'react';
@@ -427,17 +427,17 @@ function Tools() {
 					experience of working in and maintaining a complex monorepo.
 				</ToolIntro>
 				<div className="flex flex-col gap-11 px-6 pt-20 pb-16 md:px-12">
-					<Feature icon={<Workflow />} title="Efficient task orchestration">
+					<Feature icon={<RouteIcon />} title="Efficient task orchestration">
 						Never run the same task twice. With our smart hashing, robust
 						caching, and efficient task execution, moon will avoid unnecessary
 						work.
 					</Feature>
-					<Feature icon={<SquareKanban />} title="Better project organization">
+					<Feature icon={<Columns3 />} title="Better project organization">
 						Neatly organize your codebase, declare ownership information, and
 						simplify project discovery.
 					</Feature>
 					<Feature
-						icon={<AppWindow />}
+						icon={<SquareCode />}
 						title="Integrated development environment"
 					>
 						With our integrated toolchain, development environments will be spun

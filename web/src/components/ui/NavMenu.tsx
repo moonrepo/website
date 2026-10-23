@@ -1,5 +1,5 @@
 import { Menu } from '@base-ui/react/menu';
-import { ChevronDownIcon } from 'lucide-react';
+import { TriangleIcon } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
 export const navLinkClass = cn(
@@ -24,7 +24,7 @@ export function NavMenu({ items, label }: NavMenuProps) {
 		<Menu.Root>
 			<Menu.Trigger className={navLinkClass} openOnHover>
 				{label}
-				<ChevronDownIcon className="size-4 transition-transform in-data-popup-open:rotate-180" />
+				<TriangleIcon className="size-2 rotate-180 fill-current transition-transform in-data-popup-open:rotate-0" />
 			</Menu.Trigger>
 
 			<Menu.Portal>
