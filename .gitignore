@@ -25,3 +25,7 @@ pnpm-debug.log*
 # moon
 .moon/cache
 .moon/docker
+
+# typescript
+.tsbuild
+*.tsbuildinfo
