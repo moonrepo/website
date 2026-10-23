@@ -1,7 +1,7 @@
 import { Drawer as BaseDrawer } from '@base-ui/react/drawer';
 import { XIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { cn } from '@/utils/cn';
+import { cn } from '../utils/cn';
 
 export interface DrawerProps {
 	children: ReactNode;

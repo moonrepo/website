@@ -1,6 +1,6 @@
 import { Search } from 'lucide-react';
-import { NavMenu, navLinkClass } from '@/components/ui/NavMenu';
-import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { NavMenu, navLinkClass } from '../components/NavMenu';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 export function Header() {
 	const products = [

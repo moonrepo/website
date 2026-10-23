@@ -1,3 +1,9 @@
+import { Button } from '@moonrepo/ui/components/Button';
+import { Footer } from '@moonrepo/ui/layout/Footer';
+import { Divider, Hatch, PageFrame } from '@moonrepo/ui/layout/Frame';
+import { Header } from '@moonrepo/ui/layout/Header';
+import { codeBox, dashed, heading, muted } from '@moonrepo/ui/layout/styles';
+import { cn } from '@moonrepo/ui/utils/cn';
 import { createFileRoute } from '@tanstack/react-router';
 import {
 	ArrowRight,
@@ -21,12 +27,6 @@ import {
 	Zap,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Footer } from '@/components/site/Footer';
-import { Divider, Hatch, PageFrame } from '@/components/site/Frame';
-import { Header } from '@/components/site/Header';
-import { codeBox, dashed, heading, muted } from '@/components/site/styles';
-import { Button } from '@/components/ui/Button';
-import { cn } from '@/utils/cn';
 
 export const Route = createFileRoute('/ui-moon')({
 	component: UiMoonPage,

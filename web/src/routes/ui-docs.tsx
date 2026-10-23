@@ -1,4 +1,7 @@
 import { Collapsible } from '@base-ui/react/collapsible';
+import { SidebarLayout } from '@moonrepo/ui/layout/SidebarLayout';
+import { accent, heading, muted } from '@moonrepo/ui/layout/styles';
+import { cn } from '@moonrepo/ui/utils/cn';
 import { createFileRoute } from '@tanstack/react-router';
 import {
 	Book,
@@ -17,9 +20,6 @@ import {
 	Triangle,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { SidebarLayout } from '@/components/site/SidebarLayout';
-import { accent, heading, muted } from '@/components/site/styles';
-import { cn } from '@/utils/cn';
 
 export const Route = createFileRoute('/ui-docs')({
 	component: UiDocsPage,

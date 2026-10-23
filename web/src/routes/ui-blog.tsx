@@ -1,8 +1,8 @@
+import { SidebarLayout } from '@moonrepo/ui/layout/SidebarLayout';
+import { accent, heading } from '@moonrepo/ui/layout/styles';
+import { cn } from '@moonrepo/ui/utils/cn';
 import { createFileRoute } from '@tanstack/react-router';
 import { ChevronRight, FileText } from 'lucide-react';
-import { SidebarLayout } from '@/components/site/SidebarLayout';
-import { accent, heading } from '@/components/site/styles';
-import { cn } from '@/utils/cn';
 
 export const Route = createFileRoute('/ui-blog')({
 	component: UiBlogPage,

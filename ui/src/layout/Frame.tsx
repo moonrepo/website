@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useId } from 'react';
-import { cn } from '@/utils/cn';
+import { cn } from '../utils/cn';
 import { dashed } from './styles';
 
 export function PageFrame({

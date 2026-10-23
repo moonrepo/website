@@ -1,18 +1,18 @@
 import { Toggle } from '@base-ui/react/toggle';
-import { useTheme } from 'fumadocs-ui/provider/base';
 import { MoonIcon, SunIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { cn } from '@/utils/cn';
+import { useColorScheme } from '../theme';
+import { cn } from '../utils/cn';
 
 export function ThemeToggle({ className }: { className?: string }) {
-	const { resolvedTheme, setTheme } = useTheme();
+	const colorScheme = useColorScheme();
 	const [mounted, setMounted] = useState(false);
 
 	useEffect(() => {
 		setMounted(true);
 	}, []);
 
-	const isDark = mounted && resolvedTheme === 'dark';
+	const isDark = mounted && colorScheme?.scheme === 'dark';
 
 	return (
 		<Toggle
@@ -23,7 +23,10 @@ export function ThemeToggle({ className }: { className?: string }) {
 				'focus-visible:outline-2 focus-visible:outline-olive focus-visible:outline-offset-2 dark:focus-visible:outline-tangerine',
 				className,
 			)}
-			onPressedChange={(pressed) => setTheme(pressed ? 'dark' : 'light')}
+			disabled={!colorScheme}
+			onPressedChange={(pressed) =>
+				colorScheme?.setScheme(pressed ? 'dark' : 'light')
+			}
 			pressed={isDark}
 		>
 			{isDark ? (

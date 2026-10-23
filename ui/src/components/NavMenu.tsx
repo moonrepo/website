@@ -1,6 +1,6 @@
 import { Menu } from '@base-ui/react/menu';
 import { TriangleIcon } from 'lucide-react';
-import { cn } from '@/utils/cn';
+import { cn } from '../utils/cn';
 
 export const navLinkClass = cn(
 	'flex select-none items-center gap-1 font-display font-medium text-olive text-sm uppercase outline-hidden transition-colors',

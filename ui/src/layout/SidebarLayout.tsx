@@ -1,7 +1,7 @@
 import { PanelLeft } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Drawer } from '@/components/ui/Drawer';
-import { cn } from '@/utils/cn';
+import { Drawer } from '../components/Drawer';
+import { cn } from '../utils/cn';
 import { Footer } from './Footer';
 import { Divider, Hatch, PageFrame } from './Frame';
 import { Header } from './Header';

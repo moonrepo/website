@@ -1,6 +1,6 @@
 import { Select as BaseSelect } from '@base-ui/react/select';
 import { CheckIcon, ChevronDownIcon } from 'lucide-react';
-import { cn } from '@/utils/cn';
+import { cn } from '../utils/cn';
 
 export interface SelectItem {
 	label: string;

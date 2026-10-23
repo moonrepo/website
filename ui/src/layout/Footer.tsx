@@ -1,7 +1,7 @@
 import { AtSign, MessageCircle, Rss } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { Select } from '@/components/ui/Select';
-import { cn } from '@/utils/cn';
+import { Button } from '../components/Button';
+import { Select } from '../components/Select';
+import { cn } from '../utils/cn';
 import { Divider } from './Frame';
 
 export function Footer({ className }: { className?: string }) {
