@@ -1,10 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useTheme } from 'fumadocs-ui/provider/base';
 import {
 	AppWindow,
 	ArrowRight,
 	AtSign,
-	ChevronDown,
 	CircleQuestionMark,
 	FileSearch,
 	FolderCode,
@@ -12,30 +10,23 @@ import {
 	Hexagon,
 	Infinity as InfinityIcon,
 	MessageCircle,
-	Moon,
 	RefreshCw,
 	Rss,
 	Search,
 	SquareKanban,
-	Sun,
 	Workflow,
 	Zap,
 } from 'lucide-react';
-import {
-	type ComponentProps,
-	type ReactNode,
-	useEffect,
-	useId,
-	useState,
-} from 'react';
+import { type ReactNode, useId } from 'react';
+import { Button } from '@/components/ui/Button';
+import { NavMenu, navLinkClass } from '@/components/ui/NavMenu';
+import { Select } from '@/components/ui/Select';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { cn } from '@/utils/cn';
 
 export const Route = createFileRoute('/ui')({
 	component: UiPage,
 });
-
-function cn(...classes: (string | false | undefined)[]) {
-	return classes.filter(Boolean).join(' ');
-}
 
 // Shared tokens
 
@@ -84,27 +75,6 @@ function Hatch() {
 			</svg>
 			<Divider />
 		</>
-	);
-}
-
-function Button({
-	className,
-	variant = 'primary',
-	...props
-}: ComponentProps<'button'> & { variant?: 'primary' | 'secondary' }) {
-	return (
-		<button
-			className={cn(
-				'inline-flex items-center justify-center whitespace-nowrap font-display font-bold text-sm uppercase transition active:translate-y-px',
-				variant === 'primary' &&
-					'h-14 rounded-md border border-tangerine-dark border-b-4 bg-linear-to-b from-[#f3ad5f] to-tangerine px-6 text-graphite-700 shadow-md hover:brightness-105',
-				variant === 'secondary' &&
-					'h-14 rounded-[4px] border border-taupe border-b-[3px] bg-paper-50 bg-[radial-gradient(ellipse_at_center,#e3dccb_0%,transparent_70%)] px-6 text-graphite-500 shadow-sm hover:brightness-105',
-				className,
-			)}
-			type="button"
-			{...props}
-		/>
 	);
 }
 
@@ -171,39 +141,20 @@ function Feature({
 
 // Sections
 
-function ThemeToggle() {
-	const { resolvedTheme, setTheme } = useTheme();
-	const [mounted, setMounted] = useState(false);
-
-	useEffect(() => {
-		setMounted(true);
-	}, []);
-
-	const isDark = mounted && resolvedTheme === 'dark';
-
-	return (
-		<button
-			aria-label="Toggle theme"
-			className="flex size-10 items-center justify-center rounded-full border border-paper-300 bg-paper-50 text-graphite-500 shadow-sm dark:border-graphite-surface dark:bg-graphite-950 dark:text-paper-50"
-			onClick={() => setTheme(isDark ? 'light' : 'dark')}
-			type="button"
-		>
-			{isDark ? (
-				<Sun className="size-5" />
-			) : (
-				<Moon className="size-5 fill-current" />
-			)}
-		</button>
-	);
-}
-
 function Header() {
+	const products = [
+		{ description: 'Smart build system', href: '/docs/moon', label: 'moon' },
+		{ description: 'Toolchain manager', href: '/docs/proto', label: 'proto' },
+	];
+	const docs = [
+		{ href: '/docs/moon', label: 'moon' },
+		{ href: '/docs/proto', label: 'proto' },
+		{ href: '/api/moon', label: 'Config reference' },
+	];
 	const links = [
-		{ label: 'Products', menu: true },
-		{ label: 'Docs', menu: true },
-		{ label: 'Guides' },
-		{ label: 'Blog' },
-		{ label: 'GitHub' },
+		{ href: '/docs/moon/guides', label: 'Guides' },
+		{ href: '/blog', label: 'Blog' },
+		{ href: 'https://github.com/moonrepo', label: 'GitHub' },
 	];
 
 	return (
@@ -216,14 +167,11 @@ function Header() {
 			</a>
 
 			<nav className="hidden items-center gap-8 lg:flex">
+				<NavMenu items={products} label="Products" />
+				<NavMenu items={docs} label="Docs" />
 				{links.map((link) => (
-					<a
-						className="flex items-center gap-1 font-display font-semibold text-olive text-sm uppercase hover:text-graphite-700 dark:text-paper-50 dark:hover:text-tangerine"
-						href="/ui"
-						key={link.label}
-					>
+					<a className={navLinkClass} href={link.href} key={link.label}>
 						{link.label}
-						{link.menu && <ChevronDown className="size-4 fill-current" />}
 					</a>
 				))}
 			</nav>
@@ -651,12 +599,8 @@ function Languages() {
 			<p className={cn('mt-10 text-lg', muted)}>...and 800+ more.</p>
 
 			<div className="mt-16 flex justify-center gap-6">
-				<Button className="h-14 px-6" variant="secondary">
-					moon support
-				</Button>
-				<Button className="h-14 px-6" variant="secondary">
-					proto support
-				</Button>
+				<Button variant="secondary">moon support</Button>
+				<Button variant="secondary">proto support</Button>
 			</div>
 		</section>
 	);
@@ -719,23 +663,24 @@ function Footer() {
 							className="mt-3 flex gap-2"
 							onSubmit={(e) => e.preventDefault()}
 						>
-							<div className="relative min-w-0 flex-1 sm:w-[326px] sm:flex-none">
-								<select
-									aria-label="Topic"
-									className="h-12 w-full appearance-none rounded-[4px] border border-taupe border-b-[3px] bg-paper-50 px-3 text-graphite-700"
-								>
-									<option />
-									<option>Sales</option>
-									<option>Support</option>
-								</select>
-								<ChevronDown className="pointer-events-none absolute top-1/2 right-3 size-5 -translate-y-1/2 text-graphite-600" />
-							</div>
-							<button
-								className="h-12 shrink-0 rounded-[4px] border border-taupe border-b-[3px] bg-paper-50 bg-[radial-gradient(ellipse_at_center,#e3dccb_0%,transparent_70%)] px-4 font-display font-bold text-base text-graphite-500 uppercase"
+							<Select
+								aria-label="Topic"
+								className="min-w-0 flex-1 sm:w-[326px] sm:flex-none"
+								items={[
+									{ label: 'Sales', value: 'sales' },
+									{ label: 'Support', value: 'support' },
+									{ label: 'Partnerships', value: 'partnerships' },
+								]}
+								name="topic"
+							/>
+							<Button
+								className="shrink-0"
+								size="sm"
 								type="submit"
+								variant="secondary"
 							>
 								Next
-							</button>
+							</Button>
 						</form>
 					</div>
 				</div>
