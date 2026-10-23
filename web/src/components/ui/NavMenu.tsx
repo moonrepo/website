@@ -3,7 +3,7 @@ import { ChevronDownIcon } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
 export const navLinkClass = cn(
-	'flex select-none items-center gap-1 font-display font-semibold text-olive text-sm uppercase outline-hidden transition-colors',
+	'flex select-none items-center gap-1 font-display font-medium text-olive text-sm uppercase outline-hidden transition-colors',
 	'hover:text-graphite-700 data-popup-open:text-graphite-700 dark:text-paper-50 dark:data-popup-open:text-tangerine dark:hover:text-tangerine',
 	'focus-visible:underline focus-visible:underline-offset-4',
 );

@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "fumadocs-ui/css/neutral.css";
 @import "fumadocs-ui/css/preset.css";
+@import "@fontsource-variable/saira/wdth.css";
 
 /* moonrepo brand theme */
 @theme {
@@ -26,7 +27,8 @@
 	--color-proto: #ef4f86;
 	--color-yc: #fb651e;
 
-	--font-display: ui-sans-serif, system-ui, sans-serif;
+	--font-display:
+		"Eurostile", "Saira Variable", ui-sans-serif, system-ui, sans-serif;
 }
 
 @utility bg-noise {

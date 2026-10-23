@@ -30,7 +30,7 @@ export const Route = createFileRoute('/ui')({
 
 // Shared tokens
 
-const heading = 'font-display text-graphite-700 dark:text-paper-50';
+const heading = 'font-display font-medium text-graphite-700 dark:text-paper-50';
 const muted = 'text-graphite-500 dark:text-sand';
 const accent = 'text-olive dark:text-tangerine';
 const dashed = 'border-dashed border-olive';
@@ -160,7 +160,7 @@ function Header() {
 	return (
 		<header className="flex h-[100px] items-center gap-12 px-6 md:px-12">
 			<a
-				className="font-display font-semibold text-[28px] text-graphite-500 tracking-[0.18em] dark:text-tangerine"
+				className="font-display font-medium font-stretch-125% text-[28px] text-graphite-500 tracking-[0.06em] dark:text-tangerine"
 				href="/ui"
 			>
 				MOONREPO
@@ -399,7 +399,12 @@ function Logo({ name, color }: { name: string; color: string }) {
 	return (
 		<div className="flex items-center gap-7">
 			<span className={cn('size-[66px] rounded-full', color)} />
-			<span className={cn('font-bold text-[44px] tracking-[0.12em]', heading)}>
+			<span
+				className={cn(
+					heading,
+					'font-semibold font-stretch-125% text-[44px] tracking-[0.04em]',
+				)}
+			>
 				{name}
 			</span>
 		</div>
@@ -625,7 +630,7 @@ function Footer() {
 		<footer>
 			<div className="flex flex-col gap-12 bg-paper-200 px-6 pt-16 pb-16 lg:flex-row lg:gap-0 md:px-12 dark:bg-graphite-surface">
 				<a
-					className="font-display font-semibold text-[22px] text-graphite-500 tracking-[0.18em] lg:w-[370px] dark:text-tangerine"
+					className="font-display font-medium font-stretch-125% text-[22px] text-graphite-500 tracking-[0.06em] lg:w-[370px] dark:text-tangerine"
 					href="/ui"
 				>
 					MOONREPO
