@@ -26,7 +26,7 @@ export const Route = createFileRoute('/ui-proto')({
 const code = 'font-mono text-olive dark:text-sand';
 const comment = 'text-taupe';
 const pill =
-	'flex h-[46px] items-center rounded-md border border-taupe/50 bg-paper-200 px-4 text-graphite-600 text-lg dark:border-white/5 dark:bg-graphite-surface dark:text-sand';
+	'flex min-h-[46px] items-center rounded-md border border-taupe/50 bg-paper-200 px-4 py-2 text-graphite-700 text-lg dark:border-white/5 dark:bg-graphite-surface dark:text-sand';
 const link = 'underline underline-offset-2';
 
 function ProtoLogo() {
@@ -67,7 +67,7 @@ function CodeLines({
 						className={cn(
 							'whitespace-nowrap',
 							typeof line === 'string'
-								? 'text-graphite-600 dark:text-sand'
+								? 'text-graphite-700 dark:text-sand'
 								: comment,
 						)}
 						// biome-ignore lint/suspicious/noArrayIndexKey: static code lines
@@ -97,7 +97,7 @@ function Hero() {
 					<span className={code}>rbenv</span>, and{' '}
 					<span className={code}>gvm</span>.
 				</h1>
-				<p className="mt-6 text-graphite-700 text-xl dark:text-paper-50">
+				<p className="mt-6 text-graphite-800 text-xl dark:text-paper-50">
 					Proto handles every language version from a single command.
 				</p>
 				<p className={cn('mt-2 text-[15px]', muted, 'dark:text-taupe')}>
@@ -172,7 +172,7 @@ function Simplify() {
 					<div className={pill}>rustup for Rust</div>
 					<div className={pill}>...etc.</div>
 				</div>
-				<p className="mt-14 text-graphite-700 text-lg dark:text-paper-50">
+				<p className="mt-14 text-graphite-800 text-lg dark:text-paper-50">
 					...each with different commands, config files, and quirks.
 				</p>
 			</div>
@@ -226,7 +226,7 @@ function ManageThemAll() {
 					<ul className="mt-12 space-y-[30px]">
 						{audiences.map((item) => (
 							<li
-								className="flex items-center gap-3 text-graphite-700 text-lg dark:text-paper-50"
+								className="flex items-center gap-3 text-graphite-800 text-lg dark:text-paper-50"
 								key={item}
 							>
 								<CheckBadge />
@@ -406,7 +406,7 @@ function GetStarted() {
 }
 
 function LanguageSupport() {
-	const mark = 'text-graphite-700 dark:text-paper-100';
+	const mark = 'text-graphite-800 dark:text-paper-100';
 	const logos = [
 		{
 			label: 'Deno',
@@ -482,22 +482,24 @@ function UiProtoPage() {
 	return (
 		<PageFrame theme="proto">
 			<Header />
-			<Divider />
-			<Hero />
-			<Hatch />
-			<SectionTitle>Simplify language tooling</SectionTitle>
-			<Simplify />
-			<Hatch />
-			<SectionTitle>One tool to manage them all</SectionTitle>
-			<ManageThemAll />
-			<Divider />
-			<SectionTitle>Core benefits</SectionTitle>
-			<Benefits />
-			<Hatch />
-			<GetStarted />
-			<Divider />
-			<LanguageSupport />
-			<Hatch />
+			<main>
+				<Divider />
+				<Hero />
+				<Hatch />
+				<SectionTitle>Simplify language tooling</SectionTitle>
+				<Simplify />
+				<Hatch />
+				<SectionTitle>One tool to manage them all</SectionTitle>
+				<ManageThemAll />
+				<Divider />
+				<SectionTitle>Core benefits</SectionTitle>
+				<Benefits />
+				<Hatch />
+				<GetStarted />
+				<Divider />
+				<LanguageSupport />
+				<Hatch />
+			</main>
 			<Footer className="bg-transparent dark:bg-transparent" />
 		</PageFrame>
 	);

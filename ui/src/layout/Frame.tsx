@@ -21,7 +21,7 @@ export function PageFrame({
 	return (
 		<div
 			className={cn(
-				'relative flex-1 overflow-x-clip bg-paper-100 font-sans text-graphite-700 dark:bg-graphite-700 dark:text-paper-50',
+				'relative flex-1 overflow-x-clip bg-paper-100 font-sans text-graphite-800 dark:bg-graphite-800 dark:text-paper-50',
 				themeClass,
 			)}
 		>

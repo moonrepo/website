@@ -67,7 +67,7 @@ function Terminal() {
 	];
 	const ran = ['bg-moon', 'bg-moon/85', 'bg-moon/70', 'bg-moon/55'];
 	const cached = [
-		'bg-graphite-700 dark:bg-graphite-500',
+		'bg-graphite-800 dark:bg-graphite-500',
 		'bg-graphite-500 dark:bg-graphite-500/80',
 		'bg-taupe dark:bg-graphite-500/70',
 		'bg-taupe/70 dark:bg-graphite-500/60',
@@ -82,7 +82,7 @@ function Terminal() {
 							<span className={cn('size-[5px]', color)} key={color} />
 						))}
 					</span>
-					<span className="text-graphite-600 dark:text-paper-50">
+					<span className="text-graphite-700 dark:text-paper-50">
 						{task.name}
 					</span>
 					{task.time && (
@@ -92,10 +92,10 @@ function Terminal() {
 					)}
 				</div>
 			))}
-			<div className="mt-[14px] font-bold text-graphite-600 dark:text-paper-50">
+			<div className="mt-[14px] font-bold text-graphite-700 dark:text-paper-50">
 				Tasks: <span className="font-normal text-moon">9 completed</span>
 			</div>
-			<div className="pl-2 font-bold text-graphite-600 dark:text-paper-50">
+			<div className="pl-2 font-bold text-graphite-700 dark:text-paper-50">
 				Time: <span className="font-normal">6.9s</span>
 			</div>
 		</div>
@@ -149,7 +149,7 @@ function Hero() {
 
 function NumberBadge({ children }: { children: ReactNode }) {
 	return (
-		<span className="flex size-[18px] shrink-0 items-center justify-center rounded-[2px] bg-moon font-bold font-display text-[11px] text-paper-50 dark:bg-moon-400 dark:text-graphite-700">
+		<span className="flex size-[18px] shrink-0 items-center justify-center rounded-[2px] bg-moon font-bold font-display text-[11px] text-paper-50 dark:bg-moon-400 dark:text-graphite-800">
 			{children}
 		</span>
 	);
@@ -213,7 +213,7 @@ function PainAndSolution() {
 					<ol className="mt-10 space-y-[22px]">
 						{pains.map((pain, i) => (
 							<li
-								className="flex items-center gap-4 text-graphite-700 text-lg dark:text-paper-50"
+								className="flex items-center gap-4 text-graphite-800 text-lg dark:text-paper-50"
 								key={pain}
 							>
 								<NumberBadge>{i + 1}</NumberBadge>
@@ -282,7 +282,7 @@ function Comparison() {
 			{columns.map((col) => (
 				<div className="min-w-0 px-6 py-12 md:px-12" key={col.title}>
 					<h3 className={cn('flex items-center gap-5 text-[36px]', heading)}>
-						<span className="flex size-[26px] items-center justify-center rounded-[3px] bg-moon text-paper-50 dark:bg-moon-400 dark:text-graphite-700 [&_svg]:size-4 [&_svg]:stroke-3">
+						<span className="flex size-[26px] items-center justify-center rounded-[3px] bg-moon text-paper-50 dark:bg-moon-400 dark:text-graphite-800 [&_svg]:size-4 [&_svg]:stroke-3">
 							{col.glyph}
 						</span>
 						{col.title}
@@ -290,11 +290,11 @@ function Comparison() {
 					<div
 						className={cn(
 							codeBox,
-							'mt-8 flex h-[50px] items-center gap-3 px-4',
+							'mt-8 flex min-h-[50px] items-center gap-3 px-4 py-2',
 						)}
 					>
 						<Hash className="size-5 shrink-0 text-graphite-500" />
-						<span className="whitespace-nowrap text-graphite-700 dark:text-paper-50">
+						<span className="whitespace-nowrap text-graphite-800 dark:text-paper-50">
 							{col.command}
 						</span>
 						<span className="truncate text-taupe dark:text-graphite-500">
@@ -309,7 +309,7 @@ function Comparison() {
 
 function Stack() {
 	const logoTile =
-		'flex items-center justify-center bg-graphite-700 font-bold font-display text-[40px] text-paper-50 leading-none dark:bg-paper-100 dark:text-graphite-700';
+		'flex items-center justify-center bg-graphite-800 font-bold font-display text-[40px] text-paper-50 leading-none dark:bg-paper-100 dark:text-graphite-800';
 	const logos = [
 		{
 			label: 'JavaScript',
@@ -338,7 +338,7 @@ function Stack() {
 			label: 'Ruby',
 			node: (
 				<Gem
-					className="size-[80px] text-graphite-600 dark:text-paper-100"
+					className="size-[80px] text-graphite-700 dark:text-paper-100"
 					strokeWidth={1.25}
 				/>
 			),
@@ -347,7 +347,7 @@ function Stack() {
 			label: 'Rust',
 			node: (
 				<Cog
-					className="size-[88px] text-graphite-700 dark:text-paper-100"
+					className="size-[88px] text-graphite-800 dark:text-paper-100"
 					strokeWidth={2.25}
 				/>
 			),
@@ -355,7 +355,7 @@ function Stack() {
 		{
 			label: 'Go',
 			node: (
-				<span className="font-black font-display text-[40px] text-graphite-700 italic dark:text-paper-100">
+				<span className="font-black font-display text-[40px] text-graphite-800 italic dark:text-paper-100">
 					GO
 				</span>
 			),
@@ -507,7 +507,7 @@ function QuickStart() {
 			>
 				{commands.map((command) => (
 					<div
-						className="whitespace-nowrap text-graphite-600 dark:text-paper-50"
+						className="whitespace-nowrap text-graphite-700 dark:text-paper-50"
 						key={command}
 					>
 						{command}
@@ -526,19 +526,21 @@ function UiMoonPage() {
 	return (
 		<PageFrame theme="moon">
 			<Header />
-			<Divider />
-			<Hero />
-			<Hatch />
-			<PainAndSolution />
-			<Divider />
-			<Comparison />
-			<Hatch />
-			<Stack />
-			<Hatch />
-			<AdvancedFeatures />
-			<Hatch />
-			<QuickStart />
-			<Hatch />
+			<main>
+				<Divider />
+				<Hero />
+				<Hatch />
+				<PainAndSolution />
+				<Divider />
+				<Comparison />
+				<Hatch />
+				<Stack />
+				<Hatch />
+				<AdvancedFeatures />
+				<Hatch />
+				<QuickStart />
+				<Hatch />
+			</main>
 			<Footer className="bg-transparent dark:bg-transparent" />
 		</PageFrame>
 	);

@@ -4,7 +4,7 @@ import { cn } from '../utils/cn';
 
 export const navLinkClass = cn(
 	'flex select-none items-center gap-1 font-display font-medium text-olive text-sm uppercase outline-hidden transition-colors',
-	'hover:text-graphite-700 data-popup-open:text-graphite-700 dark:text-paper-50 dark:data-popup-open:text-tangerine dark:hover:text-tangerine',
+	'hover:text-graphite-800 data-popup-open:text-graphite-800 dark:text-paper-50 dark:data-popup-open:text-tangerine dark:hover:text-tangerine',
 	'focus-visible:underline focus-visible:underline-offset-4',
 );
 
@@ -45,7 +45,7 @@ export function NavMenu({ items, label }: NavMenuProps) {
 								href={item.href}
 								key={item.label}
 							>
-								<span className="block font-display text-base text-graphite-700 dark:text-paper-50">
+								<span className="block font-display text-base text-graphite-800 dark:text-paper-50">
 									{item.label}
 								</span>
 								{item.description && (

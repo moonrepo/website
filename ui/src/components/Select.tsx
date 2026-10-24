@@ -39,7 +39,7 @@ export function Select({
 			<BaseSelect.Trigger
 				aria-label={ariaLabel}
 				className={cn(
-					'flex h-12 select-none items-center justify-between gap-3 rounded-[4px] border border-taupe border-b-[3px] bg-paper-50 px-3 text-base text-graphite-700',
+					'flex h-12 select-none items-center justify-between gap-3 rounded-[4px] border border-taupe border-b-[3px] bg-paper-50 px-3 text-base text-graphite-800',
 					'focus-visible:outline-2 focus-visible:outline-olive focus-visible:outline-offset-2 dark:focus-visible:outline-tangerine',
 					className,
 				)}
@@ -48,7 +48,7 @@ export function Select({
 					className="truncate data-placeholder:text-graphite-500"
 					placeholder={placeholder}
 				/>
-				<BaseSelect.Icon className="text-graphite-600 transition-transform data-popup-open:rotate-180">
+				<BaseSelect.Icon className="text-graphite-700 transition-transform data-popup-open:rotate-180">
 					<ChevronDownIcon className="size-5" />
 				</BaseSelect.Icon>
 			</BaseSelect.Trigger>
@@ -61,7 +61,7 @@ export function Select({
 				>
 					<BaseSelect.Popup
 						className={cn(
-							'min-w-(--anchor-width) origin-(--transform-origin) overflow-hidden rounded-[4px] border border-taupe bg-paper-50 py-1 text-graphite-700 shadow-lg outline-hidden',
+							'min-w-(--anchor-width) origin-(--transform-origin) overflow-hidden rounded-[4px] border border-taupe bg-paper-50 py-1 text-graphite-800 shadow-lg outline-hidden',
 							'transition-[scale,opacity] duration-100 ease-out data-ending-style:scale-95 data-starting-style:scale-95 data-ending-style:opacity-0 data-starting-style:opacity-0',
 						)}
 					>

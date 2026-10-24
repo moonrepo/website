@@ -151,9 +151,9 @@ const posts: Post[] = [
 function RecentPosts() {
 	return (
 		<>
-			<h4 className="font-bold font-display text-graphite-700 text-sm uppercase dark:text-paper-50">
+			<h2 className="font-bold font-display text-graphite-800 text-sm uppercase dark:text-paper-50">
 				Recent posts
-			</h4>
+			</h2>
 			<ul className="mt-5 space-y-3">
 				{posts.slice(0, 5).map((post, i) => (
 					<li key={post.title}>
@@ -162,7 +162,7 @@ function RecentPosts() {
 								'flex gap-3 text-[15px] leading-6',
 								i === 0
 									? accent
-									: 'text-graphite-600 hover:text-graphite-700 dark:text-paper-100 dark:hover:text-tangerine',
+									: 'text-graphite-700 hover:text-graphite-800 dark:text-paper-100 dark:hover:text-tangerine',
 							)}
 							href="/ui-blog"
 						>
@@ -179,7 +179,7 @@ function RecentPosts() {
 function PostEntry({ post }: { post: Post }) {
 	return (
 		<article>
-			<p className="font-bold font-display text-graphite-600 text-sm uppercase dark:text-paper-100">
+			<p className="font-bold font-display text-graphite-700 text-sm uppercase dark:text-paper-100">
 				{post.date} · {post.minutes} min read
 			</p>
 			<h2
@@ -192,7 +192,7 @@ function PostEntry({ post }: { post: Post }) {
 					{post.title}
 				</a>
 			</h2>
-			<p className="mt-3 text-graphite-600 text-lg leading-[30px] dark:text-sand">
+			<p className="mt-3 text-graphite-700 text-lg leading-[30px] dark:text-sand">
 				{post.excerpt}{' '}
 				<a
 					className={cn('underline underline-offset-2', accent)}
@@ -204,7 +204,7 @@ function PostEntry({ post }: { post: Post }) {
 			<ul className="mt-4 flex flex-wrap gap-2.5">
 				{post.tags.map((tag) => (
 					<li
-						className="flex h-6 items-center rounded-[3px] border border-graphite-600/70 px-[7px] font-display font-semibold text-graphite-700 text-xs uppercase dark:border-paper-100 dark:text-paper-50"
+						className="flex h-6 items-center rounded-[3px] border border-graphite-700/70 px-[7px] font-display font-semibold text-graphite-800 text-xs uppercase dark:border-paper-100 dark:text-paper-50"
 						key={tag}
 					>
 						{tag}
@@ -231,7 +231,7 @@ function UiBlogPage() {
 				</div>
 				<div className="mt-20 flex justify-end md:pr-12">
 					<a
-						className="flex items-center gap-1.5 font-bold font-display text-graphite-700 text-sm uppercase hover:text-olive dark:text-paper-50 dark:hover:text-tangerine"
+						className="flex items-center gap-1.5 font-bold font-display text-graphite-800 text-sm uppercase hover:text-olive dark:text-paper-50 dark:hover:text-tangerine"
 						href="/ui-blog"
 					>
 						Older entries

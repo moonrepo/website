@@ -27,7 +27,7 @@ export function Header() {
 				MOONREPO
 			</a>
 
-			<nav className="hidden items-center gap-8 lg:flex">
+			<nav aria-label="Main" className="hidden items-center gap-8 lg:flex">
 				<NavMenu items={products} label="Products" />
 				<NavMenu items={docs} label="Docs" />
 				{links.map((link) => (
@@ -41,17 +41,17 @@ export function Header() {
 				<ThemeToggle />
 
 				<button
-					className="hidden h-9 w-56 items-center gap-2 rounded-full border border-paper-300 bg-paper-50 px-2.5 text-graphite-700 shadow-sm sm:flex dark:border-graphite-surface dark:bg-graphite-950 dark:text-paper-50"
+					className="hidden h-9 w-56 items-center gap-2 rounded-full border border-paper-300 bg-paper-50 px-2.5 text-graphite-800 shadow-sm sm:flex dark:border-graphite-surface dark:bg-graphite-950 dark:text-paper-50"
 					type="button"
 				>
 					<Search className="size-5" />
-					<span className="flex-1 text-left text-lg text-graphite-600 dark:text-graphite-500">
+					<span className="flex-1 text-left text-lg text-graphite-700 dark:text-graphite-500">
 						Search
 					</span>
 					<span className="flex gap-0.5">
 						{['⌘', 'K'].map((key) => (
 							<kbd
-								className="flex size-5 items-center justify-center rounded-[4px] border border-taupe/50 bg-paper-300 text-[10px] text-graphite-600 dark:bg-paper-100"
+								className="flex size-5 items-center justify-center rounded-[4px] border border-taupe/50 bg-paper-300 text-[10px] text-graphite-700 dark:bg-paper-100"
 								key={key}
 							>
 								{key}

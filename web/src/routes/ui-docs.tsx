@@ -112,13 +112,13 @@ function SidebarGroup({ group }: { group: (typeof groups)[number] }) {
 		</>
 	);
 	const labelClass =
-		'flex w-full items-center gap-3 text-base text-graphite-700 dark:text-paper-50';
+		'flex w-full items-center gap-3 text-base text-graphite-800 dark:text-paper-50';
 	const list = (
 		<ul className={cn('mt-2 ml-4 border-l py-0.5 pl-[31px]', rule)}>
 			{group.items.map((item) => (
 				<li key={item}>
 					<a
-						className="block py-[7px] text-graphite-600 text-sm leading-[19px] hover:text-graphite-700 dark:text-paper-100 dark:hover:text-tangerine"
+						className="block py-[7px] text-graphite-700 text-sm leading-[19px] hover:text-graphite-800 dark:text-paper-100 dark:hover:text-tangerine"
 						href="/ui-docs"
 					>
 						{item}
@@ -158,11 +158,11 @@ function SidebarGroup({ group }: { group: (typeof groups)[number] }) {
 function SidebarNav() {
 	return (
 		<>
-			<nav className="space-y-4">
+			<nav aria-label="Products" className="space-y-4">
 				{products.map((product) => (
 					<a
 						className={cn(
-							'flex h-10 items-center gap-3 rounded-md border border-transparent px-3 text-base text-graphite-700 dark:text-paper-50',
+							'flex h-10 items-center gap-3 rounded-md border border-transparent px-3 text-base text-graphite-800 dark:text-paper-50',
 							product.active &&
 								'border-olive bg-paper-50/60 dark:border-tangerine dark:bg-graphite-800',
 						)}
@@ -205,7 +205,7 @@ function Breadcrumb() {
 
 function Article() {
 	const paragraph =
-		'text-[15px] text-graphite-700 leading-6 dark:text-paper-100 [&+&]:mt-4';
+		'text-[15px] text-graphite-800 leading-6 dark:text-paper-100 [&+&]:mt-4';
 
 	return (
 		<article className="min-w-0 max-w-[660px] flex-1">
@@ -262,11 +262,14 @@ function TableOfContents() {
 	const [first, ...rest] = sections;
 
 	return (
-		<aside className="hidden w-[200px] shrink-0 xl:block">
+		<aside
+			aria-label="On this page"
+			className="hidden w-[200px] shrink-0 xl:block"
+		>
 			<div className="sticky top-8">
-				<h4 className="font-bold font-display text-graphite-700 text-sm uppercase dark:text-paper-50">
+				<h2 className="font-bold font-display text-graphite-800 text-sm uppercase dark:text-paper-50">
 					On this page
-				</h4>
+				</h2>
 				<ul className="mt-6 space-y-2.5 text-base">
 					<li>
 						<a className={cn('text-[17px]', accent)} href={`#${first.id}`}>
@@ -276,7 +279,7 @@ function TableOfContents() {
 					{rest.map((section) => (
 						<li className="pl-4" key={section.id}>
 							<a
-								className="text-graphite-600 hover:text-graphite-700 dark:text-paper-100 dark:hover:text-tangerine"
+								className="text-graphite-700 hover:text-graphite-800 dark:text-paper-100 dark:hover:text-tangerine"
 								href={`#${section.id}`}
 							>
 								{section.title}

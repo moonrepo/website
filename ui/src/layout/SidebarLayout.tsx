@@ -30,6 +30,7 @@ export function SidebarLayout({
 			<Divider />
 			<div className="flex">
 				<aside
+					aria-label={drawerTitle}
 					className={cn(
 						'hidden w-[291px] shrink-0 border-r bg-paper-200/40 px-12 pt-[52px] pb-16 lg:block dark:bg-graphite-900/50',
 						dashed,
@@ -48,7 +49,7 @@ export function SidebarLayout({
 									Menu
 								</>
 							}
-							triggerClassName="mb-6 flex h-9 items-center gap-2 rounded-full border border-paper-300 bg-paper-50 px-3 font-display font-semibold text-graphite-700 text-sm uppercase shadow-sm lg:hidden dark:border-graphite-surface dark:bg-graphite-950 dark:text-paper-50"
+							triggerClassName="mb-6 flex h-9 items-center gap-2 rounded-full border border-paper-300 bg-paper-50 px-3 font-display font-semibold text-graphite-800 text-sm uppercase shadow-sm lg:hidden dark:border-graphite-surface dark:bg-graphite-950 dark:text-paper-50"
 						>
 							{sidebar}
 						</Drawer>

@@ -41,7 +41,7 @@ function ListCard({
 		>
 			{items.map((item) => (
 				<li
-					className="flex h-[62px] items-center gap-3 px-6 text-graphite-600 text-lg dark:text-sand"
+					className="flex min-h-[62px] items-center gap-3 px-6 py-3 text-graphite-700 text-lg dark:text-sand"
 					key={item.label}
 				>
 					<span
@@ -101,7 +101,7 @@ function Hero() {
 		<section className="relative h-[880px] overflow-hidden md:h-[700px]">
 			<div className="absolute inset-x-0 top-[180px] bottom-0 md:top-0">
 				{/* Planet surface */}
-				<div className="absolute top-[420px] left-[43%] size-[2380px] -translate-x-1/2 rounded-full border-2 border-olive bg-paper-100 dark:border-graphite-500 dark:bg-graphite-700" />
+				<div className="absolute top-[420px] left-[43%] size-[2380px] -translate-x-1/2 rounded-full border-2 border-olive bg-paper-100 dark:border-graphite-500 dark:bg-graphite-800" />
 				{craters.map((crater) => (
 					<div
 						className={cn(
@@ -113,9 +113,9 @@ function Hero() {
 				))}
 
 				{/* Small moons */}
-				<div className="absolute top-[60px] left-[82px] hidden size-[146px] overflow-hidden rounded-full border-2 border-olive bg-paper-100 md:block dark:border-graphite-500 dark:bg-graphite-700">
+				<div className="absolute top-[60px] left-[82px] hidden size-[146px] overflow-hidden rounded-full border-2 border-olive bg-paper-100 md:block dark:border-graphite-500 dark:bg-graphite-800">
 					<div className="absolute -top-[30%] -right-[30%] size-full rounded-full bg-paper-400 dark:bg-graphite-950" />
-					<div className="absolute -top-[22%] -right-[38%] size-full rounded-full bg-paper-100 dark:bg-graphite-700" />
+					<div className="absolute -top-[22%] -right-[38%] size-full rounded-full bg-paper-100 dark:bg-graphite-800" />
 				</div>
 				<div className="absolute top-[478px] -right-[40px] size-[84px] rounded-full border-2 border-olive bg-paper-400 dark:border-graphite-500 dark:bg-graphite-950" />
 			</div>
@@ -225,7 +225,7 @@ function WhatsIn() {
 								className={cn('size-5 shrink-0 rotate-90 md:rotate-0', accent)}
 							/>
 						)}
-						<div className="flex h-[46px] w-full flex-1 items-center justify-center rounded-md border border-olive text-graphite-700 text-lg dark:text-paper-50">
+						<div className="flex min-h-[46px] w-full flex-1 items-center justify-center rounded-md px-3 py-2 text-center border border-olive text-graphite-800 text-lg dark:text-paper-50">
 							{step}
 						</div>
 					</div>
@@ -271,7 +271,7 @@ function ToolIntro({
 					{eyebrow}
 				</p>
 				<h2 className={cn('mt-2 text-[32px]', heading)}>{title}</h2>
-				<p className="mt-6 max-w-[575px] text-graphite-600 text-lg leading-[30px] dark:text-sand">
+				<p className="mt-6 max-w-[575px] text-graphite-700 text-lg leading-[30px] dark:text-sand">
 					{children}
 				</p>
 				<Button className="mt-6">{cta}</Button>
@@ -414,20 +414,20 @@ function SimpleVersion() {
 					The simple version
 				</h2>
 				<ul className="mt-10 divide-y divide-olive overflow-hidden rounded-[14px] border border-olive bg-paper-300 dark:bg-graphite-800">
-					<li className="flex h-[72px] items-center gap-3 px-6 text-graphite-600 text-lg dark:text-paper-50">
+					<li className="flex min-h-[72px] items-center gap-3 px-6 py-3 text-graphite-700 text-lg dark:text-paper-50">
 						<span className={tile}>
 							<span className="size-4 rounded-full bg-moon" />
 						</span>
 						moon keeps your builds fast
 					</li>
-					<li className="flex h-[72px] items-center gap-3 px-6 text-graphite-600 text-lg dark:text-paper-50">
+					<li className="flex min-h-[72px] items-center gap-3 px-6 py-3 text-graphite-700 text-lg dark:text-paper-50">
 						<span className={tile}>
 							<span className="size-0 border-x-8 border-x-transparent border-b-[14px] border-b-proto" />
 						</span>
 						proto keeps your tools organized
 					</li>
 				</ul>
-				<p className="mt-10 max-w-[580px] text-base text-graphite-600 leading-6 dark:text-sand">
+				<p className="mt-10 max-w-[580px] text-base text-graphite-700 leading-6 dark:text-sand">
 					Together, they eliminate a lot of the tedious setup work so you can
 					focus on actually writing code. They're especially helpful once you
 					move beyond single-file scripts to working on real applications with
@@ -471,7 +471,7 @@ function Languages() {
 				{langs.map((lang, i) => (
 					<div
 						className={cn(
-							'flex h-[180px] items-center justify-center border-dashed border-olive font-bold text-3xl text-graphite-700 dark:text-paper-50',
+							'flex h-[180px] items-center justify-center border-dashed border-olive font-bold text-3xl text-graphite-800 dark:text-paper-50',
 							i % 2 === 1 && 'border-l',
 							i % 4 !== 0 && 'md:border-l',
 							i % 4 === 0 && 'md:border-l-0',
@@ -500,19 +500,21 @@ function UiPage() {
 	return (
 		<PageFrame>
 			<Header />
-			<Divider />
-			<Hero />
-			<Divider />
-			<ProblemSolution />
-			<Hatch />
-			<WhatsIn />
-			<Divider />
-			<Tools />
-			<Divider />
-			<SimpleVersion />
-			<Hatch />
-			<Languages />
-			<Hatch />
+			<main>
+				<Divider />
+				<Hero />
+				<Divider />
+				<ProblemSolution />
+				<Hatch />
+				<WhatsIn />
+				<Divider />
+				<Tools />
+				<Divider />
+				<SimpleVersion />
+				<Hatch />
+				<Languages />
+				<Hatch />
+			</main>
 			<Footer />
 		</PageFrame>
 	);
