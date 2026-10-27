@@ -373,7 +373,7 @@ function GetStarted() {
 								link,
 								'mt-3 inline-block text-[15px] text-olive dark:text-proto',
 							)}
-							href="/docs/proto/install"
+							href="/proto/docs"
 						>
 							Full instructions
 						</a>
@@ -448,7 +448,7 @@ function LanguageSupport() {
 				</h2>
 				<p className={cn('mt-3 text-lg', muted)}>
 					Plus 800+ more via{' '}
-					<a className={cn(link, 'dark:text-proto')} href="/docs/proto/plugins">
+					<a className={cn(link, 'dark:text-proto')} href="/proto/docs">
 						plugins
 					</a>
 				</p>

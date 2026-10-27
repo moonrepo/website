@@ -117,7 +117,7 @@ function Hero() {
 				</h1>
 				<p className={cn('mt-4 text-[15px]', muted)}>
 					Supports JavaScript, TypeScript, Rust, Go, Ruby,{' '}
-					<a className="underline underline-offset-2" href="/docs/moon">
+					<a className="underline underline-offset-2" href="/moon/docs/toolchain">
 						and more
 					</a>
 					.
