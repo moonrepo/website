@@ -7,11 +7,13 @@ import {
 	ChevronRightIcon,
 	CornerLeftUpIcon,
 	FileTextIcon,
+	TextIcon,
 } from 'lucide-react';
 import type { ComponentProps, ReactNode } from 'react';
 import type { BlogAuthor, BlogPost, BlogTag } from '../../lib/blog';
 import { cn } from '../../lib/cn';
-import { TOCProvider } from '../toc';
+import { TOCProvider, TOCScrollArea, useTOCItems } from '../toc';
+import { TOCItem, TOCItems } from '../toc/default';
 import { BlogPanel } from './panel';
 
 const dateFormat = new Intl.DateTimeFormat('en-US', {
@@ -135,9 +137,9 @@ export function BlogPage({ toc, className, ...props }: BlogPageProps) {
 		<article
 			{...props}
 			className={cn(
-				'flex flex-col gap-10 px-6 pt-10 pb-16 md:px-12',
+				'flex min-w-0 flex-1 flex-col gap-10 px-6 pt-10 pb-16 md:px-12',
 				// room for the panel
-				toc && 'pb-28',
+				toc && 'pb-28 xl:pb-16',
 				className,
 			)}
 		/>
@@ -146,9 +148,40 @@ export function BlogPage({ toc, className, ...props }: BlogPageProps) {
 
 	return (
 		<TOCProvider toc={toc}>
-			{article}
-			<BlogPanel />
+			<div className="flex">
+				{article}
+				<BlogTOC />
+			</div>
+			<BlogPanel className="xl:hidden" />
 		</TOCProvider>
+	);
+}
+
+/** the "On this page" sidebar of docs, for wide screens */
+export function BlogTOC() {
+	const items = useTOCItems();
+	if (items.length === 0) return;
+
+	return (
+		<div
+			className="sticky top-(--site-header-height) flex h-[calc(100dvh-var(--site-header-height))] w-[268px] shrink-0 flex-col self-start pt-10 pe-6 max-xl:hidden"
+			id="nd-toc"
+		>
+			<h3
+				className="inline-flex items-center gap-1.5 text-fd-muted-foreground text-sm"
+				id="toc-title"
+			>
+				<TextIcon className="size-4" />
+				On this page
+			</h3>
+			<TOCScrollArea className="ms-px">
+				<TOCItems>
+					{items.map((item) => (
+						<TOCItem item={item} key={item.url} />
+					))}
+				</TOCItems>
+			</TOCScrollArea>
+		</div>
 	);
 }
 

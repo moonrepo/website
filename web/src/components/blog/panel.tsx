@@ -15,7 +15,7 @@ const buttonClass =
 	'inline-flex items-center gap-2 rounded-lg px-3 py-2 font-medium transition-all duration-150 hover:bg-fd-accent hover:text-fd-accent-foreground active:scale-95';
 
 /** the table of contents and share button of a post, floating at the bottom */
-export function BlogPanel() {
+export function BlogPanel({ className }: { className?: string }) {
 	const items = useTOCItems();
 	const [open, setOpen] = useState(false);
 	const [shared, onShare] = useCopyButton(() =>
@@ -26,7 +26,10 @@ export function BlogPanel() {
 
 	return (
 		<Collapsible
-			className="fixed bottom-2 left-1/2 z-20 w-full max-w-[calc(100%-1rem)] -translate-x-1/2 rounded-xl border bg-fd-secondary/80 p-1 text-sm shadow-md backdrop-blur-sm sm:bottom-4 sm:max-w-[400px]"
+			className={cn(
+				'fixed bottom-2 left-1/2 z-20 w-full max-w-[calc(100%-1rem)] -translate-x-1/2 rounded-xl border bg-fd-secondary/80 p-1 text-sm shadow-md backdrop-blur-sm sm:bottom-4 sm:max-w-[400px]',
+				className,
+			)}
 			onOpenChange={setOpen}
 			open={open}
 		>
