@@ -64,12 +64,14 @@ Links are the backbone of these docs. Link generously, but deliberately.
 ### Link format
 
 - **Docs pages**: use relative _file_ paths, including the `.mdx` extension. These are resolved and validated at build time (`web/src/lib/remarkRelativeLinks.ts`), and a broken path fails the build.
+
   ```md
   [tasks](./task.mdx)
   [`moon exec`](../commands/exec.mdx)
   [inputs](./task.mdx#inputs)
   ```
 - Paths containing parentheses must be wrapped in angle brackets:
+
   ```md
   [targets](<../(fundamentals)/target.mdx>)
   ```
@@ -181,10 +183,12 @@ Before finishing:
 1. Confirm every setting name, default, and behavior against the moon source.
 2. Confirm every API anchor exists as a heading in `web/content/moon/api/<Type>.mdx`.
 3. Validate links (run from `web/`):
+
    ```shell
    $ node scripts/validateLinks.ts
    ```
 4. Build to catch MDX and broken relative links, if you changed components or imports:
+
    ```shell
    $ pnpm --filter website build
    ```
