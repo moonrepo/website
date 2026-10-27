@@ -1,28 +1,39 @@
 import { Search } from 'lucide-react';
 import { NavMenu, navLinkClass } from '../components/NavMenu';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { cn } from '../utils/cn';
 
-export function Header() {
+export interface HeaderProps {
+	className?: string;
+	onSearch?: () => void;
+}
+
+export function Header({ className, onSearch }: HeaderProps) {
 	const products = [
-		{ description: 'Smart build system', href: '/docs/moon', label: 'moon' },
-		{ description: 'Toolchain manager', href: '/docs/proto', label: 'proto' },
+		{ description: 'Smart build system', href: '/moon', label: 'moon' },
+		{ description: 'Toolchain manager', href: '/proto', label: 'proto' },
 	];
 	const docs = [
-		{ href: '/docs/moon', label: 'moon' },
-		{ href: '/docs/proto', label: 'proto' },
-		{ href: '/api/moon', label: 'Config reference' },
+		{ href: '/moon/docs', label: 'moon' },
+		{ href: '/proto/docs', label: 'proto' },
+		{ href: '/moon/api', label: 'Config reference' },
 	];
 	const links = [
-		{ href: '/docs/moon/guides', label: 'Guides' },
+		{ href: '/moon/docs/guides', label: 'Guides' },
 		{ href: '/blog', label: 'Blog' },
 		{ href: 'https://github.com/moonrepo', label: 'GitHub' },
 	];
 
 	return (
-		<header className="flex h-[100px] items-center gap-12 px-6 md:px-12">
+		<header
+			className={cn(
+				'flex h-[100px] items-center gap-12 px-6 md:px-12',
+				className,
+			)}
+		>
 			<a
 				className="font-display font-medium font-stretch-125% text-[28px] text-graphite-500 tracking-[0.06em] dark:text-brand"
-				href="/ui"
+				href="/"
 			>
 				MOONREPO
 			</a>
@@ -42,6 +53,7 @@ export function Header() {
 
 				<button
 					className="hidden h-9 w-56 items-center gap-2 rounded-full border border-paper-300 bg-paper-50 px-2.5 text-graphite-800 shadow-sm sm:flex dark:border-graphite-surface dark:bg-graphite-950 dark:text-paper-50"
+					onClick={onSearch}
 					type="button"
 				>
 					<Search className="size-5" />

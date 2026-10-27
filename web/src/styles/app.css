@@ -2,6 +2,12 @@
 @import "fumadocs-ui/css/neutral.css";
 @import "fumadocs-ui/css/preset.css";
 @import "@fontsource-variable/saira/wdth.css";
+@import "./fumadocs.css";
 
 @config "../../../ui/src/tailwind.config.ts";
 @source "../../../ui/src";
+
+:root {
+	/* Header height (100px + 1px border), for offsetting sticky content */
+	--site-header-height: 101px;
+}
