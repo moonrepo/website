@@ -14,6 +14,7 @@ import {
 	DocsTitle,
 } from 'fumadocs-ui/page';
 import { Suspense } from 'react';
+import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
 import browserCollections from '@/generated/browser';
 import { baseOptions } from '@/lib/layout.shared';
@@ -131,6 +132,7 @@ function Page() {
 			>
 				<Suspense>{clientLoaders[product].useContent(path)}</Suspense>
 			</DocsLayout>
+			<SiteFooter />
 		</div>
 	);
 }
