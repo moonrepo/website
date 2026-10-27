@@ -1,0 +1,469 @@
+---
+title: Bun
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+import { TypeLabel } from "@/components/TypeLabel";
+import { VersionLabel } from "@/components/VersionLabel";
+
+The Bun toolchain integrates [Bun](https://bun.com) into moon. With it enabled, moon:
+
+- Detects which projects and tasks use Bun, so tasks can be shared between every Bun project with
+  task inheritance.
+- Downloads, installs, and pins a version of Bun through proto, so every machine runs the same
+  version.
+- Installs dependencies with `bun install` (or `bun ci` in CI) whenever they change, together with
+  the JavaScript toolchain.
+- Hashes the dependency versions resolved in `bun.lock`, so a task's cache is only invalidated when
+  its project's dependencies change.
+- Passes `executeArgs` to `bun` task commands.
+- Provides Docker defaults, like the `oven/bun` base image.
+
+Enable it whenever your repository runs code with Bun, installs dependencies with Bun, or both. Bun
+is a runtime and a package manager in a single binary, so the toolchains to enable depend on how you
+use it:
+
+| Setup                                              | Toolchains                                           | `packageManager`         |
+| -------------------------------------------------- | ---------------------------------------------------- | ------------------------ |
+| Bun as the runtime and package manager             | `javascript`, `bun`                                  | `bun`                    |
+| Node.js as the runtime, with Bun for installs      | `javascript`, `node`, `bun`                          | `bun`                    |
+| Bun as a runtime, with npm, pnpm, or Yarn installs | `javascript`, `node`, `bun`, and the package manager | `npm`, `pnpm`, or `yarn` |
+
+Bun support is shared with the [JavaScript toolchain](./index.mdx), which installs dependencies with
+Bun, and reads `package.json` and `bun.lock` files, when its `packageManager` setting is `bun`. This
+page covers everything that's specific to Bun, wherever it's implemented.
+
+Bun is a standalone binary, so when it's the package manager, the JavaScript toolchain doesn't
+require the [Node.js toolchain](./node.mdx). Only enable `node` if some of your tasks run `node`
+directly.
+
+## Prerequisites
+
+Before enabling the Bun toolchain, make sure you have the following:
+
+- **JavaScript toolchain** - To install dependencies with Bun, also enable the
+  [JavaScript toolchain](./index.mdx), with its `packageManager` setting set to `bun`. The Bun
+  toolchain on its own never runs `bun install` or reads `bun.lock`.
+- **Bun** - When [`version`](/moon/api/ToolchainPluginConfig#version) is configured, moon installs
+  Bun for you. Otherwise, a `bun` binary must be available on your `PATH`.
+- **`bun` on `PATH` for `bun.lockb`** - The legacy binary lockfile can only be read by Bun itself,
+  using the `bun` binary on your `PATH`. See
+  [parsing manifest and lock files](#parsing-manifest-and-lock-files).
+- **A recent Bun version** - Some install behavior depends on the configured `version`: v1.2.20+ to
+  install with `bun ci` in CI, and v1.4+ for `bun dedupe` and focused installs that include
+  workspace dependencies. See
+  [installing and deduping dependencies](#installing-and-deduping-dependencies).
+
+### Repository structure
+
+The Bun toolchain supports the following repository layouts. Directories only become moon
+[projects](<../../(fundamentals)/project.mdx>) when they're matched by the
+[`projects`](/moon/api/WorkspaceConfig#projects) setting in
+[`.moon/workspace.config`](<../../(fundamentals)/workspace.mdx>).
+
+#### Single package
+
+A single `package.json` at the repository root, typical of a polyrepo.
+
+```text
+./
+├── .moon/
+├── src/
+├── bun.lock
+├── bunfig.toml
+└── package.json
+```
+
+In this layout, the root is both the only project and the dependencies root.
+
+#### Bun workspaces
+
+A monorepo where the root `package.json` declares its members in `workspaces`, and a single
+`bun.lock` at the root is shared by every package.
+
+```text
+./
+├── .moon/
+├── apps/
+│   └── web/
+│       └── package.json
+├── packages/
+│   └── utils/
+│       └── package.json
+├── bun.lock
+└── package.json
+```
+
+In this layout, the repository root is the dependencies root, and every member is installed by a
+single action at the root. The `workspaces` field can be an array of globs, or an object with
+`packages`.
+
+Workspaces in a sub-directory, and isolated packages with their own `bun.lock`, are supported as
+well. An optional `bunfig.toml` lives alongside the lockfile, and is read by Bun itself. When Bun is
+only used as a runtime, your package manager's lockfile and workspace configuration determine the
+structure instead. See [locating dependencies root](#locating-dependencies-root) for how the root is
+found.
+
+## Installation
+
+The Bun toolchain is built into moon, so no [`plugin`](/moon/api/ToolchainPluginConfig#plugin)
+locator is required. Enable it by adding a `bun` entry to
+[`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>), or by running
+[`moon toolchain add`](../../commands/toolchain/add.mdx), which writes the entry for you.
+
+```shell
+# Add the Bun toolchain, answering each prompt
+$ moon toolchain add bun
+
+# Add the Bun toolchain with default settings
+$ moon toolchain add bun --yes
+
+# Add the JavaScript toolchain, to install dependencies with Bun
+$ moon toolchain add javascript
+```
+
+When adding `javascript`, moon sets `packageManager` to `bun` if the `packageManager` field in
+`package.json` is set to Bun (like `"bun@1.3.5"`), or if a `bun.lock` or `bun.lockb` exists.
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    javascript: {
+      packageManager: "bun",
+    },
+    bun: {
+      version: "1.3.5",
+    },
+  }}
+/>
+
+Configure a [`version`](/moon/api/ToolchainPluginConfig#version) to have moon install Bun for you
+(see [tool management](#tier-3-tool-management)).
+
+To run tasks with Bun while another package manager installs dependencies, enable `bun` next to your
+existing setup. In this case, Bun's `installArgs` setting is unused.
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    javascript: {
+      packageManager: "pnpm",
+    },
+    node: {
+      version: "24.12.0",
+    },
+    pnpm: {
+      version: "10.24.0",
+    },
+    bun: {
+      version: "1.3.5",
+    },
+  }}
+/>
+
+## Configuration
+
+The following settings are available under the `bun` entry of
+[`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>).
+
+- `executeArgs` <TypeLabel type="string[]" /> - Arguments to pass to `bun` when a task's
+  [`command`](/moon/api/TaskConfig#command) is `bun`. They're inserted after the executable, but
+  before the task's own arguments. See [extending tasks](#extending-tasks). Defaults to `[]`.
+- `installArgs` <TypeLabel type="string[]" /> - Arguments to append to the `bun install` (or
+  `bun ci`) command that installs dependencies. Only used when the JavaScript toolchain's
+  `packageManager` is `bun`. See
+  [installing and deduping dependencies](#installing-and-deduping-dependencies). Defaults to `[]`.
+- [`version`](/moon/api/ToolchainPluginConfig#version) <TypeLabel type="string" /> - The version of
+  Bun to download and install through proto. When not defined, the `bun` binary on your `PATH` is
+  used. The version also determines which install behavior is enabled (see
+  [prerequisites](#prerequisites)).
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    bun: {
+      version: "1.3.5",
+      executeArgs: ["--smol"],
+      installArgs: ["--no-summary"],
+    },
+  }}
+/>
+
+Dependencies are installed by the JavaScript toolchain, so configure
+[`installDependencies`](/moon/api/ToolchainPluginConfig#installdependencies) on `javascript`, not
+`bun`.
+
+### Project overrides
+
+Projects can override these settings with the `bun` entry of the
+[`toolchains`](/moon/api/ProjectConfig#toolchains) setting in their
+[`moon.config`](<../../(fundamentals)/project.mdx>), as described in
+[project overrides](<../../(fundamentals)/toolchain.mdx#project-overrides>).
+
+<ConfigTabs
+  file="moon"
+  config={{
+    toolchains: {
+      bun: {
+        version: "1.2.20",
+        executeArgs: ["--smol"],
+      },
+    },
+  }}
+/>
+
+A project's `installArgs` (and the `version` used to choose install commands) only apply to an
+isolated package with its own `bun.lock`. Workspace members are installed with the workspace
+settings.
+
+## Tier 1: Syncing and usage detection
+
+### Syncing operations
+
+The [JavaScript toolchain](./index.mdx#syncing-operations) handles this for Bun when
+`packageManager` is `bun`. When syncing a project's dependencies into its `package.json`, the
+`workspace-caret` and `workspace-tilde` formats of the JavaScript toolchain's
+`dependencyVersionFormat` setting are written as `workspace:*` instead.
+
+### Project and task detection
+
+A project is associated with the Bun toolchain when its root directory contains any of the following
+files: `package.json`, `bun.lock`, `bun.lockb`, or `bunfig.toml`. The Bun toolchain doesn't define a
+language, so detecting a project's [`language`](/moon/api/ProjectConfig#language) is left to the
+[JavaScript toolchain](./index.mdx#project-and-task-detection).
+
+A task is associated with the Bun toolchain when its command (or the first word of its script) is
+`bun` or `bunx`. The JavaScript toolchain recognizes these commands as well, so these tasks also use
+the `javascript` toolchain, along with the toolchains it requires for your `packageManager`.
+
+When `packageManager` is `bun`, the
+[JavaScript toolchain requires the Bun toolchain](./index.mdx#requiring-other-toolchains), so
+projects detected as using the JavaScript toolchain, and tasks that use it, are associated with Bun
+as well.
+
+Since every `package.json` counts, enabling `bun` alongside `node` associates both with every
+JavaScript project. Disable the one a project doesn't use with a
+[project override](#project-overrides), like `bun: false` or `node: false`.
+
+Detection makes it easy to share tasks between every Bun project with
+[task inheritance](<../../(fundamentals)/task-inheritance.mdx#scoping-inheritance>):
+
+<ConfigTabs
+  file=".moon/tasks/bun"
+  config={{
+    inheritedBy: {
+      toolchains: "bun",
+    },
+    tasks: {
+      test: {
+        command: "bun test",
+      },
+      build: {
+        command: "bun build ./src/index.ts --outdir ./dist",
+        outputs: ["dist"],
+      },
+    },
+  }}
+/>
+
+### Docker integration
+
+- [`moon docker scaffold`](../../commands/docker/scaffold.mdx) - Copies `package.json`, `bun.lock`,
+  `bun.lockb`, and `bunfig.toml` files, plus `*.js`, `*.cjs`, and `*.mjs` files, as they're commonly
+  used by `postinstall` scripts.
+- [`moon docker file`](../../commands/docker/file.mdx) - Uses `oven/bun:<version>` as the default
+  base image, where the tag is the configured `version` (or `latest`).
+- [`moon docker prune`](../../commands/docker/prune.mdx) - Removes `node_modules` at each
+  dependencies root, then installs production dependencies for the focused projects with
+  `bun install --production --filter <name>`. With Bun v1.4 or newer, `...` is appended to each
+  name, so the workspace packages a project depends on are installed as well
+  <VersionLabel version="2.5.3" />.
+
+```shell
+# Bun v1.4+, also installs the workspace packages that `@acme/web` depends on
+$ bun install --production --filter @acme/web...
+
+# Older versions, or when no version is configured
+$ bun install --production --filter @acme/web
+```
+
+### Version detection
+
+When running [`moon toolchain add`](../../commands/toolchain/add.mdx), moon detects the Bun version
+from the following files, and uses the first match:
+
+1. `.bumrc` - The first line that isn't empty or a comment.
+2. `.bun-version` - The first line that isn't empty or a comment.
+3. `package.json` - The first of the following fields: a `devEngines.runtime` or
+   `devEngines.packageManager` entry named `bun`, `volta.bun` (following `volta.extends`),
+   `engines.bun`, or `packageManager` (like `bun@1.3.5`).
+
+## Tier 2: Ecosystem integration
+
+### Requiring other toolchains
+
+The Bun toolchain doesn't require any other toolchain. Unlike npm, pnpm, and Yarn, which run on
+Node.js, Bun is a standalone native binary, so it doesn't require the
+[Node.js toolchain](./node.mdx).
+
+Instead, the [JavaScript toolchain](./index.mdx#requiring-other-toolchains) requires the Bun
+toolchain when `packageManager` is `bun`, so Bun is set up first.
+
+### Extending projects
+
+The [JavaScript toolchain](./index.mdx#extending-projects) handles this for Bun. It reads each
+project's `package.json` for aliases, implicit dependencies, and tasks. When `packageManager` is
+`bun` and the JavaScript toolchain's `inferTasksFromScripts` setting is enabled, each script becomes
+a task that runs `bun run <script>`, and uses the `javascript` and `bun` toolchains. These tasks
+receive `executeArgs` as well (see [extending tasks](#extending-tasks)).
+
+### Extending tasks
+
+- **Commands** - When a task that uses the Bun toolchain runs a
+  [`command`](/moon/api/TaskConfig#command) of `bun`, the `executeArgs` setting is inserted right
+  after the executable, before the task's own arguments.
+
+For example, with the following configuration:
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    bun: {
+      executeArgs: ["--smol"],
+    },
+  }}
+/>
+
+A task with the command `bun run build` executes as:
+
+```shell
+$ bun --smol run build
+```
+
+- Only commands that are exactly `bun` are extended, not `bunx`, and not tasks that use a
+  [`script`](/moon/api/TaskConfig#script).
+- The arguments are inserted for every subcommand, like `bun test` or `bun x`, so only use flags that
+  Bun accepts before any subcommand.
+
+The [JavaScript toolchain](./index.mdx#extending-tasks) also prepends `node_modules/.bin`
+directories to `PATH` for these tasks, so locally installed binaries can be used as commands.
+
+### Locating dependencies root
+
+The [JavaScript toolchain](./index.mdx#locating-dependencies-root) handles this for Bun when
+`packageManager` is `bun`.
+
+The dependencies root is the directory where Bun installs dependencies, and where the `bun.lock`
+lives. For each project, moon walks up from the project's root and uses the first directory that
+contains:
+
+1. A `bun.lock` or `bun.lockb` lockfile.
+2. A `package.json` with a `workspaces` field.
+3. A `package.json`.
+
+### Installing and deduping dependencies
+
+The [JavaScript toolchain](./index.mdx#installing-and-deduping-dependencies) handles this for Bun
+when `packageManager` is `bun`. It runs the following commands in each
+[dependencies root](#locating-dependencies-root):
+
+- `bun install` - Installs dependencies locally, and in CI when `bun ci` isn't available.
+- `bun ci` <VersionLabel version="2.5.3" /> - Installs dependencies in CI, when a `bun.lock` exists
+  and the configured `version` is v1.2.20 or newer. Unlike other package managers, Bun doesn't
+  freeze the lockfile in CI automatically. `bun ci` is equivalent to
+  `bun install --frozen-lockfile`, so it fails when the lockfile is out of date, instead of updating
+  it.
+- `bun dedupe` <VersionLabel version="2.5.3" /> - Runs after installing locally, when the JavaScript
+  toolchain's `dedupeOnLockfileChange` setting is enabled (the default) and the configured `version`
+  is v1.4 or newer.
+
+```shell
+# Locally
+$ bun install
+$ bun dedupe
+
+# In CI
+$ bun ci
+```
+
+The `installArgs` setting is appended to `bun install` and `bun ci` (including production installs
+for [Docker](#docker-integration)), but not to `bun dedupe`. Settings in `bunfig.toml`, like
+registries under `[install]`, still apply, as moon runs Bun's own commands.
+
+### Parsing manifest and lock files
+
+The [JavaScript toolchain](./index.mdx#parsing-manifest-and-lock-files) handles this for Bun when
+`packageManager` is `bun`. When hashing a task, moon resolves each dependency in the project's
+`package.json` against the lockfile in the [dependencies root](#locating-dependencies-root). Both of
+Bun's lockfile formats are supported:
+
+- `bun.lock` - The text-based (JSONC) lockfile, and Bun's default since v1.2. It's parsed directly.
+  Registry packages are recorded with their resolved version and integrity hash, and workspace
+  packages with their `version`. GitHub (`github:`) dependencies are recorded with their integrity
+  hash when the lockfile includes one, while dependencies installed from a Git or tarball URL are
+  skipped.
+- `bun.lockb` - The legacy binary lockfile. moon runs `bun bun.lockb` in the lockfile's directory,
+  which prints its contents in the Yarn v1 lockfile format, and parses that output. This uses the
+  `bun` binary on your `PATH`, not the version moon installs.
+
+Bun's `catalog` and `catalogs` are read from the `package.json` at the dependencies root, either at
+the top level or within `workspaces`, so that `catalog:` versions can be resolved.
+
+```json title="package.json"
+{
+  "name": "acme",
+  "private": true,
+  "workspaces": {
+    "packages": ["apps/*", "packages/*"],
+    "catalog": {
+      "react": "^19.0.0"
+    }
+  }
+}
+```
+
+## Tier 3: Tool management
+
+### Installing with proto
+
+When a [`version`](/moon/api/ToolchainPluginConfig#version) is configured, moon installs Bun through
+[proto](../../../../proto/docs/index.mdx), by downloading a prebuilt archive.
+
+- Available versions are loaded from the Git tags of the
+  [oven-sh/bun](https://github.com/oven-sh/bun) repository, like `bun-v1.3.5`. The `canary` version
+  is also supported.
+- Prebuilt archives are downloaded from Bun's GitHub releases, and verified against the release's
+  `SHASUMS256.txt` checksums (canary releases aren't verified).
+- Linux (x64 and arm64), macOS (x64 and arm64), and Windows (x64 since Bun v1.1, and arm64 since
+  Bun v1.3.10) are supported. On x64 Linux machines without AVX2 support, the `baseline` build is
+  downloaded instead.
+- On musl-based Linux, like Alpine, the `musl` build is downloaded, which requires Bun v1.1.35 or
+  newer. This, along with support for Windows on arm64, requires moon
+  <VersionLabel version="2.5.3" />.
+- `bun` is the primary executable, and `bunx` is provided as an alias for `bun x`.
+
+For tasks that use the Bun toolchain, moon also prepends Bun's global binaries directory
+(`~/.bun/bin`) to `PATH`, so packages installed with `bun add --global` can be used as task
+commands.
+
+## Caveats
+
+- **`bun.lockb` requires a global `bun`.** Reading the binary lockfile runs `bun` from your `PATH`,
+  so a Bun installed by moon isn't enough on its own. Without a `bun` on `PATH` (or proto's shims),
+  hashing tasks fails. Migrating to the text-based `bun.lock` avoids this, and enables `bun ci`.
+- **`syncPackageManagerField` doesn't apply to Bun.** moon never writes Bun's version to the
+  `packageManager` field in `package.json`, even when the JavaScript toolchain's
+  `syncPackageManagerField` setting is enabled.
+- **Version-gated behavior needs a configured version.** Without a `version` (or with an alias like
+  `latest`), moon can't tell which features are available, and assumes they aren't: dependencies
+  are installed with `bun install` in CI, `bun dedupe` never runs, and Docker focused installs omit
+  workspace dependencies. Version requirements are compared by their lowest version, so `^1.2` is
+  treated as v1.2.0, while `canary` enables everything.
+- **Older setups don't freeze the lockfile in CI.** Without `bun ci` (Bun older than v1.2.20, no
+  configured `version`, or a `bun.lockb` lockfile), CI installs run `bun install`, which updates an
+  out-of-date lockfile instead of failing.
+- **Node.js and Bun side by side.** Both toolchains detect projects by `package.json`, so tasks that
+  don't run `node` or `bun` directly inherit both, with both binaries on `PATH`, and both versions
+  in their hash. Disable the unused toolchain per project with a
+  [project override](#project-overrides), and configure
+  [`docker.file.image`](/moon/api/DockerFileConfig#image) when generating a `Dockerfile`.

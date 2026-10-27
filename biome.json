@@ -1,12 +1,18 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.13/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.6.3/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!**/*.gen.ts", "!**/*.generated.ts", "!web/.source"],
+    "includes": [
+      "**",
+      "!**/*.gen.ts",
+      "!**/*.generated.ts",
+      "!web/.source",
+      "!pnpm-lock.yaml"
+    ],
     "ignoreUnknown": false
   },
   "assist": {
@@ -42,6 +48,24 @@
       "indentStyle": "space",
       "indentWidth": 2,
       "trailingCommas": "none"
+    }
+  },
+  "markdown": {
+    "formatter": {
+      "enabled": true,
+      "formatEmbeds": false,
+      "indentStyle": "space",
+      "indentWidth": 2,
+      "proseWrap": "preserve"
+    },
+    "parser": {
+      "frontmatter": true
+    }
+  },
+  "yaml": {
+    "formatter": {
+      "enabled": true,
+      "indentWidth": 2
     }
   },
   "css": {

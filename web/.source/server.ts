@@ -8,30 +8,41 @@ const create = server<typeof Config, import("fumadocs-mdx/runtime/types").Intern
   }
 }>();
 
-export const api = await create.docs("api", "content/api", import.meta.glob(["./**/*.{json,yaml}"], {
-  "base": "./../content/api",
-  "query": "?collection=api",
-  "import": "default",
-  "eager": true
-}), import.meta.glob(["./**/*.{mdx,md}"], {
-  "base": "./../content/api",
-  "query": "?collection=api",
-  "eager": true
-}));
-
 export const blog = await create.doc("blog", "content/blog", import.meta.glob(["./**/*.{mdx,md}"], {
   "base": "./../content/blog",
   "query": "?collection=blog",
   "eager": true
 }));
 
-export const docs = await create.docs("docs", "content/docs", import.meta.glob(["./**/*.{json,yaml}"], {
-  "base": "./../content/docs",
-  "query": "?collection=docs",
+export const moon = await create.docs("moon", "content/moon", import.meta.glob(["./**/*.{json,yaml}"], {
+  "base": "./../content/moon",
+  "query": "?collection=moon",
   "import": "default",
   "eager": true
 }), import.meta.glob(["./**/*.{mdx,md}"], {
-  "base": "./../content/docs",
-  "query": "?collection=docs",
+  "base": "./../content/moon",
+  "query": "?collection=moon",
+  "eager": true
+}));
+
+export const proto = await create.docs("proto", "content/proto", import.meta.glob(["./**/*.{json,yaml}"], {
+  "base": "./../content/proto",
+  "query": "?collection=proto",
+  "import": "default",
+  "eager": true
+}), import.meta.glob(["./**/*.{mdx,md}"], {
+  "base": "./../content/proto",
+  "query": "?collection=proto",
+  "eager": true
+}));
+
+export const schematic = await create.docs("schematic", "content/schematic", import.meta.glob(["./**/*.{json,yaml}"], {
+  "base": "./../content/schematic",
+  "query": "?collection=schematic",
+  "import": "default",
+  "eager": true
+}), import.meta.glob(["./**/*.{mdx,md}"], {
+  "base": "./../content/schematic",
+  "query": "?collection=schematic",
   "eager": true
 }));

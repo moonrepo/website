@@ -1,0 +1,399 @@
+---
+title: Nub
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+import { TypeLabel } from "@/components/TypeLabel";
+
+The Nub toolchain integrates [Nub](https://nubjs.com/) into moon. With it enabled, moon:
+
+- Downloads and installs a pinned version of Nub through [proto](../../../../proto/docs/index.mdx),
+  without requiring Node.js.
+- Detects which projects and tasks use Nub, from files like `nub.lock` and commands like `nub`.
+- Installs dependencies with `nub install` (or `nub ci` in CI) before running tasks whenever they
+  change, and dedupes them with `nub dedupe`.
+- Resolves dependency versions from `nub.lock` when hashing tasks, so upgrading a dependency only
+  invalidates the tasks that depend on it.
+- Runs tasks inferred from `package.json` scripts with `nub run`.
+
+Enable it whenever your repository uses Nub to install dependencies, whether natively with a
+`nub.lock`, or on top of an existing npm, pnpm, Yarn, or Bun lockfile.
+
+Nub support is shared with the [JavaScript toolchain](./index.mdx), which locates dependencies
+roots, installs dependencies, infers tasks, and parses `nub.lock` when its `packageManager` setting
+is `nub`. This page covers everything that's specific to Nub, wherever it's implemented.
+
+Nub is a Rust-based toolkit for Node.js that includes a package manager. Its lockfile, `nub.lock`,
+uses the same format as pnpm's `pnpm-lock.yaml`, and it can also operate on the lockfiles of npm,
+pnpm, Yarn, and Bun. Unlike npm, pnpm, and Yarn, Nub is a standalone native binary, so it doesn't
+run on top of the [Node.js toolchain](./node.mdx). Support for Nub was added in moon v2.5.0.
+
+<Callout type="warning">
+  The Nub toolchain is **unstable**, so it's enabled with the `unstable_nub`
+  identifier instead of `nub`. Its settings and behavior may change between moon
+  releases. The JavaScript toolchain's `packageManager` setting uses the plain
+  `nub` value.
+</Callout>
+
+## Prerequisites
+
+Before enabling the Nub toolchain, make sure you have the following:
+
+- **JavaScript toolchain** - The [JavaScript toolchain](./index.mdx), with its `packageManager`
+  setting set to `nub`. On its own, the Nub toolchain only installs Nub and detects usage. It doesn't
+  install dependencies, read workspace members, or parse `nub.lock`.
+- **Node.js toolchain (optional)** - Neither the Nub nor the JavaScript toolchain requires the
+  [Node.js toolchain](./node.mdx) when using Nub. Enable it as well if you'd like moon to manage
+  Node.js, for example for tasks that run `node` directly.
+- **Nub** - When [`version`](/moon/api/ToolchainPluginConfig#version) is configured, moon installs
+  Nub for you. Otherwise, a `nub` binary must be available on your `PATH`.
+- **`package.json`** - At the root of your workspace, and in each JavaScript project.
+
+### Repository structure
+
+The Nub toolchain supports the following repository layouts. Directories only become moon
+[projects](<../../(fundamentals)/project.mdx>) when they're matched by the
+[`projects`](/moon/api/WorkspaceConfig#projects) setting in
+[`.moon/workspace.config`](<../../(fundamentals)/workspace.mdx>).
+
+#### Nub workspace
+
+A monorepo where the root `package.json` declares its members, and a single `nub.lock` at the root
+is shared by every package.
+
+```text
+./
+├── .moon/
+├── apps/
+│   └── web/
+│       └── package.json
+├── packages/
+│   └── utils/
+│       └── package.json
+├── nub.lock
+└── package.json         # "workspaces": ["apps/*", "packages/*"]
+```
+
+In this layout, the repository root is the dependencies root, and every package shares a single
+install.
+
+#### Existing pnpm workspace
+
+A pnpm workspace that switches its `packageManager` to `nub` without restructuring, keeping its
+`pnpm-workspace.yaml` and `pnpm-lock.yaml`.
+
+```text
+./
+├── .moon/
+├── apps/
+│   └── web/
+│       └── package.json
+├── packages/
+│   └── utils/
+│       └── package.json
+├── package.json
+├── pnpm-lock.yaml
+└── pnpm-workspace.yaml  # packages: ["apps/*", "packages/*"]
+```
+
+In this layout, the `pnpm-lock.yaml` marks the repository root as the dependencies root, members
+are read from `pnpm-workspace.yaml`, and every package shares a single install.
+
+Single packages, nested workspaces, and isolated packages work the same as with other package
+managers (see the [JavaScript toolchain](./index.mdx#repository-structure)). See
+[locating dependencies root](#locating-dependencies-root) for how the root is found.
+
+## Installation
+
+The Nub toolchain is built into moon, but unlike the other built-in toolchains, moon doesn't apply
+its [`plugin`](/moon/api/ToolchainPluginConfig#plugin) locator automatically yet. If `unstable_nub`
+is configured without a `plugin`, moon fails to load the configuration with an error like "a locator
+is required for plugins; accepts file paths and URLs". Until that's fixed, enable it by adding an
+`unstable_nub` entry with an explicit `plugin` locator (the same one moon uses for npm, pnpm, and
+Yarn) to [`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>), or by running
+[`moon toolchain add`](../../commands/toolchain/add.mdx) with the locator as the second argument.
+Only an explicitly passed locator is written to the configuration.
+
+```shell
+# Add the Nub toolchain, answering each prompt
+$ moon toolchain add unstable_nub registry://ghcr.io/moonrepo/node_depman_toolchain:1.1.0
+
+# Add the Nub toolchain with default settings
+$ moon toolchain add unstable_nub registry://ghcr.io/moonrepo/node_depman_toolchain:1.1.0 --yes
+```
+
+The Nub toolchain is used together with the `javascript` toolchain, so enable it as well. The
+`node` toolchain isn't needed. When running `moon toolchain add javascript`, `packageManager` is
+detected as `nub` from the `packageManager` field in `package.json` (like `"nub@0.7.4"`), or from an
+existing `nub.lock` (Bun, Deno, and npm lockfiles are checked first).
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    javascript: {
+      packageManager: "nub",
+    },
+    unstable_nub: {
+      plugin: "registry://ghcr.io/moonrepo/node_depman_toolchain:1.1.0",
+      version: "0.7.4",
+    },
+  }}
+/>
+
+Configure a [`version`](/moon/api/ToolchainPluginConfig#version) to have moon install Nub for you
+(see [tool management](#tier-3-tool-management)).
+
+## Configuration
+
+The following settings are available under the `unstable_nub` entry of
+[`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>).
+
+- `installArgs` <TypeLabel type="string[]" /> - Arguments to append to the `nub install` (or
+  `nub ci`) command that installs dependencies, including production installs during
+  [`moon docker prune`](../../commands/docker/prune.mdx). They're not passed to `nub dedupe`.
+  Defaults to `[]`.
+- [`version`](/moon/api/ToolchainPluginConfig#version) <TypeLabel type="string" /> - The version of
+  Nub to download and install through proto. When not defined, the `nub` binary on your `PATH` is
+  used. A fully-qualified version is also synced to the `packageManager` field in `package.json`
+  (see [setting up the environment](#setting-up-the-environment)).
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    unstable_nub: {
+      plugin: "registry://ghcr.io/moonrepo/node_depman_toolchain:1.1.0",
+      version: "0.7.4",
+      installArgs: ["--prefer-offline"],
+    },
+  }}
+/>
+
+The entry also requires a [`plugin`](/moon/api/ToolchainPluginConfig#plugin) locator for now (see
+[installation](#installation)).
+
+Dependencies are installed by the [JavaScript toolchain](./index.mdx), so configure
+[`installDependencies`](/moon/api/ToolchainPluginConfig#installdependencies) on `javascript`, not
+`unstable_nub`. Settings for deduping and syncing, like `dedupeOnLockfileChange` and
+`syncPackageManagerField`, are configured there as well.
+
+### Project overrides
+
+Projects can override these settings with the `unstable_nub` entry of the
+[`toolchains`](/moon/api/ProjectConfig#toolchains) setting in their
+[`moon.config`](<../../(fundamentals)/project.mdx>), as described in
+[project overrides](<../../(fundamentals)/toolchain.mdx#project-overrides>).
+
+<ConfigTabs
+  file="moon"
+  config={{
+    toolchains: {
+      unstable_nub: {
+        version: "0.7.0",
+        installArgs: ["--ignore-scripts"],
+      },
+    },
+  }}
+/>
+
+When disabling Nub for a project that uses the JavaScript toolchain, disable `javascript` as well
+(see [requiring other toolchains](#requiring-other-toolchains)).
+
+## Tier 1: Syncing and usage detection
+
+### Syncing operations
+
+The [JavaScript toolchain](./index.mdx#syncing-operations) handles this for Nub when
+`packageManager` is `nub`. When its `syncProjectWorkspaceDependencies` setting is enabled (the
+default), it writes each project's moon dependencies, like
+[`dependsOn`](/moon/api/ProjectConfig#dependson), to the project's `package.json`, formatted with its
+`dependencyVersionFormat` setting.
+
+For Nub, the configured format is written as is, without substituting another format. As
+`workspace` is the default, Nub projects are synced with `workspace:*` unless you configure another
+format.
+
+### Project and task detection
+
+A project is associated with the Nub toolchain when its root directory contains any of the following
+files: `package.json`, `nub.lock`, `nub.jsonc`, or `.npmrc`.
+
+A task is associated with the Nub toolchain when its command (or the first word of its script) is
+`nub` or `nubx`. The JavaScript toolchain recognizes both executables as well, so a `nub run build`
+task runs with both toolchains.
+
+Projects and tasks that use the JavaScript toolchain are also associated with Nub when
+`packageManager` is `nub` (see [requiring other toolchains](#requiring-other-toolchains)).
+
+### Docker integration
+
+- [`moon docker scaffold`](../../commands/docker/scaffold.mdx) - Copies `package.json`, `nub.lock`,
+  `nub.jsonc`, and `.npmrc` files.
+- [`moon docker prune`](../../commands/docker/prune.mdx) - The
+  [JavaScript toolchain](./index.mdx#docker-integration) deletes the `node_modules` directory in
+  each dependencies root, then installs production dependencies with
+  `nub install --prod --filter-prod <name>...`, with a `--filter-prod` flag for each focused
+  project's package name, followed by `installArgs`. The trailing `...` includes each project's
+  workspace dependencies. Production installs always use `nub install`, even in CI, as `nub ci` has
+  no `--prod` flag.
+
+### Version detection
+
+When running [`moon toolchain add`](../../commands/toolchain/add.mdx), moon detects the Nub version
+from the following files, and uses the first match:
+
+1. `package.json` - The first valid version found in the following fields, in order:
+   - `devEngines.packageManager` - The entry whose `name` is `nub`.
+   - `packageManager` - Like `"nub@0.7.4"`. A Corepack hash suffix (`+sha512...`) is removed, and a
+     value without a version (`"nub"`) becomes `latest`.
+   - `volta.nub` - Following `volta.extends` to another `package.json` when needed.
+   - `engines.nub`.
+
+## Tier 2: Ecosystem integration
+
+### Requiring other toolchains
+
+The Nub toolchain doesn't require any other toolchain. Unlike npm, pnpm, and Yarn, which run on
+Node.js, Nub is a standalone native binary, so it doesn't require the
+[Node.js toolchain](./node.mdx).
+
+Instead, the [JavaScript toolchain](./index.mdx#requiring-other-toolchains) requires the Nub
+toolchain when `packageManager` is `nub`, so Nub is set up first.
+
+### Extending projects
+
+The [JavaScript toolchain](./index.mdx#extending-projects) handles this for Nub. With Nub:
+
+- **Dependencies** - A dependency on another package in the repository becomes an implicit
+  [project dependency](<../../(fundamentals)/project.mdx#dependencies>) when its version uses the
+  `workspace:` protocol (like `workspace:*` or `workspace:^`), is a `link:`, `file:`, or `portal:`
+  path that points to that package's project, or is `*`.
+- **Tasks** - When the JavaScript toolchain's `inferTasksFromScripts` setting is enabled, and
+  `packageManager` is `nub`, each `package.json` script becomes a task that runs
+  `nub run <script>`, with the `javascript` and `unstable_nub` toolchains. The Node.js toolchain isn't added, as Nub doesn't require it.
+
+Version ranges like `^1.2.3` never create a relationship, so use the `workspace:` protocol for local
+packages.
+
+### Locating dependencies root
+
+The [JavaScript toolchain](./index.mdx#locating-dependencies-root) handles this for Nub when
+`packageManager` is `nub`. The dependencies root is the directory where Nub installs
+dependencies, and where the `nub.lock` (or another lockfile that Nub operates on) lives. For each
+project, moon walks up from the project's root and uses the first directory that contains:
+
+1. A lockfile that Nub can operate on: `nub.lock`, `package-lock.json`, `npm-shrinkwrap.json`,
+   `pnpm-lock.yaml`, `yarn.lock`, or `bun.lock`.
+2. A `pnpm-workspace.yaml` that defines `packages`, or a `package.json` that defines `workspaces`.
+3. A `package.json`.
+
+Workspace members are read from `packages` in `pnpm-workspace.yaml` when it exists, and otherwise
+from the `workspaces` field in `package.json`. Catalogs are read the same way, so that `catalog:`
+versions can be resolved when [parsing lock files](#parsing-manifest-and-lock-files).
+
+### Installing and deduping dependencies
+
+The [JavaScript toolchain](./index.mdx#installing-and-deduping-dependencies) handles this for Nub
+when `packageManager` is `nub`. It installs dependencies in the project's
+[dependencies root](#locating-dependencies-root):
+
+```shell
+# Install dependencies locally, or in CI when no supported lockfile exists
+$ nub install
+
+# Install dependencies in CI, when a supported lockfile exists
+$ nub ci
+
+# Dedupe dependencies after a local install
+$ nub dedupe
+```
+
+In CI, `nub ci` is used when the dependencies root contains any of the lockfiles listed in
+[locating dependencies root](#locating-dependencies-root), as it installs strictly from the
+lockfile.
+
+The Nub toolchain's `installArgs` are appended to `nub install` and `nub ci`. For example, with
+`installArgs` set to `["--prefer-offline"]`, moon runs `nub install --prefer-offline`.
+
+After installing locally, moon dedupes dependencies with `nub dedupe`.
+
+Production installs for [`moon docker prune`](../../commands/docker/prune.mdx) are covered in
+[Docker integration](#docker-integration).
+
+### Parsing manifest and lock files
+
+The [JavaScript toolchain](./index.mdx#parsing-manifest-and-lock-files) handles this for Nub when
+`packageManager` is `nub`. When hashing a task, it resolves each dependency declared in the
+project's `package.json` against the `nub.lock` in the [dependencies root](#locating-dependencies-root),
+and includes the locked integrity hash (or version) in the task's hash.
+
+- `nub.lock` uses the same format as pnpm's `pnpm-lock.yaml`, so it's parsed with the pnpm lockfile
+  parser.
+- The `integrity` hash is used when available, otherwise the `commit` of Git dependencies.
+- Other lockfiles in the dependencies root, like a `pnpm-lock.yaml` or `package-lock.json` you're
+  migrating from, are parsed with their own package manager's parser.
+- `catalog:` versions are resolved through the workspace's catalogs.
+
+### Setting up the environment
+
+The [JavaScript toolchain](./index.mdx#setting-up-the-environment) handles this for Nub when
+`packageManager` is `nub`. When the JavaScript toolchain's `syncPackageManagerField` setting
+is enabled (the default), and the Nub `version` is fully qualified (like `0.7.4`, not a partial
+version, range, or alias), the `packageManager` field in the dependencies root's `package.json` is
+set to match.
+
+```json title="package.json"
+{
+  "packageManager": "nub@0.7.4"
+}
+```
+
+Disable `syncPackageManagerField` if other tools in your repository can't handle a `nub` value.
+
+## Tier 3: Tool management
+
+### Installing with proto
+
+When a [`version`](/moon/api/ToolchainPluginConfig#version) is configured, moon installs Nub through
+[proto](../../../../proto/docs/index.mdx), by downloading a prebuilt archive. Versions that are
+already installed are reused.
+
+- Versions are loaded from the `@nubjs/nub` package on the npm registry, so fully-qualified versions
+  (`0.7.4`), partial versions (`0.7`), and its dist-tags, like `latest`, are supported. Canary
+  versions aren't.
+- The native binary is downloaded from the platform-specific `@nubjs/nub-<os>-<arch>` package on the
+  npm registry (with a `-musl` suffix on musl-based Linux), so Node.js isn't needed to install it.
+- Installing is supported on Linux, macOS, and Windows, on x64 and arm64 machines.
+- The `nub` and `nubx` executables are made available, with `nub` as the primary executable.
+- Nub is installed into proto's store under the stable `nub` identifier (for example
+  `~/.proto/tools/nub/0.7.4`), and is shared with `proto install nub`.
+
+Nub shares pnpm's directories for global packages (there's no `NUB_HOME`), so globally installed
+binaries are looked up in `PNPM_HOME`, or pnpm's default location for your operating system.
+
+[`moon bin`](../../commands/bin.mdx) passes the identifier to proto, so use the stable `nub`
+identifier with it.
+
+```shell
+# Print the path to the Nub binary managed by moon
+$ moon bin nub
+```
+
+## Caveats
+
+- **An explicit `plugin` locator is required.** moon knows the locator for `unstable_nub`, which is
+  how [`moon toolchain add`](../../commands/toolchain/add.mdx) loads it, but doesn't apply it when
+  loading [`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>). Running
+  `moon toolchain add unstable_nub` without a locator writes a configuration that fails on the next
+  command. Set `plugin` as shown in [installation](#installation). Because the locator pins a plugin
+  version, upgrading moon doesn't upgrade the Nub plugin, so remove the setting once moon applies
+  the locator itself.
+- **No default Docker base image.** Without another toolchain suggesting an image, like the
+  [Node.js toolchain](./node.mdx), [`moon docker file`](../../commands/docker/file.mdx) defaults to
+  `scratch`. Configure [`docker.file.image`](/moon/api/DockerFileConfig#image), or choose an image
+  when prompted.
+- **Some places use the stable `nub` identifier.** The JavaScript toolchain's `packageManager`
+  value, the root `.prototools` entry, the `PROTO_NUB_VERSION` environment variable,
+  [`inheritedBy.toolchains`](/moon/api/InheritedByConfig#toolchains) conditions, and
+  [`moon bin`](../../commands/bin.mdx) all use `nub`, not `unstable_nub`.
+- **Not every lockfile marks a dependencies root.** `bun.lockb` (Bun's binary lockfile) and
+  `deno.lock` aren't recognized as dependencies roots when `packageManager` is `nub`.

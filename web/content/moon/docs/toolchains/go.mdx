@@ -1,0 +1,573 @@
+---
+title: Go
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+import { TypeLabel } from "@/components/TypeLabel";
+import { VersionLabel } from "@/components/VersionLabel";
+
+The Go toolchain integrates [Go](https://go.dev) into moon. With it enabled, moon:
+
+- Infers project relationships from your package imports, so you don't have to declare them.
+- Downloads module dependencies before tasks run, and installs Go binaries like linters and code
+  generators.
+- Includes module dependencies and the host platform in task hashes.
+- Downloads and installs a pinned version of Go through [proto](../../../proto/docs/index.mdx), so
+  every developer and CI machine runs the same Go.
+- Detects which projects and tasks use Go, for task inheritance and Docker builds.
+
+Enable it whenever your repository contains Go code, whether that's a single module at the root, a
+module per project, or a `go.work` workspace.
+
+## Prerequisites
+
+Before enabling the Go toolchain, make sure you have the following:
+
+- **Go** - When [`version`](/moon/api/ToolchainPluginConfig#version) is configured, moon installs
+  Go for you. Otherwise, a `go` binary must be available on your `PATH`.
+- **`go` on your `PATH` for relationship inference** - Relationships are inferred by running
+  `go list` while the project graph is built, before moon sets up any toolchains. This uses the
+  `go` found on your `PATH` (a system install, or proto's shims), even when moon manages the
+  version. Without one, only relationships declared in `go.mod` are resolved. See
+  [inferring relationships from imports](#inferring-relationships-from-imports).
+- **A `go.mod`** - Each project needs a `go.mod`, either its own or one in a parent directory, so
+  moon can resolve its import path. Projects with their own `go.mod` get the most integration (see
+  [repository structure](#repository-structure)).
+
+### Repository structure
+
+The Go toolchain supports the following repository layouts. Directories only become moon
+[projects](<../(fundamentals)/project.mdx>) when they're matched by the
+[`projects`](/moon/api/WorkspaceConfig#projects) setting in
+[`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>).
+
+#### Single module
+
+A single `go.mod` at the workspace root, where each project is a package within that module.
+
+```text
+./
+├── .moon/
+├── apps/
+│   └── server/
+│       └── main.go
+├── pkg/
+│   └── utils/
+│       └── utils.go
+├── go.mod
+└── go.sum
+```
+
+In this layout, the workspace root is the dependencies root, but since the projects aren't the
+root themselves (and there's no `go.work` to list them as members), moon doesn't install
+dependencies before their tasks run. The projects also aren't detected as Go projects
+automatically (see [project and task detection](#project-and-task-detection)), while relationships
+between them are still inferred from their imports.
+
+#### Module per project
+
+Each project has its own `go.mod`, and modules are consumed by version or through `replace`
+directives.
+
+```text
+./
+├── .moon/
+├── apps/
+│   └── server/
+│       ├── go.mod
+│       ├── go.sum
+│       └── main.go
+└── pkg/
+    └── utils/
+        ├── go.mod
+        └── utils.go
+```
+
+In this layout, each module is its own dependencies root with its own install, and each project is
+detected automatically and aliased by its module path. To consume a sibling module from local
+source instead of a published version, use a `replace` directive (like
+`replace example.com/org/utils => ../../pkg/utils`), which also creates a project relationship.
+
+#### Modules in a Go workspace
+
+A `go.work` at the workspace root ties the modules of each project together.
+
+```text
+./
+├── .moon/
+├── apps/
+│   └── server/
+│       ├── go.mod
+│       └── main.go
+├── pkg/
+│   └── utils/
+│       ├── go.mod
+│       └── utils.go
+├── go.work
+└── go.work.sum
+```
+
+In this layout, the directory containing `go.work` is the dependencies root, and the modules listed
+in its `use` directives share a single install (see [Go workspaces](#go-workspaces)).
+
+See [locating dependencies root](#locating-dependencies-root) for how the root is found.
+
+## Installation
+
+The Go toolchain is built into moon, so no [`plugin`](/moon/api/ToolchainPluginConfig#plugin)
+locator is required. Enable it by adding a `go` entry to
+[`.moon/toolchains.config`](<../(fundamentals)/toolchain.mdx>), or by running
+[`moon toolchain add`](../commands/toolchain/add.mdx), which writes the entry for you. It also
+prompts for whether to support Go workspaces and to tidy modules when dependencies change.
+
+```shell
+# Add the Go toolchain, answering each prompt
+$ moon toolchain add go
+
+# Add the Go toolchain with default settings
+$ moon toolchain add go --yes
+```
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    go: {
+      version: "1.24.2",
+    },
+  }}
+/>
+
+Configure a [`version`](/moon/api/ToolchainPluginConfig#version) to have moon install Go for you
+(see [tool management](#tier-3-tool-management)).
+
+## Configuration
+
+The following settings are available under the `go` entry of
+[`.moon/toolchains.config`](<../(fundamentals)/toolchain.mdx>).
+
+- `bins` <TypeLabel type="(string | { bin: string, force?: boolean, local?: boolean })[]" /> - A
+  list of binaries to install with `go install`. Each entry is a package path with an optional
+  `@version` (for example, `golang.org/x/tools/gopls@latest`), or an object with the following
+  fields. Defaults to `[]`. See [installing binaries](#installing-binaries).
+  - `bin` <TypeLabel type="string" /> - The package path, with an optional `@version`. Required.
+  - `force` <TypeLabel type="boolean" /> - Always install the binary, even if it already exists.
+    Defaults to `false`.
+  - `local` <TypeLabel type="boolean" /> - Only install the binary locally, and skip it in CI.
+    Defaults to `false`.
+- `inferRelationships` <TypeLabel type="boolean" /> <VersionLabel version="2.1.2" /> - Infer
+  `production` project relationships from package imports by running `go list -deps`. Defaults to
+  `true`. See [inferring relationships from imports](#inferring-relationships-from-imports).
+- `inferRelationshipsFromTests` <TypeLabel type="boolean" /> <VersionLabel version="2.1.2" /> -
+  Also infer `development` project relationships from test imports by running
+  `go list -deps -test`. Defaults to `false`. See
+  [inferring relationships from imports](#inferring-relationships-from-imports).
+- `inferRelationshipsPackages` <TypeLabel type="string[]" /> <VersionLabel version="2.3.2" /> -
+  Package patterns passed to `go list -deps` when inferring relationships. When empty, all packages
+  are scanned recursively with `./...`. Set to `["."]` to only scan the package at the project's
+  root. Defaults to `[]`. See
+  [inferring relationships from imports](#inferring-relationships-from-imports).
+- `tidyOnChange` <TypeLabel type="boolean" /> - Run `go mod tidy` after installing dependencies.
+  Only applies to modules with a `go.sum`, outside of Go workspaces, and never in CI. Defaults to
+  `false`. See [tidying modules](#tidying-modules).
+- `vendorDir` <TypeLabel type="string" /> - Path to the vendor directory generated by
+  `go mod vendor`, relative to the dependencies root. Only used when pruning Docker images.
+  Defaults to `vendor`. See [vendoring dependencies](#vendoring-dependencies).
+- [`version`](/moon/api/ToolchainPluginConfig#version) <TypeLabel type="string" /> - The version
+  of Go to download and install through proto. When not defined, the `go` binary on your `PATH` is
+  used.
+- `workspaces` <TypeLabel type="boolean" /> - Support Go workspaces by locating `go.work` files,
+  and installing their dependencies with `go work sync`. When enabled, a `go.work` takes precedence
+  over `go.sum` and `go.mod` when locating the dependencies root. Defaults to `true`. See
+  [Go workspaces](#go-workspaces).
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    go: {
+      version: "1.24.2",
+      inferRelationshipsFromTests: true,
+      bins: [
+        "gotest.tools/gotestsum@v1.12.0",
+        { bin: "golang.org/x/tools/gopls", local: true },
+      ],
+    },
+  }}
+/>
+
+### Project overrides
+
+Projects can override these settings with the `go` entry of the
+[`toolchains`](/moon/api/ProjectConfig#toolchains) setting in their
+[`moon.config`](<../(fundamentals)/project.mdx>), as described in
+[project overrides](<../(fundamentals)/toolchain.mdx#project-overrides>).
+
+<ConfigTabs
+  file="moon"
+  config={{
+    toolchains: {
+      go: {
+        version: "1.23.8",
+        tidyOnChange: true,
+      },
+    },
+  }}
+/>
+
+The project graph and Docker pruning always use the workspace settings, so overriding
+`inferRelationships`, `inferRelationshipsFromTests`, `inferRelationshipsPackages`, or `vendorDir`
+in a project has no effect.
+
+## Core features
+
+### Inferring relationships from imports
+
+moon infers project dependencies from the packages each project imports, so there's no need to
+repeat them in [`dependsOn`](/moon/api/ProjectConfig#dependson). It's enabled by default, and it
+runs while building the [project graph](<../(fundamentals)/project-graph.mdx>).
+
+To match imports to projects, moon resolves an _import path_ for every project: the module path of
+the closest `go.mod` at or above the project's directory (up to the workspace root), joined with
+the project's directory relative to that module. For example, with a root module of
+`example.com/org`, a project at `pkg/utils` resolves to `example.com/org/pkg/utils`. Projects
+without a `go.mod` at or above them have no import path, so imports never resolve to them.
+
+moon then runs `go list` in each project's root, and matches every reported package against the
+import paths of all projects. The longest matching prefix wins, so a module at the root never
+shadows the projects nested beneath it.
+
+```shell
+# Run in each project's root
+$ go list -deps -f '{{if .Module}}{{.ImportPath}}{{end}}' ./...
+```
+
+- Imports resolve to `production` dependencies. When `inferRelationshipsFromTests` is enabled, the
+  command also runs with `-test`, and imports that are only found this way resolve to `development`
+  dependencies.
+- Packages within the project's own import path, including projects nested inside it, are treated
+  as part of the project, not as dependencies.
+- The `./...` pattern can be customized with `inferRelationshipsPackages`.
+- If `go list` exits with a non-zero code (for example, a required module can't be resolved), no
+  relationships are inferred from that project's imports.
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    go: {
+      inferRelationshipsFromTests: true,
+      inferRelationshipsPackages: ["."],
+    },
+  }}
+  comments={{
+    inferRelationshipsPackages: "Only scan the package at each project's root",
+  }}
+/>
+
+Some relationships are also resolved from `go.mod` directly, without running `go` (see
+[extending projects](#extending-projects)). When both `inferRelationships` and
+`inferRelationshipsFromTests` are disabled, `go list` isn't run, and only those are used.
+
+### Go workspaces
+
+moon supports [Go workspaces](https://go.dev/ref/mod#workspaces), where a `go.work` file ties
+several modules together so they share a single dependencies root and install. It's enabled by
+default, and it runs when locating the dependencies root and installing dependencies.
+
+- The directory containing `go.work` takes precedence over `go.sum` and `go.mod` when
+  [locating the dependencies root](#locating-dependencies-root), and its `use` directives define
+  the workspace members.
+- Dependencies are installed with `go work sync` instead of `go mod download`, and
+  [tidying](#tidying-modules) is skipped.
+- Go resolves imports between members to their local source, so relationships between modules are
+  inferred without any `replace` directives.
+
+Disable it with the `workspaces` setting to treat each module on its own, even when a `go.work`
+exists.
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    go: {
+      workspaces: false,
+    },
+  }}
+/>
+
+### Installing binaries
+
+moon can install Go binaries, like linters and code generators, with `go install`, so every
+developer and CI machine has the same tools. Enable it with the `bins` setting, and it runs while
+[setting up the environment](#setting-up-the-environment), before installing dependencies.
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    go: {
+      bins: [
+        "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6",
+        "gotest.tools/gotestsum@latest",
+        { bin: "golang.org/x/tools/gopls", local: true },
+      ],
+    },
+  }}
+/>
+
+Binaries are grouped by their base module path (the first three path segments) and version, and
+each group is installed with a single `go install -v` command in the dependencies root.
+
+- Binaries without a version (or with `@latest`) are skipped when an executable of the same name
+  already exists in Go's global binaries directory. The name is the last segment of the package
+  path, excluding a major version suffix, so `.../cmd/tool/v2` checks for `tool`.
+- Binaries pinned to a version, branch, or commit can't be verified, so they're always installed
+  when the step runs. The step itself only runs again when its commands or configuration change,
+  like a version bump.
+- Binaries with `force` enabled are always installed, and binaries with `local` enabled are skipped
+  in CI.
+
+Go's global binaries directory is located by proto, and is the first of `$GOBIN`, `$GOROOT/bin`,
+`$GOPATH/bin`, and `~/go/bin` that contains files, falling back to `~/go/bin`. When a `version` is
+configured, moon adds Go's global binaries directories to `PATH` for tasks that use the Go
+toolchain, so installed binaries can be used as task commands (see
+[installing with proto](#installing-with-proto)). Otherwise, the directory must already be on your
+`PATH`.
+
+### Tidying modules
+
+moon can run `go mod tidy` after installing dependencies, to keep `go.mod` and `go.sum` in sync
+with your imports. Enable it with the `tidyOnChange` setting, and it runs after
+[installing dependencies](#installing-and-deduping-dependencies).
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    go: {
+      tidyOnChange: true,
+    },
+  }}
+/>
+
+Tidying only applies to modules with a `go.sum`, and is skipped for [Go workspaces](#go-workspaces).
+It only runs locally, never in CI, and is skipped on the first install.
+
+<Callout type="warning">
+  moon treats a missing or empty `vendor` directory as a first install, so
+  `tidyOnChange` has no effect unless your dependencies are
+  [vendored](#vendoring-dependencies).
+</Callout>
+
+### Vendoring dependencies
+
+When you vendor dependencies with `go mod vendor`, moon uses the `vendor` directory to avoid
+redundant installs. It's enabled by default whenever a non-empty `vendor` directory exists in the
+dependencies root, and it applies when installing dependencies and pruning Docker images.
+
+- Locally, dependencies are only installed again when the lockfile, `go.mod` files, or the
+  toolchain's configuration changes. Without a `vendor` directory, every install is treated as the first one,
+  so `go mod download` (or `go work sync`) runs every time, and
+  [tidying](#tidying-modules) is skipped.
+- In CI, the install is skipped entirely, as dependencies were already vendored.
+- [`moon docker prune`](../commands/docker/prune.mdx) deletes the vendor directory (see
+  [Docker integration](#docker-integration)).
+
+If your vendor directory isn't named `vendor`, configure its path with `vendorDir`. This setting is
+only used when pruning Docker images; the install checks above always look for `vendor`.
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    go: {
+      vendorDir: "third_party/vendor",
+    },
+  }}
+/>
+
+## Tier 1: Syncing and usage detection
+
+### Project and task detection
+
+A project is associated with the Go toolchain when its root directory contains any of the
+following files: `go.mod`, `go.work`, `go.sum`, or `go.work.sum`. Unless the project configures a
+[`language`](/moon/api/ProjectConfig#language), its language is detected as `go`.
+
+A task is associated with the Go toolchain when its command (or the first word of its script) is
+`go` or `gofmt`.
+
+Projects within a [single module](#single-module) don't have any of these files in their root, so
+they aren't detected. Set their `language` to `go` in
+[`moon.config`](<../(fundamentals)/project.mdx>) to associate them with the toolchain:
+
+<ConfigTabs
+  file="moon"
+  config={{
+    language: "go",
+  }}
+/>
+
+### Docker integration
+
+- [`moon docker scaffold`](../commands/docker/scaffold.mdx) - Copies `go.mod`, `go.work`, `go.sum`,
+  and `go.work.sum` files.
+- [`moon docker file`](../commands/docker/file.mdx) - Uses `golang:<version>` (or `golang:latest`
+  when no version is configured) as the default base image.
+- [`moon docker prune`](../commands/docker/prune.mdx) - Deletes the vendor directory
+  ([`vendorDir`](#vendoring-dependencies)) in each dependencies root, then installs dependencies
+  with `go mod download` (or `go work sync`). Go doesn't distinguish production dependencies, so
+  all module dependencies are downloaded.
+
+### Version detection
+
+When running [`moon toolchain add`](../commands/toolchain/add.mdx), moon detects the Go version
+from the following files, and uses the first match:
+
+1. `go.mod` - The `go` directive.
+2. `go.work` - The `go` directive.
+
+The directive is a minimum version, so it's converted to a caret range, for example `go 1.24`
+becomes `^1.24.0`.
+
+## Tier 2: Ecosystem integration
+
+### Extending projects
+
+When building the [project graph](<../(fundamentals)/project-graph.mdx>), moon asks the Go
+toolchain to extend each project with information from its `go.mod`:
+
+- **Alias** - When a project has its own `go.mod`, and its `module` path differs from the project
+  ID, the module path becomes a project [alias](<../(fundamentals)/project.mdx#aliases>), so the
+  project can be referenced by it wherever a project ID is accepted. If the `go.mod` is in a major
+  version folder (`v2` and above) and the `module` directive omits the version suffix, the suffix
+  is inferred from the folder name (for example, `example.com/org/utils/v2`).
+- **Dependencies** - The projects whose packages a project imports become implicit
+  [project dependencies](<../(fundamentals)/project.mdx#dependencies>), scoped as `production`, or
+  `development` for test-only imports (see
+  [inferring relationships from imports](#inferring-relationships-from-imports)).
+
+Some dependencies are also resolved from `go.mod` directly, without running `go`. These are scoped
+as `production`:
+
+- A `replace` directive that points to a local directory (like `=> ../utils`) always links to the
+  project at that location, as it consumes local source even without a `go.work`. A `replace` that
+  points to another module, or to a directory outside the workspace, never links. These are
+  resolved even when `inferRelationships` is disabled.
+- When `go` isn't available on your `PATH`, and a `go.work` exists at the workspace root, a project
+  with its own `go.mod` links to the projects matching its direct `require` entries. Requires
+  marked `// indirect` are ignored.
+
+### Extending tasks
+
+- **Commands** - When a task that uses the Go toolchain runs a
+  [`command`](/moon/api/TaskConfig#command), the toolchain prepends Go's global binaries directory
+  (the first of `$GOBIN`, `$GOPATH/bin`, or an existing `~/go/bin`) to `PATH`, as a fallback for
+  when the directory located by proto isn't accessible to the toolchain.
+- **Scripts** - When a task that uses the Go toolchain runs a
+  [`script`](/moon/api/TaskConfig#script), the same fallback applies.
+
+In most setups, the directory located by proto is accessible, so nothing is added here. Instead,
+moon adds it to `PATH` when it [installs Go](#installing-with-proto).
+
+### Locating dependencies root
+
+The dependencies root is the directory that Go installs dependencies from, and where the `go.sum`
+(or `go.work.sum`) lives. For each project, moon walks up from the project's root looking for each
+of the following files in turn, and uses the directory of the first one found:
+
+1. `go.work`, when [Go workspaces](#go-workspaces) are enabled.
+2. `go.sum`.
+3. `go.mod`.
+
+Each file is searched for in every parent directory before moving on to the next, so a `go.work`
+higher up takes precedence over a module's own `go.sum` or `go.mod`.
+
+A project belongs to its root if it's the root itself, or its path matches one of the `use`
+directives in the root's `go.work`. Other projects are skipped, including projects within a
+[single module](#single-module).
+
+### Installing and deduping dependencies
+
+Before running a task that uses the Go toolchain, moon installs dependencies in the project's
+[dependencies root](#locating-dependencies-root):
+
+```shell
+# Install dependencies of a module
+$ go mod download
+
+# Install dependencies of a Go workspace
+$ go work sync
+```
+
+moon re-installs when the `go.sum` (or `go.work.sum`), the dependencies in `go.mod` files, or the
+toolchain's settings change, and always when `vendor` doesn't exist yet (see
+[vendoring dependencies](#vendoring-dependencies)).
+
+After installing locally, moon dedupes dependencies with `go mod tidy`, when `tidyOnChange` is
+enabled (see [tidying modules](#tidying-modules)).
+
+### Parsing manifest and lock files
+
+When hashing a task, moon parses the project's `go.mod`, and resolves each dependency it declares
+against the `go.sum` (or `go.work.sum`) in the [dependencies root](#locating-dependencies-root).
+The resolved checksum is included in the task's hash, so upgrading a dependency only invalidates
+the tasks of projects that declare it.
+
+- Only direct `require` entries are hashed. Requires marked `// indirect` are ignored.
+- A `go.work` doesn't declare dependencies, so it contributes nothing.
+- Projects without their own `go.mod`, like those within a [single module](#single-module), don't
+  include any module dependencies in their task hashes.
+
+### Setting up the environment
+
+Before installing dependencies, moon sets up the Go environment in each
+[dependencies root](#locating-dependencies-root), which installs the binaries configured in `bins`
+with `go install` (see [installing binaries](#installing-binaries)).
+
+### Hashing task content
+
+When hashing a task that uses the Go toolchain, moon also includes the following in the task's
+hash:
+
+- The host's operating system, architecture, and libc, as Go builds are platform-specific. This
+  means cached outputs are never shared between platforms.
+
+## Tier 3: Tool management
+
+### Installing with proto
+
+When a [`version`](/moon/api/ToolchainPluginConfig#version) is configured, moon installs Go through
+[proto](../../../proto/docs/index.mdx), by downloading a prebuilt archive. Versions that are
+already installed are reused.
+
+- Available versions are loaded from the Git tags of the [golang/go](https://github.com/golang/go)
+  repository. Versions are written as semantic versions (`1.24.2`), and are mapped to Go's own
+  release naming automatically, which omits the trailing `.0` for releases before Go 1.21
+  (`go1.20`). Canary releases are not supported.
+- Prebuilt archives are downloaded from `https://dl.google.com/go`, and verified against their
+  published SHA-256 checksum. They're available for Linux (x64, arm64, x86, arm, s390x), macOS
+  (x64, arm64), Windows (x64, arm64, x86), and FreeBSD (x64, x86).
+- The `go` and `gofmt` executables are made available, with `go` as the primary executable.
+
+Along with the installed Go, moon prepends Go's global binaries directories to `PATH` for tasks
+that use the Go toolchain (see
+[installing with proto](<../(fundamentals)/toolchain.mdx#installing-with-proto>)), so binaries
+installed with [`bins`](#installing-binaries) can be used as task commands.
+
+## Caveats
+
+- **Projects within a single root module get less integration.** Projects that don't have their
+  own `go.mod` aren't detected automatically, don't have dependencies installed before their tasks
+  run, and don't include module dependencies in their task hashes. Relationship inference works as
+  normal.
+- **`go.work` members must be child directories.** `use` directives that point outside the
+  `go.work` directory (starting with `..`) are ignored, and modules that aren't listed in `use`
+  don't have their dependencies installed by moon.
+- **`vendorDir` doesn't affect installs.** moon always checks for a directory named `vendor` when
+  deciding whether to install, regardless of `vendorDir`, which is only used by
+  [`moon docker prune`](../commands/docker/prune.mdx).
+- **The default Docker image uses `version` as-is.** A range like `^1.24.0` (as written by
+  [`moon toolchain add`](../commands/toolchain/add.mdx)) isn't a valid `golang` image tag.
+  Configure a fully-qualified version (like `1.24.2`), or configure
+  [`docker.file.image`](/moon/api/DockerFileConfig#image) explicitly.
+- **Dependency installs run on every task run, unless you vendor.** moon treats a missing or empty
+  `vendor` directory in the dependencies root as a first-time install. Since most Go repositories
+  don't vendor dependencies, `go mod download` (or `go work sync`) runs every time the install
+  action is part of a run, instead of only when `go.mod` or `go.sum` changes. This is fast with a
+  warm module cache, but it also means `go mod tidy` (from `tidyOnChange`) is skipped (see
+  [vendoring dependencies](#vendoring-dependencies)).

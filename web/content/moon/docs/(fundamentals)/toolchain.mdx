@@ -1,0 +1,531 @@
+---
+title: Toolchains
+icon: Toolbox
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+import { TypeLabel } from "@/components/TypeLabel";
+import { VersionLabel } from "@/components/VersionLabel";
+
+A **toolchain** is a WASM plugin that integrates a language, ecosystem, or tool into moon, like Go,
+JavaScript, or Rust. Toolchains are what make moon language aware: they detect which
+[projects](./project.mdx) and [tasks](./task.mdx) use a language, teach the
+[project graph](./project-graph.mdx) about manifests and lockfiles, install dependencies before tasks
+run, and download and pin the tools themselves, so every developer and CI machine runs the same
+versions.
+
+A toolchain implements only the plugin functions (APIs) it needs, which are grouped into three tiers:
+
+- **[Tier 1: Syncing and usage detection](#tier-1-syncing-and-usage-detection)** - Detects which
+  projects and tasks use the toolchain, keeps files in sync, and takes part in Docker builds.
+- **[Tier 2: Ecosystem integration](#tier-2-ecosystem-integration)** - Understands manifests,
+  lockfiles, and dependencies, to infer project relationships, install dependencies, and hash
+  locked versions.
+- **[Tier 3: Tool management](#tier-3-tool-management)** - Downloads, installs, and pins the tool
+  itself through [proto](../../../proto/docs/index.mdx).
+
+To see which APIs a toolchain implements, along with its settings and the files it looks for, run
+[`moon toolchain info <id>`](../commands/toolchain/info.mdx).
+
+## Built-in toolchains
+
+moon ships with the following toolchains, and knows where to find their plugins, so enabling them
+only requires their ID (see [enabling a toolchain](#enabling-a-toolchain)). Refer to each
+toolchain's page for its settings and behavior.
+
+| Toolchain                                        | ID                | Notes                                                               |
+| ------------------------------------------------ | ----------------- | ------------------------------------------------------------------- |
+| [Go](../toolchains/go.mdx)                       | `go`              |                                                                     |
+| [JavaScript](../toolchains/javascript/index.mdx) | `javascript`      | Ecosystem integration for Node.js, Bun, and Deno; installs no tools |
+| [Bun](../toolchains/javascript/bun.mdx)          | `bun`             | Runtime and package manager                                         |
+| [Deno](../toolchains/javascript/deno.mdx)        | `deno`            | Runtime and package manager                                         |
+| [Node.js](../toolchains/javascript/node.mdx)     | `node`            | Runtime                                                             |
+| [npm](../toolchains/javascript/npm.mdx)          | `npm`             | Package manager, runs on Node.js                                    |
+| [Nub](../toolchains/javascript/nub.mdx)          | `unstable_nub`    | Package manager, requires an explicit `plugin` locator for now      |
+| [pnpm](../toolchains/javascript/pnpm.mdx)        | `pnpm`            | Package manager, runs on Node.js                                    |
+| [Yarn](../toolchains/javascript/yarn.mdx)        | `yarn`            | Package manager, runs on Node.js                                    |
+| [Python](../toolchains/python/index.mdx)         | `unstable_python` | Virtual environments and dependency installs                        |
+| [pip](../toolchains/python/pip.mdx)              | `unstable_pip`    | Package manager, ships with Python                                  |
+| [Poetry](../toolchains/python/poetry.mdx)        | `unstable_poetry` | Package manager                                                     |
+| [uv](../toolchains/python/uv.mdx)                | `unstable_uv`     | Package manager                                                     |
+| [Ruby](../toolchains/ruby.mdx)                   | `unstable_ruby`   |                                                                     |
+| [Rust](../toolchains/rust.mdx)                   | `rust`            | Installs Rust with rustup                                           |
+| [TypeScript](../toolchains/typescript.mdx)       | `typescript`      | Syncs `tsconfig.json` project references                            |
+| System                                           | `system`          | Always enabled, see below                                           |
+
+The `system` toolchain is a bare-bones toolchain for native system commands. It's always enabled
+without being configured, and is used as a fallback for projects and tasks that aren't associated
+with any other toolchain, so their commands run with the binaries on your `PATH`.
+
+## Enabling a toolchain
+
+Toolchains are enabled in [`.moon/toolchains.config`](#configuration), where each top-level key is
+a toolchain ID. For built-in toolchains, the ID is all moon needs, so an empty entry enables a
+toolchain with its default settings.
+
+Third-party and custom toolchains also require a [`plugin`](/moon/api/ToolchainPluginConfig#plugin)
+locator, which tells moon where to download the WASM file from. Locators support the `file://`,
+`https://`, `github://`, and `registry://` protocols, and relative `file://` paths are resolved
+from the `.moon` directory. The ID is up to you, and is how projects, tasks, and environment
+variables refer to the toolchain. An ID that isn't built-in and has no locator fails with an error
+like "a locator is required for plugins".
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    go: {
+      version: "1.24.2",
+    },
+    typescript: {},
+    "my-toolchain": {
+      plugin: "https://example.com/releases/my_toolchain.wasm",
+      someSetting: true,
+    },
+  }}
+  comments={{
+    "my-toolchain": "A custom toolchain, with a setting of its own",
+  }}
+/>
+
+Instead of editing the file by hand, run [`moon toolchain add`](../commands/toolchain/add.mdx),
+passing the locator as the second argument for custom toolchains. It loads the plugin, detects a
+version (see [version detection](#version-detection)), prompts for the toolchain's settings, and
+writes the entry for you.
+
+```shell
+# Add the Go toolchain, answering each prompt
+$ moon toolchain add go
+
+# Add a custom toolchain with default settings
+$ moon toolchain add my-toolchain https://example.com/releases/my_toolchain.wasm --yes
+```
+
+Plugins are downloaded and cached the first time they're needed. To warm the cache ahead of time,
+like in a CI job or Docker image, run [`moon toolchain download`](../commands/toolchain/download.mdx).
+
+### Unstable toolchains
+
+Toolchains that are still being developed use an `unstable_` prefix in their ID, like
+`unstable_python`, and their settings and behavior may change between moon releases. Use the full
+ID to enable them, and wherever moon refers to their configuration: project overrides in
+[`moon.config`](./project.mdx), task [`toolchains`](/moon/api/TaskConfig#toolchains), and
+environment variables like `MOON_UNSTABLE_PYTHON_VERSION` and `MOON_SKIP_INSTALL_DEPS`.
+
+A few places use the stable ID (without the prefix) instead, mostly because they're shared with
+proto:
+
+- **`.prototools`** - Versions are inherited from the `python` entry, not `unstable_python` (see
+  [installing with proto](#installing-with-proto)).
+- **`PROTO_<ID>_VERSION`** - Set for tasks as `PROTO_PYTHON_VERSION`.
+- **[`moon bin`](../commands/bin.mdx)** - Passes the ID to proto, so run `moon bin python`.
+- **[`inheritedBy.toolchains`](/moon/api/InheritedByConfig#toolchains)** - Matches stable IDs, so
+  tasks for every Python project are inherited with `python` (see
+  [task inheritance](./task-inheritance.mdx#scoping-inheritance)).
+
+## Configuration
+
+Toolchains are configured in `.moon/toolchains.config`, by ID. Alongside its own settings
+(documented on each toolchain's page), every entry supports the following shared settings:
+
+- [`plugin`](/moon/api/ToolchainPluginConfig#plugin) <TypeLabel type="string" /> - The locator of the
+  WASM plugin. Not required for [built-in toolchains](#built-in-toolchains).
+- [`version`](/moon/api/ToolchainPluginConfig#version) <TypeLabel type="string" /> - The version of
+  the tool to download and install through proto, for toolchains that support
+  [tier 3](#tier-3-tool-management). When not defined, the tool's binary on your `PATH` is used.
+- [`versionFromPrototools`](/moon/api/ToolchainPluginConfig#versionfromprototools) <TypeLabel type="boolean | string" /> -
+  Inherit `version` from `.prototools` when it isn't configured. `true` matches the toolchain's
+  stable ID, and a string matches a custom ID. Defaults to `true`.
+- [`installDependencies`](/moon/api/ToolchainPluginConfig#installdependencies) <TypeLabel type="boolean" /> <VersionLabel version="2.1.0" /> -
+  Install dependencies before running tasks. Defaults to `true`. See
+  [installing and deduping dependencies](#installing-and-deduping-dependencies).
+- [`inheritAliases`](/moon/api/ToolchainPluginConfig#inheritaliases) <TypeLabel type="boolean" /> <VersionLabel version="2.1.0" /> -
+  Use names from manifests as project aliases. Defaults to `true`. See
+  [extending projects](#extending-projects).
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    javascript: {
+      packageManager: "pnpm",
+      inheritAliases: false,
+    },
+    pnpm: {
+      versionFromPrototools: false,
+    },
+  }}
+  comments={{
+    packageManager: "A setting of the JavaScript toolchain",
+    versionFromPrototools:
+      "Use the pnpm binary on PATH, even when .prototools pins one",
+  }}
+/>
+
+### Project overrides
+
+Toolchains are configured for the whole workspace, but a project can override them with the
+[`toolchains`](/moon/api/ProjectConfig#toolchains) setting in its [`moon.config`](./project.mdx)
+(see [project toolchain overrides](./project.mdx#overrides)). Each entry is keyed by toolchain ID,
+and accepts one of the following:
+
+- `false` (or `null`) - Disables the toolchain for the project and its tasks, even when it's
+  detected.
+- `true` - Enables the toolchain for the project, even when it isn't detected.
+- An object - Enables the toolchain, and overrides its settings.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    toolchains: {
+      node: {
+        version: "22.12.0",
+      },
+      typescript: {
+        syncProjectReferences: false,
+      },
+      unstable_python: false,
+    },
+  }}
+/>
+
+An object is merged into the workspace settings: objects are merged key by key, while lists and
+other values replace the workspace value. Only `version` and the toolchain's own settings can be
+overridden; shared settings like `plugin`, `versionFromPrototools`, `installDependencies`, and
+`inheritAliases` are always read from [`.moon/toolchains.config`](#configuration). IDs that aren't
+enabled there are ignored, so a project can't enable a toolchain the workspace doesn't configure.
+
+Overrides apply to most of what a toolchain does for the project, like syncing, extending and
+hashing its tasks, and scaffolding Docker images. A few things work differently:
+
+- **`version`** - Installs that version for the project, and uses it for the project's tasks and
+  their hashes.
+- **Installs and environment setup** - Only use a project's overrides when the project is its own
+  [dependencies root](#locating-dependencies-root), and that root has no workspace members.
+  Projects that share a root, like workspace members, use the workspace settings, as they share a
+  single install.
+- **Workspace-wide operations** - [`moon setup`](../commands/setup.mdx),
+  [`moon teardown`](../commands/teardown.mdx), [extending projects](#extending-projects) while
+  building the project graph, and the prune step of
+  [`moon docker prune`](../commands/docker/prune.mdx) always use the workspace settings.
+
+## Tier 1: Syncing and usage detection
+
+Tier 1 makes moon aware of a toolchain: which projects and tasks use it, which files belong to it,
+and how it takes part in syncing and Docker builds. Everything else a toolchain does for a task
+starts with the task being associated with it.
+
+### Syncing operations
+
+Toolchains can keep files in your repository in line with moon's configuration, like writing a
+project's dependencies into its manifest, or into `tsconfig.json` project references. Syncing
+happens in two actions, both of which run before tasks:
+
+- `SyncWorkspace` - Runs once, before every other action, and syncs each enabled toolchain with
+  the workspace settings (the `sync_workspace` API).
+- `SyncProject` - Runs for the project of each task being run, and syncs each of the project's
+  toolchains with the project's settings (the `sync_project` API). The project's dependencies are
+  synced first, unless [`pipeline.syncProjectDependencies`](/moon/api/PipelineConfig#syncprojectdependencies)
+  is disabled.
+
+[`moon sync`](../commands/sync.mdx) syncs the workspace and every project, while
+[`moon sync projects`](../commands/sync/projects.mdx) only syncs every project.
+
+To disable syncing when running tasks, set [`pipeline.syncProjects`](/moon/api/PipelineConfig#syncprojects)
+(which also accepts a list of project IDs to sync) or
+[`pipeline.syncWorkspace`](/moon/api/PipelineConfig#syncworkspace) to `false` in
+[`.moon/workspace.config`](./workspace.mdx). Disabling the workspace sync also skips moon's own
+workspace syncing, like VCS hooks and code owners. For a single run, set
+`MOON_SKIP_SYNC_WORKSPACE=true`, or `MOON_SKIP_SYNC_PROJECT` to `true`, `*`, or a comma-separated
+list of project IDs.
+
+In CI, syncing that modifies files marks its action as `Invalid` and logs a warning, as those
+changes should be committed to the repository.
+
+### Project and task detection
+
+A project is associated with a toolchain when its root directory contains one of the toolchain's
+files: a manifest (like `package.json`), a lockfile (like `Cargo.lock`), or a file matching one of
+its configuration file globs (like `.cargo/*.toml`). Files are matched relative to the project's
+root, and parent directories aren't checked.
+
+A task is associated with a toolchain when its [`command`](/moon/api/TaskConfig#command), or the
+first word of its [`script`](/moon/api/TaskConfig#script), is one of the toolchain's executable
+names, like `cargo` or `node`. Tasks that don't match inherit their project's toolchains, so a task
+that runs `eslint` in a JavaScript project still uses the JavaScript toolchain.
+
+Detection adds to explicit configuration:
+
+- [`toolchains.default`](/moon/api/ProjectToolchainsConfig#default) adds toolchains to a project,
+  ahead of detected ones, and `toolchains.<id>` set to `true` or `false` adds or removes one (see
+  [project overrides](#project-overrides)).
+- Tasks that configure [`toolchains`](/moon/api/TaskConfig#toolchains) skip detection, and only use
+  those toolchains (plus the toolchains they [require](#requiring-other-toolchains)).
+- When a project configures a [`language`](/moon/api/ProjectConfig#language), every toolchain for
+  that language is added. Otherwise, the language is detected from the toolchains that match the
+  project, like `rust` for a project with a `Cargo.toml`.
+- Toolchains required by a detected toolchain are added as well (see
+  [requiring other toolchains](#requiring-other-toolchains)).
+
+Only toolchains enabled in `.moon/toolchains.config` are associated. A project or task without any
+uses the `system` toolchain.
+
+### Docker integration
+
+Toolchains take part in moon's [Docker workflow](../guides/docker.mdx):
+
+- [`moon docker scaffold`](../commands/docker/scaffold.mdx) - Copies every enabled toolchain's
+  manifests, lockfiles, and configuration files from the workspace root and the root of each project
+  into the skeleton, so dependencies can be installed before sources are copied. Vendor
+  directories, like `node_modules` or `target`, are never copied. Toolchains can also customize the
+  skeleton of their projects.
+- [`moon docker file`](../commands/docker/file.mdx) - Picks the base image of the generated
+  `Dockerfile`, using the first of: the `--image` option,
+  [`docker.file.image`](/moon/api/DockerFileConfig#image) in the project's
+  [`moon.config`](./project.mdx), then in [`.moon/workspace.config`](./workspace.mdx), the default
+  image of the first of the project's toolchains
+  (alphabetically) that provides one, like `node:<version>`, and finally `scratch`.
+- [`moon docker prune`](../commands/docker/prune.mdx) - Runs each toolchain's prune step once per
+  dependencies root of the focused projects, which removes artifacts like vendor directories when
+  [`docker.prune.deleteVendorDirectories`](/moon/api/DockerPruneConfig#deletevendordirectories) is
+  enabled (the default). Then, when
+  [`docker.prune.installToolchainDependencies`](/moon/api/DockerPruneConfig#installtoolchaindependencies)
+  is enabled (the default), only production dependencies are installed, scoped to the focused
+  projects where the package manager supports it.
+
+### Version detection
+
+When running [`moon toolchain add`](../commands/toolchain/add.mdx) for a toolchain that supports
+[tier 3](#tier-3-tool-management), moon detects the version to configure from version files in the
+current directory, like `.python-version` or `rust-toolchain.toml`. Each toolchain checks its files
+in order, and the first match wins. When no version is found, moon prompts for one.
+
+Version files are only read when adding a toolchain, never at runtime. When running tasks, moon uses
+the configured [`version`](/moon/api/ToolchainPluginConfig#version), or the one inherited from
+`.prototools`.
+
+## Tier 2: Ecosystem integration
+
+Tier 2 integrates moon with a language's ecosystem, like its manifests, lockfiles, and dependencies,
+so that the project graph, task execution, and task hashing understand your code. Much of it
+revolves around the [dependencies root](#locating-dependencies-root), where dependencies are
+installed, environments are set up, and lockfiles are read.
+
+### Requiring other toolchains
+
+A toolchain can require other toolchains, typically because it runs on top of them. For example,
+npm runs on Node.js, and the JavaScript toolchain requires the toolchain of its package manager.
+When a toolchain requires another:
+
+- Projects detected as using the toolchain, and tasks that use it, are also associated with the
+  required toolchain. Tasks that use the required toolchain are associated with the toolchain that
+  requires it too.
+- The required toolchain is set up first, before the toolchain that requires it, or its
+  environment, is set up.
+- The required toolchain must be enabled, otherwise moon fails with an error like "Toolchain
+  javascript requires the toolchain pnpm, but it has not been configured!". Disabling a required
+  toolchain in a project with `toolchains.<id>: false` fails the same way.
+
+Requirements can depend on a toolchain's settings, like the package manager it's configured with.
+
+### Extending projects
+
+While building the [project graph](./project-graph.mdx), each enabled toolchain can extend projects
+with information from their manifests, using the workspace settings:
+
+- **Aliases** - A name from the manifest, like the `name` in `package.json`, becomes a project
+  [alias](./project.mdx#aliases), so the project can be referenced by it wherever a project ID is
+  accepted. Disable this with [`inheritAliases`](/moon/api/ToolchainPluginConfig#inheritaliases).
+  Aliases that aren't valid IDs, match another project's ID, or are already taken by another
+  project are skipped.
+- **Dependencies** - Dependencies on other projects in the repository become implicit
+  [project dependencies](./project.mdx#dependencies) with a [scope](./project.mdx#scopes), like
+  `production` or `development`, so they don't need to be repeated in
+  [`dependsOn`](/moon/api/ProjectConfig#dependson).
+- **Tasks** - Tasks can be inferred, like from `package.json` scripts. Tasks with the same ID in a
+  project's `moon.config` take precedence.
+
+The files a toolchain reads are tracked, so changing them invalidates the project graph cache.
+
+### Extending tasks
+
+Before a process runs, toolchains can modify it with the project's settings, at three levels:
+
+- **All commands** (`extend_command`) - Every command moon runs with the toolchain, which includes
+  tasks, and the commands that toolchains run to install dependencies and set up environments.
+- **Task commands** (`extend_task_command`) - Tasks that run a [`command`](./task.mdx#command).
+- **Task scripts** (`extend_task_script`) - Tasks that run a [`script`](./task.mdx#script).
+
+For commands, a toolchain can replace the executable, add or replace arguments, set or remove
+environment variables, and prepend directories to `PATH`, like `node_modules/.bin` or a virtual
+environment's `bin`. For scripts, it can rewrite the script, and change environment variables and
+`PATH`, but not arguments.
+
+The general extension is applied first, then the task-specific one. At each level, toolchains are
+applied in the order of the task's toolchains, followed by [extensions](./extension.mdx).
+Directories added this way come before the tools installed in [tier 3](#installing-with-proto) on
+`PATH`, so they take precedence.
+
+### Locating dependencies root
+
+The dependencies root is the directory where a toolchain installs dependencies, typically where
+the lockfile lives: the root of a package manager or Cargo workspace, or a standalone package. For
+each project, the toolchain walks up from the project's root looking for its lockfile, workspace
+manifest, or manifest (each toolchain's page lists its exact lookup).
+
+A root can define workspace members as globs, like the `workspaces` field in `package.json`. A
+project belongs to a root when it is the root itself, or its path matches one of the member globs.
+Without members, only a project at the root itself belongs to it.
+
+Projects that share a root share a single install and environment setup, which run once per root,
+no matter how many projects need them. A project that isn't a member of its root is skipped, as is
+a project without a root, so moon only sets up the tool itself for them.
+
+### Installing and deduping dependencies
+
+Before running a task, moon installs dependencies in an `InstallDependencies` action, for each of
+the task's toolchains that supports it, in the [dependencies root](#locating-dependencies-root) of
+the task's project. [`moon docker setup`](../commands/docker/setup.mdx) runs the same action for the
+focused projects.
+
+moon only installs when something has changed since the last install in that root:
+
+- The contents of the lockfile.
+- The dependencies declared in the root's manifest and its members' manifests, which are only
+  re-checked when a manifest is among the changed files.
+- The installing toolchain's settings.
+
+It always installs when the toolchain's vendor directory, like `node_modules`, doesn't exist or is
+empty. Only the installing toolchain's settings are part of the check, so settings of a toolchain
+it runs on its behalf, like a package manager's install arguments, are used by the next install,
+but don't trigger one.
+
+After installing, toolchains that support it dedupe dependencies, like with `pnpm dedupe`. Deduping
+only runs locally, never in CI, and is skipped on the first install.
+
+The install is skipped when:
+
+- Running in CI, and a non-empty vendor directory already exists in the dependencies root, as moon
+  assumes dependencies were installed before it ran.
+- There's no internet connection (see [offline mode](../guides/offline-mode.mdx)).
+- Running against affected files locally, or forcing a run with `--force` (or any write-only cache
+  mode).
+- The `MOON_SKIP_INSTALL_DEPS` environment variable is set to `true`, `*`, or a comma-separated
+  list of toolchain IDs that includes the toolchain.
+- [`installDependencies`](/moon/api/ToolchainPluginConfig#installdependencies) is disabled for the
+  toolchain, or [`pipeline.installDependencies`](/moon/api/PipelineConfig#installdependencies) is
+  disabled (or is a list that doesn't include the toolchain) in
+  [`.moon/workspace.config`](./workspace.mdx). This also
+  skips [setting up the tool](#setup-and-teardown) and the
+  [environment](#setting-up-the-environment) before tasks.
+
+```shell
+# Run a task without installing dependencies
+$ MOON_SKIP_INSTALL_DEPS=true moon run app:build
+```
+
+### Parsing manifest and lock files
+
+When hashing a task, moon parses the project's manifest, and resolves each dependency it declares
+against the lockfile in the [dependencies root](#locating-dependencies-root). The resolved version
+or checksum is included in the task's hash, so upgrading a dependency only invalidates the tasks of
+projects that declare it, instead of every task in the repository.
+
+The lockfile is only parsed when [`hasher.optimization`](/moon/api/HasherConfig#optimization) is
+`accuracy` (the default). With `performance`, the version requirement from the manifest is hashed
+instead, so an upgrade within the same range isn't detected. Manifests also feed the
+[install check](#installing-and-deduping-dependencies).
+
+### Setting up the environment
+
+Some toolchains prepare an environment before dependencies are installed, like creating a virtual
+environment, installing binaries, or writing the configured version into a configuration file.
+This runs in a `SetupEnvironment` action, once per [dependencies root](#locating-dependencies-root),
+after the toolchain and the toolchains it requires are set up, and before installing dependencies.
+[`moon setup`](../commands/setup.mdx) also runs it, when the dependencies root is the workspace
+root.
+
+Commands are only re-run when they, or the toolchain's settings, change. moon doesn't check what
+they created on disk, so deleting a generated directory doesn't trigger a re-run.
+
+To skip this step, set the `MOON_SKIP_SETUP_ENVIRONMENT` environment variable to `true`, `*`, or a
+comma-separated list of toolchain IDs. Like installs, it's also skipped when
+[`installDependencies`](/moon/api/ToolchainPluginConfig#installdependencies) or
+[`pipeline.installDependencies`](/moon/api/PipelineConfig#installdependencies) is disabled.
+
+### Hashing task content
+
+Each of a task's toolchains contributes to the task's hash:
+
+- **Version** - The configured [`version`](/moon/api/ToolchainPluginConfig#version), or the
+  project's override, is hashed for every task that uses the toolchain, so changing it invalidates
+  their cache.
+- **Dependencies** - Locked dependency versions (see
+  [parsing manifest and lock files](#parsing-manifest-and-lock-files)).
+- **Content** - Anything else the toolchain provides, like the host's operating system and
+  architecture for languages that compile platform-specific output.
+
+Use [`moon hash`](../commands/hash.mdx) to inspect what went into a hash.
+
+## Tier 3: Tool management
+
+Tier 3 lets moon download, install, and pin a tool for you, like Go, Node.js, or Python, so every
+developer and CI machine runs the same version without installing it themselves. It's enabled by
+configuring a [`version`](/moon/api/ToolchainPluginConfig#version), or inheriting one from
+`.prototools`. Without a version, moon uses the tool's binary on your `PATH`, which must already be
+installed.
+
+### Installing with proto
+
+Tools are installed through [proto](../../../proto/docs/index.mdx), moon's multi-language version
+manager. The version comes from the first of:
+
+1. A project's `version` [override](#project-overrides), for that project's tasks.
+2. The `MOON_<ID>_VERSION` environment variable, using the configured ID in uppercase (like
+   `MOON_NODE_VERSION` or `MOON_UNSTABLE_PYTHON_VERSION`), to temporarily use a different version.
+3. The `version` setting in [`.moon/toolchains.config`](#configuration).
+4. The `.prototools` file in the directory moon runs in (normally the workspace root), matched by the
+   toolchain's stable ID, unless
+   [`versionFromPrototools`](/moon/api/ToolchainPluginConfig#versionfromprototools) is disabled.
+
+Tools are installed into proto's store, and versions that are already installed are reused, even
+across workspaces. If proto itself isn't installed yet, moon installs it first, at the version set
+by [`proto.version`](/moon/api/ProtoConfig#version) in `.moon/toolchains.config`.
+
+For tasks that use the toolchain, moon prepends the tool's executable directories (and its global
+packages directory) to `PATH`, and sets the `PROTO_<ID>_VERSION` environment variable (using the
+stable ID), so the task always runs the configured version. Commands that toolchains run, like
+installing dependencies, get the same environment.
+
+To use the binaries on your `PATH` instead, set the `MOON_TOOLCHAIN_FORCE_GLOBALS` environment
+variable to `true` for every toolchain, or to a comma-separated list of toolchain IDs. moon then
+doesn't install those tools, or add them to `PATH`.
+
+```shell
+# Print the path to the Node.js binary managed by moon
+$ moon bin node
+
+# Run a task with a different Node.js version
+$ MOON_NODE_VERSION=22.12.0 moon run app:test
+
+# Run a task with the Go binary on your PATH
+$ MOON_TOOLCHAIN_FORCE_GLOBALS=go moon run server:build
+```
+
+### Setup and teardown
+
+moon installs a tool in a `SetupToolchain` action, which runs:
+
+- Before tasks that use the toolchain, after the toolchains it requires are set up. When a project
+  overrides `version`, that version is set up for its tasks.
+- When running [`moon setup`](../commands/setup.mdx), which sets up every configured toolchain.
+- When running [`moon docker setup`](../commands/docker/setup.mdx), for the focused projects.
+
+The action is skipped when no version is configured, when `MOON_TOOLCHAIN_FORCE_GLOBALS` applies to
+the toolchain, or when the `MOON_SKIP_SETUP_TOOLCHAIN` environment variable is set to `true`, `*`,
+or a comma-separated list of toolchain IDs (optionally with a version, like `node:24.12.0`). Before
+tasks, it's also skipped when installs are disabled with `installDependencies` (see
+[installing and deduping dependencies](#installing-and-deduping-dependencies)).
+
+Running [`moon teardown`](../commands/teardown.mdx) uninstalls the configured version of each
+toolchain. Both `moon setup` and `moon teardown` use the workspace `version`, and ignore project
+overrides. Toolchain plugins can also implement their own setup and teardown steps, which run
+after installing and when tearing down, but none of the built-in toolchains currently do.

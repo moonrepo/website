@@ -1,0 +1,14 @@
+{
+  "title": "JavaScript",
+  "pages": [
+    "---Runtimes---",
+    "bun",
+    "deno",
+    "node",
+    "---Package managers---",
+    "npm",
+    "nub",
+    "pnpm",
+    "yarn"
+  ]
+}

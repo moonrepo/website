@@ -7,6 +7,23 @@ import { defineConfig } from 'vite';
 
 const fumadocsDeps = ['fumadocs-core', 'fumadocs-ui', '@fumadocs/base-ui'];
 
+// The prerender crawler dedupes pages by their exact path, so variants like
+// `/page`, `/page/`, and `/page#heading` are rendered concurrently into the
+// same `page/index.html`, which can leave it empty. Only render the first.
+const prerenderedPaths = new Set<string>();
+
+function isFirstPrerender({ path }: { path: string }): boolean {
+	const outputPath = path.replace(/[?#].*$/, '').replace(/(.)\/$/, '$1');
+
+	if (prerenderedPaths.has(outputPath)) {
+		return false;
+	}
+
+	prerenderedPaths.add(outputPath);
+
+	return true;
+}
+
 export default defineConfig({
 	server: {
 		port: 3000,
@@ -17,6 +34,7 @@ export default defineConfig({
 		tanstackStart({
 			prerender: {
 				enabled: true,
+				filter: isFirstPrerender,
 			},
 		}),
 		nitro({
