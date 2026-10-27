@@ -67,5 +67,10 @@
       "enabled": true,
       "indentWidth": 2
     }
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
   }
 }

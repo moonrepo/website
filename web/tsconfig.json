@@ -1,5 +1,12 @@
 {
-  "include": ["**/*.ts", "**/*.tsx", "**/*.mdx", ".source/*.ts"],
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.mdx",
+    ".source/*.ts",
+    "../ui/src/**/*.ts",
+    "../ui/src/**/*.tsx"
+  ],
   "compilerOptions": {
     "allowImportingTsExtensions": true,
     "allowJs": true,
@@ -18,8 +25,10 @@
     "target": "ES2022",
     "types": ["vite/client"],
     "paths": {
+      "@moonrepo/ui/*": ["../ui/src/*"],
       "@/generated/*": ["./.source/*"],
       "@/*": ["./src/*"]
-    }
+    },
+    "rootDir": ".."
   }
 }

@@ -6,6 +6,7 @@ import {
 } from '@tanstack/react-router';
 import { RootProvider } from 'fumadocs-ui/provider/tanstack';
 import { lazy } from 'react';
+import { ColorSchemeBridge } from '@/components/ColorSchemeBridge';
 import appCss from '@/styles/app.css?url';
 
 // The search dialog bundles a markdown renderer for results, so keep it out
@@ -46,7 +47,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				<HeadContent />
 			</head>
 			<body className="flex flex-col min-h-screen">
-				<RootProvider search={{ SearchDialog }}>{children}</RootProvider>
+				<RootProvider search={{ SearchDialog }}>
+					<ColorSchemeBridge>{children}</ColorSchemeBridge>
+				</RootProvider>
 				<Scripts />
 			</body>
 		</html>
