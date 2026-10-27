@@ -11,6 +11,8 @@ export interface SidebarLayoutProps {
 	beforeTitle?: ReactNode;
 	children: ReactNode;
 	drawerTitle: string;
+	/** Replaces the default header and divider. */
+	header?: ReactNode;
 	sidebar: ReactNode;
 	sidebarClassName?: string;
 	title: string;
@@ -20,14 +22,19 @@ export function SidebarLayout({
 	beforeTitle,
 	children,
 	drawerTitle,
+	header,
 	sidebar,
 	sidebarClassName,
 	title,
 }: SidebarLayoutProps) {
 	return (
 		<PageFrame>
-			<Header />
-			<Divider />
+			{header ?? (
+				<>
+					<Header />
+					<Divider />
+				</>
+			)}
 			<div className="flex">
 				<aside
 					aria-label={drawerTitle}

@@ -23,6 +23,8 @@ import { Route as ProductSplatRouteImport } from './routes/$product/$'
 import { Route as ApiSearchRouteImport } from './routes/api/search'
 import { Route as BlogIndexRouteImport } from './routes/blog/index'
 import { Route as BlogSplatRouteImport } from './routes/blog/$'
+import { Route as BlogTagsIndexRouteImport } from './routes/blog/tags/index'
+import { Route as BlogTagsTagRouteImport } from './routes/blog/tags/$tag'
 import { Route as LlmsDotmdxProductSplatRouteImport } from './routes/llms[.]mdx.$product.$'
 
 const IndexRoute = IndexRouteImport.update({
@@ -95,6 +97,16 @@ const BlogSplatRoute = BlogSplatRouteImport.update({
   path: '/blog/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BlogTagsIndexRoute = BlogTagsIndexRouteImport.update({
+  id: '/blog/tags/',
+  path: '/blog/tags/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogTagsTagRoute = BlogTagsTagRouteImport.update({
+  id: '/blog/tags/$tag',
+  path: '/blog/tags/$tag',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LlmsDotmdxProductSplatRoute = LlmsDotmdxProductSplatRouteImport.update({
   id: '/llms.mdx/$product/$',
   path: '/llms.mdx/$product/$',
@@ -116,7 +128,9 @@ export interface FileRoutesByFullPath {
   '/blog/$': typeof BlogSplatRoute
   '/$product/': typeof ProductIndexRoute
   '/blog/': typeof BlogIndexRoute
+  '/blog/tags/$tag': typeof BlogTagsTagRoute
   '/llms.mdx/$product/$': typeof LlmsDotmdxProductSplatRoute
+  '/blog/tags/': typeof BlogTagsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -132,7 +146,9 @@ export interface FileRoutesByTo {
   '/blog/$': typeof BlogSplatRoute
   '/$product': typeof ProductIndexRoute
   '/blog': typeof BlogIndexRoute
+  '/blog/tags/$tag': typeof BlogTagsTagRoute
   '/llms.mdx/$product/$': typeof LlmsDotmdxProductSplatRoute
+  '/blog/tags': typeof BlogTagsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -150,7 +166,9 @@ export interface FileRoutesById {
   '/blog/$': typeof BlogSplatRoute
   '/$product/': typeof ProductIndexRoute
   '/blog/': typeof BlogIndexRoute
+  '/blog/tags/$tag': typeof BlogTagsTagRoute
   '/llms.mdx/$product/$': typeof LlmsDotmdxProductSplatRoute
+  '/blog/tags/': typeof BlogTagsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -169,7 +187,9 @@ export interface FileRouteTypes {
     | '/blog/$'
     | '/$product/'
     | '/blog/'
+    | '/blog/tags/$tag'
     | '/llms.mdx/$product/$'
+    | '/blog/tags/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -185,7 +205,9 @@ export interface FileRouteTypes {
     | '/blog/$'
     | '/$product'
     | '/blog'
+    | '/blog/tags/$tag'
     | '/llms.mdx/$product/$'
+    | '/blog/tags'
   id:
     | '__root__'
     | '/'
@@ -202,7 +224,9 @@ export interface FileRouteTypes {
     | '/blog/$'
     | '/$product/'
     | '/blog/'
+    | '/blog/tags/$tag'
     | '/llms.mdx/$product/$'
+    | '/blog/tags/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -218,7 +242,9 @@ export interface RootRouteChildren {
   ApiSearchRoute: typeof ApiSearchRoute
   BlogSplatRoute: typeof BlogSplatRoute
   BlogIndexRoute: typeof BlogIndexRoute
+  BlogTagsTagRoute: typeof BlogTagsTagRoute
   LlmsDotmdxProductSplatRoute: typeof LlmsDotmdxProductSplatRoute
+  BlogTagsIndexRoute: typeof BlogTagsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -321,6 +347,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/blog/tags/': {
+      id: '/blog/tags/'
+      path: '/blog/tags'
+      fullPath: '/blog/tags/'
+      preLoaderRoute: typeof BlogTagsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/tags/$tag': {
+      id: '/blog/tags/$tag'
+      path: '/blog/tags/$tag'
+      fullPath: '/blog/tags/$tag'
+      preLoaderRoute: typeof BlogTagsTagRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/llms.mdx/$product/$': {
       id: '/llms.mdx/$product/$'
       path: '/llms.mdx/$product/$'
@@ -357,7 +397,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSearchRoute: ApiSearchRoute,
   BlogSplatRoute: BlogSplatRoute,
   BlogIndexRoute: BlogIndexRoute,
+  BlogTagsTagRoute: BlogTagsTagRoute,
   LlmsDotmdxProductSplatRoute: LlmsDotmdxProductSplatRoute,
+  BlogTagsIndexRoute: BlogTagsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

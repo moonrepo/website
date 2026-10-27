@@ -1,10 +1,22 @@
 import { createFileRoute, notFound } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
-import { HomeLayout } from 'fumadocs-ui/layouts/home';
-import { DocsBody, DocsDescription, DocsTitle } from 'fumadocs-ui/page';
 import { Suspense } from 'react';
+import {
+	BlogAuthors,
+	BlogBackLink,
+	BlogBody,
+	BlogDescription,
+	BlogHeader,
+	BlogMeta,
+	BlogPage,
+	BlogPostNav,
+	BlogRecentPosts,
+	BlogTags,
+} from '@/components/blog';
+import { BlogLayout } from '@/components/blog/layout';
 import browserCollections from '@/generated/browser';
-import { baseOptions } from '@/lib/layout.shared';
+import { type BlogPost, findPost } from '@/lib/blog';
+import { loadBlogPosts } from '@/lib/blogPosts';
 import { blogSource } from '@/lib/source';
 import { getMdxComponents } from '@/mdxComponents';
 
@@ -24,39 +36,64 @@ const serverLoader = createServerFn({
 	method: 'GET',
 })
 	.validator((slugs: string[]) => slugs)
-	.handler(({ data: slugs }) => {
+	.handler(async ({ data: slugs }) => {
 		const page = blogSource.getPage(slugs);
+		const posts = await loadBlogPosts();
+		const found = page && findPost(posts, page.url);
 
-		if (!page) {
+		if (!page || !found) {
 			throw notFound();
 		}
 
 		return {
+			...found,
 			path: page.path,
+			posts,
 		};
 	});
 
+interface PostProps {
+	newer?: BlogPost;
+	older?: BlogPost;
+	post: BlogPost;
+}
+
 const clientLoader = browserCollections.blog.createClientLoader({
 	id: 'blog',
-	component({ frontmatter, default: MDX }) {
+	component({ toc, default: MDX }, { newer, older, post }: PostProps) {
 		return (
-			<article className="container max-w-(--fd-layout-width) mx-auto px-4 py-12">
-				<DocsTitle>{frontmatter.title}</DocsTitle>
-				<DocsDescription>{frontmatter.description}</DocsDescription>
-				<DocsBody>
+			<BlogPage toc={toc}>
+				<BlogHeader>
+					<BlogDescription>{post.description}</BlogDescription>
+					<BlogAuthors authors={post.authors} />
+					<BlogTags tags={post.tags} />
+				</BlogHeader>
+				<BlogBody>
 					<MDX components={getMdxComponents()} />
-				</DocsBody>
-			</article>
+				</BlogBody>
+				<BlogPostNav newer={newer} older={older} />
+			</BlogPage>
 		);
 	},
 });
 
 function Page() {
-	const data = Route.useLoaderData();
+	const { newer, older, path, post, posts } = Route.useLoaderData();
 
 	return (
-		<HomeLayout {...baseOptions()}>
-			<Suspense>{clientLoader.useContent(data.path)}</Suspense>
-		</HomeLayout>
+		<BlogLayout
+			beforeTitle={
+				<>
+					<BlogBackLink href="/blog" />
+					<BlogMeta className="mt-5" post={post} />
+				</>
+			}
+			sidebar={<BlogRecentPosts current={post.url} posts={posts} />}
+			title={post.title}
+		>
+			<Suspense>
+				{clientLoader.useContent(path, { newer, older, post })}
+			</Suspense>
+		</BlogLayout>
 	);
 }

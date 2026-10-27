@@ -2,7 +2,6 @@ import {
 	defineCollections,
 	defineConfig,
 	defineDocs,
-	frontmatterSchema,
 } from 'fumadocs-mdx/config';
 import {
 	createFileSystemGeneratorCache,
@@ -11,6 +10,7 @@ import {
 } from 'fumadocs-typescript';
 // Allows TypeScript to name zod types in the exported collections.
 import type {} from 'zod';
+import { blogPageSchema } from './src/lib/blog.ts';
 import { remarkRelativeLinks } from './src/lib/remarkRelativeLinks.ts';
 
 const generator = createGenerator({
@@ -38,11 +38,7 @@ export const schematic = defineProduct('schematic');
 export const blog = defineCollections({
 	type: 'doc',
 	dir: 'content/blog',
-	schema: frontmatterSchema,
-	// schema: frontmatterSchema.extend({
-	// 	author: z.string(),
-	// 	date: z.iso.date().or(z.date()),
-	// }),
+	schema: blogPageSchema,
 });
 
 export default defineConfig({

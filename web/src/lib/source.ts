@@ -3,6 +3,7 @@ import { lucideIconsPlugin } from 'fumadocs-core/source/lucide-icons';
 // import * as icons from 'lucide-static';
 import { toFumadocsSource } from 'fumadocs-mdx/runtime/server';
 import { blog, moon, proto, schematic } from '@/generated/server';
+import type { BlogAuthor } from '@/lib/blog';
 import type { Product } from '@/lib/products';
 
 function createProductSource(
@@ -34,3 +35,12 @@ export const blogSource = loader({
 	source: toFumadocsSource(blog, []),
 	baseUrl: '/blog',
 });
+
+export const blogAuthors: Record<string, BlogAuthor> = {
+	milesj: {
+		name: 'Miles Johnson',
+		title: 'Founder',
+		url: 'https://github.com/milesj',
+		image: 'https://github.com/milesj.png',
+	},
+};
