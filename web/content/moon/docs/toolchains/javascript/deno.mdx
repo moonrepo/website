@@ -6,61 +6,57 @@ import { ConfigTabs } from "@/components/ConfigTabs";
 import { TypeLabel } from "@/components/TypeLabel";
 import { VersionLabel } from "@/components/VersionLabel";
 
-The Deno toolchain integrates [Deno](https://deno.com) into moon. Deno is both a JavaScript and
-TypeScript runtime _and_ a package manager, so unlike Node.js, there's no separate package manager
-toolchain to configure, and nothing depends on Node.js.
+The Deno toolchain integrates [Deno](https://deno.com) into moon. With it enabled, moon:
 
-The work is split between two toolchains:
+- Detects Deno projects and tasks from `deno.json`, `deno.jsonc`, and `deno.lock` files, and
+  `deno` commands.
+- Downloads and installs a pinned version of Deno through
+  [proto](../../../../proto/docs/index.mdx), and runs tasks with it.
+- Passes custom arguments to every `deno` command that tasks run.
+- Copies Deno's files into Docker skeletons, and uses the official Deno image as the default base
+  image.
 
-- The `deno` toolchain detects Deno projects and tasks, passes custom arguments to `deno` commands,
-  and downloads and installs a pinned version of Deno through
-  [proto](../../../../proto/docs/index.mdx).
-- The [JavaScript toolchain](./index.mdx), with `packageManager` set to `deno`, does the
-  ecosystem work: it installs dependencies with `deno install`, understands Deno workspaces and
-  `deno.lock`, and can infer moon tasks from `deno.json`.
+Enable it whenever your repository uses Deno.
 
-Enable both for most Deno repositories. The `deno` toolchain also works on its own, for example to
-run Deno scripts with a pinned version in a repository where moon doesn't manage dependencies.
+Deno support is shared with the [JavaScript toolchain](./index.mdx), which installs dependencies
+with `deno install`, understands Deno workspaces and `deno.lock`, and infers tasks from `deno.json`
+when `packageManager` is `deno`. This page covers everything that's specific to Deno, wherever it's
+implemented.
+
+Deno is both a JavaScript and TypeScript runtime _and_ a package manager, so unlike Node.js, there's
+no separate package manager toolchain to configure, and nothing depends on Node.js. Enable both
+toolchains for most Deno repositories. The Deno toolchain also works on its own, for example to run
+Deno scripts with a pinned version in a repository where moon doesn't manage dependencies.
 
 ## Prerequisites
 
-- **Deno** - If you configure a [`version`](/moon/api/ToolchainPluginConfig#version), moon installs
-  Deno for you. Otherwise, a `deno` binary must be available on `PATH`.
-- **The JavaScript toolchain, for dependency management** - The `deno` toolchain doesn't require any
+Before enabling the Deno toolchain, make sure you have the following:
+
+- **JavaScript toolchain, for dependency management** - The Deno toolchain doesn't require any
   other toolchain, but installing dependencies, workspaces, lockfiles, and task inference are all
-  provided by the `javascript` toolchain. In the other direction, when `packageManager` is `deno`,
-  the `deno` toolchain must be configured, otherwise moon fails with _"Toolchain javascript requires
-  the toolchain deno, but it has not been configured!"_.
-- **A configured `version` for newer Deno features** - moon reads the Deno version from the `deno`
+  provided by the [JavaScript toolchain](./index.mdx) with `packageManager` set to `deno`. In the
+  other direction, that JavaScript toolchain
+  [requires the Deno toolchain](#requiring-other-toolchains).
+- **Deno** - When [`version`](/moon/api/ToolchainPluginConfig#version) is configured, moon installs
+  Deno for you. Otherwise, a `deno` binary must be available on your `PATH`.
+- **A configured `version` for newer Deno features** - moon reads the Deno version from the Deno
   toolchain's `version` setting, not from the binary, to decide what's supported:
   - v2.8+ for `deno ci` and production installs (`--prod`).
   - v2.9+ to locate the dependencies root from other package managers' lockfiles.
-- **Supported platforms** (moon-managed Deno only) - Prebuilt binaries are available for Linux (x64,
-  arm64), macOS (x64, arm64), and Windows (x64, and arm64 for Deno v2.7+).
 
 ### Repository structure
 
-When `packageManager` is `deno`, the JavaScript toolchain locates a _dependencies root_ for each
-project, which is where `deno install` runs and `deno.lock` lives. It walks up from the project's
-directory and stops at the first directory containing:
-
-1. A `deno.lock`. With Deno v2.9+ <VersionLabel version="2.3.5" />, a `package-lock.json`,
-   `npm-shrinkwrap.json`, `pnpm-lock.yaml`, `yarn.lock`, or `bun.lock` also counts, as Deno can
-   seed `deno.lock` from them when migrating from another package manager.
-2. A `deno.json`, `deno.jsonc`, or `package.json` that declares workspace members.
-3. A `deno.json`, `deno.jsonc`, or `package.json`.
-
-A project is installed when it _is_ its dependencies root, or matches one of the root's workspace
-members. Refer to the [JavaScript toolchain](./index.mdx#repository-structure) for more on
-how projects relate to their dependencies root.
+The Deno toolchain supports the following repository layouts. Directories only become moon
+[projects](<../../(fundamentals)/project.mdx>) when they're matched by the
+[`projects`](/moon/api/WorkspaceConfig#projects) setting in
+[`.moon/workspace.config`](<../../(fundamentals)/workspace.mdx>).
 
 #### Single project
 
-The repository is a single Deno project. The root is both the only project and the dependencies
-root, so project-level settings, like `installArgs`, apply when installing.
+The repository is a single Deno project, configured by a root `deno.json`.
 
 ```text
-/
+./
 ├── .moon/
 ├── src/
 │   └── main.ts
@@ -68,14 +64,16 @@ root, so project-level settings, like `installArgs`, apply when installing.
 └── deno.lock
 ```
 
+In this layout, the root is both the only project and the dependencies root, so project-level
+settings, like `installArgs`, apply when installing.
+
 #### Deno workspace
 
-A root `deno.json` (or `deno.jsonc`) lists its members in the `workspace` field, either as an
-array, or as an object with `members` (`workspaces` is accepted as an alias). moon matches members
-as globs relative to the root, and ignores a leading `./`.
+A root `deno.json` (or `deno.jsonc`) lists its members in the `workspace` field, and each member
+has its own `deno.json`.
 
 ```text
-/
+./
 ├── .moon/
 ├── apps/
 │   └── web/
@@ -87,30 +85,31 @@ as globs relative to the root, and ignores a leading `./`.
 └── deno.lock
 ```
 
-If the root `deno.json` doesn't declare a workspace, members are read from the `workspaces` field
-in `package.json` instead, so npm-style workspaces also work with Deno.
-
-Catalogs <VersionLabel version="2.3.0" /> are read from the root `deno.json` as well, from
-`catalog` and `catalogs` at the top level or within the `workspace` object. They're used to resolve
-`catalog:` versions in `package.json` files when [hashing](#hashing).
+In this layout, the root is the dependencies root, and all members share a single install and
+`deno.lock`. See [locating dependencies root](#locating-dependencies-root) for how the root is
+found.
 
 ## Installation
 
-Enable the toolchains by adding them to
-[`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>), either manually or with
-[`moon toolchain add`](../../commands/toolchain/add.mdx). Both are built into moon, so no `plugin`
-locator is required.
+The Deno toolchain is built into moon, so no [`plugin`](/moon/api/ToolchainPluginConfig#plugin)
+locator is required. Enable it by adding a `deno` entry to
+[`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>), or by running
+[`moon toolchain add`](../../commands/toolchain/add.mdx), which writes the entry for you.
 
 ```shell
-# Deno with dependency management
-$ moon toolchain add javascript
+# Add the Deno toolchain, answering each prompt
 $ moon toolchain add deno
+
+# Add the Deno toolchain with default settings
+$ moon toolchain add deno --yes
+
+# Add the JavaScript toolchain for dependency management
+$ moon toolchain add javascript
 ```
 
-When adding `javascript`, moon selects `deno` for `packageManager` if a `deno.lock` exists in the
-current directory (a `packageManager` field in `package.json`, or a Bun lockfile, takes
-precedence). When adding `deno`, moon detects the version from [version files](#version-detection),
-and otherwise prompts for one. The result looks like the following:
+When adding the JavaScript toolchain, moon selects `deno` for `packageManager` if a `deno.lock`
+exists in the current directory (a `packageManager` field in `package.json`, or a Bun lockfile,
+takes precedence). The result looks like the following:
 
 <ConfigTabs
   file=".moon/toolchains"
@@ -124,30 +123,31 @@ and otherwise prompts for one. The result looks like the following:
   }}
 />
 
-To use the `deno` binary on your `PATH` instead, omit `version`. If `version` isn't set but your
-root `.prototools` pins `deno`, moon inherits that version, which is controlled by
-[`versionFromPrototools`](/moon/api/ToolchainPluginConfig#versionfromprototools).
+Configure a [`version`](/moon/api/ToolchainPluginConfig#version) to have moon install Deno for you
+(see [tool management](#tier-3-tool-management)).
 
 ## Configuration
 
-The following settings are configured within the `deno` entry of
+The following settings are available under the `deno` entry of
 [`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>).
 
-- `bins` <TypeLabel type="(string | { bin: string, force?: boolean, local?: boolean, name?: string })[]" /> -
-  A list of global binaries to install with `deno install --global --allow-net --allow-read`. Each
-  entry is a module specifier or URL (like `jsr:@std/http/file-server`), or an object with `bin`
-  (the specifier), `force` (overwrite an existing binary with `--force`), `local` (skip in CI), and
-  `name` (a custom executable name, passed with `--name`). **This setting currently has no effect**,
-  see [caveats](#caveats). Defaults to `[]`.
-- `executeArgs` <TypeLabel type="string[]" /> - Arguments to insert when a task's
-  [`command`](/moon/api/TaskConfig#command) is `deno`. They're placed directly after the
-  executable, _before_ Deno's subcommand (like `run` or `test`), so only use flags that Deno accepts
-  in that position, like `--quiet`. Put subcommand flags, like `--allow-net`, in the task itself.
-  Defaults to `[]`.
+- `bins` <TypeLabel type="(string | object)[]" /> - A list of global binaries to install with
+  `deno install --global --allow-net --allow-read`. Each entry is a module specifier or URL (like
+  `jsr:@std/http/file-server`), or an object with the following fields. This setting currently has
+  no effect (see [setting up the environment](#setting-up-the-environment)). Defaults to `[]`.
+  - `bin` <TypeLabel type="string" /> - The module specifier or URL to install. Required.
+  - `force` <TypeLabel type="boolean" /> - Overwrite an existing binary, by passing `--force`.
+    Defaults to `false`.
+  - `local` <TypeLabel type="boolean" /> - Only install the binary locally, and skip it in CI.
+    Defaults to `false`.
+  - `name` <TypeLabel type="string" /> - A custom executable name, passed with `--name`. Not set by
+    default.
+- `executeArgs` <TypeLabel type="string[]" /> - Arguments to insert directly after the `deno`
+  executable when a task's [`command`](/moon/api/TaskConfig#command) is `deno`. See
+  [extending tasks](#extending-tasks). Defaults to `[]`.
 - `installArgs` <TypeLabel type="string[]" /> - Arguments to append to the `deno install` (or
-  `deno ci`) command that the JavaScript toolchain runs to
-  [install dependencies](#dependency-installation), for example `["--allow-scripts"]`. Defaults to
-  `[]`.
+  `deno ci`) command that the JavaScript toolchain runs, for example `["--allow-scripts"]`. See
+  [installing and deduping dependencies](#installing-and-deduping-dependencies). Defaults to `[]`.
 - [`version`](/moon/api/ToolchainPluginConfig#version) <TypeLabel type="string" /> - The version of
   Deno to download and install through proto. When not defined, the `deno` binary on your `PATH` is
   used.
@@ -162,10 +162,24 @@ The following settings are configured within the `deno` entry of
   }}
 />
 
-These settings can be [overridden per project](<../../(fundamentals)/project.mdx#overrides>) in
-[`moon.config`](<../../(fundamentals)/project.mdx>). A project-level `installArgs` only applies
-when the project is its own dependencies root without workspace members, as a workspace is
-installed once for all of its members.
+Dependencies are installed by the JavaScript toolchain, so configure
+[`installDependencies`](/moon/api/ToolchainPluginConfig#installdependencies) on `javascript`, not
+`deno`.
+
+When `packageManager` is `deno`, some of the
+[JavaScript toolchain's settings](./index.mdx#configuration) behave differently:
+
+- `dedupeOnLockfileChange` and `syncPackageManagerField` have no effect.
+- `inferTasksFromScripts` infers tasks from `deno.json` tasks instead of `package.json` scripts. See
+  [inferring tasks from `deno.json`](#inferring-tasks-from-denojson).
+- `dependencyVersionFormat` is used as-is, with no substitutions.
+
+### Project overrides
+
+Projects can override these settings with the `deno` entry of the
+[`toolchains`](/moon/api/ProjectConfig#toolchains) setting in their
+[`moon.config`](<../../(fundamentals)/project.mdx>), as described in
+[project overrides](<../../(fundamentals)/toolchain.mdx#project-overrides>).
 
 <ConfigTabs
   file="moon"
@@ -173,47 +187,82 @@ installed once for all of its members.
     toolchains: {
       deno: {
         version: "2.8.0",
+        executeArgs: ["--quiet"],
       },
     },
   }}
 />
 
-When `packageManager` is `deno`, some of the [JavaScript toolchain's settings](./index.mdx#configuration)
-behave differently:
+## Core features
 
-- `dedupeOnLockfileChange` and `syncPackageManagerField` have no effect.
-- `inferTasksFromScripts` infers tasks from `deno.json` tasks instead of `package.json` scripts. See
-  [task inference](#task-inference).
-- `dependencyVersionFormat` is used as-is, with no substitutions.
+### Inferring tasks from `deno.json`
 
-## Tiers
+The JavaScript toolchain can turn each task in a project's `deno.json` (or `deno.jsonc`) `tasks`
+field into a moon task that runs `deno task <name>`, so you can adopt moon without rewriting your
+existing tasks. Enable it with the JavaScript toolchain's
+[`inferTasksFromScripts`](./index.mdx#configuration) setting, and it runs while building the
+[project graph](<../../(fundamentals)/project-graph.mdx>).
 
-The `deno` toolchain implements usage detection and tool management itself, and only augments task
-commands for ecosystem integration. Everything else in tier 2 (installing dependencies, lockfiles,
-workspaces, and task inference) is implemented by the JavaScript toolchain, and is described below
-as it applies to Deno.
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    javascript: {
+      packageManager: "deno",
+      inferTasksFromScripts: true,
+    },
+    deno: {
+      version: "2.9.0",
+    },
+  }}
+/>
 
-```shell
-# Show the toolchain's settings and supported APIs
-$ moon toolchain info deno
+Given the following `deno.json`:
+
+```json title="apps/web/deno.json"
+{
+  "tasks": {
+    "build": "deno run -A build.ts --outdir dist",
+    "dev": {
+      "command": "deno run --watch main.ts",
+      "dependencies": ["build"]
+    }
+  }
+}
 ```
 
-### 1) Usage detection
+The `web` project gains two tasks:
 
-#### Projects and tasks
+- `build` - Runs `deno task build`, with `dist` detected as an output.
+- `dev` - Runs `deno task dev`, and depends on `build` in the same project (`~:build`), as each
+  entry in `dependencies` becomes a task [dependency](<../../(fundamentals)/task.mdx#dependencies>).
+  Since it's a development task that watches, it's persistent, uncached, and doesn't run in CI.
 
-A project is associated with the `deno` toolchain when its root contains a `deno.json`,
-`deno.jsonc`, or `deno.lock` file. The JavaScript toolchain detects these files too, and also
-detects the project's [`language`](/moon/api/ProjectConfig#language) as JavaScript (or TypeScript,
-when the TypeScript toolchain also matches), which the `deno` toolchain doesn't do on its own.
+Inferred tasks use the `javascript` and `deno` toolchains. Task names, outputs, presets, and
+skipped names follow the same rules as `package.json` scripts, which are described by the
+[JavaScript toolchain](./index.mdx#extending-projects). Inferred tasks never replace tasks with the
+same ID configured in [`moon.config`](<../../(fundamentals)/project.mdx>), and are only inferred
+for projects that also have a `package.json` (see [caveats](#caveats)).
 
-A task is associated with the `deno` toolchain when its command is `deno`, unless the task
-configures [`toolchains`](/moon/api/TaskConfig#toolchains) explicitly. When `packageManager` is
-`deno`, the `javascript` toolchain requires `deno`, so it's added to these tasks as well. Tasks with
-any other command inherit the toolchains of their project.
+## Tier 1: Syncing and usage detection
+
+### Project and task detection
+
+A project is associated with the Deno toolchain when its root directory contains any of the
+following files: `deno.json`, `deno.jsonc`, or `deno.lock`. The Deno toolchain doesn't detect a
+project [`language`](/moon/api/ProjectConfig#language) on its own, but the
+[JavaScript toolchain](./index.mdx#project-and-task-detection) detects the same files, and detects
+the language as JavaScript (or TypeScript, when the TypeScript toolchain also matches).
+
+A task is associated with the Deno toolchain when its command (or the first word of its script) is
+`deno`.
+
+When `packageManager` is `deno`, the JavaScript toolchain
+[requires](./index.mdx#requiring-other-toolchains) the Deno toolchain, so projects detected as using
+the JavaScript toolchain, and tasks that use it, are associated with Deno as well.
 
 This makes it easy to share tasks between every Deno project with
-[task inheritance](<../../(fundamentals)/task-inheritance.mdx>):
+[task inheritance](<../../(fundamentals)/task-inheritance.mdx>) and
+[`inheritedBy.toolchains`](/moon/api/InheritedByConfig#toolchains):
 
 <ConfigTabs
   file=".moon/tasks/deno"
@@ -235,167 +284,175 @@ This makes it easy to share tasks between every Deno project with
   }}
 />
 
-#### Version detection
+### Docker integration
 
-When running [`moon toolchain add`](../../commands/toolchain/add.mdx), the version is detected from
-the following files in the current directory:
+- [`moon docker scaffold`](../../commands/docker/scaffold.mdx) - Copies `deno.json`, `deno.jsonc`,
+  `deno.lock`, and any `*.js`, `*.cjs`, `*.mjs`, and `*.ts` files (often used by install scripts).
+- [`moon docker file`](../../commands/docker/file.mdx) - Uses `denoland/deno:<version>` as the
+  default base image.
+- [`moon docker prune`](../../commands/docker/prune.mdx) - Removes `node_modules` from the
+  dependencies root, then installs production dependencies with `deno install --prod`
+  <VersionLabel version="2.3.0" /> (handled by the [JavaScript
+  toolchain](./index.mdx#docker-integration)). With Deno older than v2.8, or in
+  CI where `deno ci` runs instead, all dependencies are installed. Deno installs
+  aren't filtered by package, so dependencies for the entire workspace are
+  installed, not only the focused projects.
 
-- `.dvmrc` - The first line that isn't empty or a comment.
-- `package.json` - A `devEngines.runtime` entry named `deno`.
+### Version detection
 
-These files are only read when adding the toolchain. When running tasks, moon uses the configured
-`version`.
+When running [`moon toolchain add`](../../commands/toolchain/add.mdx), moon detects the Deno
+version from the following files, and uses the first match:
 
-#### Docker
+1. `.dvmrc` - The first line that isn't empty or a comment.
+2. `package.json` - A `devEngines.runtime` entry named `deno`.
 
-- [`moon docker file`](../../commands/docker/file.mdx) uses `denoland/deno:<version>` as the
-  default base image, where `<version>` is the configured `version`, or `latest` when not
-  configured. Override it with [`docker.file.image`](/moon/api/DockerFileConfig#image).
-- [`moon docker scaffold`](../../commands/docker/scaffold.mdx) copies `deno.json`, `deno.jsonc`,
-  `deno.lock`, and any `*.js`, `*.cjs`, `*.mjs`, and `*.ts` files (often used by install scripts)
-  from the workspace root and each project into the skeleton. `node_modules` directories are
-  excluded.
-- [`moon docker prune`](../../commands/docker/prune.mdx) is handled by the JavaScript toolchain. It
-  removes `node_modules` from the dependencies root when
-  [`docker.prune.deleteVendorDirectories`](/moon/api/DockerPruneConfig#deletevendordirectories) is
-  enabled, then re-installs dependencies when
-  [`docker.prune.installToolchainDependencies`](/moon/api/DockerPruneConfig#installtoolchaindependencies)
-  is enabled. With Deno v2.8+, this is a production install (`deno install --prod`), unless
-  `deno ci` is used in CI. Deno installs aren't filtered by package, so dependencies for the entire
-  workspace are installed, not just the focused projects.
+## Tier 2: Ecosystem integration
 
-### 2) Ecosystem integration
+### Requiring other toolchains
 
-#### Task execution
+The Deno toolchain doesn't require any other toolchain. Unlike npm, pnpm, and Yarn, which run on
+Node.js, Deno is a standalone native binary, so it doesn't require the
+[Node.js toolchain](./node.mdx).
 
-Before a task's command runs, the `deno` toolchain inserts `executeArgs` when the command is
-`deno`, so a task like `deno run main.ts` runs as `deno --quiet run main.ts` with the
-[configuration](#configuration) example above. `executeArgs` aren't applied to tasks that use a
-[`script`](/moon/api/TaskConfig#script).
+Instead, the [JavaScript toolchain](./index.mdx#requiring-other-toolchains) requires the Deno
+toolchain when `packageManager` is `deno`, so Deno is set up first.
 
-The JavaScript toolchain also prepends `node_modules/.bin` directories to `PATH`, from the project
-up to the workspace root, so binaries from npm packages can be used as task commands. Deno's
-global binaries directory is added as part of [tool management](#3-tool-management).
+### Extending projects
 
-#### Dependency installation
+The [JavaScript toolchain](./index.mdx#extending-projects) handles this for Deno. Project aliases and implicit dependencies are only read from
+`package.json`, so a `deno.json` `name` doesn't become an alias, and `deno.json` imports don't
+become project dependencies.
 
-When `packageManager` is `deno`, moon runs an `InstallDependencies`
-[action](<../../(fundamentals)/action.mdx>) in the dependencies root before tasks that use the
-JavaScript toolchain run. Projects that share a root share a single install. The command depends on
-the environment and the configured `version`:
+When `inferTasksFromScripts` is enabled, and `packageManager` is `deno`, this also infers tasks from `deno.json` instead of
+`package.json` scripts (see [Inferring tasks from `deno.json`](#inferring-tasks-from-denojson)).
+
+### Extending tasks
+
+- **Commands** - When a task that uses the Deno toolchain runs a
+  [`command`](/moon/api/TaskConfig#command) of `deno`, moon inserts `executeArgs` directly after the
+  executable, _before_ Deno's subcommand (like `run` or `test`). With the
+  [configuration](#configuration) example above, a task like `deno run main.ts` runs as
+  `deno --quiet run main.ts`. Only use flags that Deno accepts in that position, like `--quiet`, and
+  put subcommand flags, like `--allow-net`, in the task itself. `executeArgs` aren't applied to
+  tasks that run a [`script`](/moon/api/TaskConfig#script), or to the commands that toolchains run,
+  like `deno install`.
+
+Tasks that also use the JavaScript toolchain have `node_modules/.bin` directories added to `PATH`
+(see the [JavaScript toolchain](./index.mdx#extending-tasks)), so binaries from npm packages can be
+used as task commands. Deno's global binaries directories are added when Deno is installed by moon
+(see [installing with proto](#installing-with-proto)).
+
+### Locating dependencies root
+
+The [JavaScript toolchain](./index.mdx#locating-dependencies-root) handles this for Deno when
+`packageManager` is `deno`.
+
+The dependencies root is the directory where Deno installs dependencies, and where the `deno.lock`
+lives. For each project, moon walks up from the project's root and uses the first directory that
+contains:
+
+1. A `deno.lock`. With Deno v2.9+ <VersionLabel version="2.3.5" />, a `package-lock.json`,
+   `npm-shrinkwrap.json`, `pnpm-lock.yaml`, `yarn.lock`, or `bun.lock` also counts, as Deno can
+   seed `deno.lock` from them when migrating from another package manager.
+2. A `deno.json`, `deno.jsonc`, or `package.json` that declares workspace members.
+3. A `deno.json`, `deno.jsonc`, or `package.json`.
+
+Each step walks all the way up before the next one is tried, so a `deno.lock` in a parent
+directory takes precedence over a closer `deno.json`.
+
+Workspace members are read from the `workspace` field of the root `deno.json` (or `deno.jsonc`), either as an
+array, or as an object with `members` (`workspaces` is accepted as an alias). If the root
+`deno.json` doesn't declare a workspace, members are read from the `workspaces` field in
+`package.json` instead, so npm-style workspaces also work with Deno. Members are matched as globs
+relative to the root, and a leading `./` is ignored.
+
+### Installing and deduping dependencies
+
+The [JavaScript toolchain](./index.mdx#installing-and-deduping-dependencies) handles this for Deno
+when `packageManager` is `deno`. Before running a task that uses the JavaScript toolchain, moon
+installs dependencies in the project's [dependencies root](#locating-dependencies-root), with a
+command that depends on the environment and the configured `version`:
 
 ```shell
-# Locally, and in CI without `deno.lock` or Deno v2.8+
+# Locally, and in CI without a `deno.lock` or Deno v2.8+
 $ deno install
 
-# In CI, when `deno.lock` exists (Deno v2.8+)
+# In CI, when a `deno.lock` exists (Deno v2.8+)
 $ deno ci
-
-# Production installs, like `moon docker prune` (Deno v2.8+, not with `deno ci`)
-$ deno install --prod
 ```
 
-The `deno ci` and `--prod` behavior <VersionLabel version="2.3.0" /> was added for Deno v2.8, where
-`deno ci` installs from a frozen lockfile and errors when `deno.lock` is missing. In all cases,
-`installArgs` are appended to the command. Deno doesn't have a dedupe command, so nothing runs after
-the install.
+`deno ci` <VersionLabel version="2.3.0" /> was added for Deno v2.8, and installs from a frozen
+lockfile, erroring when `deno.lock` is missing. In all cases, the Deno toolchain's `installArgs`
+are appended to the command. Production installs are covered in
+[Docker integration](#docker-integration).
 
-The install only runs again when something changed since the last install: the contents of the
-lockfile, the dependencies in any `package.json` in the workspace, the toolchain configuration, or
-a missing `node_modules`. It's
-skipped in CI when `node_modules` already exists and isn't empty, and under the other conditions
-described by the [JavaScript toolchain](./index.mdx#2-ecosystem-integration), such as when
-`MOON_SKIP_INSTALL_DEPS` is set.
+moon re-installs when the `deno.lock`, the dependencies in `package.json` files, or the JavaScript
+toolchain's settings change, and always when `node_modules` doesn't exist yet. Changes to
+`deno.json` imports don't trigger an install by themselves.
 
-```shell
-# Run a task without installing dependencies
-$ MOON_SKIP_INSTALL_DEPS=javascript moon run web:build
-```
+Deno doesn't have a dedupe command, so nothing runs after the install.
 
-#### Task inference
+### Parsing manifest and lock files
 
-When the JavaScript toolchain's `inferTasksFromScripts` setting is enabled, each task in a
-project's `deno.json` (or `deno.jsonc`) `tasks` field is converted into a moon task that runs
-`deno task <name>`. Tasks are only inferred for projects that also have a `package.json` (see
-[caveats](#caveats)).
+The [JavaScript toolchain](./index.mdx#parsing-manifest-and-lock-files) handles this for Deno when
+`packageManager` is `deno`. When hashing a task, it parses the project's `package.json`, not
+`deno.json`, and resolves `catalog:` versions <VersionLabel version="2.3.0" /> through the catalogs
+in the root `deno.json`, declared with `catalog` and `catalogs` at the top level or within the
+`workspace` object.
 
-```json title="apps/web/deno.json"
-{
-  "tasks": {
-    "build": "deno run -A build.ts --outdir dist",
-    "dev": {
-      "command": "deno run --watch main.ts",
-      "dependencies": ["build"]
-    }
-  }
-}
-```
+`deno.lock` is parsed as well, extracting the resolved version and integrity hash of every `jsr:`
+and `npm:` package. However, its entries are keyed by specifier (like `npm:react`) and never match
+`package.json` dependency names, so the version requirements from `package.json` are hashed instead
+(see [caveats](#caveats)).
 
-With the configuration above, the `web` project gains two tasks:
+The Deno toolchain also defines a `deno.json` parser that reads dependencies from `imports`, but it
+never runs, because moon only parses manifests for toolchains that
+[locate a dependencies root](#locating-dependencies-root), and the Deno toolchain doesn't.
 
-- `build` - Runs `deno task build`, with `dist` detected as an output.
-- `dev` - Runs `deno task dev`, and depends on `build` in the same project (`~:build`), as each
-  entry in `dependencies` becomes a task [dependency](<../../(fundamentals)/task.mdx#dependencies>).
-  Since it's a development task that watches, it's persistent, uncached, and doesn't run in CI.
+### Setting up the environment
 
-Inferred tasks use the `javascript` and `deno` toolchains. Task names, outputs, presets, and
-skipped names follow the same rules as `package.json` scripts, which are described by the
-[JavaScript toolchain](./index.mdx#2-ecosystem-integration). Inferred tasks never replace
-tasks with the same ID configured in [`moon.config`](<../../(fundamentals)/project.mdx>).
+The Deno toolchain defines an environment setup step that installs the global binaries configured
+in `bins`. However, moon only sets up environments for toolchains that
+[locate a dependencies root](#locating-dependencies-root), which the Deno toolchain doesn't, so
+this step currently never runs (see [caveats](#caveats)).
 
-#### Hashing
+The JavaScript toolchain's environment setup, which syncs the `packageManager` field in
+`package.json`, doesn't apply to Deno.
 
-For every task that uses the `deno` toolchain, the configured `version` of Deno is included in the
-task's hash, so changing it invalidates the cache.
+## Tier 3: Tool management
 
-For tasks that also use the JavaScript toolchain, the dependencies in the project's `package.json`
-are hashed, with `catalog:` versions resolved through the root `deno.json`'s catalogs. With the
-default [`hasher.optimization`](/moon/api/HasherConfig#optimization) of `accuracy`, the JavaScript
-toolchain also parses `deno.lock`, extracting the resolved version and integrity hash of every
-`jsr:` and `npm:` package. However, these don't currently end up in task hashes, and neither do
-`deno.json` imports. See [caveats](#caveats).
+### Installing with proto
 
-### 3) Tool management
-
-When a [`version`](/moon/api/ToolchainPluginConfig#version) is configured, moon installs Deno with
-proto in a `SetupToolchain` action, which runs before any task that uses the `deno` toolchain, and
-during [`moon setup`](../../commands/setup.mdx). If the version is already installed, nothing is
-downloaded.
+When a [`version`](/moon/api/ToolchainPluginConfig#version) is configured, moon installs Deno
+through [proto](../../../../proto/docs/index.mdx), by downloading a prebuilt archive.
 
 - Available versions are loaded from the Git tags of the
-  [denoland/deno](https://github.com/denoland/deno) repository, so partial versions like `2.9` are
-  resolved to the latest matching release. `canary` installs the latest canary build instead.
-- Prebuilt archives are downloaded from Deno's GitHub releases, and verified against their
-  published SHA-256 checksum for Deno v2.0.1+.
-- Deno is stored in proto's store, and shared with proto, so a version installed with
-  `proto install deno` is reused as-is.
+  [denoland/deno](https://github.com/denoland/deno) repository, so partial versions like `2.9`
+  resolve to the latest matching release. `canary` installs the latest canary build instead.
+- Prebuilt archives are downloaded from Deno's GitHub releases for Linux (x64, arm64), macOS (x64,
+  arm64), and Windows (x64, and arm64 for Deno v2.7+), and verified against their published
+  SHA-256 checksum for Deno v2.0.1+.
+- Deno provides a single `deno` executable. It's stored in proto's store and shared with proto, so
+  a version installed with `proto install deno` is reused as-is.
 
-For tasks (and toolchain commands) that use the `deno` toolchain, moon prepends the installed
-Deno's directory and Deno's global binaries directory to `PATH`, and sets the `PROTO_DENO_VERSION`
-environment variable. The global binaries directory is the first of `$DENO_INSTALL_ROOT/bin`,
-`$DENO_HOME/bin`, and `~/.deno/bin` that contains files, falling back to `~/.deno/bin`, so
-binaries installed with `deno install --global` can be used as task commands.
-
-The version can also be set with the `MOON_DENO_VERSION` environment variable, which takes
-precedence over the configuration. To use the `deno` binary on your `PATH` even when a version is
-configured, set `MOON_TOOLCHAIN_FORCE_GLOBALS=deno`.
-
-```shell
-# Install Deno ahead of time
-$ moon setup
-
-# Print the path to the Deno binary managed by moon
-$ moon bin deno
-```
-
-The toolchain doesn't perform any additional setup or teardown beyond installing Deno.
-[`moon teardown`](../../commands/teardown.mdx) uninstalls the configured version from proto.
+For tasks that use the Deno toolchain, moon also prepends Deno's global binaries directories to
+`PATH`: `$DENO_INSTALL_ROOT/bin` and `$DENO_HOME/bin` when those variables are set, and
+`~/.deno/bin`. This
+lets tasks run binaries installed with `deno install --global`. The same environment applies to the
+commands that toolchains run, like `deno install`.
 
 ## Caveats
 
-- **`bins` currently has no effect.** Binaries are installed by a `SetupEnvironment` action, which
-  moon only creates for toolchains that locate a dependencies root. The `deno` toolchain leaves that
-  to the JavaScript toolchain, so the action is never created, including by
+- **Dependency versions aren't hashed accurately.** `deno.lock` entries are keyed by specifier
+  (like `npm:react`), which never match `package.json` dependency names, so the version requirement
+  from `package.json` is hashed instead. The Deno toolchain's `deno.json` parser never runs, so
+  `deno.json` imports aren't hashed at all. If a task's [`inputs`](/moon/api/TaskConfig#inputs)
+  don't already include the lockfile, add it (for example `/deno.lock`) to invalidate the cache
+  when dependencies change. Only a lockfile named `deno.lock` is recognized, so a custom `lock`
+  path in `deno.json` isn't supported.
+- **`bins` has no effect.** Binaries are installed while setting up the environment, which moon
+  only does for toolchains that locate a dependencies root. The Deno toolchain leaves that to the
+  JavaScript toolchain, so the step never runs, including with
   [`moon setup`](../../commands/setup.mdx). Install global binaries yourself with
   `deno install --global`.
 - **Without a local `node_modules`, dependencies install on every run.** moon treats a missing or
@@ -405,21 +462,16 @@ The toolchain doesn't perform any additional setup or teardown beyond installing
   every time the install action is part of a run. It's usually fast, as Deno caches packages
   globally, but you can disable it with the JavaScript toolchain's
   [`installDependencies`](/moon/api/ToolchainPluginConfig#installdependencies) setting.
+- **Version-gated behavior needs a configured version.** Without a `version` (or with an alias like
+  `latest`), moon assumes Deno is older than v2.8: `deno ci` and `--prod` aren't used, and only
+  `deno.lock` identifies the dependencies root. Partial versions and single requirements are
+  compared by their lowest version, so `^2.8` counts as v2.8.0, while ranges with multiple
+  requirements, like `>=2.8 <3`, count as older. `canary` counts as the newest version.
 - **`deno.json`-only projects get less integration.** The JavaScript toolchain reads project
   [aliases](<../../(fundamentals)/project.mdx#aliases>) and implicit
   [dependencies](<../../(fundamentals)/project.mdx#dependencies>) from `package.json` only, syncs
-  project dependencies into `package.json` only, and only infers tasks from `deno.json` for projects
-  that also have a `package.json`. Declare relationships with
+  project dependencies into `package.json` only, and only infers tasks from `deno.json` for
+  projects that also have a `package.json`. Declare relationships with
   [`dependsOn`](/moon/api/ProjectConfig#dependson) instead.
-- **Locked versions aren't hashed.** `deno.lock` entries are keyed by specifier (like `npm:react`),
-  which never match `package.json` dependency names, so the version requirement from `package.json`
-  is hashed instead, and `deno.json` imports aren't hashed at all. If a task's
-  [`inputs`](/moon/api/TaskConfig#inputs) don't already include the lockfile, add it (for example
-  `/deno.lock`) to invalidate the cache when dependencies change. Only a lockfile named `deno.lock`
-  is recognized, so a custom `lock` path in `deno.json` isn't supported.
-- **Version-gated behavior needs a configured version.** Without a `version` (or with an alias like
-  `latest`), moon assumes Deno is older than v2.8: `deno ci` and `--prod` aren't used, and only
-  `deno.lock` identifies the dependencies root. Partial versions and ranges are compared by their
-  lowest version, so `^2.8` counts as v2.8.0.
 - **Deno's global binaries are only on `PATH` with a `version`.** When Deno isn't managed by moon,
   tasks rely on your own `PATH` to find binaries installed with `deno install --global`.

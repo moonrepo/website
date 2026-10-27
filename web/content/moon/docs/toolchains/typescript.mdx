@@ -78,7 +78,7 @@ In this layout, the root `tsconfig.json` references every project, the root
 synced with the project's dependencies.
 
 The root `tsconfig.json` compiles no files itself. moon adds each project to its `references` as
-the project is synced (see [root references](#root-references)).
+the project is synced (see [root references](#root-project)).
 
 ```json title="tsconfig.json"
 {
@@ -220,7 +220,7 @@ The following settings are available under the `typescript` entry of
   to `true`. See [missing configs](#missing-configs).
 - `includeProjectReferenceSources` <TypeLabel type="boolean" /> - Append the sources of each
   referenced project to the project's `include`. Only applies when `syncProjectReferences` is
-  enabled. Defaults to `false`. See [including reference sources](#including-reference-sources).
+  enabled. Defaults to `false`. See [including reference sources](#including-sources).
 - `includeSharedTypes` <TypeLabel type="boolean" /> - Append the shared `types` folder in `root`
   to each project's `include`, if the folder exists. Defaults to `false`. See
   [shared types](#shared-types).
@@ -230,13 +230,13 @@ The following settings are available under the `typescript` entry of
 - `pruneProjectReferences` <TypeLabel type="boolean" /> <VersionLabel version="2.1.0" /> - Treat
   the `references` in each project config as fully managed by moon, removing any that moon doesn't
   expect. Only applies when `syncProjectReferences` is enabled. Defaults to `false`, in which case
-  references are only ever added. See [pruning references](#pruning-references).
+  references are only ever added. See [pruning references](#pruning).
 - `root` <TypeLabel type="string" /> - Path to the TypeScript root, relative from the workspace
   root. The root config, shared options config, and shared `types` folder are resolved from here.
   Defaults to `"."`. See [nested TypeScript root](#nested-typescript-root).
 - `rootConfigFileName` <TypeLabel type="string" /> - Name of the config file in `root` that every
   project is registered in as a reference. Defaults to `"tsconfig.json"`. See
-  [root references](#root-references).
+  [root references](#root-project).
 - `rootOptionsConfigFileName` <TypeLabel type="string" /> - Name of the config file in `root` that
   holds shared compiler options, and that created project configs extend. Defaults to
   `"tsconfig.options.json"`.
@@ -261,20 +261,12 @@ The following settings are available under the `typescript` entry of
   }}
 />
 
-```shell
-# Show the toolchain's settings and supported APIs
-$ moon toolchain info typescript
-```
-
 ### Project overrides
 
 Projects can override these settings with the `typescript` entry of the
 [`toolchains`](/moon/api/ProjectConfig#toolchains) setting in their
-[`moon.config`](<../(fundamentals)/project.mdx>) (see
-[project toolchain overrides](<../(fundamentals)/project.mdx#overrides>)). Project settings are
-merged into the workspace settings: objects are merged key by key, while lists and other values
-replace the workspace value. Only the settings listed above can be overridden; shared settings like
-`installDependencies` are always read from the workspace.
+[`moon.config`](<../(fundamentals)/project.mdx>), as described in
+[project overrides](<../(fundamentals)/toolchain.mdx#project-overrides>).
 
 <ConfigTabs
   file="moon"
@@ -288,28 +280,16 @@ replace the workspace value. Only the settings listed above can be overridden; s
   }}
 />
 
-Set the entry to `false` to disable the TypeScript toolchain for the project, even when it's
-detected. The project won't be synced, and other projects won't add it as a reference.
-
-<ConfigTabs
-  file="moon"
-  config={{
-    toolchains: {
-      typescript: false,
-    },
-  }}
-/>
-
 ## Core features
 
 ### Project references
 
 Syncs each project's dependencies as `references` in its project config, so TypeScript builds and
 type-checks projects in dependency order without you maintaining the list by hand. It's enabled
-by default, and it runs while syncing projects. Set `syncProjectReferences` to `false` to disable
-it, which also disables [root references](#root-references), [missing configs](#missing-configs),
-[pruning references](#pruning-references),
-[including reference sources](#including-reference-sources), and [path aliases](#path-aliases).
+by default. Set `syncProjectReferences` to `false` to disable it, which also disables
+[root references](#root-project), [missing configs](#missing-configs),
+[pruning references](#pruning), [including reference sources](#including-sources), and
+[path aliases](#path-aliases).
 
 Each of the project's direct dependencies is added to `references`, with paths relative to the
 project config. The list is sorted and de-duplicated. For example, if `app` depends on `utils` and
@@ -337,13 +317,13 @@ the JavaScript toolchain infers from `package.json`) are synced. moon skips any 
 - Has no project config file (`tsconfig.json` by default).
 
 By default, references are only ever added, so any references you've written by hand are kept.
-Enable [pruning references](#pruning-references) to replace the list instead.
+Enable [pruning references](#pruning) to replace the list instead.
 
 #### Root project
 
 Registers each synced project in the `references` of the root config (`tsconfig.json` in `root`),
 so that `tsc --build` at the root builds every project. It's enabled along with
-`syncProjectReferences`, and it runs while syncing projects.
+`syncProjectReferences`.
 
 ```json title="tsconfig.json"
 {
@@ -365,7 +345,7 @@ the `./` prefix are replaced with the prefixed path.
 
 Treats the `references` in each project config as fully managed by moon, so stale references are
 removed when a dependency is removed or renamed. Enable it with the `pruneProjectReferences`
-setting, and it runs while syncing projects, as long as `syncProjectReferences` is enabled.
+setting.
 
 <ConfigTabs
   file=".moon/toolchains"
@@ -379,7 +359,7 @@ setting, and it runs while syncing projects, as long as `syncProjectReferences` 
 When syncing, the list is replaced with exactly the references moon expects: the project's
 dependencies, plus the shared `types` folder when it's synced as a reference (see
 [shared types](#shared-types)). Anything else, including references you've added by hand, is
-removed. Pruning only applies to project configs; the [root config](#root-references) is never
+removed. Pruning only applies to project configs; the [root config](#root-project) is never
 pruned.
 
 #### Including sources
@@ -387,8 +367,7 @@ pruned.
 Adds the sources of each referenced project (`<project>/**/*`) to the project's `include`, which
 is useful when projects import each other's source files directly (for example, through
 [path aliases](#path-aliases)) instead of emitted declarations. Enable it with the
-`includeProjectReferenceSources` setting, and it runs while syncing projects, as long as
-`syncProjectReferences` is enabled.
+`includeProjectReferenceSources` setting.
 
 <ConfigTabs
   file=".moon/toolchains"
@@ -411,8 +390,7 @@ Existing entries are kept, and the list is sorted.
 
 Creates a project config for projects that are associated with the TypeScript toolchain but don't
 have one yet, so new projects are wired into the build without extra setup. It's enabled by
-default, and it runs while syncing projects, as long as `syncProjectReferences` is enabled. Set
-`createMissingConfig` to `false` to disable it.
+default. Set `createMissingConfig` to `false` to disable it.
 
 The new file extends the shared options config, includes `**/*`, and starts with an empty
 `references` list, which is then synced like any other.
@@ -434,8 +412,7 @@ are associated with the toolchain explicitly, for example with a
 
 Maps each referenced project's package name to its source files in `compilerOptions.paths`, so
 that imports resolve to source files without building the dependency first. Enable it with the
-`syncProjectReferencesToPaths` setting, and it runs while syncing projects, as long as
-`syncProjectReferences` is enabled.
+`syncProjectReferencesToPaths` setting.
 
 <ConfigTabs
   file=".moon/toolchains"
@@ -473,7 +450,7 @@ manages. Dependencies without a `package.json` name are referenced, but not alia
 
 Adds a shared `types` folder, holding global type declarations like ambient modules and
 environment variables, to every project's `include`. Enable it with the `includeSharedTypes`
-setting, and it runs while syncing projects.
+setting.
 
 <ConfigTabs
   file=".moon/toolchains"
@@ -506,13 +483,13 @@ Existing entries are kept, and the list is sorted.
 
 If the folder has its own project config file (`tsconfig.json` by default), and
 `syncProjectReferences` is enabled, it's also added as a project reference, and kept when
-[pruning references](#pruning-references).
+[pruning references](#pruning).
 
 ### Output directory routing
 
 Sets `compilerOptions.outDir` in each project config to a folder in moon's cache, keeping compiled
 output (typically declarations) out of the project. Enable it with the `routeOutDirToCache`
-setting, and it runs while syncing projects.
+setting.
 
 <ConfigTabs
   file=".moon/toolchains"
@@ -543,28 +520,11 @@ If your workspace configuration lives in `.config/moon` instead of `.moon`, the 
 
 Before running a task, moon syncs the task's project with the TypeScript toolchain, which updates
 the project's `tsconfig.json` and the root `tsconfig.json` to match the project's dependencies.
+Each enabled [core feature](#core-features) runs in turn, and those that update the project config
+skip projects without one.
 
-Only projects associated with the TypeScript toolchain are synced (see
-[project and task detection](#project-and-task-detection)). When running tasks, a project's
-dependencies are synced before the project itself, unless
-[`pipeline.syncProjectDependencies`](/moon/api/PipelineConfig#syncprojectdependencies) is
-disabled. When syncing a project, moon:
-
-- Creates the project config if it's missing (see [missing configs](#missing-configs)).
-- Adds the project to the root config (see [root references](#root-references)).
-- Adds the shared `types` folder to `include` (see [shared types](#shared-types)).
-- Adds the project's dependencies to `references` (see [project references](#project-references)),
-  or replaces the list (see [pruning references](#pruning-references)).
-- Adds the sources of referenced projects to `include` (see
-  [including reference sources](#including-reference-sources)).
-- Maps referenced projects in `compilerOptions.paths` (see [path aliases](#path-aliases)).
-- Routes `compilerOptions.outDir` to moon's cache (see
-  [output directory routing](#output-directory-routing)).
-
-Each step only runs when its setting is enabled, and steps that update the project config skip
-projects without one. Files are only written when something changed. When they are, moon updates
-only the fields it manages, and writes the file with the indentation defined in your
-`.editorconfig`.
+Files are only written when something changed. When they are, moon updates only the fields it
+manages, and writes the file with the indentation defined in your `.editorconfig`.
 
 ### Project and task detection
 
@@ -580,22 +540,14 @@ or `tsserver` isn't detected as a TypeScript task. If it were, that detection wo
 toolchains the task inherits from its project, like `javascript` and `node`, which are the ones
 that make `tsc` runnable. Instead, tasks inherit their project's toolchains as-is.
 
-Detection adds to explicit configuration:
-[`toolchains.default`](/moon/api/ProjectToolchainsConfig#default) adds toolchains to a project,
-and setting `toolchains.typescript` to `false` removes one (see
-[project toolchains](<../(fundamentals)/project.mdx#toolchains>)). Tasks that configure
-[`toolchains`](/moon/api/TaskConfig#toolchains) skip detection entirely.
-
-Being associated with the toolchain is what opts a project into syncing, and it also allows
-[task inheritance](<../(fundamentals)/task-inheritance.mdx>) to target TypeScript projects with
-[`inheritedBy.toolchains`](/moon/api/InheritedByConfig#toolchains) (see [caveats](#caveats)).
+[Task inheritance](<../(fundamentals)/task-inheritance.mdx>) can target TypeScript projects with
+[`inheritedBy.toolchains`](/moon/api/InheritedByConfig#toolchains), but see [caveats](#caveats)
+before targeting only `typescript`.
 
 ### Docker integration
 
-- [`moon docker scaffold`](../commands/docker/scaffold.mdx) - Copies TypeScript configuration from
-  the workspace root and the root of each project into the skeleton, so dependencies can be
-  installed before sources are copied, and scripts that run while installing (like `postinstall`)
-  can find the files they need. The following files are copied:
+- [`moon docker scaffold`](../commands/docker/scaffold.mdx) - Copies the following files from the
+  workspace root and the root of each project:
   - The configured project, root, and shared options config files.
   - `tsconfig.json`, `tsconfig.*.json`, `*.tsconfig.json`, `.tsbuildinfo`, and `*.tsbuildinfo`.
   - TypeScript files at the root of each directory, matching `*.{ts,tsx,cts,mts}`.
