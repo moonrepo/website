@@ -31,7 +31,7 @@ Additionally, all file references (wrapped with inline code ticks), should link 
 
 #### Settings
 
-When referencing settings (fields and variants) within a configuration type (struct or enum), like task `options.merge` in `TaskOptionsConfig`, always link to the relevant API reference page with anchor tag. For moon this is `web/content/api/moon`, and proto is `web/content/api/proto`.
+When referencing settings (fields and variants) within a configuration type (struct or enum), like task `options.merge` in `TaskOptionsConfig`, always link to the relevant API reference page with anchor tag. For moon this is `web/content/moon/api`, and proto is `web/content/proto/api`.
 
 ### Commands
 

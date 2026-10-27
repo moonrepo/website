@@ -1,2 +1,7 @@
 # Generated from moon's configuration schemas
-web/content/api
+web/content/*/api
+
+# Formatted by Biome
+*.md
+*.yml
+*.yaml

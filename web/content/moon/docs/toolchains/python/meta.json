@@ -1,0 +1,4 @@
+{
+  "title": "Python",
+  "pages": ["---Package managers---", "pip", "poetry", "uv"]
+}

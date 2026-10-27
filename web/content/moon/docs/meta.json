@@ -1,0 +1,16 @@
+{
+  "title": "Documentation",
+  "description": "Guides, concepts, and commands",
+  "root": true,
+  "pages": [
+    "(fundamentals)",
+    "advanced",
+    "guides",
+    "---References---",
+    "commands",
+    "editors",
+    "skills",
+    "---Plugins---",
+    "toolchains"
+  ]
+}
