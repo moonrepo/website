@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 
+import { footerProps, headerProps } from '@/lib/site';
+
 export const Route = createFileRoute('/ui')({
 	component: UiPage,
 });
@@ -499,7 +501,7 @@ function Languages() {
 function UiPage() {
 	return (
 		<PageFrame>
-			<Header />
+			<Header {...headerProps} />
 			<main>
 				<Divider />
 				<Hero />
@@ -515,7 +517,7 @@ function UiPage() {
 				<Languages />
 				<Hatch />
 			</main>
-			<Footer />
+			<Footer {...footerProps} />
 		</PageFrame>
 	);
 }

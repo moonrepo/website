@@ -1,29 +1,22 @@
 import { Search } from 'lucide-react';
-import { NavMenu, navLinkClass } from '../components/NavMenu';
+import { NavMenu, type NavMenuItem, navLinkClass } from '../components/NavMenu';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { cn } from '../utils/cn';
 
+/** A plain link, or a dropdown menu of links. */
+export type HeaderNavItem =
+	| { href: string; label: string }
+	| { items: NavMenuItem[]; label: string };
+
 export interface HeaderProps {
 	className?: string;
+	/** Where the wordmark links to. */
+	logoHref: string;
+	nav: HeaderNavItem[];
 	onSearch?: () => void;
 }
 
-export function Header({ className, onSearch }: HeaderProps) {
-	const products = [
-		{ description: 'Smart build system', href: '/moon', label: 'moon' },
-		{ description: 'Toolchain manager', href: '/proto', label: 'proto' },
-	];
-	const docs = [
-		{ href: '/moon/docs', label: 'moon' },
-		{ href: '/proto/docs', label: 'proto' },
-		{ href: '/moon/api', label: 'Config reference' },
-	];
-	const links = [
-		{ href: '/moon/docs/guides', label: 'Guides' },
-		{ href: '/blog', label: 'Blog' },
-		{ href: 'https://github.com/moonrepo', label: 'GitHub' },
-	];
-
+export function Header({ className, logoHref, nav, onSearch }: HeaderProps) {
 	return (
 		<header
 			className={cn(
@@ -33,19 +26,21 @@ export function Header({ className, onSearch }: HeaderProps) {
 		>
 			<a
 				className="font-display font-medium font-stretch-125% text-[28px] text-graphite-500 tracking-[0.06em] dark:text-brand"
-				href="/"
+				href={logoHref}
 			>
 				MOONREPO
 			</a>
 
 			<nav aria-label="Main" className="hidden items-center gap-8 lg:flex">
-				<NavMenu items={products} label="Products" />
-				<NavMenu items={docs} label="Docs" />
-				{links.map((link) => (
-					<a className={navLinkClass} href={link.href} key={link.label}>
-						{link.label}
-					</a>
-				))}
+				{nav.map((item) =>
+					'items' in item ? (
+						<NavMenu items={item.items} key={item.label} label={item.label} />
+					) : (
+						<a className={navLinkClass} href={item.href} key={item.label}>
+							{item.label}
+						</a>
+					),
+				)}
 			</nav>
 
 			<div className="ml-auto flex items-center gap-4">

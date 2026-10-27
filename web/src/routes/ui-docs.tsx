@@ -1,4 +1,7 @@
 import { Collapsible } from '@base-ui/react/collapsible';
+import { Footer } from '@moonrepo/ui/layout/Footer';
+import { Divider } from '@moonrepo/ui/layout/Frame';
+import { Header } from '@moonrepo/ui/layout/Header';
 import { SidebarLayout } from '@moonrepo/ui/layout/SidebarLayout';
 import { accent, heading, muted } from '@moonrepo/ui/layout/styles';
 import { cn } from '@moonrepo/ui/utils/cn';
@@ -20,6 +23,8 @@ import {
 	Triangle,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
+
+import { footerProps, headerProps } from '@/lib/site';
 
 export const Route = createFileRoute('/ui-docs')({
 	component: UiDocsPage,
@@ -297,6 +302,13 @@ function UiDocsPage() {
 		<SidebarLayout
 			beforeTitle={<Breadcrumb />}
 			drawerTitle="Documentation"
+			footer={<Footer {...footerProps} />}
+			header={
+				<>
+					<Header {...headerProps} />
+					<Divider />
+				</>
+			}
 			sidebar={<SidebarNav />}
 			title="Getting started"
 		>

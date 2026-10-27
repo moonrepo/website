@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 
+import { footerProps, headerProps } from '@/lib/site';
+
 export const Route = createFileRoute('/ui-proto')({
 	component: UiProtoPage,
 });
@@ -481,7 +483,7 @@ function LanguageSupport() {
 function UiProtoPage() {
 	return (
 		<PageFrame theme="proto">
-			<Header />
+			<Header {...headerProps} />
 			<main>
 				<Divider />
 				<Hero />
@@ -500,7 +502,7 @@ function UiProtoPage() {
 				<LanguageSupport />
 				<Hatch />
 			</main>
-			<Footer className="bg-transparent dark:bg-transparent" />
+			<Footer {...footerProps} className="bg-transparent dark:bg-transparent" />
 		</PageFrame>
 	);
 }

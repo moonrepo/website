@@ -2,17 +2,15 @@ import { PanelLeft } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Drawer } from '../components/Drawer';
 import { cn } from '../utils/cn';
-import { Footer } from './Footer';
 import { Divider, Hatch, PageFrame } from './Frame';
-import { Header } from './Header';
 import { dashed, heading } from './styles';
 
 export interface SidebarLayoutProps {
 	beforeTitle?: ReactNode;
 	children: ReactNode;
 	drawerTitle: string;
-	/** Replaces the default header and divider. */
-	header?: ReactNode;
+	footer: ReactNode;
+	header: ReactNode;
 	sidebar: ReactNode;
 	sidebarClassName?: string;
 	title: string;
@@ -22,6 +20,7 @@ export function SidebarLayout({
 	beforeTitle,
 	children,
 	drawerTitle,
+	footer,
 	header,
 	sidebar,
 	sidebarClassName,
@@ -29,12 +28,7 @@ export function SidebarLayout({
 }: SidebarLayoutProps) {
 	return (
 		<PageFrame>
-			{header ?? (
-				<>
-					<Header />
-					<Divider />
-				</>
-			)}
+			{header}
 			<div className="flex">
 				<aside
 					aria-label={drawerTitle}
@@ -76,7 +70,7 @@ export function SidebarLayout({
 				</main>
 			</div>
 			<Hatch />
-			<Footer />
+			{footer}
 		</PageFrame>
 	);
 }

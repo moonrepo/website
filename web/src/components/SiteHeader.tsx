@@ -2,6 +2,7 @@ import { Header } from '@moonrepo/ui/layout/Header';
 import { dashed } from '@moonrepo/ui/layout/styles';
 import { cn } from '@moonrepo/ui/utils/cn';
 import { useSearchContext } from 'fumadocs-ui/contexts/search';
+import { headerProps } from '@/lib/site';
 
 // Sticky on desktop only; its height is `--site-header-height` in `app.css`.
 export function SiteHeader() {
@@ -14,7 +15,7 @@ export function SiteHeader() {
 				dashed,
 			)}
 		>
-			<Header onSearch={() => setOpenSearch(true)} />
+			<Header {...headerProps} onSearch={() => setOpenSearch(true)} />
 		</div>
 	);
 }

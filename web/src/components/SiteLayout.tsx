@@ -2,6 +2,7 @@ import { Footer } from '@moonrepo/ui/layout/Footer';
 import { Hatch, PageFrame } from '@moonrepo/ui/layout/Frame';
 import type { ProductTheme } from '@moonrepo/ui/theme';
 import type { ReactNode } from 'react';
+import { footerProps } from '@/lib/site';
 import { SiteHeader } from './SiteHeader';
 
 /** The site header and footer around a page, in the design's frame. */
@@ -20,7 +21,7 @@ export function SiteLayout({
 				{children}
 			</main>
 			<Hatch />
-			<Footer />
+			<Footer {...footerProps} />
 		</PageFrame>
 	);
 }

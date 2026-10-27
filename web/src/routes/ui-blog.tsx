@@ -1,8 +1,13 @@
+import { Footer } from '@moonrepo/ui/layout/Footer';
+import { Divider } from '@moonrepo/ui/layout/Frame';
+import { Header } from '@moonrepo/ui/layout/Header';
 import { SidebarLayout } from '@moonrepo/ui/layout/SidebarLayout';
 import { accent, heading } from '@moonrepo/ui/layout/styles';
 import { cn } from '@moonrepo/ui/utils/cn';
 import { createFileRoute } from '@tanstack/react-router';
 import { ChevronRight, FileText } from 'lucide-react';
+
+import { footerProps, headerProps } from '@/lib/site';
 
 export const Route = createFileRoute('/ui-blog')({
 	component: UiBlogPage,
@@ -219,6 +224,13 @@ function UiBlogPage() {
 	return (
 		<SidebarLayout
 			drawerTitle="Blog"
+			footer={<Footer {...footerProps} />}
+			header={
+				<>
+					<Header {...headerProps} />
+					<Divider />
+				</>
+			}
 			sidebar={<RecentPosts />}
 			sidebarClassName="w-[356px] pt-[56px]"
 			title="Blog"

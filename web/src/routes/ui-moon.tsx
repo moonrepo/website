@@ -28,6 +28,8 @@ import {
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 
+import { footerProps, headerProps } from '@/lib/site';
+
 export const Route = createFileRoute('/ui-moon')({
 	component: UiMoonPage,
 });
@@ -528,7 +530,7 @@ function QuickStart() {
 function UiMoonPage() {
 	return (
 		<PageFrame theme="moon">
-			<Header />
+			<Header {...headerProps} />
 			<main>
 				<Divider />
 				<Hero />
@@ -544,7 +546,7 @@ function UiMoonPage() {
 				<QuickStart />
 				<Hatch />
 			</main>
-			<Footer className="bg-transparent dark:bg-transparent" />
+			<Footer {...footerProps} className="bg-transparent dark:bg-transparent" />
 		</PageFrame>
 	);
 }
