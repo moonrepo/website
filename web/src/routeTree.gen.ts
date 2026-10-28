@@ -13,7 +13,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProductRouteImport } from './routes/$product'
 import { Route as LlmsFullDottxtRouteImport } from './routes/llms-full[.]txt'
 import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
-import { Route as UiRouteImport } from './routes/ui'
 import { Route as ProductIndexRouteImport } from './routes/$product/index'
 import { Route as ProductSplatRouteImport } from './routes/$product/$'
 import { Route as ApiSearchRouteImport } from './routes/api/search'
@@ -41,11 +40,6 @@ const LlmsFullDottxtRoute = LlmsFullDottxtRouteImport.update({
 const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
   id: '/llms.txt',
   path: '/llms.txt',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const UiRoute = UiRouteImport.update({
-  id: '/ui',
-  path: '/ui',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProductIndexRoute = ProductIndexRouteImport.update({
@@ -94,7 +88,6 @@ export interface FileRoutesByFullPath {
   '/$product': typeof ProductRouteWithChildren
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
-  '/ui': typeof UiRoute
   '/$product/$': typeof ProductSplatRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
@@ -108,7 +101,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
-  '/ui': typeof UiRoute
   '/$product/$': typeof ProductSplatRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
@@ -124,7 +116,6 @@ export interface FileRoutesById {
   '/$product': typeof ProductRouteWithChildren
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
-  '/ui': typeof UiRoute
   '/$product/$': typeof ProductSplatRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
@@ -141,7 +132,6 @@ export interface FileRouteTypes {
     | '/$product'
     | '/llms-full.txt'
     | '/llms.txt'
-    | '/ui'
     | '/$product/$'
     | '/api/search'
     | '/blog/$'
@@ -155,7 +145,6 @@ export interface FileRouteTypes {
     | '/'
     | '/llms-full.txt'
     | '/llms.txt'
-    | '/ui'
     | '/$product/$'
     | '/api/search'
     | '/blog/$'
@@ -170,7 +159,6 @@ export interface FileRouteTypes {
     | '/$product'
     | '/llms-full.txt'
     | '/llms.txt'
-    | '/ui'
     | '/$product/$'
     | '/api/search'
     | '/blog/$'
@@ -186,7 +174,6 @@ export interface RootRouteChildren {
   ProductRoute: typeof ProductRouteWithChildren
   LlmsFullDottxtRoute: typeof LlmsFullDottxtRoute
   LlmsDottxtRoute: typeof LlmsDottxtRoute
-  UiRoute: typeof UiRoute
   ApiSearchRoute: typeof ApiSearchRoute
   BlogSplatRoute: typeof BlogSplatRoute
   BlogIndexRoute: typeof BlogIndexRoute
@@ -223,13 +210,6 @@ declare module '@tanstack/react-router' {
       path: '/llms.txt'
       fullPath: '/llms.txt'
       preLoaderRoute: typeof LlmsDottxtRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/ui': {
-      id: '/ui'
-      path: '/ui'
-      fullPath: '/ui'
-      preLoaderRoute: typeof UiRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$product/': {
@@ -309,7 +289,6 @@ const rootRouteChildren: RootRouteChildren = {
   ProductRoute: ProductRouteWithChildren,
   LlmsFullDottxtRoute: LlmsFullDottxtRoute,
   LlmsDottxtRoute: LlmsDottxtRoute,
-  UiRoute: UiRoute,
   ApiSearchRoute: ApiSearchRoute,
   BlogSplatRoute: BlogSplatRoute,
   BlogIndexRoute: BlogIndexRoute,

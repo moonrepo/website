@@ -1,10 +1,7 @@
-import { Button } from '@moonrepo/ui/components/Button';
-import { Footer } from '@moonrepo/ui/layout/Footer';
-import { Divider, Hatch, PageFrame } from '@moonrepo/ui/layout/Frame';
-import { Header } from '@moonrepo/ui/layout/Header';
+import { ButtonLink } from '@moonrepo/ui/components/Button';
+import { Divider, Hatch } from '@moonrepo/ui/layout/Frame';
 import { accent, dashed, heading, muted } from '@moonrepo/ui/layout/styles';
 import { cn } from '@moonrepo/ui/utils/cn';
-import { createFileRoute } from '@tanstack/react-router';
 import {
 	ArrowRight,
 	CircleQuestionMark,
@@ -20,12 +17,6 @@ import {
 	Zap,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
-
-import { footerProps, headerProps } from '@/lib/site';
-
-export const Route = createFileRoute('/ui')({
-	component: UiPage,
-});
 
 function ListCard({
 	items,
@@ -243,6 +234,7 @@ function ToolIntro({
 	title,
 	cta,
 	children,
+	href,
 	reverse,
 }: {
 	logo: ReactNode;
@@ -250,6 +242,7 @@ function ToolIntro({
 	title: string;
 	cta: string;
 	children: ReactNode;
+	href: string;
 	reverse?: boolean;
 }) {
 	return (
@@ -276,7 +269,9 @@ function ToolIntro({
 				<p className="mt-6 max-w-[575px] text-graphite-700 text-lg leading-[30px] dark:text-sand">
 					{children}
 				</p>
-				<Button className="mt-6">{cta}</Button>
+				<ButtonLink className="mt-6" href={href}>
+					{cta}
+				</ButtonLink>
 			</div>
 		</div>
 	);
@@ -306,6 +301,7 @@ function Tools() {
 				<ToolIntro
 					cta="Build fast with moon"
 					eyebrow="Your smart build system"
+					href="/moon"
 					logo={<Logo color="bg-moon" name="MOON" />}
 					title="Supercharge your codebase"
 				>
@@ -341,6 +337,7 @@ function Tools() {
 				<ToolIntro
 					cta="Keep organized with proto"
 					eyebrow="Your tool version manager"
+					href="/proto"
 					logo={<Logo color="bg-proto" name="PROTO" />}
 					reverse
 					title="Automate your environments"
@@ -491,33 +488,32 @@ function Languages() {
 			<p className={cn('mt-10 text-lg', muted)}>...and 800+ more.</p>
 
 			<div className="mt-16 flex justify-center gap-6">
-				<Button variant="secondary">moon support</Button>
-				<Button variant="secondary">proto support</Button>
+				<ButtonLink href="/moon/docs/toolchain" variant="secondary">
+					moon support
+				</ButtonLink>
+				<ButtonLink href="/proto/docs" variant="secondary">
+					proto support
+				</ButtonLink>
 			</div>
 		</section>
 	);
 }
 
-function UiPage() {
+/** The moonrepo homepage sections, without the site header and footer. */
+export function Home() {
 	return (
-		<PageFrame>
-			<Header {...headerProps} />
-			<main>
-				<Divider />
-				<Hero />
-				<Divider />
-				<ProblemSolution />
-				<Hatch />
-				<WhatsIn />
-				<Divider />
-				<Tools />
-				<Divider />
-				<SimpleVersion />
-				<Hatch />
-				<Languages />
-				<Hatch />
-			</main>
-			<Footer {...footerProps} />
-		</PageFrame>
+		<>
+			<Hero />
+			<Divider />
+			<ProblemSolution />
+			<Hatch />
+			<WhatsIn />
+			<Divider />
+			<Tools />
+			<Divider />
+			<SimpleVersion />
+			<Hatch />
+			<Languages />
+		</>
 	);
 }
