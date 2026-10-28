@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import type { ComponentType } from 'react';
 import { MoonHome } from '@/components/moon/MoonHome';
+import { ProtoHome } from '@/components/proto/ProtoHome';
 import { SiteLayout } from '@/components/SiteLayout';
 import { isProduct, PRODUCT_THEMES, type Product } from '@/lib/products';
 
@@ -10,6 +11,7 @@ export const Route = createFileRoute('/$product/')({
 
 const LANDING_PAGES: Partial<Record<Product, ComponentType>> = {
 	moon: MoonHome,
+	proto: ProtoHome,
 };
 
 function Page() {

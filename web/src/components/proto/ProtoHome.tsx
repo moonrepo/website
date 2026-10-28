@@ -1,10 +1,7 @@
-import { Button } from '@moonrepo/ui/components/Button';
-import { Footer } from '@moonrepo/ui/layout/Footer';
-import { Divider, Hatch, PageFrame } from '@moonrepo/ui/layout/Frame';
-import { Header } from '@moonrepo/ui/layout/Header';
+import { ButtonLink } from '@moonrepo/ui/components/Button';
+import { Divider, Hatch } from '@moonrepo/ui/layout/Frame';
 import { codeBox, dashed, heading, muted } from '@moonrepo/ui/layout/styles';
 import { cn } from '@moonrepo/ui/utils/cn';
-import { createFileRoute } from '@tanstack/react-router';
 import {
 	ArrowRight,
 	BrainCircuit,
@@ -18,12 +15,6 @@ import {
 	Zap,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
-
-import { footerProps, headerProps } from '@/lib/site';
-
-export const Route = createFileRoute('/ui-proto')({
-	component: UiProtoPage,
-});
 
 const code = 'font-mono text-olive dark:text-sand';
 const comment = 'text-taupe';
@@ -106,11 +97,16 @@ function Hero() {
 					Supports Bun, Deno, Node, Python, Rust, Go, and 800+ more.
 				</p>
 				<div className="mt-6 flex gap-6">
-					<Button>
+					<ButtonLink href="/proto/docs">
 						Get started
 						<WandSparkles className="ml-3 size-5" />
-					</Button>
-					<Button variant="secondary">v0.51.6</Button>
+					</ButtonLink>
+					<ButtonLink
+						href="https://github.com/moonrepo/proto/releases"
+						variant="secondary"
+					>
+						v0.51.6
+					</ButtonLink>
 				</div>
 			</div>
 
@@ -399,10 +395,10 @@ function GetStarted() {
 				</div>
 			</div>
 
-			<Button className="mt-12">
+			<ButtonLink className="mt-12" href="/proto/docs">
 				Full installation guide
 				<ArrowRight className="ml-3 size-5" />
-			</Button>
+			</ButtonLink>
 		</section>
 	);
 }
@@ -454,9 +450,9 @@ function LanguageSupport() {
 						plugins
 					</a>
 				</p>
-				<Button className="mt-8" variant="secondary">
+				<ButtonLink className="mt-8" href="/proto/docs" variant="secondary">
 					See all supported languages
-				</Button>
+				</ButtonLink>
 			</div>
 
 			<div className="grid grid-cols-5 overflow-hidden rounded-[10px] border border-taupe border-dashed lg:w-[752px]">
@@ -480,29 +476,24 @@ function LanguageSupport() {
 	);
 }
 
-function UiProtoPage() {
+/** The proto product landing page sections, without the site header and footer. */
+export function ProtoHome() {
 	return (
-		<PageFrame theme="proto">
-			<Header {...headerProps} />
-			<main>
-				<Divider />
-				<Hero />
-				<Hatch />
-				<SectionTitle>Simplify language tooling</SectionTitle>
-				<Simplify />
-				<Hatch />
-				<SectionTitle>One tool to manage them all</SectionTitle>
-				<ManageThemAll />
-				<Divider />
-				<SectionTitle>Core benefits</SectionTitle>
-				<Benefits />
-				<Hatch />
-				<GetStarted />
-				<Divider />
-				<LanguageSupport />
-				<Hatch />
-			</main>
-			<Footer {...footerProps} className="bg-transparent dark:bg-transparent" />
-		</PageFrame>
+		<>
+			<Hero />
+			<Hatch />
+			<SectionTitle>Simplify language tooling</SectionTitle>
+			<Simplify />
+			<Hatch />
+			<SectionTitle>One tool to manage them all</SectionTitle>
+			<ManageThemAll />
+			<Divider />
+			<SectionTitle>Core benefits</SectionTitle>
+			<Benefits />
+			<Hatch />
+			<GetStarted />
+			<Divider />
+			<LanguageSupport />
+		</>
 	);
 }
