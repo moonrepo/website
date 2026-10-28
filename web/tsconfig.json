@@ -1,6 +1,5 @@
 {
   "include": [
-    "../ui/**/*",
     "../ui/src/**/*.ts",
     "../ui/src/**/*.tsx",
     "**/*.mdx",
@@ -43,10 +42,5 @@
       ]
     },
     "rootDir": ".."
-  },
-  "references": [
-    {
-      "path": "../ui"
-    }
-  ]
+  }
 }
