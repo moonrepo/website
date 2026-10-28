@@ -1,4 +1,4 @@
 {
   "title": "Unit-only enums",
-  "pages": ["index", "default", "fallback"]
+  "pages": ["index", "default", "fallback", "untagged"]
 }

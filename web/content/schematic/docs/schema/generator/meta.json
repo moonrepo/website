@@ -1,4 +1,4 @@
 {
   "title": "Code generation",
-  "pages": ["index", "api-docs", "template", "json-schema", "typescript"]
+  "pages": ["index", "api-docs", "template", "json-schema", "pkl", "typescript"]
 }

@@ -8,7 +8,8 @@ In Schematic, there are 2 forms of default values:
 - The first is applied through the [partial configuration](../partial.mdx), is defined with the
   `#[setting]` attribute, and is the first layer to be merged.
 - The second is on the [final configuration](../index.mdx) itself, and uses the `Default` trait to
-  generate the final value if none was provided. This acts more like a fallback.
+  generate the final value if none was provided. This acts more like a fallback. To fail instead,
+  mark the setting as [required](./validate.mdx#required-settings).
 
 To define a default value, use the `#[setting(default)]` attribute. The `default` attribute field
 accepts primitive values, like numbers, strings, and booleans, as well as array, tuple, and struct
@@ -57,7 +58,10 @@ since a name breaking those conventions would already be earning a compiler lint
   my_wrapper()` when it needs no context.
 </Callout>
 
-For enums, the `default` field takes no value, and simply marks which variant to use as the default.
+### Enum variants
+
+For enums, the `default` field marks which variant to use as the default. A unit variant holds no
+value, so `default` takes none, or a boolean.
 
 ```rust
 #[derive(Config)]
@@ -67,6 +71,28 @@ enum Host {
 	Remote(HostConfig),
 }
 ```
+
+A variant that holds a single value can take a value as well, which marks it as the default and is
+what it holds. It accepts anything a setting's `default` does, including a
+[handler function](#handler-function) that returns the value. Without one, the variant holds the
+default of its type.
+
+```rust
+#[derive(Config)]
+enum Compress {
+	Fast,
+	Best,
+	#[serde(untagged)]
+	#[setting(default = true)]
+	Enabled(bool),
+}
+```
+
+<Callout>
+  A value can't be provided for a variant holding several values, or a
+  [nested](../nested.mdx) configuration, which sources its defaults from its own
+  settings.
+</Callout>
 
 ## Handler function
 

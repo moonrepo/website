@@ -4,9 +4,10 @@ import { PRODUCTS } from '@/lib/products';
 
 export function baseOptions(): BaseLayoutProps {
 	return {
-		githubUrl: 'https://github.com/moonrepo/website',
+		githubUrl: 'https://github.com/moonrepo',
 		nav: {
-			title: 'Tanstack Start',
+			title: 'moonrepo',
+			url: 'https://moonrepo.dev'
 		},
 		links: [
 			...Object.entries(PRODUCTS).map(
