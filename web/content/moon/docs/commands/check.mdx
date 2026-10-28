@@ -15,6 +15,11 @@ options below (affected checks, caching, parallelism, and so on) behave identica
 commands. The pipeline is always run with `--on-failure=bail`, so the first failing task stops the
 remaining ones.
 
+[Persistent tasks](<../(fundamentals)/task.mdx#persistent>) never complete, and neither would the
+check, so persistent build or test tasks are only ran when another task depends on them. And when
+the selected projects have no build or test tasks at all, `moon check` prints a warning and exits
+with code `1`, instead of running nothing.
+
 Projects can be selected in one of three mutually exclusive ways: by passing explicit project IDs
 as arguments, with `--all` to check every project in the workspace, or with `--closest` to check
 only the project closest to the current working directory. When none of these are provided and the
@@ -100,6 +105,10 @@ This command can also be run with the `moon c` alias.
 - `--no-actions` - Run the pipeline without executing sync and setup related actions (toolchain
   installation, project syncing, etc), running only the requested tasks. Can also be set via the
   `MOON_NO_ACTIONS` environment variable.
+- `--output-style` <TypeLabel type="buffer | buffer-only-failure | hash | none | stream" /> -
+  Control how output is displayed for _all_ tasks, overriding their
+  [`options.outputStyle`](/moon/api/TaskOptionsConfig#outputstyle) setting, including for primary
+  targets. See [output style](<../(fundamentals)/task.mdx#output-style>) for more information.
 - `-p`, `--plan` <TypeLabel type="string" /> - Relative path to an execution plan (JSON) used to
   further customize the action graph and pipeline for this run. Can also be set via the
   `MOON_EXEC_PLAN` environment variable.

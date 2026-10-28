@@ -59,13 +59,40 @@ decides which of the currently _runnable_ nodes gets picked up next.
 
 ### Persistent tasks
 
-[Persistent tasks](./task.mdx#persistent) never complete, so running them in the middle of a graph
-would stall everything behind them. moon avoids this by deferring them: within each priority
-group, persistent nodes are collected aside, every non-persistent action is allowed to finish, and
-only then are the persistent ones dispatched together in parallel.
+[Persistent tasks](./task.mdx#persistent) never complete, so waiting on them in the middle of a
+graph would stall everything behind them. moon avoids this by
+dispatching them topologically like any other node, as soon as their own dependencies have
+completed, and then treating them as done the moment they start. They also run outside of the
+pipeline's concurrency limit, so a handful of long-running servers can't starve the rest of the
+graph.
 
 The effect is that a dev server's dependencies are guaranteed to have been built before it starts,
-and running a backend and a frontend server together works without either blocking the other.
+the server starts without waiting on unrelated tasks, and running a backend and a frontend server
+together works without either blocking the other. Only persistent tasks, and tasks that
+[`wait`](./task.mdx#dependency-types) for them to start, can depend on a persistent task.
+
+```shell
+# The servers start as soon as they're ready, while docs continue to build
+$ moon run api:dev web:dev docs:build
+```
+
+### Interactive tasks
+
+[Interactive tasks](./task.mdx#interactive) own stdin, so they run in isolation: once one is
+dispatched, no other node is dispatched until it has completed. Nodes that were already running
+continue in the background.
+
+### Cleanup and wait dependencies
+
+Task [dependency
+types](./task.mdx#dependency-types) change how edges are dispatched:
+
+- A `wait` dependency is dispatched before the task, but the task is released as soon as the
+  dependency has _started_. Like persistent tasks, it runs outside of the concurrency limit, so the
+  task waiting on it can always run alongside it.
+- A `cleanup` dependency is dispatched _after_ the task has ran its command. When a failure aborts
+  the pipeline, the cleanup dependencies of tasks that already ran are still dispatched before moon
+  exits.
 
 ## Inspecting
 

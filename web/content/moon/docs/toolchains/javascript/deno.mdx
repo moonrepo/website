@@ -4,7 +4,6 @@ title: Deno
 
 import { ConfigTabs } from "@/components/ConfigTabs";
 import { TypeLabel } from "@/components/TypeLabel";
-import { VersionLabel } from "@/components/VersionLabel";
 
 The Deno toolchain integrates [Deno](https://deno.com) into moon. With it enabled, moon:
 
@@ -292,7 +291,7 @@ This makes it easy to share tasks between every Deno project with
   default base image.
 - [`moon docker prune`](../../commands/docker/prune.mdx) - Removes `node_modules` from the
   dependencies root, then installs production dependencies with `deno install --prod`
-  <VersionLabel version="2.3.0" /> (handled by the [JavaScript
+  (handled by the [JavaScript
   toolchain](./index.mdx#docker-integration)). With Deno older than v2.8, or in
   CI where `deno ci` runs instead, all dependencies are installed. Deno installs
   aren't filtered by package, so dependencies for the entire workspace are
@@ -351,7 +350,7 @@ The dependencies root is the directory where Deno installs dependencies, and whe
 lives. For each project, moon walks up from the project's root and uses the first directory that
 contains:
 
-1. A `deno.lock`. With Deno v2.9+ <VersionLabel version="2.3.5" />, a `package-lock.json`,
+1. A `deno.lock`. With Deno v2.9+, a `package-lock.json`,
    `npm-shrinkwrap.json`, `pnpm-lock.yaml`, `yarn.lock`, or `bun.lock` also counts, as Deno can
    seed `deno.lock` from them when migrating from another package manager.
 2. A `deno.json`, `deno.jsonc`, or `package.json` that declares workspace members.
@@ -381,7 +380,7 @@ $ deno install
 $ deno ci
 ```
 
-`deno ci` <VersionLabel version="2.3.0" /> was added for Deno v2.8, and installs from a frozen
+`deno ci` was added for Deno v2.8, and installs from a frozen
 lockfile, erroring when `deno.lock` is missing. In all cases, the Deno toolchain's `installArgs`
 are appended to the command. Production installs are covered in
 [Docker integration](#docker-integration).
@@ -396,7 +395,7 @@ Deno doesn't have a dedupe command, so nothing runs after the install.
 
 The [JavaScript toolchain](./index.mdx#parsing-manifest-and-lock-files) handles this for Deno when
 `packageManager` is `deno`. When hashing a task, it parses the project's `package.json`, not
-`deno.json`, and resolves `catalog:` versions <VersionLabel version="2.3.0" /> through the catalogs
+`deno.json`, and resolves `catalog:` versions through the catalogs
 in the root `deno.json`, declared with `catalog` and `catalogs` at the top level or within the
 `workspace` object.
 

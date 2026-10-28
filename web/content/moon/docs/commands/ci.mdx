@@ -32,6 +32,12 @@ queued up as a candidate, and the affected and [`options.runInCI`](/moon/api/Tas
 actually execute. Passing explicit targets narrows this candidate list down first, but the same
 affected and `runInCI` filtering is still applied on top.
 
+[Persistent tasks](<../(fundamentals)/task.mdx#persistent>), like servers, never complete, so they'd
+keep the CI pipeline running until it times out. They don't run in CI unless they enable
+[`options.runInCI`](/moon/api/TaskOptionsConfig#runinci), and even then, `moon ci` only runs them when another task depends on them (like
+an end-to-end test that [waits](<../(fundamentals)/task.mdx#dependency-types>) on a server), or when
+they're explicitly passed as a target.
+
 ```shell
 # Run every affected, CI-enabled task in the workspace
 $ moon ci
@@ -44,6 +50,9 @@ $ moon ci --base main --head HEAD
 
 # Shard the run across 2 parallel CI jobs
 $ moon ci --job 0 --job-total 2
+
+# Keep passing tasks quiet, and only print the output of failing tasks
+$ moon ci --output-style buffer-only-failure
 ```
 
 See the [continuous integration guide](../guides/ci.mdx) for a deeper walkthrough of wiring `moon ci`
@@ -101,6 +110,10 @@ into common CI providers, including sharding examples.
 - `--no-actions` - Run the pipeline without executing sync and setup related actions (toolchain
   installation, project syncing, etc), running only the requested tasks. Can also be set via the
   `MOON_NO_ACTIONS` environment variable.
+- `--output-style` <TypeLabel type="buffer | buffer-only-failure | hash | none | stream" /> -
+  Control how output is displayed for _all_ tasks, overriding their
+  [`options.outputStyle`](/moon/api/TaskOptionsConfig#outputstyle) setting, including for primary
+  targets. See [output style](<../(fundamentals)/task.mdx#output-style>) for more information.
 - `-p`, `--plan` <TypeLabel type="string" /> - Relative path to an execution plan (JSON) used to
   further customize the action graph and pipeline for this run. Can also be set via the
   `MOON_EXEC_PLAN` environment variable.

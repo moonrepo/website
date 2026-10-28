@@ -25,9 +25,11 @@ The output is broken down into the three toolchain API tiers:
 - **Tier 2 - Ecosystem integration** - Manifest files, lock files, and a vendor directory name (if
   applicable), plus whether functions like `install_dependencies`, `hash_task_contents`,
   `parse_lock`, and `parse_manifest` are implemented.
-- **Tier 3 - Tool management** - Whether functions for downloading, unpacking, and locating a
-  versioned tool (`download_prebuilt`, `unpack_archive`, `locate_executables`, and so on) are
-  implemented, which determines whether moon can manage the tool's version for you.
+- **Tier 3 - Tool management** - Whether functions for downloading, unpacking, locating, and
+  activating a versioned tool (`download_prebuilt`, `unpack_archive`, `locate_executables`,
+  `activate_environment`, and so on) are implemented, which determines whether moon can manage the
+  tool's version for you. `activate_environment` sets environment variables, like `JAVA_HOME`, for
+  the commands moon runs with a toolchain whose version it manages.
 
 This command does not modify the workspace; it's purely informational, and is useful for verifying
 a toolchain plugin's capabilities before running [`moon toolchain add`](./add.mdx).

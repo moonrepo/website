@@ -4,7 +4,6 @@ icon: Network
 ---
 
 import { ConfigTabs } from "@/components/ConfigTabs";
-import { VersionLabel } from "@/components/VersionLabel";
 
 The **project graph** is a directed graph of every [project](./project.mdx) in the
 [workspace](./workspace.mdx), connected by the dependency relationships between them. It's the first
@@ -19,7 +18,8 @@ allows moon to answer questions like "what does this project need in production?
 
 ## Graph partitions
 
-Internally the graph is split into two **partitions**, and a scope belongs to exactly one of them:
+Internally the graph is split into two
+**partitions**, and a scope belongs to exactly one of them:
 
 | Partition   | Scopes                         |
 | ----------- | ------------------------------ |

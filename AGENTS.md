@@ -45,7 +45,6 @@ icon: Square
 
 import { ConfigTabs } from "@/components/ConfigTabs";
 import { TypeLabel } from "@/components/TypeLabel";
-import { VersionLabel } from "@/components/VersionLabel";
 
 Intro paragraph...
 
@@ -148,15 +147,9 @@ Use for type strings (TypeScript-like syntax), typically for settings and CLI op
 <TypeLabel type="string[]" />
 ```
 
-### `VersionLabel`
+### Versions
 
-Mark newer features with the version they were introduced in, inline after the setting or heading text:
-
-```tsx
-[`options.mergeChecks`](/moon/api/TaskOptionsConfig#mergechecks) <VersionLabel version="2.4.0" />
-```
-
-Check the moon changelog or source history for the correct version.
+The docs describe the latest release, not the history of how it got there. Don't use the `VersionLabel` component, or write "added in vX", "@since X", or "before vX, ..." prose. Describe the current behavior instead. The exception is migration content, like [`moon migrate v2`](web/content/moon/docs/commands/migrate/v2.mdx), which is about versions by nature.
 
 ### `Callout`
 

@@ -1,11 +1,12 @@
 {
   "include": [
+    "../ui/**/*",
+    "../ui/src/**/*.ts",
+    "../ui/src/**/*.tsx",
+    "**/*.mdx",
     "**/*.ts",
     "**/*.tsx",
-    "**/*.mdx",
-    ".source/*.ts",
-    "../ui/src/**/*.ts",
-    "../ui/src/**/*.tsx"
+    ".source/*.ts"
   ],
   "compilerOptions": {
     "allowImportingTsExtensions": true,
@@ -15,7 +16,11 @@
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
-    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ES2022"
+    ],
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "outDir": ".tanstack/types",
@@ -23,12 +28,25 @@
     "skipLibCheck": true,
     "strict": true,
     "target": "ES2022",
-    "types": ["vite/client"],
+    "types": [
+      "vite/client"
+    ],
     "paths": {
-      "@moonrepo/ui/*": ["../ui/src/*"],
-      "@/generated/*": ["./.source/*"],
-      "@/*": ["./src/*"]
+      "@moonrepo/ui/*": [
+        "../ui/src/*"
+      ],
+      "@/generated/*": [
+        "./.source/*"
+      ],
+      "@/*": [
+        "./src/*"
+      ]
     },
     "rootDir": ".."
-  }
+  },
+  "references": [
+    {
+      "path": "../ui"
+    }
+  ]
 }

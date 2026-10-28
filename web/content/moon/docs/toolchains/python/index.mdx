@@ -4,7 +4,6 @@ title: Python
 
 import { ConfigTabs } from "@/components/ConfigTabs";
 import { TypeLabel } from "@/components/TypeLabel";
-import { VersionLabel } from "@/components/VersionLabel";
 
 The Python toolchain integrates [Python](https://www.python.org) into moon. With it enabled, moon:
 
@@ -226,10 +225,10 @@ moon fits into your existing pip, Poetry, or uv setup. Enable it with the `packa
 
 - `pip` - Uses [pip](./pip.mdx). Creates the environment with `python -m venv`, and installs with
   `python -m pip install`.
-- `poetry` <VersionLabel version="2.4.0" /> - Uses [Poetry](./poetry.mdx). Creates the environment with
+- `poetry` - Uses [Poetry](./poetry.mdx). Creates the environment with
   `python -m venv`, and installs with `poetry install`.
 - `uv` - Uses [uv](./uv.mdx). Creates the environment with `uv venv`, and installs with `uv sync`.
-- `uv-pip` <VersionLabel version="2.3.0" /> - Uses [uv](./uv.mdx) through its pip interface. Creates the environment
+- `uv-pip` - Uses [uv](./uv.mdx) through its pip interface. Creates the environment
   with `uv venv`, and installs with `uv pip install`. Reads `venvArgs` from `unstable_uv`, and `installArgs` from
   `unstable_pip`. See [caveats](#caveats) before using it.
 
@@ -334,7 +333,7 @@ so use `python` (or `pip`, `poetry`, and `uv`).
 - [`moon docker file`](../../commands/docker/file.mdx) - Uses `python:<version>` as the default base image, where
   `<version>` is the configured Python `version` (or `latest` when not configured).
 - [`moon docker prune`](../../commands/docker/prune.mdx) - Deletes the virtual environment of each project that was only
-  scaffolded as a dependency of the focused projects, and shares their dependencies root <VersionLabel version="2.5.0" />,
+  scaffolded as a dependency of the focused projects, and shares their dependencies root,
   then installs production dependencies with the selected package manager:
   - pip - `python -m pip install`, which installs every requirement, as moon doesn't filter production dependencies
     for pip.

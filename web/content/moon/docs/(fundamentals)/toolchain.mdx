@@ -5,7 +5,6 @@ icon: Toolbox
 
 import { ConfigTabs } from "@/components/ConfigTabs";
 import { TypeLabel } from "@/components/TypeLabel";
-import { VersionLabel } from "@/components/VersionLabel";
 
 A **toolchain** is a WASM plugin that integrates a language, ecosystem, or tool into moon, like Go,
 JavaScript, or Rust. Toolchains are what make moon language aware: they detect which
@@ -135,10 +134,10 @@ Toolchains are configured in `.moon/toolchains.config`, by ID. Alongside its own
 - [`versionFromPrototools`](/moon/api/ToolchainPluginConfig#versionfromprototools) <TypeLabel type="boolean | string" /> -
   Inherit `version` from `.prototools` when it isn't configured. `true` matches the toolchain's
   stable ID, and a string matches a custom ID. Defaults to `true`.
-- [`installDependencies`](/moon/api/ToolchainPluginConfig#installdependencies) <TypeLabel type="boolean" /> <VersionLabel version="2.1.0" /> -
+- [`installDependencies`](/moon/api/ToolchainPluginConfig#installdependencies) <TypeLabel type="boolean" /> -
   Install dependencies before running tasks. Defaults to `true`. See
   [installing and deduping dependencies](#installing-and-deduping-dependencies).
-- [`inheritAliases`](/moon/api/ToolchainPluginConfig#inheritaliases) <TypeLabel type="boolean" /> <VersionLabel version="2.1.0" /> -
+- [`inheritAliases`](/moon/api/ToolchainPluginConfig#inheritaliases) <TypeLabel type="boolean" /> -
   Use names from manifests as project aliases. Defaults to `true`. See
   [extending projects](#extending-projects).
 
@@ -494,6 +493,15 @@ For tasks that use the toolchain, moon prepends the tool's executable directorie
 packages directory) to `PATH`, and sets the `PROTO_<ID>_VERSION` environment variable (using the
 stable ID), so the task always runs the configured version. Commands that toolchains run, like
 installing dependencies, get the same environment.
+
+Some tools need more than a binary on `PATH`,
+like Java expecting `JAVA_HOME`. moon also activates the environment of each of
+these toolchains, the same way `proto activate` does in your shell, which may
+set environment variables and prepend more directories to `PATH`. Activation
+never overrides a variable that's already configured for the command, like a
+task's [`env`](./task.mdx#environment-variables), and when a task has multiple
+toolchains, the first in the [task's order](./task.mdx#toolchains) takes
+precedence.
 
 To use the binaries on your `PATH` instead, set the `MOON_TOOLCHAIN_FORCE_GLOBALS` environment
 variable to `true` for every toolchain, or to a comma-separated list of toolchain IDs. moon then
