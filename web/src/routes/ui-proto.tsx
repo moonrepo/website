@@ -245,7 +245,7 @@ function ManageThemAll() {
 					<div className={pill}>
 						<span>
 							Powers{' '}
-							<a className={link} href="/ui-moon">
+							<a className={link} href="/moon">
 								moon's
 							</a>{' '}
 							integrated toolchain

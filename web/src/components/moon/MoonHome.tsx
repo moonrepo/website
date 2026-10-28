@@ -1,10 +1,7 @@
-import { Button } from '@moonrepo/ui/components/Button';
-import { Footer } from '@moonrepo/ui/layout/Footer';
-import { Divider, Hatch, PageFrame } from '@moonrepo/ui/layout/Frame';
-import { Header } from '@moonrepo/ui/layout/Header';
+import { ButtonLink } from '@moonrepo/ui/components/Button';
+import { Divider, Hatch } from '@moonrepo/ui/layout/Frame';
 import { codeBox, dashed, heading, muted } from '@moonrepo/ui/layout/styles';
 import { cn } from '@moonrepo/ui/utils/cn';
-import { createFileRoute } from '@tanstack/react-router';
 import {
 	ArrowRight,
 	Check,
@@ -27,12 +24,6 @@ import {
 	Zap,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
-
-import { footerProps, headerProps } from '@/lib/site';
-
-export const Route = createFileRoute('/ui-moon')({
-	component: UiMoonPage,
-});
 
 const icon = 'text-moon dark:text-moon-400';
 
@@ -128,11 +119,16 @@ function Hero() {
 					.
 				</p>
 				<div className="mt-8 flex gap-6">
-					<Button>
+					<ButtonLink href="/moon/docs">
 						Get started
 						<Rocket className="ml-3 size-5" />
-					</Button>
-					<Button variant="secondary">v1.39.4</Button>
+					</ButtonLink>
+					<ButtonLink
+						href="https://github.com/moonrepo/moon/releases"
+						variant="secondary"
+					>
+						v1.39.4
+					</ButtonLink>
 				</div>
 			</div>
 
@@ -379,9 +375,13 @@ function Stack() {
 					Works with your existing stack
 				</h2>
 				<p className={cn('mt-3 text-lg', muted)}>No migration required</p>
-				<Button className="mt-10" variant="secondary">
+				<ButtonLink
+					className="mt-10"
+					href="/moon/docs/toolchain"
+					variant="secondary"
+				>
 					See all supported languages
-				</Button>
+				</ButtonLink>
 			</div>
 
 			<div className="grid grid-cols-5 overflow-hidden rounded-[10px] border border-taupe border-dashed bg-paper-200 lg:w-[752px] dark:border-graphite-500 dark:bg-graphite-surface">
@@ -519,34 +519,29 @@ function QuickStart() {
 					</div>
 				))}
 			</div>
-			<Button className="mt-8">
+			<ButtonLink className="mt-8" href="/moon/docs">
 				Full installation guide
 				<ArrowRight className="ml-3 size-5" />
-			</Button>
+			</ButtonLink>
 		</section>
 	);
 }
 
-function UiMoonPage() {
+/** The moon product landing page sections, without the site header and footer. */
+export function MoonHome() {
 	return (
-		<PageFrame theme="moon">
-			<Header {...headerProps} />
-			<main>
-				<Divider />
-				<Hero />
-				<Hatch />
-				<PainAndSolution />
-				<Divider />
-				<Comparison />
-				<Hatch />
-				<Stack />
-				<Hatch />
-				<AdvancedFeatures />
-				<Hatch />
-				<QuickStart />
-				<Hatch />
-			</main>
-			<Footer {...footerProps} className="bg-transparent dark:bg-transparent" />
-		</PageFrame>
+		<>
+			<Hero />
+			<Hatch />
+			<PainAndSolution />
+			<Divider />
+			<Comparison />
+			<Hatch />
+			<Stack />
+			<Hatch />
+			<AdvancedFeatures />
+			<Hatch />
+			<QuickStart />
+		</>
 	);
 }

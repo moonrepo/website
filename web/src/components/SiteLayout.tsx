@@ -8,9 +8,11 @@ import { SiteHeader } from './SiteHeader';
 /** The site header and footer around a page, in the design's frame. */
 export function SiteLayout({
 	children,
+	footerClassName,
 	theme,
 }: {
 	children?: ReactNode;
+	footerClassName?: string;
 	theme?: ProductTheme;
 }) {
 	return (
@@ -21,7 +23,7 @@ export function SiteLayout({
 				{children}
 			</main>
 			<Hatch />
-			<Footer {...footerProps} />
+			<Footer {...footerProps} className={footerClassName} />
 		</PageFrame>
 	);
 }

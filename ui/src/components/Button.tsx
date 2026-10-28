@@ -1,4 +1,5 @@
 import { Button as BaseButton } from '@base-ui/react/button';
+import type { ComponentProps } from 'react';
 import { cn } from '../utils/cn';
 
 const variants = {
@@ -13,30 +14,55 @@ const sizes = {
 	sm: 'h-12 rounded-[4px] border-b-[3px] px-4 text-base',
 };
 
-export interface ButtonProps extends Omit<BaseButton.Props, 'className'> {
+interface ButtonStyleProps {
 	className?: string;
 	size?: keyof typeof sizes;
 	variant?: keyof typeof variants;
 }
 
-export function Button({
+export function buttonClassName({
 	className,
 	size = 'md',
 	variant = 'primary',
-	...props
-}: ButtonProps) {
+}: ButtonStyleProps = {}) {
+	return cn(
+		'inline-flex select-none items-center justify-center whitespace-nowrap border font-bold font-display uppercase transition',
+		'hover:not-data-disabled:brightness-105 active:not-data-disabled:translate-y-px',
+		'focus-visible:outline-2 focus-visible:outline-olive focus-visible:outline-offset-2 dark:focus-visible:outline-tangerine',
+		'data-disabled:cursor-not-allowed data-disabled:opacity-50',
+		variants[variant],
+		sizes[size],
+		className,
+	);
+}
+
+export interface ButtonProps
+	extends Omit<BaseButton.Props, 'className'>,
+		ButtonStyleProps {}
+
+export function Button({ className, size, variant, ...props }: ButtonProps) {
 	return (
 		<BaseButton
-			className={cn(
-				'inline-flex select-none items-center justify-center whitespace-nowrap border font-bold font-display uppercase transition',
-				'hover:not-data-disabled:brightness-105 active:not-data-disabled:translate-y-px',
-				'focus-visible:outline-2 focus-visible:outline-olive focus-visible:outline-offset-2 dark:focus-visible:outline-tangerine',
-				'data-disabled:cursor-not-allowed data-disabled:opacity-50',
-				variants[variant],
-				sizes[size],
-				className,
-			)}
+			className={buttonClassName({ className, size, variant })}
 			{...props}
 		/>
+	);
+}
+
+export interface ButtonLinkProps
+	extends Omit<ComponentProps<'a'>, 'className'>,
+		ButtonStyleProps {
+	href: string;
+}
+
+/** A link styled as a button. */
+export function ButtonLink({
+	className,
+	size,
+	variant,
+	...props
+}: ButtonLinkProps) {
+	return (
+		<a className={buttonClassName({ className, size, variant })} {...props} />
 	);
 }
