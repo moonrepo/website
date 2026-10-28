@@ -1,0 +1,85 @@
+---
+title: Download
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+import { TypeLabel } from "@/components/TypeLabel";
+
+The `download` extension downloads a file from a URL into the workspace. It's a small, portable
+alternative to `curl` or `wget`, which aren't available on every machine (or behave differently
+between operating systems), so it's handy for:
+
+- Fetching binaries, fixtures, or data files in a one-off setup step.
+- Writing setup scripts that work the same on macOS, Linux, and Windows.
+- Pairing with the [`unpack`](./unpack.mdx) extension, which can download and extract an archive
+  in one step.
+
+## Prerequisites
+
+- **Network access** - The file is fetched over HTTP by moon itself, so no other tools are required.
+- **A destination inside the workspace** - The extension runs in a WASM sandbox, and can only
+  write to [directories that moon exposes to it](../guides/wasm-plugins.mdx#virtual-paths), like
+  the workspace root.
+
+## Installation
+
+The `download` extension is built into moon, so no [`plugin`](/moon/api/ExtensionPluginConfig#plugin)
+locator is required. Register it by adding a `download` entry to
+[`.moon/extensions.config`](<../(fundamentals)/extension.mdx>), or by running
+[`moon extension add`](../commands/extension/add.mdx), which writes the entry for you.
+
+```shell
+$ moon extension add download
+```
+
+<ConfigTabs
+  file=".moon/extensions"
+  config={{
+    download: {},
+  }}
+/>
+
+The extension has no settings. Without a `plugin` locator, moon uses the version of the extension
+that it was released with. To use a different version, set the locator explicitly, for example
+`registry://ghcr.io/moonrepo/download_extension:1.0.4`.
+
+## Usage
+
+Run the extension with [`moon ext`](../commands/ext.mdx), passing its arguments after a `--`
+separator.
+
+```shell
+# Download into the current working directory
+$ moon ext download -- --url https://github.com/moonrepo/proto/releases/latest/download/proto_cli-aarch64-apple-darwin.tar.xz
+
+# Download into a specific directory, with a custom file name
+$ moon ext download -- --url https://github.com/moonrepo/proto/releases/latest/download/proto_cli-aarch64-apple-darwin.tar.xz --dest ./temp --name proto.tar.xz
+```
+
+## Arguments
+
+- `--url`, `-u` <TypeLabel type="string" /> - The URL of the file to download. Must start with
+  `http`. Required.
+- `--dest`, `-d` <TypeLabel type="string" /> - The directory to save the file in. Relative paths
+  are resolved from the current working directory. Defaults to the current working directory.
+- `--name` <TypeLabel type="string" /> - The file name to save as. Defaults to the last segment of
+  the URL (everything after the final `/`).
+
+## How it works
+
+When executed, the extension:
+
+1. Validates that `--url` is an HTTP(S) URL.
+2. Resolves the destination directory, and fails if the destination is an existing file.
+3. Requests the URL through moon's HTTP client (plugins can't make network requests on their
+   own). The download fails if the response isn't a `2xx` status, or if the response body is
+   empty.
+4. Creates the destination directory if it doesn't exist, and writes the file into it.
+
+## Caveats
+
+- An existing file with the same name in the destination is overwritten.
+- The default file name includes everything after the final `/`, including query strings, so pass
+  `--name` for URLs like `https://example.com/download?file=app.zip`.
+- The file is buffered in memory before it's written, so it isn't suited to very large downloads.
+- Archives are written as-is. Use the [`unpack`](./unpack.mdx) extension to extract them.

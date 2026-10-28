@@ -24,8 +24,8 @@ plugin only implements what it needs.
   from file syncing up to tool installation. Learn more about the
   [toolchain tiers](<../(fundamentals)/toolchain.mdx#tier-1-syncing-and-usage-detection>).
 - **Extensions** - Implement `register_extension`, and add general purpose functionality that can
-  be run with [`moon ext`](../commands/ext.mdx), or hook into moon's processes. Learn more in the
-  [extensions guide](./extensions.mdx).
+  be run with [`moon ext`](../commands/ext.mdx), or hook into moon's processes. Learn more about
+  [creating an extension](<../(fundamentals)/extension.mdx#creating-an-extension>).
 - **proto tools** - Implement `register_tool`, and teach proto how to download and install a tool.
   These are built with the `proto_pdk` crate instead.
 
@@ -557,7 +557,7 @@ $ cargo add extism-pdk proto_pdk
 ```
 
 In your Rust files, import the PDKs, and start implementing plugin functions with the `plugin_fn`
-attribute. Refer to the [extensions guide](./extensions.mdx#creating-an-extension) or the
+attribute. Refer to [creating an extension](<../(fundamentals)/extension.mdx#creating-an-extension>) or the
 [toolchain tiers](<../(fundamentals)/toolchain.mdx#tier-1-syncing-and-usage-detection>) for the
 functions to implement.
 

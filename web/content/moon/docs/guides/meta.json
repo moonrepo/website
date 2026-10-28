@@ -8,7 +8,6 @@
     "debug-task",
     "docker",
     "exec-plan",
-    "extensions",
     "mcp",
     "notifications",
     "offline-mode",

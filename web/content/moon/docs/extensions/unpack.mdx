@@ -1,0 +1,88 @@
+---
+title: Unpack
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+import { TypeLabel } from "@/components/TypeLabel";
+
+The `unpack` extension unpacks an archive into a destination directory. The archive can be a file
+in the workspace, or a URL that's downloaded first, which makes it handy for:
+
+- Extracting a downloaded binary, SDK, or dataset in a setup step, in a single command.
+- Writing setup scripts that don't need to know which archive tool or flags to use.
+
+## Prerequisites
+
+- **`unzip`** - Required to unpack `.zip` archives. It's available on most macOS and Linux
+  machines, but isn't installed on Windows by default.
+- **`tar`** - Required to unpack all other archives (`.tar`, `.tar.gz`, `.tar.xz`, and so on). The
+  compression formats supported depend on your `tar` implementation.
+- **A destination inside the workspace** - The extension runs in a WASM sandbox, and can only
+  access [directories that moon exposes to it](../guides/wasm-plugins.mdx#virtual-paths), like the
+  workspace root.
+
+The extension doesn't unpack archives itself; it delegates to these commands on the host machine,
+so the applicable command must be available on your `PATH`.
+
+## Installation
+
+The `unpack` extension is built into moon, so no [`plugin`](/moon/api/ExtensionPluginConfig#plugin)
+locator is required. Register it by adding an `unpack` entry to
+[`.moon/extensions.config`](<../(fundamentals)/extension.mdx>), or by running
+[`moon extension add`](../commands/extension/add.mdx), which writes the entry for you.
+
+```shell
+$ moon extension add unpack
+```
+
+<ConfigTabs
+  file=".moon/extensions"
+  config={{
+    unpack: {},
+  }}
+/>
+
+The extension has no settings. Without a `plugin` locator, moon uses the version of the extension
+that it was released with. To use a different version, set the locator explicitly, for example
+`registry://ghcr.io/moonrepo/unpack_extension:1.0.4`.
+
+## Usage
+
+Run the extension with [`moon ext`](../commands/ext.mdx), passing its arguments after a `--`
+separator.
+
+```shell
+# Unpack a local archive
+$ moon ext unpack -- --src ./path/to/archive.zip --dest ./output
+
+# Download and unpack a remote archive
+$ moon ext unpack -- --src https://example.com/path/to/archive.tar.gz --dest ./output
+```
+
+## Arguments
+
+- `--src`, `-s` <TypeLabel type="string" /> - The path or URL of the archive to unpack. Values that
+  start with `http` are treated as URLs, and relative paths are resolved from the current working
+  directory. Required.
+- `--dest`, `-d` <TypeLabel type="string" /> - The directory to unpack into. Relative paths are
+  resolved from the current working directory. Defaults to the current working directory.
+
+## How it works
+
+When executed, the extension:
+
+1. Resolves the source archive. A URL is downloaded into moon's temporary directory
+   (`~/.moon/temp`) first, the same way as the [`download`](./download.mdx) extension, while a
+   path must point to an existing file.
+2. Resolves the destination directory, fails if the destination is an existing file, and creates
+   it if it doesn't exist.
+3. Unpacks the archive with `unzip <src> -d <dest>` when `--src` ends in `.zip`, or with
+   `tar -xf <src> -C <dest>` otherwise. The command's output is streamed to the terminal.
+
+## Caveats
+
+- The archive format is determined by the `--src` value, not by the file's contents, so a URL
+  without a `.zip` suffix (for example, one with a query string) is always passed to `tar`.
+- Archives are unpacked as-is, so if the archive contains a top-level directory, the files end up
+  in `<dest>/<directory>`.
+- Files downloaded from a URL are left in `~/.moon/temp` after unpacking.
