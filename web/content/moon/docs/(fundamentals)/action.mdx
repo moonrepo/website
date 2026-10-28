@@ -61,7 +61,7 @@ that tasks marked this way cannot be depended on by other tasks, since their suc
 relied upon, except as a [`cleanup` dependency](./task.mdx#dependency-types).
 
 A task with
-[`options.expectFailure`](./task.mdx#expected-failures) enabled is the inverse:
+[`options.expectFailure`](./task.mdx#options) enabled is the inverse:
 its action is recorded as passed when the command fails, and as failed when the
 command unexpectedly passes, so the setting can be removed once the underlying
 issue is fixed.
@@ -112,6 +112,10 @@ Reports also carry an **estimate** — a comparison of how long the actions woul
 executed serially outside of moon, against how long the pipeline actually took, expressed as a
 time gain or loss. It's a rough number, but it's the quickest way to see what caching and
 parallelism are buying you.
+
+To track actions across many runs instead of one, like in CI, export them to an observability
+backend as [OpenTelemetry metrics](../commands/overview.mdx#metrics), which record the status and
+duration of every task, action, and operation.
 
 ```shell
 # Run with the most verbose summary

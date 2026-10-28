@@ -40,7 +40,8 @@ moon reports the cycle by name rather than proceeding.
 
 Topological order alone doesn't decide _when_ something runs, only what it must follow. Nodes with
 no relationship between them are free to run in parallel, bounded by the pipeline's concurrency,
-which defaults to the number of available CPU cores.
+which defaults to the number of available CPU cores, and can be changed with the
+[`--concurrency`](../commands/overview.mdx#concurrency) global option.
 
 ### Priority
 

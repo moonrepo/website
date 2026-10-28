@@ -1,6 +1,7 @@
 {
   "title": "Commands",
   "pages": [
+    "overview",
     "action-graph",
     "bin",
     "check",
