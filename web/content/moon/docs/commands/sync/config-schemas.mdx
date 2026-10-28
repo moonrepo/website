@@ -18,17 +18,23 @@ The following schema files are generated:
 - `toolchains.json`
 - `workspace.json`
 
-By default, schemas are only regenerated when they don't already exist, or when the moon version
-has changed since the last generation (tracked through a cache fingerprint). This same generation
-logic also runs automatically the first time a task is run, so this command mostly exists for
-forcing a refresh.
+When the `pkl` binary is available on `PATH`, a [Pkl module](<../../(fundamentals)/config.mdx#pkl-type-checking>)
+is also generated for every configuration file into `.moon/cache/schemas/pkl`, like
+`WorkspaceConfig.pkl` and `ProjectConfig.pkl`. A `.pkl` config that amends (or extends) its module
+is type checked by Pkl itself.
+
+By default, JSON schemas are only regenerated when they don't already exist, or when the moon
+version has changed since the last generation (tracked through a cache fingerprint), while Pkl
+modules are only generated when the `pkl` directory doesn't exist. This same generation logic also
+runs automatically the first time a task is run, so this command mostly exists for forcing a
+refresh, like regenerating the Pkl modules after upgrading moon.
 
 ```shell
 $ moon sync config-schemas
 ```
 
-Use `--force` to bypass the cache and regenerate every schema, regardless of whether they already
-exist.
+Use `--force` to bypass the cache and regenerate every schema and Pkl module, regardless of whether
+they already exist.
 
 ```shell
 $ moon sync config-schemas --force

@@ -16,6 +16,10 @@ the command loads the current [workspace graph](<../(fundamentals)/workspace.mdx
 listens for tool requests on stdin/stdout until the parent process sends a shutdown signal, at
 which point the server aborts and the command exits.
 
+The server implements the stateless MCP `2026-07-28` protocol. Older protocol versions
+(`2025-11-25` and below), and the `initialize` handshake they require, aren't supported, so make
+sure your MCP client is up to date.
+
 ### Registering with a client
 
 Most MCP clients are configured with a JSON file that declares the command to run and any

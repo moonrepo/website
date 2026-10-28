@@ -131,3 +131,64 @@ tests/**/*.jsx?
 !**/__tests__/**/*
 logs/<[0-9]:4>-<[0-9]:2>-<[0-9]:2>.log
 ```
+
+## Pkl type checking
+
+JSON schemas don't apply to
+[Pkl](https://pkl-lang.org/) configs, so moon also generates a Pkl module for
+every configuration file, which types its settings. A config that `amends` its
+module is type checked by Pkl itself, which reports unknown settings and invalid
+values when the config is evaluated, and editors with Pkl support provide
+completion and documentation for each setting.
+
+The modules are generated to `.moon/cache/schemas/pkl` when moon runs, if they don't exist yet,
+and only when the `pkl` binary is available on `PATH`. To regenerate them, like after upgrading
+moon to a version with new settings, run
+[`moon sync config-schemas --force`](../commands/sync/config-schemas.mdx).
+
+| Config                    | Module                     | Keyword   |
+| ------------------------- | -------------------------- | --------- |
+| `.moon/workspace.config`  | `WorkspaceConfig.pkl`      | `amends`  |
+| `.moon/extensions.config` | `ExtensionsConfig.pkl`     | `extends` |
+| `.moon/toolchains.config` | `ToolchainsConfig.pkl`     | `extends` |
+| `.moon/tasks/*.config`    | `InheritedTasksConfig.pkl` | `amends`  |
+| `moon.config`             | `ProjectConfig.pkl`        | `amends`  |
+| `template.config`         | `TemplateConfig.pkl`       | `amends`  |
+
+```pkl title=".moon/workspace.pkl"
+amends "./cache/schemas/pkl/WorkspaceConfig.pkl"
+
+projects {
+  "apps/*"
+  "packages/*"
+}
+```
+
+For project and template configs, a path that starts with `.../` is a
+[triple-dot URI](https://pkl-lang.org/main/current/language-reference/index.html#triple-dot-module-uris),
+which Pkl resolves by searching each parent directory in turn, so the same line works for a project
+at any depth. It never searches the config's own directory though, so a project at the root of the
+workspace uses `./.moon/cache/schemas/pkl/ProjectConfig.pkl` instead.
+
+```pkl title="moon.pkl"
+amends ".../.moon/cache/schemas/pkl/ProjectConfig.pkl"
+
+tasks {
+  ["build"] {
+    command = "vite build"
+  }
+}
+```
+
+A few things to be aware of:
+
+- Toolchains and extensions are configured by plugins, whose settings can't be known ahead of time.
+  A config that _extends_ a module can declare settings the module doesn't, so
+  `.moon/toolchains.pkl` and `.moon/extensions.pkl` use `extends` instead of `amends`. The settings
+  of each plugin aren't type checked.
+- Lists and maps are typed as Pkl's amendable `Listing` and `Mapping`, which a config amends, as in
+  `tags { "web" }`, or creates, as in `tags = new Listing { "web" }`. Pkl's eager `List`, `Set`, and
+  `Map` must be converted with `toListing()` or `toMapping()` before being assigned to a setting.
+- A setting that accepts multiple shapes, like task `args` (a string or a list), or a task
+  dependency (a target or an object), can't be amended. Create the list with `new Listing { ... }`,
+  and import the module of the object to create it by name, like `new TaskDependencyConfig { ... }`.

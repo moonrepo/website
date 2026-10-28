@@ -4,7 +4,6 @@ title: Bun
 
 import { ConfigTabs } from "@/components/ConfigTabs";
 import { TypeLabel } from "@/components/TypeLabel";
-import { VersionLabel } from "@/components/VersionLabel";
 
 The Bun toolchain integrates [Bun](https://bun.com) into moon. With it enabled, moon:
 
@@ -276,8 +275,7 @@ Detection makes it easy to share tasks between every Bun project with
 - [`moon docker prune`](../../commands/docker/prune.mdx) - Removes `node_modules` at each
   dependencies root, then installs production dependencies for the focused projects with
   `bun install --production --filter <name>`. With Bun v1.4 or newer, `...` is appended to each
-  name, so the workspace packages a project depends on are installed as well
-  <VersionLabel version="2.5.3" />.
+  name, so the workspace packages a project depends on are installed as well.
 
 ```shell
 # Bun v1.4+, also installs the workspace packages that `@acme/web` depends on
@@ -368,12 +366,12 @@ when `packageManager` is `bun`. It runs the following commands in each
 [dependencies root](#locating-dependencies-root):
 
 - `bun install` - Installs dependencies locally, and in CI when `bun ci` isn't available.
-- `bun ci` <VersionLabel version="2.5.3" /> - Installs dependencies in CI, when a `bun.lock` exists
+- `bun ci` - Installs dependencies in CI, when a `bun.lock` exists
   and the configured `version` is v1.2.20 or newer. Unlike other package managers, Bun doesn't
   freeze the lockfile in CI automatically. `bun ci` is equivalent to
   `bun install --frozen-lockfile`, so it fails when the lockfile is out of date, instead of updating
   it.
-- `bun dedupe` <VersionLabel version="2.5.3" /> - Runs after installing locally, when the JavaScript
+- `bun dedupe` - Runs after installing locally, when the JavaScript
   toolchain's `dedupeOnLockfileChange` setting is enabled (the default) and the configured `version`
   is v1.4 or newer.
 
@@ -438,8 +436,7 @@ When a [`version`](/moon/api/ToolchainPluginConfig#version) is configured, moon 
   Bun v1.3.10) are supported. On x64 Linux machines without AVX2 support, the `baseline` build is
   downloaded instead.
 - On musl-based Linux, like Alpine, the `musl` build is downloaded, which requires Bun v1.1.35 or
-  newer. This, along with support for Windows on arm64, requires moon
-  <VersionLabel version="2.5.3" />.
+  newer.
 - `bun` is the primary executable, and `bunx` is provided as an alias for `bun x`.
 
 For tasks that use the Bun toolchain, moon also prepends Bun's global binaries directory

@@ -1,0 +1,292 @@
+---
+title: Overview
+---
+
+import { TypeLabel } from "@/components/TypeLabel";
+
+Every moon command accepts a set of _global options_, which control how moon itself behaves, like
+how much it logs, whether it reads from the cache, and where it exports telemetry. They can be
+passed before or after the command, and each one can also be set with an environment variable,
+which is handy for configuring moon once in CI instead of on every command.
+
+```shell
+# Both are equivalent
+$ moon --log debug run app:build
+$ moon run app:build --log debug
+
+# As is the environment variable
+$ MOON_LOG=debug moon run app:build
+```
+
+## Global options
+
+- `--cache` <TypeLabel type="off | read | read-write | write" /> - The mode for [cache operations](#caching). Defaults to `read-write`. Can also be set via the `MOON_CACHE` environment variable.
+- `--color` <TypeLabel type="boolean | 0 | 1 | 2 | 3" /> - Force [colored output](#colors) for moon (not tasks). Can also be set via the `MOON_COLOR` environment variable.
+- `-c`, `--concurrency` <TypeLabel type="number" /> - The maximum number of [actions](<../(fundamentals)/action.mdx>) to run at once. Defaults to the number of CPU cores. Can also be set via the `MOON_CONCURRENCY` environment variable.
+- `--dump` - Dump a [trace profile](#profiling) to the current working directory. Can also be set via the `MOON_DUMP` environment variable.
+- `--help`, `-h` - Display the help menu for the current command.
+- `--log` <TypeLabel type="off | error | warn | info | debug | trace | verbose" /> - The lowest [log level](#logging) to output. Defaults to `info`. Can also be set via the `MOON_LOG` environment variable.
+- `--log-file` <TypeLabel type="string" /> - Path to a file to [write logs to](#writing-logs-to-a-file). Can also be set via the `MOON_LOG_FILE` environment variable.
+- `--otel` - Export [traces and metrics](#opentelemetry) over OTLP. Can also be set via the `MOON_OTEL` environment variable.
+- `--otel-logs` - Also export log events as OTLP logs. Can also be set via the `MOON_OTEL_LOGS` environment variable.
+- `--otel-service-name` <TypeLabel type="string" /> - The service name to report to OTLP. Can also be set via the `MOON_OTEL_SERVICE_NAME` environment variable.
+- `-q`, `--quiet` - Hide moon's own console output, like the checkpoints and statistics printed while running tasks. Can also be set via the `MOON_QUIET` environment variable.
+- `--theme` <TypeLabel type="dark | light" /> - The terminal [theme](#themes) to print with. Defaults to `dark`. Can also be set via the `MOON_THEME` environment variable.
+- `--version`, `-V` - Display the version of the CLI.
+
+## Caching
+
+moon's [cache](../advanced/cache.mdx) is what makes repeat runs fast, but when you're debugging a
+broken task, a cached result can get in the way of seeing what actually happens. The `--cache`
+option (or `MOON_CACHE`) controls how moon interacts with the cache, using one of the following
+modes:
+
+- `off` - Don't read from or write to the cache. Every task runs fresh, including dependency installs.
+- `read` - Read existing items from the cache, but don't write new items to it.
+- `read-write` _(default)_ - Read from and write to the cache.
+- `write` - Don't read existing items, but write new items to the cache. This is what
+  [`moon run --force`](./run.mdx) uses, so tasks run fresh, while their results are still cached
+  for the next run.
+
+```shell
+# Run a task without any caching
+$ moon run app:build --cache off
+```
+
+The `off` and `write` modes also disable [proto's](/proto/docs) cache, so toolchain versions are
+resolved fresh as well.
+
+## Colors
+
+moon inherits color support from your terminal by default, and respects the `NO_COLOR` environment
+variable to disable colors entirely. When colors aren't detected correctly, like in some CI
+providers, pass `--color` (preferred), or set the `MOON_COLOR` or `FORCE_COLOR` environment
+variables, to force them on.
+
+```shell
+$ moon run app:build --color
+$ MOON_COLOR=2 moon run app:build
+```
+
+When forcing colors, a level of color support can be provided. Passing `--color` without a value
+uses `3`, while `--color=true` uses `1`.
+
+- `0` (or `false`) - No colors.
+- `1` (or `true`) - 16 colors (standard terminal colors).
+- `2` - 256 colors.
+- `3` - 16 million colors (truecolor).
+
+<Callout>A value must be passed with an equals sign, like `--color=2`.</Callout>
+
+### Themes
+
+moon assumes a dark terminal theme by default, and picks its colors accordingly. If you use a light
+theme, those colors can be hard to read, so switch to the light theme with `--theme light` (or
+`MOON_THEME=light`).
+
+```shell
+$ moon run app:build --theme light
+```
+
+### Piped tasks
+
+Tasks are child processes whose output moon captures through a pipe, and since a pipe isn't a TTY,
+most tools disable their own colors. Many tools support a `--color` flag to force them back on,
+but instead of adding it to every task, enable the
+[`pipeline.inheritColorsForPipedTasks`](/moon/api/PipelineConfig#inheritcolorsforpipedtasks)
+setting in [`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>), and tasks will inherit the
+color settings of your terminal.
+
+## Concurrency
+
+The `--concurrency` option (or `MOON_CONCURRENCY`) caps how many [actions](<../(fundamentals)/action.mdx>)
+the pipeline runs at the same time, and defaults to the number of CPU cores. Lowering it is useful
+on resource constrained machines, or to run tasks one at a time while debugging output that's
+interleaved.
+
+```shell
+# Run one action at a time
+$ moon run :build --concurrency 1
+```
+
+[Persistent tasks](<../(fundamentals)/task.mdx#persistent>) and
+[`wait` dependencies](<../(fundamentals)/task.mdx#dependency-types>) don't count towards this
+limit, as they never complete, or need to run alongside the task waiting on them.
+
+## Logging
+
+By default, moon logs as little as possible, so that the output of the tasks being ran isn't
+buried, while still printing warnings and errors. How much is logged is controlled with the `--log`
+option (or `MOON_LOG`), using one of the following levels, from least to most verbose:
+
+- `off` - Turn off logging entirely.
+- `error` - Only log errors.
+- `warn` - Log warnings and above.
+- `info` _(default)_ - Log informational messages and above.
+- `debug` - Log debug messages and above. This is the level to reach for when debugging, as it
+  includes the majority of useful diagnostic information.
+- `trace` - Log everything, including network requests and child processes. This is _very_
+  verbose, and is primarily intended for deep diagnostics.
+- `verbose` - Like `trace`, but also includes span information.
+
+```shell
+$ moon run app:build --log debug
+```
+
+### Writing logs to a file
+
+To keep the logs of a command, like to attach them to a bug report, write them to a file with the
+`--log-file` option (or `MOON_LOG_FILE`). The file respects `--log`, so only logs at that level or
+above are written.
+
+```shell
+$ moon run app:build --log debug --log-file debug.log
+```
+
+## Debugging
+
+Most debugging can be done by passing [`--log debug`](#logging) and sifting through the logs. For
+specific parts of moon, the following environment variables reveal more information:
+
+- `MOON_DEBUG_PROCESS_ENV` - Reveal every environment variable passed to child processes. By
+  default, only `MOON_` variables are shown, to avoid leaking sensitive values.
+- `MOON_DEBUG_PROCESS_INPUT` - Reveal the full stdin passed to child processes. By default, it's
+  truncated, to avoid flooding the console with large inputs.
+- `MOON_DEBUG_REMOTE` - Log more information about the [remote cache](../advanced/cache.mdx),
+  including internal connection errors.
+- `MOON_DEBUG_WASM` - Log more information about WASM plugins, like
+  [toolchains](<../(fundamentals)/toolchain.mdx>) and
+  [extensions](<../(fundamentals)/extension.mdx>), and dump their memory and core profiles.
+
+## Profiling
+
+When the `--dump` option (or `MOON_DUMP`) is passed, moon writes a trace profile of the command to
+a `dump-<timestamp>.json` file in the current working directory. Open it in
+[Perfetto](https://ui.perfetto.dev/) (or Chrome, via `chrome://tracing`) to inspect the command as
+a flame chart, which is the quickest way to find out where a slow command spends its time.
+
+```shell
+$ moon run app:build --dump
+```
+
+## OpenTelemetry
+
+moon can export [OpenTelemetry](https://opentelemetry.io/) (OTEL) traces, metrics, and logs over
+[OTLP](https://opentelemetry.io/docs/specs/otlp/), for observability backends like Grafana,
+Honeycomb, or Datadog. Traces are built from the same spans that power [`--dump`](#profiling) and
+[`--log verbose`](#logging), so the entire run, from building the
+[action graph](<../(fundamentals)/action-graph.mdx>) to running tasks and calling plugins, is
+reported as a tree of spans. It answers questions like "what is CI actually spending its time on?"
+with a flame graph, instead of a hunch.
+
+Exporting is opt-in, and enabled with the following options:
+
+- `--otel` (`MOON_OTEL`) - Export traces and [metrics](#metrics).
+- `--otel-logs` (`MOON_OTEL_LOGS`) - Also export log events as OTLP logs. This respects `--log`, so
+  a less verbose level exports fewer events.
+- `--otel-service-name` (`MOON_OTEL_SERVICE_NAME`) - The service name to report. When not
+  provided, falls back to the standard `OTEL_SERVICE_NAME` environment variable, then `service.name`
+  in `OTEL_RESOURCE_ATTRIBUTES`.
+
+Where the data is sent is configured with the standard `OTEL_EXPORTER_OTLP_*` environment
+variables, like `OTEL_EXPORTER_OTLP_ENDPOINT`.
+
+```shell
+$ export OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4318"
+$ moon --otel ci
+```
+
+### Transports
+
+OTLP can be sent over HTTP (`http/protobuf`) or gRPC (`grpc`). The transport is chosen with the
+standard environment variables, where a per-signal variable takes precedence over the generic one:
+
+- `OTEL_EXPORTER_OTLP_TRACES_PROTOCOL`, `OTEL_EXPORTER_OTLP_METRICS_PROTOCOL`, and
+  `OTEL_EXPORTER_OTLP_LOGS_PROTOCOL` - The transport for an individual signal.
+- `OTEL_EXPORTER_OTLP_PROTOCOL` - The transport for all signals. Defaults to `http/protobuf`, which
+  is also used for any value other than `grpc`.
+
+Endpoints follow the same precedence, with `OTEL_EXPORTER_OTLP_ENDPOINT` and the per-signal
+`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` (and so on) variables. When an endpoint starts with
+`https://`, TLS is enabled, and the collector's certificate is verified against your operating
+system's certificate store.
+
+```shell
+# Send OTLP over gRPC
+$ export OTEL_EXPORTER_OTLP_PROTOCOL="grpc"
+$ export OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4317"
+$ moon --otel run app:build
+```
+
+### Metrics
+
+Alongside traces, moon records metrics for every task, action, and operation that runs in the
+pipeline. [Actions](<../(fundamentals)/action.mdx>) are the units of work in the action graph
+(running a task, syncing a project, installing dependencies, and so on), while
+[operations](<../(fundamentals)/action.mdx#operations>) are the steps _within_ an action
+(generating a hash, hydrating outputs from the cache, executing the command, and so on). Tasks are
+recorded on their own as well, since they're the unit of work that matters most.
+
+| Metric                      | Instrument | Description                                     |
+| :-------------------------- | :--------- | :---------------------------------------------- |
+| `moon.task.runs`            | Counter    | Number of tasks ran within the pipeline.        |
+| `moon.task.duration`        | Histogram  | Duration of tasks, in milliseconds.             |
+| `moon.action.executions`    | Counter    | Number of actions executed within the pipeline. |
+| `moon.action.duration`      | Histogram  | Duration of actions, in milliseconds.           |
+| `moon.operation.executions` | Counter    | Number of operations executed within an action. |
+| `moon.operation.duration`   | Histogram  | Duration of operations, in milliseconds.        |
+
+Task metrics are the ones to reach for when building dashboards, as they can be grouped by a
+target, by a project ("which project is the most expensive in CI?"), or by a task identifier ("how
+long does `build` take across the workspace?"). They're recorded with the following attributes:
+
+- `target` - The target that was ran, like `app:build`.
+- `project` - The project the task belongs to.
+- `task` - The identifier of the task.
+- `toolchains` - Every toolchain the task ran with, sorted and comma separated, like
+  `javascript,node,npm`. This includes the toolchains required by the configured ones. It's a
+  string instead of an array, as backends don't handle array attributes consistently, so filter by
+  an individual toolchain with a "contains" match.
+- `status` - The final status of the task, like `passed`, `failed`, `cached`, or
+  `cached-from-remote`. Compare the cached statuses against the total for a cache hit rate.
+- `flaky` - Whether the task only passed after being retried, known as a
+  [flaky action](<../(fundamentals)/action.mdx#flaky-actions>).
+
+Action metrics cover the pipeline as a whole. For `run-task` actions, the duration is the same
+measurement as `moon.task.duration`, with fewer attributes to group by:
+
+- `action` - The kind of action, like `run-task` or `sync-project`.
+- `status` - The final status of the action.
+- `target` - The target that was ran, for `run-task` actions.
+- `project` - The project the action operated on, for `sync-project` actions, and for
+  `setup-environment` and `install-dependencies` actions that belong to a project.
+- `toolchain` - The toolchain the action operated on, for toolchain related actions.
+
+Operation metrics purposefully don't record the target, project, or toolchain, as multiplying them
+by every operation would explode the number of time series. Traces provide that level of detail
+instead.
+
+- `action` - The kind of action the operation ran within.
+- `operation` - The kind of operation, like `hash-generation` or `task-execution`.
+- `status` - The final status of the operation.
+- `id` - The identifier of the operation, for setup and sync operations.
+- `plugin` - The plugin that ran the operation, if any.
+
+<Callout type="warning">
+  Since the `target` attribute is recorded for every task that runs, the number
+  of `moon.task.*` and `moon.action.*` time series grows with the number of
+  tasks in your workspace. If your backend struggles with it, drop or aggregate
+  away the attribute in your OTEL collector.
+</Callout>
+
+[Persistent tasks](<../(fundamentals)/task.mdx#persistent>) never complete, so they aren't
+recorded. Tasks that were skipped because a dependency failed _are_ recorded, with a `skipped`
+status.
+
+### Disabling signals
+
+The standard environment variables can also turn signals off, even when they're enabled with the
+options above, which is handy for opting out on a single machine. `OTEL_SDK_DISABLED=true` disables
+every signal, while `OTEL_TRACES_EXPORTER=none`, `OTEL_METRICS_EXPORTER=none`, and
+`OTEL_LOGS_EXPORTER=none` disable an individual signal. These variables can only turn a signal
+off, never on.

@@ -5,7 +5,6 @@ icon: Square
 
 import { ConfigTabs } from "@/components/ConfigTabs";
 import { TypeLabel } from "@/components/TypeLabel";
-import { VersionLabel } from "@/components/VersionLabel";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 
@@ -37,15 +36,30 @@ which accepts three shapes:
 />
 
 When a project is found by a glob, its identifier is inferred from the matched path. By default
-that's the directory name, but [`projects.globFormat`](/moon/api/WorkspaceProjectsConfig#globformat) <VersionLabel version="2.0.0" /> can switch it
+that's the directory name, but [`projects.globFormat`](/moon/api/WorkspaceProjectsConfig#globformat) can switch it
 to the full workspace-relative source path instead, which is useful when directory names collide
 across the repository.
 
 <Callout>
   Globs are matched against directories, and hidden directories (those beginning
-  with `.`) are skipped. Suffix a glob with the project config file name to be
-  explicit about what counts as a project.
+  with `.`) are skipped, as are directories ignored by your VCS.
 </Callout>
+
+Folder names alone can't answer questions like
+"is this a Node.js project?". To be more precise, globs can also match _files_,
+where the parent directory of each matched file becomes the project root (and
+the source used to infer its identifier).
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    projects: ["apps/*/package.json", "crates/*/Cargo.toml", "src/**/*.csproj"],
+  }}
+/>
+
+This doesn't apply to the workspace root itself, otherwise a glob like `*` would turn the root into
+a project for any file it contains. To mark the root as a project, use a `.` glob, a glob that
+matches its `moon.config`, or a [`sources`](/moon/api/WorkspaceProjectsConfig#sources) entry.
 
 Beyond configuration, [toolchain](./toolchain.mdx) and [extension](./extension.mdx) plugins can contribute
 to discovery through their `extend_project_graph` hook, registering additional projects, aliases,
@@ -55,7 +69,7 @@ already defines, such as a package manager's workspace members.
 ### Default project
 
 In a workspace built around one primary application, having to name that project in every command
-gets repetitive. The [`defaultProject`](/moon/api/WorkspaceConfig#defaultproject) <VersionLabel version="2.0.0" /> setting in [`.moon/workspace.config`](./workspace.mdx) nominates a
+gets repetitive. The [`defaultProject`](/moon/api/WorkspaceConfig#defaultproject) setting in [`.moon/workspace.config`](./workspace.mdx) nominates a
 project as the default, so tasks can be run without a project scope at all.
 
 <ConfigTabs
@@ -257,7 +271,7 @@ precedence.
   }}
 />
 
-<VersionLabel version="2.4.0" /> To apply the same [options](./task.mdx#options)
+To apply the same [options](./task.mdx#options)
 to every task in the project, both local and inherited, configure the
 [`taskOptions`](/moon/api/ProjectConfig#taskoptions) setting. Each task can
 still override these values individually.
@@ -290,7 +304,7 @@ Project variables act as the base for each task's environment, so a task that de
 variable in its own `env` will overwrite the project value. System variables still take precedence
 over both; refer to [task environment variables](./task.mdx#precedence) for the full order.
 
-<VersionLabel version="2.5.0" /> Projects also inherit variables from the
+Projects also inherit variables from the
 [`env`](/moon/api/InheritedTasksConfig#env) setting in
 [`.moon/tasks/*.config`](./task-inheritance.mdx#configuration) files. By
 default, project variables are appended on top of inherited ones, which can be
@@ -325,7 +339,7 @@ be used depending on what's needed.
 
 Like environment variables, file groups can be inherited from
 [`.moon/tasks/*.config`](./task-inheritance.mdx#configuration) files. Groups with the same identifier
-are merged per group, and <VersionLabel version="2.5.0" /> the strategy used can be changed with the
+are merged per group, and the strategy used can be changed with the
 [`workspace.mergeStrategies.fileGroups`](/moon/api/ProjectWorkspaceMergeStrategiesConfig#filegroups) setting. Refer to [file groups](../advanced/file-groups.mdx) for
 more information.
 
@@ -581,11 +595,11 @@ The [`docker.file`](/moon/api/ProjectDockerConfig#file) settings configure the `
   step is skipped.
 - [`startTask`](/moon/api/DockerFileConfig#starttask) - A task in this project to run in the `CMD` instruction. If not defined, the
   instruction is omitted.
-- [`runSetup`](/moon/api/DockerFileConfig#runsetup) <VersionLabel version="2.0.0" /> - Run [`moon docker setup`](../commands/docker/setup.mdx)
+- [`runSetup`](/moon/api/DockerFileConfig#runsetup) - Run [`moon docker setup`](../commands/docker/setup.mdx)
   after scaffolding, but before building.
-- [`runPrune`](/moon/api/DockerFileConfig#runprune) <VersionLabel version="2.0.0" /> - Run [`moon docker prune`](../commands/docker/prune.mdx)
+- [`runPrune`](/moon/api/DockerFileConfig#runprune) - Run [`moon docker prune`](../commands/docker/prune.mdx)
   after building, but before starting.
-- [`template`](/moon/api/DockerFileConfig#template) <VersionLabel version="2.0.0" /> - A custom [Tera](https://keats.github.io/tera/)
+- [`template`](/moon/api/DockerFileConfig#template) - A custom [Tera](https://keats.github.io/tera/)
   template file, relative from the workspace root, to render the `Dockerfile` with.
 
 <ConfigTabs
@@ -604,9 +618,9 @@ The [`docker.file`](/moon/api/ProjectDockerConfig#file) settings configure the `
 The [`docker.scaffold`](/moon/api/ProjectDockerConfig#scaffold) settings configure [`moon docker scaffold`](../commands/docker/scaffold.mdx), which
 copies files into the build context in two phases:
 
-- [`configsPhaseGlobs`](/moon/api/DockerScaffoldConfig#configsphaseglobs) <VersionLabel version="2.0.0" /> - Globs of additional files to include in
+- [`configsPhaseGlobs`](/moon/api/DockerScaffoldConfig#configsphaseglobs) - Globs of additional files to include in
   the configs skeleton, which is used to install dependencies.
-- [`sourcesPhaseGlobs`](/moon/api/DockerScaffoldConfig#sourcesphaseglobs) <VersionLabel version="2.0.0" /> - Globs of files to include in the sources
+- [`sourcesPhaseGlobs`](/moon/api/DockerScaffoldConfig#sourcesphaseglobs) - Globs of files to include in the sources
   skeleton, which is used to build the project.
 
 <ConfigTabs

@@ -12,7 +12,9 @@ JSON, like every other [`moon query`](../query.mdx) subcommand. This is the same
 Under the hood, this command first collects a list of changed files (from the local index, or a
 comparison between 2 revisions, depending on the `[BY]` argument and your VCS state), then walks the
 project and task graphs to determine which nodes are affected by those files, optionally expanding
-the result to include upstream dependencies and downstream dependents.
+the result to include upstream dependencies and downstream dependents. Each task's
+[`options.runInCI`](/moon/api/TaskOptionsConfig#runinci) setting is respected, so when running in
+CI, tasks that don't run in CI are never affected, matching what [`moon ci`](../ci.mdx) would run.
 
 If data is piped into this command via stdin (as produced by
 [`moon query changed-files`](./changed-files.mdx)), it's used as the list of changed files instead of

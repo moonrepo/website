@@ -28,6 +28,15 @@ and more).
 `moon exec` also ships as its own standalone binary, `moonx`, so `moonx app:build` is equivalent to
 `moon exec app:build` (or its alias, `moon x app:build`).
 
+Once the pipeline completes, any actions that failed are listed together in a summary at the
+bottom of the output, instead of being interleaved with every other action, and the command exits
+with a non-zero code. When moon receives `SIGINT` (Ctrl+C), `SIGTERM`, or `SIGHUP` (the terminal was
+closed), running tasks receive the same signal and are force killed after
+[`pipeline.killProcessThreshold`](/moon/api/PipelineConfig#killprocessthreshold), and moon exits
+with `128` plus the signal number: `130`, `143`, or `129` respectively. When the command reading
+moon's output exits early (a broken pipe, like `moon exec ... | head`), moon exits quietly with
+`141`.
+
 ```shell
 # Run `lint` in project `app`
 $ moon exec app:lint
@@ -74,6 +83,12 @@ $ moon exec app:start -- --port 8080
   [`options.affectedFiles`](/moon/api/TaskOptionsConfig#affectedfiles) task variable). Can also be set via the `MOON_FORCE` environment variable.
 - `-i`, `--interactive` - Run the pipeline and its tasks interactively, allowing tasks to receive
   input from the terminal.
+- `--output-style` <TypeLabel type="buffer | buffer-only-failure | hash | none | stream" /> -
+  Control how output is displayed for _all_ tasks, overriding their
+  [`options.outputStyle`](/moon/api/TaskOptionsConfig#outputstyle) setting. Since it's requested
+  explicitly, it also applies to primary targets, which otherwise always display their output.
+  [Interactive](<../(fundamentals)/task.mdx#interactive>) tasks always stream their output. See
+  [output style](<../(fundamentals)/task.mdx#output-style>) for more information.
 - `-p`, `--plan` <TypeLabel type="string" /> - Relative path to an [execution plan](../guides/exec-plan.mdx)
   (JSON) used to declaratively define the targets, affected criteria, graph relations, and pipeline
   settings for this run, instead of (or alongside) the options below. Can also be set via the

@@ -4,7 +4,6 @@ title: uv
 
 import { ConfigTabs } from "@/components/ConfigTabs";
 import { TypeLabel } from "@/components/TypeLabel";
-import { VersionLabel } from "@/components/VersionLabel";
 
 The uv toolchain integrates [uv](https://docs.astral.sh/uv/), Astral's fast Python package and project manager, into
 moon. With it enabled, moon:
@@ -237,7 +236,7 @@ When disabling `unstable_uv` for a project and the Python toolchain's `packageMa
 
 ### `uv-pip` mode
 
-Setting the Python toolchain's `packageManager` to `uv-pip` <VersionLabel version="2.3.0" /> uses uv's
+Setting the Python toolchain's `packageManager` to `uv-pip` uses uv's
 [pip interface](https://docs.astral.sh/uv/pip/) instead of its project interface, for projects that manage dependencies
 with requirements files rather than `uv.lock`, but want uv's speed. Enable it with the `packageManager` setting of
 `unstable_python`, and it runs when setting up the environment and installing dependencies.

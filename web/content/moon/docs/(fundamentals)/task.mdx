@@ -5,7 +5,6 @@ icon: Circle
 
 import { ConfigTabs } from "@/components/ConfigTabs";
 import { TypeLabel } from "@/components/TypeLabel";
-import { VersionLabel } from "@/components/VersionLabel";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 
@@ -55,6 +54,8 @@ _only_ be ran locally, such as, development servers and watchers, we provide a m
 
 To mark a task as local only, disable [`options.runInCI`](#options) or configure the appropriate [`preset`](#presets).
 
+When `runInCI` isn't configured, only `build` and `test` [types](#types) run in CI, so `run` tasks are local only by default. [Persistent](#persistent) tasks are also local only by default, regardless of their type, as a task that never completes would keep the CI pipeline running until it times out.
+
 <ConfigTabs
   file="moon"
   config={{
@@ -96,6 +97,11 @@ Because interactive tasks require stdin, and it's not possible to have multiple 
 tasks interact with stdin, we isolate interactive tasks from other tasks in the action graph. This
 ensures that only 1 interactive task is ran at a time.
 
+While an interactive task is running, no other actions are started. The
+pipeline only waits for the interactive task itself to complete before continuing, and not for
+every other task that was already running when it started. Because nothing can run alongside an
+interactive task, it can't be a [`wait` dependency](#dependency-types).
+
 To mark a task as interactive, enable [`options.interactive`](#options).
 
 <ConfigTabs
@@ -118,12 +124,30 @@ Tasks that never complete, like servers and watchers, are known as persistent ta
 tasks are typically problematic when it comes to dependency graphs, because if they run in the
 middle of the graph, subsequent tasks will never run because the persistent task never completes!
 
-However in moon, this is a non-issue, as we collect all persistent tasks within the action graph and
-run them _last as a batch_. This is perfect for a few reasons:
+However in moon, this is a non-issue. Persistent tasks start as soon
+as they're reached in the [action graph](./action-graph.mdx#persistent-tasks), like any other task,
+but moon never waits for them to complete. This is perfect for a few reasons:
 
-- All persistent tasks are ran in parallel, so they don't block each other.
-- Running both the backend API and frontend webapp in parallel is a breeze.
-- Dependencies of persistent tasks are guaranteed to have ran and completed.
+- Dependencies of persistent tasks are guaranteed to have ran and completed before they start.
+- Persistent tasks run in parallel, and don't take up a slot in the pipeline's concurrency limit,
+  so they never block other tasks, or each other.
+- Running both the backend API and frontend webapp in parallel is a breeze, and they start as soon
+  as they're ready, instead of waiting on unrelated tasks to finish first.
+
+Since a persistent task never completes, only other persistent tasks can depend on it as a
+`required` dependency. Non-persistent tasks, like end-to-end tests that need a server running, can
+use a [`wait` dependency](#dependency-types) instead, which only waits for the persistent task to
+start. And when [`options.runDepsInParallel`](/moon/api/TaskOptionsConfig#rundepsinparallel) is
+disabled, persistent dependencies are skipped when ordering the dependencies that follow them.
+
+<Callout>
+  Persistent tasks don't run in CI by default, even when they define
+  [`outputs`](#outputs), or have a `build` or `test` type. When one is needed in
+  CI, like a server for end-to-end tests, enable
+  [`options.runInCI`](/moon/api/TaskOptionsConfig#runinci). Even then, it only
+  runs in CI when another task depends on it, or when it's explicitly passed as
+  a target.
+</Callout>
 
 To mark a task as persistent, enable [`options.persistent`](#options) or configure the appropriate [`preset`](#presets).
 
@@ -143,7 +167,7 @@ To mark a task as persistent, enable [`options.persistent`](#options) or configu
 
 ### Sync phase
 
-<VersionLabel version="2.1.0" /> Tasks can also run as part of the syncing
+Tasks can also run as part of the syncing
 phase, instead of only when explicitly ran or depended on. When [`moon
 sync`](../commands/sync.mdx) is executed, it walks every project and queues
 these tasks into the action graph alongside the workspace and project sync
@@ -309,19 +333,20 @@ When using the object format for dependencies, you can also specify parameters t
 
 - [`target`](/moon/api/TaskDependencyConfig#target) <TypeLabel type="string" /> _(required)_ - The [target](./target.mdx) of the dependency task(s).
 - [`args`](/moon/api/TaskDependencyConfig#args) <TypeLabel type="string[]" /> - A list of additional arguments to append to the task's [`command`](#command) when it's executed.
-- [`env`](/moon/api/TaskDependencyConfig#env) <TypeLabel type="Record<string, string>" /> - A map of additional variables to merge into the task's environment when it's executed.
+- [`env`](/moon/api/TaskDependencyConfig#env) <TypeLabel type="Record<string, string>" /> - A map of additional variables to merge into the task's environment when it's executed. Like the task's own [`env`](#environment-variables), these don't override system variables unless the dependency enables [`options.envOverride`](#overriding).
 - [`optional`](/moon/api/TaskDependencyConfig#optional) <TypeLabel type="boolean" /> - Controls how this dependency is treated during task inheritance. When `false` (the default), will error if the task does not exist. When `true`, will be ignored if the task does not exist. This does _not_ allow the task to fail during execution.
-- [`cacheStrategy`](/moon/api/TaskDependencyConfig#cachestrategy) <TypeLabel type="hash | ignored | outputs" /> <VersionLabel version="2.3.0" /> - Controls how changes to this dependency invalidate the current task's cache. Supports the following values:
+- `type` <TypeLabel type="required | cleanup | wait" /> - Controls _when_ the dependency runs in relation to the task. Defaults to `required`. See [dependency types](#dependency-types).
+- [`cacheStrategy`](/moon/api/TaskDependencyConfig#cachestrategy) <TypeLabel type="hash | ignored | outputs" /> - Controls how changes to this dependency invalidate the current task's cache. Supports the following values:
   - `hash` - Any change to the dependency's hash invalidates this task.
   - `ignored` - The dependency never invalidates this task's cache, and acts as a sequencing edge only.
   - `outputs` - Only changes to the dependency's _output files_ invalidate this task, not changes to its inputs. Useful for build tasks that only care about what a dependency produced.
 
 <Callout>
   When `cacheStrategy` is omitted, it resolves to `hash` if the dependency
-  declares [`outputs`](#outputs), and `ignored` if it doesn't. Before v2.3.0 the
-  default was always `hash`, so tasks depending on output-less tasks (lints,
-  tests) now see fewer cache invalidations. Set `cacheStrategy: 'hash'`
-  explicitly to restore the old behavior for a given dependency.
+  declares [`outputs`](#outputs), and `ignored` if it doesn't, so tasks
+  depending on output-less tasks (lints, tests) aren't invalidated by them. Set
+  `cacheStrategy: 'hash'` explicitly to invalidate on any change to such a
+  dependency.
 </Callout>
 
 <ConfigTabs
@@ -339,6 +364,74 @@ When using the object format for dependencies, you can also specify parameters t
         ],
       },
     },
+  }}
+/>
+
+### Dependency types
+
+By default, a dependency runs _before_ the
+task, and must complete successfully. That's perfect for builds and code
+generation, but not for a task that needs something _running_ alongside it, like
+a database or server, and then needs it stopped afterwards. The `type` parameter
+controls when a dependency runs in relation to the task:
+
+- `required` _(default)_ - Runs before the task, and must complete successfully, otherwise the task doesn't run.
+- `cleanup` - Runs _after_ the task has ran its command, whether it passed or failed, and even when the failure aborts the pipeline. Useful for tearing down resources, like stopping a database or removing temporary files.
+- `wait` - Runs before the task, but the task only waits for the dependency to _start_ running, not to complete. Useful for long-running dependencies, like a server that the task sends requests to.
+
+Together, an entire end-to-end testing workflow fits into a single task:
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      e2e: {
+        command: "playwright test",
+        deps: [
+          "db:start",
+          { target: "web:serve", type: "wait" },
+          { target: "web:stop", type: "cleanup" },
+          { target: "db:stop", type: "cleanup" },
+        ],
+        options: {
+          cache: false,
+        },
+      },
+    },
+  }}
+  comments={{
+    cache:
+      "Don't hydrate from the cache, as the server would be stopped right after it started",
+  }}
+/>
+
+A few things to know about how these types behave:
+
+- Cleanup dependencies are skipped when there's nothing to clean up, like when the task was skipped or hydrated from the cache, _unless_ the task already started a `wait` dependency, since stopping it is usually the cleanup's whole job.
+- Wait dependencies only need to have _started_, which isn't the same as being _ready_. If a server takes a moment to accept connections, poll a health check before sending requests.
+- Wait dependencies aren't stopped once the task completes, so pair them with a `cleanup` dependency that stops them, as seen above.
+- Wait dependencies can be [persistent](#persistent), and don't take up a slot in the pipeline's concurrency limit, so they never block the tasks waiting on them. They can't be [interactive](#interactive) though.
+- Since neither type completes before the task runs, they don't contribute to the task's [hash](../advanced/cache.mdx), and they always run their command, instead of being hydrated from the cache.
+- Persistent tasks can't be `cleanup` dependencies, nor can they have them, as one side would never complete.
+
+<Callout type="warning">
+  Cleanup dependencies are _not_ ran when the pipeline is interrupted by a
+  signal, like pressing Ctrl+C. Wait dependencies are also still subject to
+  [`options.runInCI`](/moon/api/TaskOptionsConfig#runinci), so a task that runs
+  in CI can't wait on a task that doesn't, like a server. Enable `runInCI` for
+  the server in this case.
+</Callout>
+
+Cleanup dependencies also pair well with
+[`implicitDeps`](./task-inheritance.mdx#configuration). For example, every
+project can define a `teardown` task that runs after its other tasks, without
+each task opting in individually. The `teardown` task won't depend on itself,
+and persistent tasks are skipped, as they can't be cleaned up after.
+
+<ConfigTabs
+  file=".moon/tasks/all"
+  config={{
+    implicitDeps: [{ target: "~:teardown", type: "cleanup", optional: true }],
   }}
 />
 
@@ -380,7 +473,7 @@ Tasks within other/external projects can be referenced using the explicit `<proj
 
 Tasks can be referenced from the current [project's dependencies](./project.mdx#dependencies) using the `^:` or `^<type>:` scopes. This will be expanded to all depended on projects of the current project. If you do not want all projects, then you'll need to explicitly define the dependencies.
 
-<VersionLabel version="2.1.0" /> Additionally, dependend on projects can be
+Additionally, dependend on projects can be
 filtered by their dependency type, such as `production`, or `development`. The
 following dependency types are supported:
 
@@ -503,7 +596,7 @@ In the context of moon, there are 3 tiers of environment variables: system, task
   - via profile scripts (`.bashrc`, `.zshrc`, etc)
   - via command line: `KEY=value moon ...`
 
-As noted above, system variables are the highest precedence, which means they will overwrite any conflicting variables defined in the task or dotenv tiers. If you don't want to inherit a system variable, you can override it in the task with a null value.
+As noted above, system variables are the highest precedence, which means they will overwrite any conflicting variables defined in the task or dotenv tiers. This is so that `KEY=value moon run ...` works as you'd expect. If you don't want to inherit a system variable, you can override it in the task with a null value.
 
 <ConfigTabs
   file="moon"
@@ -517,6 +610,10 @@ As noted above, system variables are the highest precedence, which means they wi
     },
   }}
 />
+
+A null value only opts out of the system
+variable, so the variable can still be populated from a [`.env`
+file](#env-files).
 
 ### Substitution
 
@@ -548,6 +645,35 @@ order_. Refer to the following table:
   We also support shell specific variable syntax: `$env:VAR` (powershell),
   `$E:VAR` (elvish), `$env.VAR` (nushell), etc.
 </Callout>
+
+### Overriding
+
+Sometimes a task needs a specific value
+regardless of the system, like `NODE_ENV=test` for tests, while CI exports
+`NODE_ENV=production`. The `options.envOverride` setting lets the task's
+variables take precedence over system variables instead. Enable it with `true`
+for all of the task's variables, or provide a list of variable names to only
+override those.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      test: {
+        command: "jest",
+        env: {
+          NODE_ENV: "test",
+          TZ: "UTC",
+        },
+        options: {
+          envOverride: ["NODE_ENV", "TZ"],
+        },
+      },
+    },
+  }}
+/>
+
+This only applies to variables from [`env`](/moon/api/TaskConfig#env) and [`deps.*.env`](#parameters), so variables loaded from `.env` files still never override system variables. `PATH` is never overridden either, as that would remove the paths of [toolchains](#toolchains). To keep a specific variable configurable from the shell, fall back to it with [substitution](#substitution), like `LOG_LEVEL: "${LOG_LEVEL:-info}"`.
 
 ## Inputs
 
@@ -1107,7 +1233,7 @@ When using the URI or object formats, the following parameters are supported:
 
 ## Checks
 
-<VersionLabel version="2.4.0" /> Checks are shell scripts that run _before_ the
+Checks are shell scripts that run _before_ the
 task itself, and depending on the type of check, can skip the task, fail it
 before it starts, or feed extra data into its hash. They're defined with the
 [`checks`](/moon/api/TaskConfig#checks) setting, where each entry pairs a
@@ -1173,13 +1299,13 @@ A `fingerprint` check can narrow _what_ is hashed with its [`hash`](/moon/api/Ta
   }}
 />
 
-When tasks are inherited or extended, [`options.mergeChecks`](#options) <VersionLabel version="2.4.0" />
+When tasks are inherited or extended, [`options.mergeChecks`](#options)
 controls how the check lists are combined, using the same merge strategies as the other
 `merge*` options.
 
 ## Tags
 
-<VersionLabel version="2.3.0" /> Tasks can be categorized with the
+Tasks can be categorized with the
 [`tags`](/moon/api/TaskConfig#tags) setting, in the same spirit as [project
 tags](./project.mdx#tags). Task tags are inherited alongside the rest of the
 task, and [`options.mergeTags`](#options) controls how they're combined when a
@@ -1227,6 +1353,50 @@ If for some reason you do need to explicitly configure a toolchain for a task, y
   }}
 />
 
+The resolved list is ordered as configured (or
+inherited from the project), followed by any toolchains they
+[require](./toolchain.mdx#requiring-other-toolchains), like `npm` for
+`javascript`. Order matters, as the first toolchain takes precedence when
+toolchains [extend the task](./toolchain.mdx#extending-tasks) or [activate their
+environment](./toolchain.mdx#installing-with-proto), and it's what the
+`$taskToolchain` [token](../advanced/tokens.mdx) expands to.
+
+## Output style
+
+The [`options.outputStyle`](/moon/api/TaskOptionsConfig#outputstyle) setting controls how a task's
+output is displayed in the console, using one of the following values:
+
+- `buffer` _(default)_ - Buffers the output, and displays it once the task has completed.
+- `buffer-only-failure` - Like `buffer`, but only displays the output when the task fails.
+- `hash` - Displays the task's hash, instead of its output.
+- `none` - Doesn't display any output.
+- `stream` - Streams the output as it happens, prefixed with the task's target.
+
+The style only applies to tasks that weren't explicitly requested (transitive dependencies), as
+_primary targets_, those passed on the command line, always display their output.
+
+To override the style for _all_ tasks in a run,
+pass the `--output-style` option to [`moon run`](../commands/run.mdx), [`moon
+ci`](../commands/ci.mdx), [`moon check`](../commands/check.mdx), or [`moon
+exec`](../commands/exec.mdx). Since it's requested explicitly, it also applies
+to primary targets. For example, keep passing tasks quiet in CI, while printing
+the full output of failing ones:
+
+```shell
+# Only print the output of failing tasks
+$ moon ci :test :lint --output-style buffer-only-failure
+```
+
+Alternatively, enable the
+[`experiments.explicitTaskOutputStyle`](/moon/api/ExperimentsConfig#explicittaskoutputstyle)
+setting in [`.moon/workspace.config`](./workspace.mdx), which applies each
+task's configured `outputStyle` to primary targets as well.
+
+<Callout>
+  [Interactive](#interactive) tasks always stream their output, as they must
+  remain attached to the terminal.
+</Callout>
+
 ## Presets
 
 Presets are simply a collection or pre-configured options for common use cases. They help to reduce the amount of configuration needed for common task types, and provide a consistent experience across projects and teams.
@@ -1271,34 +1441,36 @@ Tasks support various options that can be configured to control their behavior, 
 | Property                                                                   | Type                                           | Description                                                                                                                                                                                          |
 | -------------------------------------------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [`affectedFiles`](/moon/api/TaskOptionsConfig#affectedfiles)               | `TaskOptionAffectedFilesEntry`                 | The pattern in which affected files will be passed to the task.                                                                                                                                      |
-| [`allowFailure`](/moon/api/TaskOptionsConfig#allowfailure)                 | `boolean`                                      | Allow the task to fail without failing the entire action pipeline. @since 1.13.0                                                                                                                     |
+| [`allowFailure`](/moon/api/TaskOptionsConfig#allowfailure)                 | `boolean`                                      | Allow the task to fail without failing the entire action pipeline.                                                                                                                                   |
 | [`cache`](/moon/api/TaskOptionsConfig#cache)                               | `boolean \| string`                            | Cache the `outputs` of the task for incremental builds. Defaults to `true` if outputs are configured for the task.                                                                                   |
 | [`cacheKey`](/moon/api/TaskOptionsConfig#cachekey)                         | `string`                                       | A custom key to include in the cache hashing process. Can be used to invalidate local and remote caches.                                                                                             |
-| [`cacheLifetime`](/moon/api/TaskOptionsConfig#cachelifetime)               | `string`                                       | Lifetime to cache the task itself, in the format of "1h", "30m", etc. If not defined, caches live forever, or until inputs change. @since 1.29.0                                                     |
+| [`cacheLifetime`](/moon/api/TaskOptionsConfig#cachelifetime)               | `string`                                       | Lifetime to cache the task itself, in the format of "1h", "30m", etc. If not defined, caches live forever, or until inputs change.                                                                   |
 | [`envFile`](/moon/api/TaskOptionsConfig#envfile)                           | `TaskOptionEnvFile`                            | Loads and sets environment variables from the `.env` file(s) when running the task.                                                                                                                  |
-| [`inferInputs`](/moon/api/TaskOptionsConfig#inferinputs)                   | `boolean`                                      | Automatically infer inputs from file groups or environment variables that were utilized within `command`, `script`, `args`, and `env`. @since 1.31.0                                                 |
-| [`interactive`](/moon/api/TaskOptionsConfig#interactive)                   | `boolean`                                      | Marks the task as interactive, so that it will run in isolation, and have direct access to stdin. @since 1.12.0                                                                                      |
-| [`internal`](/moon/api/TaskOptionsConfig#internal)                         | `boolean`                                      | Marks the task as internal, which disables it from being ran from the command line, but can still be depended on by other tasks. @since 1.23.0                                                       |
+| [`envOverride`](#overriding)                                               | `boolean \| string[]`                          | Override system environment variables with the task's `env`, instead of only setting them when missing. When a list of variable names, only those variables will be overridden.                      |
+| `expectFailure`                                                            | `boolean`                                      | Expect the task to fail, and fail the entire action pipeline if it passes. Useful for checks that are known to be broken, which should be re-enabled once fixed. The task is never cached.           |
+| [`inferInputs`](/moon/api/TaskOptionsConfig#inferinputs)                   | `boolean`                                      | Automatically infer inputs from file groups or environment variables that were utilized within `command`, `script`, `args`, and `env`.                                                               |
+| [`interactive`](/moon/api/TaskOptionsConfig#interactive)                   | `boolean`                                      | Marks the task as interactive, so that it will run in isolation, and have direct access to stdin.                                                                                                    |
+| [`internal`](/moon/api/TaskOptionsConfig#internal)                         | `boolean`                                      | Marks the task as internal, which disables it from being ran from the command line, but can still be depended on by other tasks.                                                                     |
 | [`merge`](/moon/api/TaskOptionsConfig#merge)                               | `MergeStrategy`                                | The default strategy to use when merging `args`, `deps`, `env`, `inputs`, or `outputs` with an inherited task. Can be overridden with the other field-specific merge options.                        |
 | [`mergeArgs`](/moon/api/TaskOptionsConfig#mergeargs)                       | `MergeStrategy`                                | The strategy to use when merging `args` with an inherited task.                                                                                                                                      |
-| [`mergeChecks`](/moon/api/TaskOptionsConfig#mergechecks)                   | `MergeStrategy`                                | The strategy to use when merging `checks` with an inherited task. @since 2.4.0                                                                                                                       |
+| [`mergeChecks`](/moon/api/TaskOptionsConfig#mergechecks)                   | `MergeStrategy`                                | The strategy to use when merging `checks` with an inherited task.                                                                                                                                    |
 | [`mergeDeps`](/moon/api/TaskOptionsConfig#mergedeps)                       | `MergeStrategy`                                | The strategy to use when merging `deps` with an inherited task.                                                                                                                                      |
 | [`mergeEnv`](/moon/api/TaskOptionsConfig#mergeenv)                         | `MergeStrategy`                                | The strategy to use when merging `env` with an inherited task.                                                                                                                                       |
 | [`mergeInputs`](/moon/api/TaskOptionsConfig#mergeinputs)                   | `MergeStrategy`                                | The strategy to use when merging `inputs` with an inherited task.                                                                                                                                    |
 | [`mergeOutputs`](/moon/api/TaskOptionsConfig#mergeoutputs)                 | `MergeStrategy`                                | The strategy to use when merging `outputs` with an inherited task.                                                                                                                                   |
-| [`mergeTags`](/moon/api/TaskOptionsConfig#mergetags)                       | `MergeStrategy`                                | The strategy to use when merging `tags` with an inherited task. @since 2.3.0                                                                                                                         |
-| [`mergeToolchains`](/moon/api/TaskOptionsConfig#mergetoolchains)           | `MergeStrategy`                                | The strategy to use when merging `toolchains` with an inherited task. @since 2.0.0                                                                                                                   |
-| [`mutex`](/moon/api/TaskOptionsConfig#mutex)                               | `string`                                       | Creates an exclusive lock on a virtual resource, preventing other tasks using the same resource from running concurrently. @since 1.24.0                                                             |
+| [`mergeTags`](/moon/api/TaskOptionsConfig#mergetags)                       | `MergeStrategy`                                | The strategy to use when merging `tags` with an inherited task.                                                                                                                                      |
+| [`mergeToolchains`](/moon/api/TaskOptionsConfig#mergetoolchains)           | `MergeStrategy`                                | The strategy to use when merging `toolchains` with an inherited task.                                                                                                                                |
+| [`mutex`](/moon/api/TaskOptionsConfig#mutex)                               | `string`                                       | Creates an exclusive lock on a virtual resource, preventing other tasks using the same resource from running concurrently.                                                                           |
 | [`os`](/moon/api/TaskOptionsConfig#os)                                     | `TaskOperatingSystem \| TaskOperatingSystem[]` | The operating system in which to only run this task on.                                                                                                                                              |
 | [`outputStyle`](/moon/api/TaskOptionsConfig#outputstyle)                   | `TaskOutputStyle`                              | The style in which task output will be printed to the console.                                                                                                                                       |
-| [`persistent`](/moon/api/TaskOptionsConfig#persistent)                     | `boolean`                                      | Marks the task as persistent (continuously running). This is ideal for watchers, servers, or never-ending processes. @since 1.6.0                                                                    |
+| [`persistent`](/moon/api/TaskOptionsConfig#persistent)                     | `boolean`                                      | Marks the task as persistent (continuously running). This is ideal for watchers, servers, or never-ending processes.                                                                                 |
 | [`priority`](/moon/api/TaskOptionsConfig#priority)                         | `TaskPriority`                                 | Marks the task with a certain priority, which determines the order in which it is ran within the action pipeline.                                                                                    |
 | [`retryCount`](/moon/api/TaskOptionsConfig#retrycount)                     | `number`                                       | The number of times a failing task will be retried to succeed.                                                                                                                                       |
 | [`runDepsInParallel`](/moon/api/TaskOptionsConfig#rundepsinparallel)       | `boolean`                                      | Runs direct task dependencies (via `deps`) in sequential order. Each dependency's own dependency subtree is also ordered, so that transitive dependencies run after the preceding direct dependency. |
 | [`runFromWorkspaceRoot`](/moon/api/TaskOptionsConfig#runfromworkspaceroot) | `boolean`                                      | Runs the task from the workspace root, instead of the project root.                                                                                                                                  |
-| [`runInCI`](/moon/api/TaskOptionsConfig#runinci)                           | `boolean \| string`                            | Whether to run the task in CI or not, when executing `moon ci`, `moon check`, or `moon run`.                                                                                                         |
+| [`runInCI`](/moon/api/TaskOptionsConfig#runinci)                           | `boolean \| string`                            | Whether to run the task in CI or not, when executing `moon ci`, `moon check`, or `moon run`. Defaults to `true` for `build` and `test` tasks that aren't persistent.                                 |
 | [`runInSyncPhase`](/moon/api/TaskOptionsConfig#runinsyncphase)             | `boolean`                                      | Runs the task automatically when executing `moon sync`.                                                                                                                                              |
 | [`shell`](/moon/api/TaskOptionsConfig#shell)                               | `boolean`                                      | Runs the task within a shell. When not defined, runs the task directly while relying on native `PATH` resolution.                                                                                    |
 | [`timeout`](/moon/api/TaskOptionsConfig#timeout)                           | `number`                                       | The maximum time in seconds that a task can run before being cancelled.                                                                                                                              |
-| [`unixShell`](/moon/api/TaskOptionsConfig#unixshell)                       | `TaskUnixShell`                                | The shell to run the task in when on a Unix-based machine. @since 1.21.0                                                                                                                             |
-| [`windowsShell`](/moon/api/TaskOptionsConfig#windowsshell)                 | `TaskWindowsShell`                             | The shell to run the task in when on a Windows machine. @since 1.21.0                                                                                                                                |
+| [`unixShell`](/moon/api/TaskOptionsConfig#unixshell)                       | `TaskUnixShell`                                | The shell to run the task in when on a Unix-based machine.                                                                                                                                           |
+| [`windowsShell`](/moon/api/TaskOptionsConfig#windowsshell)                 | `TaskWindowsShell`                             | The shell to run the task in when on a Windows machine.                                                                                                                                              |

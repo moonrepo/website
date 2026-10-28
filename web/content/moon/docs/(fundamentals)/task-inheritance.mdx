@@ -5,7 +5,6 @@ icon: CircleDot
 
 import { ConfigTabs } from "@/components/ConfigTabs";
 import { TypeLabel } from "@/components/TypeLabel";
-import { VersionLabel } from "@/components/VersionLabel";
 
 Task inheritance is how a [task](./task.mdx) defined once, at the workspace level, becomes available to
 many [projects](./project.mdx) without being copied into each one. Instead of every project repeating
@@ -42,18 +41,18 @@ organize them however suits your repository.
 
 Each file uses the same shape, and supports the following settings:
 
-- [`inheritedBy`](/moon/api/InheritedTasksConfig#inheritedby) <VersionLabel version="2.0.0" /> - Conditions that decide which projects inherit
+- [`inheritedBy`](/moon/api/InheritedTasksConfig#inheritedby) - Conditions that decide which projects inherit
   this file. See [scoping inheritance](#scoping-inheritance).
 - [`tasks`](/moon/api/InheritedTasksConfig#tasks) - A map of task identifiers to task definitions, matching the shape used in a project's
   [`moon.config`](./project.mdx#tasks).
-- [`taskOptions`](/moon/api/InheritedTasksConfig#taskoptions) <VersionLabel version="1.20.0" /> - Default [task options](/moon/api/TaskOptionsConfig) applied
+- [`taskOptions`](/moon/api/InheritedTasksConfig#taskoptions) - Default [task options](/moon/api/TaskOptionsConfig) applied
   to every task inherited from this file.
 - [`implicitDeps`](/moon/api/InheritedTasksConfig#implicitdeps) - Task [dependencies](./task.mdx#dependencies) injected into every inherited task.
 - [`implicitInputs`](/moon/api/InheritedTasksConfig#implicitinputs) - Task [inputs](./task.mdx#inputs) injected into every inherited task.
 - [`fileGroups`](/moon/api/InheritedTasksConfig#filegroups) - [File groups](../advanced/file-groups.mdx) made available to inheriting projects.
-- [`env`](/moon/api/InheritedTasksConfig#env) <VersionLabel version="2.5.0" /> - Environment variables merged into every inheriting
+- [`env`](/moon/api/InheritedTasksConfig#env) - Environment variables merged into every inheriting
   project's `env`.
-- [`extends`](/moon/api/InheritedTasksConfig#extends) <VersionLabel version="1.12.0" /> - Extends another tasks configuration file, by
+- [`extends`](/moon/api/InheritedTasksConfig#extends) - Extends another tasks configuration file, by
   relative path or secure URL.
 
 <ConfigTabs
@@ -178,9 +177,8 @@ Strategies are configured per task, through [task options](/moon/api/TaskOptions
 sets the default for every collection, and the field-specific options override it:
 
 - [`merge`](/moon/api/TaskOptionsConfig#merge) - Default for all of the below.
-- [`mergeArgs`](/moon/api/TaskOptionsConfig#mergeargs), [`mergeChecks`](/moon/api/TaskOptionsConfig#mergechecks) <VersionLabel version="2.4.0" />, [`mergeDeps`](/moon/api/TaskOptionsConfig#mergedeps), [`mergeEnv`](/moon/api/TaskOptionsConfig#mergeenv),
-  [`mergeInputs`](/moon/api/TaskOptionsConfig#mergeinputs), [`mergeOutputs`](/moon/api/TaskOptionsConfig#mergeoutputs), [`mergeTags`](/moon/api/TaskOptionsConfig#mergetags) <VersionLabel version="2.3.0" />, [`mergeToolchains`](/moon/api/TaskOptionsConfig#mergetoolchains)
-  <VersionLabel version="2.0.0" />
+- [`mergeArgs`](/moon/api/TaskOptionsConfig#mergeargs), [`mergeChecks`](/moon/api/TaskOptionsConfig#mergechecks), [`mergeDeps`](/moon/api/TaskOptionsConfig#mergedeps), [`mergeEnv`](/moon/api/TaskOptionsConfig#mergeenv),
+  [`mergeInputs`](/moon/api/TaskOptionsConfig#mergeinputs), [`mergeOutputs`](/moon/api/TaskOptionsConfig#mergeoutputs), [`mergeTags`](/moon/api/TaskOptionsConfig#mergetags), [`mergeToolchains`](/moon/api/TaskOptionsConfig#mergetoolchains)
 
 <ConfigTabs
   file="moon"
@@ -257,7 +255,7 @@ dependencies on _other_ projects (such as `^:build`) are always preserved, since
 locally shouldn't stop it from running upstream. Dependencies using the task tag scope
 (`~:#tag`) have no identifier to match against, so they're never excluded or renamed.
 
-<VersionLabel version="2.5.0" /> Projects can additionally control how inherited
+Projects can additionally control how inherited
 [`env`](/moon/api/ProjectConfig#env) and
 [`fileGroups`](/moon/api/ProjectConfig#filegroups) are combined with their own,
 through the

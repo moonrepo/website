@@ -4,7 +4,6 @@ title: Go
 
 import { ConfigTabs } from "@/components/ConfigTabs";
 import { TypeLabel } from "@/components/TypeLabel";
-import { VersionLabel } from "@/components/VersionLabel";
 
 The Go toolchain integrates [Go](https://go.dev) into moon. With it enabled, moon:
 
@@ -154,14 +153,14 @@ The following settings are available under the `go` entry of
     Defaults to `false`.
   - `local` <TypeLabel type="boolean" /> - Only install the binary locally, and skip it in CI.
     Defaults to `false`.
-- `inferRelationships` <TypeLabel type="boolean" /> <VersionLabel version="2.1.2" /> - Infer
+- `inferRelationships` <TypeLabel type="boolean" /> - Infer
   `production` project relationships from package imports by running `go list -deps`. Defaults to
   `true`. See [inferring relationships from imports](#inferring-relationships-from-imports).
-- `inferRelationshipsFromTests` <TypeLabel type="boolean" /> <VersionLabel version="2.1.2" /> -
+- `inferRelationshipsFromTests` <TypeLabel type="boolean" /> -
   Also infer `development` project relationships from test imports by running
   `go list -deps -test`. Defaults to `false`. See
   [inferring relationships from imports](#inferring-relationships-from-imports).
-- `inferRelationshipsPackages` <TypeLabel type="string[]" /> <VersionLabel version="2.3.2" /> -
+- `inferRelationshipsPackages` <TypeLabel type="string[]" /> -
   Package patterns passed to `go list -deps` when inferring relationships. When empty, all packages
   are scanned recursively with `./...`. Set to `["."]` to only scan the package at the project's
   root. Defaults to `[]`. See

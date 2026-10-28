@@ -4,7 +4,6 @@ title: TypeScript
 
 import { ConfigTabs } from "@/components/ConfigTabs";
 import { TypeLabel } from "@/components/TypeLabel";
-import { VersionLabel } from "@/components/VersionLabel";
 
 The TypeScript toolchain keeps the `tsconfig.json` files in your repository in sync with moon's
 [project graph](<../(fundamentals)/project-graph.mdx>). With it enabled, moon:
@@ -227,7 +226,7 @@ The following settings are available under the `typescript` entry of
 - `projectConfigFileName` <TypeLabel type="string" /> - Name of the config file within each
   project. This is the file that's created, updated, and referenced. Defaults to
   `"tsconfig.json"`. See [custom file names](#custom-file-names).
-- `pruneProjectReferences` <TypeLabel type="boolean" /> <VersionLabel version="2.1.0" /> - Treat
+- `pruneProjectReferences` <TypeLabel type="boolean" /> - Treat
   the `references` in each project config as fully managed by moon, removing any that moon doesn't
   expect. Only applies when `syncProjectReferences` is enabled. Defaults to `false`, in which case
   references are only ever added. See [pruning references](#pruning).
