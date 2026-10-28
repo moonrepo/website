@@ -1,0 +1,299 @@
+---
+title: Pkl modules
+icon: Boxes
+---
+
+<Callout>Requires the `renderer_pkl_schema` Cargo feature.</Callout>
+
+With our
+[`PklSchemaRenderer`](https://docs.rs/schematic/latest/schematic/schema/pkl_schema/struct.PklSchemaRenderer.html),
+you can generate
+[Pkl modules](https://pkl-lang.org/main/current/language-reference/index.html#modules) for all types
+that implement
+[`Schematic`](https://docs.rs/schematic/latest/schematic/schema/trait.Schematic.html). Each struct
+becomes its own module, and each enum a type alias, with its Rust types converted to Pkl types, so
+that a Pkl config can amend it and be type checked by Pkl itself.
+
+To utilize, instantiate a generator, add types to render, and generate a module for every type into
+a directory. Modules import each other by relative path, so they must stay together.
+
+```rust
+use schematic::schema::{SchemaGenerator, PklSchemaRenderer};
+
+let mut generator = SchemaGenerator::default();
+generator.add::<ServerConfig>();
+
+PklSchemaRenderer::default().generate_all(&generator, output_dir.join("pkl"))?;
+```
+
+Each module is named after its type with a `.pkl` extension, so the above writes `ServerConfig.pkl`,
+and a module for every struct it nests. A config then amends the module of its root type.
+
+```pkl
+amends "pkl/ServerConfig.pkl"
+
+port = 3000
+timeout = 30.s
+tags { "web"; "api" }
+```
+
+To scaffold that config, render a [Pkl template](./template.mdx#pkl) with an `amends` clause in its
+header.
+
+Like a [JSON schema](./json-schema.mdx), rendering through `SchemaGenerator::generate()` produces a
+single document, which is the module of the _last type to be added to `SchemaGenerator`_. The
+modules it imports are not written, so prefer `generate_all()`.
+
+## Module structure
+
+A struct becomes a module that declares each of its fields as a property, with its doc comment and
+deprecation carried over. Fields are rendered in alphabetical order, and skipped fields are omitted.
+
+```pkl
+/// Configures the HTTP server.
+module ServerConfig
+
+import "TlsConfig.pkl"
+
+/// The level to log at.
+level: LogLevel
+
+/// The port to listen on.
+@Since { version = "1.2.0" }
+port: UInt16 = 8080
+
+/// TLS settings, when serving over HTTPS.
+tls: TlsConfig?
+
+/// The level to log at.
+typealias LogLevel = *"info" | "debug" | "error"
+```
+
+A `@since` line in a doc comment becomes a `@Since` annotation, which is how Pkl declares the
+version a member was added in, and a deprecation, or a `@deprecated` line, becomes a `@Deprecated`
+annotation. Any other line that starts with `@` stays in the doc comment, after its description.
+
+A module is a type, but it can't be a union or a string, so every other type, such as an enum,
+becomes a type alias of the same name, which each module that uses it declares, after its
+properties. An alias that only another alias uses is declared alongside that one. The default
+variant of an enum is marked with `*`, which makes it the default of any property of that type that
+isn't nullable.
+
+An alias is declared by a module of its own instead, referenced as `Name.Name`, when no other module
+can declare it:
+
+- It's a type that was added to the generator, rather than one that a struct nests.
+- It declares classes, and more than one module uses it. A class is a distinct type in each module
+  that declares it.
+- It refers to a module that uses it, as a module can't refer to itself by name.
+- It shares its name with a property, or with one of Pkl's base types, such as `Duration`.
+
+A struct without a name of its own, such as a variant of a tagged enum, becomes a class in the
+module it's found in, named after its position, such as `ActionRun` for the `Run` variant of
+`Action`. A class is referenced from other modules as `Module.Class`.
+
+```pkl
+typealias Action = "Stop" | ActionRun
+
+class ActionRun {
+  Run: String
+}
+```
+
+## Inheritance
+
+A struct that flattens another struct with `#[serde(flatten)]` includes all of its fields, which is
+what extending a module does. Its module extends the module of the flattened struct, which is then
+declared `open`, as Pkl requires to extend it.
+
+```pkl
+open module BaseConfig
+
+shared: String = "shared"
+```
+
+```pkl
+module ServerConfig
+
+extends "BaseConfig.pkl"
+
+port: UInt16 = 8080
+```
+
+When the struct declares nothing but the flattened field, it has the same shape as the struct it
+flattens, so its module amends that module instead. Pkl can't use a module that amends another as a
+type, so this only happens when no other type refers to the struct.
+
+A module can only extend one other, so any further flattened structs have their fields declared
+directly.
+
+### Other settings
+
+A flattened map collects every setting a struct doesn't declare, such as the configuration of a
+plugin. A typed Pkl object only accepts the properties its type declares, so no type can hold such a
+struct. Wherever it's used, it's typed as `Dynamic` instead, which accepts any property.
+
+```pkl
+/// Configures a plugin.
+plugin: Dynamic?
+```
+
+```pkl
+plugin {
+  version = "1.0"
+  manager = "pnpm"
+}
+```
+
+Its module is declared `open`, with a comment naming the map. A config can't declare new properties
+while amending a module, but it can while extending one, so a config of that struct extends its
+module.
+
+```pkl
+extends "pkl/PluginsConfig.pkl"
+
+registry = "https://registry.example.com"
+node { version = "20" }
+```
+
+## Types
+
+Rust types are converted to their closest Pkl types, and constraints, such as a minimum or a
+pattern, become
+[type constraints](https://pkl-lang.org/main/current/language-reference/index.html#type-constraints).
+
+| Rust                              | Pkl                             |
+| --------------------------------- | ------------------------------- |
+| `bool`                            | `Boolean`                       |
+| `i8`, `i16`, `i32`                | `Int8`, `Int16`, `Int32`        |
+| `i64`, `i128`, `isize`            | `Int`                           |
+| `u8`, `u16`, `u32`                | `UInt8`, `UInt16`, `UInt32`     |
+| `u64`, `u128`, `usize`            | `UInt`                          |
+| `f32`, `f64`                      | `Float`                         |
+| `char`                            | `Char`                          |
+| `String`, `PathBuf`, `Url`, ...   | `String`                        |
+| `Vec<T>`                          | `Listing<T>`                    |
+| `HashSet<T>`, `BTreeSet<T>`       | `Listing<T>(isDistinct)`        |
+| `[T; N]`                          | `Listing<T>(length == N)`       |
+| `HashMap<K, V>`, `BTreeMap<K, V>` | `Mapping<K, V>`                 |
+| `(A, B)`                          | `Pair<A, B>`                    |
+| `(A, B, C, ...)`                  | `Listing<A\|B\|C>(length == N)` |
+| `Option<T>`                       | `T?`                            |
+| `std::time::Duration`             | `Duration`                      |
+| `serde_json::Value`, ...          | `Any`                           |
+| Unit-only enum                    | `"a"\|"b"\|"c"`                 |
+
+`Pair` and `Duration` are decoded by the [Pkl format](../../config/experimental.mdx) into the same
+shapes as a Rust tuple and `Duration`, so `timeout = 30.s` loads as expected. Pkl's own JSON and
+YAML renderers can't output them without a converter, however.
+
+Configuration is data, so lists and maps are typed as Pkl's amendable objects, `Listing` and
+`Mapping`, which a config amends, as in `tags { "web" }`. Pkl's eager collections, `List`, `Set`,
+and `Map`, are for computing values, such as concatenating two lists, and aren't accepted where an
+object is. Convert one with `toListing()` or `toMapping()`.
+
+```pkl
+local shared = List("api")
+
+tags = (List("web") + shared).toListing()
+```
+
+A union with a struct among its variants, such as an untagged enum, has no default to amend, and Pkl
+can't tell which struct a `new {}` creates. Create the struct by its module instead.
+
+```pkl
+import "pkl/TaskDependencyConfig.pkl"
+
+deps { "build"; new TaskDependencyConfig { target = "~:lint"; optional = true } }
+```
+
+### Aliases
+
+Pkl outputs every property, and serde rejects a setting that's given under both its name and an
+alias, so an alias is declared `hidden`, which Pkl doesn't output. The setting falls back to its
+alias, so setting either one outputs the setting under its name.
+
+```pkl
+/// The default value of the variable.
+default: Boolean? = defaultValue
+
+/// An alias of `default`.
+hidden defaultValue: Boolean?
+```
+
+A setting that isn't nullable would lose the default of its type by falling back, so only a nullable
+setting declares its aliases.
+
+A few things can't be expressed in Pkl, and are rendered as close as possible:
+
+- A setting named `output` can't be declared by a module, as every module reserves it. It is left
+  out, with a comment in its place.
+- Pkl rejects a type alias that refers to itself, so a recursive enum refers to itself as `Any`. A
+  recursive struct refers to its own module, which is fine.
+- A tuple of more than two values can only be typed as a list of each of its types, so the position
+  of each type isn't checked.
+
+## Options
+
+Custom options can be passed to the renderer using
+[`PklSchemaOptions`](https://docs.rs/schematic/latest/schematic/schema/pkl_schema/struct.PklSchemaOptions.html).
+
+```rust
+use schematic::schema::PklSchemaOptions;
+
+PklSchemaRenderer::new(PklSchemaOptions {
+	// ...
+	..PklSchemaOptions::default()
+});
+```
+
+### Indentation
+
+The indentation of class properties can be customized using the `indent_char` option. By default
+this is 2 spaces.
+
+```rust
+PklSchemaOptions {
+	// ...
+	indent_char: "\t".into(),
+}
+```
+
+### Required fields
+
+By default, struct fields are rendered as they are declared. A field that isn't optional has no
+default, so a config must set it, and a field with a default value renders it as the property's
+default.
+
+Pkl outputs every property of a module, including the defaults a config didn't set. A config is only
+one [layer](../../config/index.mdx) of many however, so a default it outputs overrides the value of
+any layer beneath it, such as a config it [extends](../../config/struct/extend.mdx). Disable the
+`mark_struct_fields_required` option to render every property of a struct's module as nullable,
+without a default, so that a config only outputs the settings it sets, and everything else falls
+back to the defaults of the Rust types.
+
+```rust
+PklSchemaOptions {
+	// ...
+	mark_struct_fields_required: false,
+}
+```
+
+```pkl
+// Enabled
+port: UInt16 = 8080
+host: String
+
+// Disabled
+port: UInt16?
+host: String?
+```
+
+This only applies to structs that are loaded as partials, which is what makes their settings
+optional. A struct that's loaded in full, such as the value of a setting that isn't nested, or a
+type that doesn't derive `Config`, can't take null for a field that isn't an `Option`, so it's
+always rendered as declared. Classes, such as the variants of an enum, are too, as their value is
+only valid in full.
+
+Rendering [partial types](../../config/partial.mdx) has the same effect, as every field of a partial
+is optional, but names every module after its partial type.

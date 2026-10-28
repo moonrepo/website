@@ -9,8 +9,9 @@ Settings are the individual fields of a [`Config` struct](./struct/index.mdx) or
 ## Third-party types
 
 A setting that isn't wrapped in `Option` falls back to `Default::default()` when the config provides
-no value and no [default value](./struct/default.mdx) is declared, so every required setting has to
-implement `Default`. Plenty of third-party types don't, and being foreign, can't be given it.
+no value and no [default value](./struct/default.mdx) is declared, so every such setting has to
+implement `Default`, even one marked [`required`](./struct/validate.mdx#required-settings). Plenty of
+third-party types don't, and being foreign, can't be given it.
 
 For the two we support directly, we provide a newtype that does:
 
@@ -42,8 +43,8 @@ string, so the wrapper works without the upstream crate's `serde` feature.
 
 The following fields are supported for the `#[setting]` field/variant attribute:
 
-- `default` - Sets the [default value](./struct/default.mdx). On an enum variant, this is a marker
-  that takes no value, and names the variant the partial defaults to.
+- `default` - Sets the [default value](./struct/default.mdx). On an enum variant, it names the
+  variant the partial defaults to, and on a variant holding a value, can also provide that value.
 - `env` _(struct only)_ - Sets the [environment variable](./struct/env.mdx) to receive a value from.
 - `env_prefix` _(struct only)_ - Overrides the [environment variable](./struct/env.mdx#container-prefixes)
   prefix of the nested config this field holds. Requires `nested`.
@@ -55,9 +56,9 @@ The following fields are supported for the `#[setting]` field/variant attribute:
 - `null` _(enum only)_ - Marks the variant as representing `null`, so it is never tagged.
 - `parse_env` _(struct only)_ - Parses the [environment variable](./struct/env.mdx) value using a
   function. Requires either `env`, or an `env_prefix` on the container.
-- `partial` - Forwards attributes to the field on the [partial](./partial.mdx).
-- `required` - Marks the field as required. This is useful for `Option` types that do not support
-  `Default`, but require a value.
+- `partial` - Forwards attributes to the field on the [partial](./partial.mdx). May be repeated.
+- `required` - Marks the setting as [required](./struct/validate.mdx#required-settings), so that
+  loading fails when no source provides a value, instead of falling back to a default.
 - `transform` - Defines a function to use for [transforming values](./struct/transform.mdx).
 - `validate` - Defines a function to use for [validating values](./struct/validate.mdx).
 

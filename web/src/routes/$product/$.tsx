@@ -5,7 +5,6 @@ import { flattenTree } from 'fumadocs-core/page-tree';
 import { useFumadocsLoader } from 'fumadocs-core/source/client';
 import type { CompiledMDXProperties } from 'fumadocs-mdx';
 import { DocsLayout } from 'fumadocs-ui/layouts/docs';
-import { getLayoutTabs } from 'fumadocs-ui/layouts/shared';
 import { SearchTrigger } from 'fumadocs-ui/layouts/shared/slots/search-trigger';
 import {
 	DocsBody,
@@ -14,6 +13,7 @@ import {
 	DocsTitle,
 } from 'fumadocs-ui/page';
 import { Suspense } from 'react';
+import { DocsSidebarTabs } from '@/components/DocsSidebarTabs';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
 import browserCollections from '@/generated/browser';
@@ -107,7 +107,6 @@ const clientLoaders = {
 
 function Page() {
 	const { product, path, pageTree } = useFumadocsLoader(Route.useLoaderData());
-	const tabs = getLayoutTabs(pageTree);
 	const themeClass = useProductTheme(PRODUCT_THEMES[product]);
 	const base = baseOptions();
 
@@ -122,11 +121,16 @@ function Page() {
 					className: 'md:[--fd-banner-height:var(--site-header-height)]',
 				}}
 				nav={{ ...base.nav, title: 'Documentation' }}
+				// The product and section switchers are rendered in the banner,
+				// since the built-in tabs can only switch between root folders
+				// of the same page tree, and each product has its own
+				sidebar={{
+					banner: <DocsSidebarTabs product={product} tree={pageTree} />,
+				}}
 				// The header has its own search and theme toggle, so only keep
 				// the small search trigger for the mobile sub-navigation
 				slots={{ searchTrigger: { full: () => null, sm: SearchTrigger } }}
-				// Only show the section switcher when there's more than 1 (docs, api)
-				tabs={tabs.length > 1 ? tabs : false}
+				tabs={false}
 				themeSwitch={{ enabled: false }}
 				tree={pageTree}
 			>

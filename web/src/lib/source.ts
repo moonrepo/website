@@ -13,6 +13,10 @@ function createProductSource(
 	return loader({
 		source: collection.toFumadocsSource(),
 		baseUrl: `/${product}`,
+		// Every tree's root is `root` by default, and the docs layout only swaps
+		// trees when the root's ID changes, so switching products wouldn't
+		// update the sidebar without a unique prefix
+		pageTree: { idPrefix: product },
 		plugins: [lucideIconsPlugin()],
 		// icon(icon) {
 		// 	if (icon && icon in icons) {
