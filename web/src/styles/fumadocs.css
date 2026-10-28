@@ -1,0 +1,93 @@
+/*
+ * Maps Fumadocs' `--color-fd-*` tokens onto the Moonrepo palette.
+ * Declared on the product theme classes as well, so the tokens re-resolve
+ * against the remapped palette inside `.theme-moon` / `.theme-proto`.
+ */
+
+:root,
+.theme-moon,
+.theme-proto {
+	--color-fd-background: var(--color-paper-100);
+	--color-fd-foreground: var(--color-graphite-800);
+	--color-fd-muted: var(--color-paper-200);
+	--color-fd-muted-foreground: var(--color-graphite-500);
+	--color-fd-popover: var(--color-paper-50);
+	--color-fd-popover-foreground: var(--color-graphite-800);
+	--color-fd-card: var(--color-paper-50);
+	--color-fd-card-foreground: var(--color-graphite-800);
+	--color-fd-border: var(--color-paper-400);
+	--color-fd-primary: var(--color-olive);
+	--color-fd-primary-foreground: var(--color-paper-50);
+	--color-fd-secondary: var(--color-paper-200);
+	--color-fd-secondary-foreground: var(--color-graphite-800);
+	--color-fd-accent: var(--color-paper-200);
+	--color-fd-accent-foreground: var(--color-graphite-800);
+	--color-fd-ring: var(--color-olive);
+	--color-fd-overlay: color-mix(
+		in oklab,
+		var(--color-graphite-950) 30%,
+		transparent
+	);
+	--color-fd-warning: var(--color-tangerine-500);
+	--color-fd-idea: var(--color-tangerine-500);
+}
+
+.dark,
+.dark .theme-moon,
+.dark .theme-proto {
+	--color-fd-background: var(--color-graphite-800);
+	--color-fd-foreground: var(--color-paper-50);
+	--color-fd-muted: var(--color-graphite-900);
+	--color-fd-muted-foreground: var(--color-sand);
+	--color-fd-popover: var(--color-graphite-900);
+	--color-fd-popover-foreground: var(--color-paper-50);
+	--color-fd-card: var(--color-graphite-950);
+	--color-fd-card-foreground: var(--color-paper-50);
+	--color-fd-border: color-mix(
+		in oklab,
+		var(--color-graphite-500) 60%,
+		transparent
+	);
+	--color-fd-primary: var(--color-tangerine);
+	--color-fd-primary-foreground: var(--color-graphite-900);
+	--color-fd-secondary: var(--color-graphite-700);
+	--color-fd-secondary-foreground: var(--color-paper-50);
+	--color-fd-accent: var(--color-graphite-700);
+	--color-fd-accent-foreground: var(--color-paper-50);
+	--color-fd-ring: var(--color-tangerine);
+	--color-fd-overlay: color-mix(
+		in oklab,
+		var(--color-graphite-950) 60%,
+		transparent
+	);
+	--color-fd-warning: var(--color-tangerine);
+	--color-fd-idea: var(--color-tangerine);
+}
+
+/* Sidebar sits on a slightly tinted panel, like the design's sidebar. */
+#nd-sidebar {
+	--color-fd-card: color-mix(
+		in oklab,
+		var(--color-paper-200) 40%,
+		var(--color-paper-100)
+	);
+	--color-fd-accent: var(--color-paper-200);
+}
+
+.dark #nd-sidebar {
+	--color-fd-card: color-mix(
+		in oklab,
+		var(--color-graphite-900) 50%,
+		var(--color-graphite-800)
+	);
+	--color-fd-muted: var(--color-graphite-900);
+	--color-fd-secondary: var(--color-graphite-700);
+	--color-fd-muted-foreground: var(--color-sand);
+	--color-fd-accent: var(--color-graphite-700);
+}
+
+/* Headings use the display face. */
+#nd-page :is(h1, h2, h3, h4),
+#nd-toc h3 {
+	@apply font-display font-medium;
+}

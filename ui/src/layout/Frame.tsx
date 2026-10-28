@@ -1,4 +1,5 @@
-import { type ReactNode, useEffect, useId } from 'react';
+import { type ReactNode, useId } from 'react';
+import { type ProductTheme, useProductTheme } from '../theme';
 import { cn } from '../utils/cn';
 import { dashed } from './styles';
 
@@ -7,16 +8,9 @@ export function PageFrame({
 	theme,
 }: {
 	children: ReactNode;
-	theme?: 'moon' | 'proto';
+	theme?: ProductTheme;
 }) {
-	const themeClass = theme ? `theme-${theme}` : undefined;
-
-	// Base UI popups are portaled into <body>, so the theme must apply there too.
-	useEffect(() => {
-		if (!themeClass) return;
-		document.body.classList.add(themeClass);
-		return () => document.body.classList.remove(themeClass);
-	}, [themeClass]);
+	const themeClass = useProductTheme(theme);
 
 	return (
 		<div

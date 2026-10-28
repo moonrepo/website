@@ -1,3 +1,4 @@
+import { useProductTheme } from '@moonrepo/ui/theme';
 import { createFileRoute, notFound, redirect } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import { flattenTree } from 'fumadocs-core/page-tree';
@@ -5,6 +6,7 @@ import { useFumadocsLoader } from 'fumadocs-core/source/client';
 import type { CompiledMDXProperties } from 'fumadocs-mdx';
 import { DocsLayout } from 'fumadocs-ui/layouts/docs';
 import { getLayoutTabs } from 'fumadocs-ui/layouts/shared';
+import { SearchTrigger } from 'fumadocs-ui/layouts/shared/slots/search-trigger';
 import {
 	DocsBody,
 	DocsDescription,
@@ -12,9 +14,11 @@ import {
 	DocsTitle,
 } from 'fumadocs-ui/page';
 import { Suspense } from 'react';
+import { SiteFooter } from '@/components/SiteFooter';
+import { SiteHeader } from '@/components/SiteHeader';
 import browserCollections from '@/generated/browser';
 import { baseOptions } from '@/lib/layout.shared';
-import { isProduct, type Product } from '@/lib/products';
+import { isProduct, PRODUCT_THEMES, type Product } from '@/lib/products';
 import { productSources } from '@/lib/source';
 import { getMdxComponents } from '@/mdxComponents';
 
@@ -104,15 +108,31 @@ const clientLoaders = {
 function Page() {
 	const { product, path, pageTree } = useFumadocsLoader(Route.useLoaderData());
 	const tabs = getLayoutTabs(pageTree);
+	const themeClass = useProductTheme(PRODUCT_THEMES[product]);
+	const base = baseOptions();
 
 	return (
-		<DocsLayout
-			{...baseOptions()}
-			// Only show the section switcher when there's more than 1 (docs, api)
-			tabs={tabs.length > 1 ? tabs : false}
-			tree={pageTree}
-		>
-			<Suspense>{clientLoaders[product].useContent(path)}</Suspense>
-		</DocsLayout>
+		<div className={themeClass}>
+			<SiteHeader />
+			<DocsLayout
+				{...base}
+				// Offset the sticky sidebar and TOC below the header on desktop,
+				// while Fumadocs' own sub-navigation sticks on mobile
+				containerProps={{
+					className: 'md:[--fd-banner-height:var(--site-header-height)]',
+				}}
+				nav={{ ...base.nav, title: 'Documentation' }}
+				// The header has its own search and theme toggle, so only keep
+				// the small search trigger for the mobile sub-navigation
+				slots={{ searchTrigger: { full: () => null, sm: SearchTrigger } }}
+				// Only show the section switcher when there's more than 1 (docs, api)
+				tabs={tabs.length > 1 ? tabs : false}
+				themeSwitch={{ enabled: false }}
+				tree={pageTree}
+			>
+				<Suspense>{clientLoaders[product].useContent(path)}</Suspense>
+			</DocsLayout>
+			<SiteFooter />
+		</div>
 	);
 }

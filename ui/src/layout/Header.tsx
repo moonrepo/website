@@ -1,40 +1,46 @@
 import { Search } from 'lucide-react';
-import { NavMenu, navLinkClass } from '../components/NavMenu';
+import { NavMenu, type NavMenuItem, navLinkClass } from '../components/NavMenu';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { cn } from '../utils/cn';
 
-export function Header() {
-	const products = [
-		{ description: 'Smart build system', href: '/docs/moon', label: 'moon' },
-		{ description: 'Toolchain manager', href: '/docs/proto', label: 'proto' },
-	];
-	const docs = [
-		{ href: '/docs/moon', label: 'moon' },
-		{ href: '/docs/proto', label: 'proto' },
-		{ href: '/api/moon', label: 'Config reference' },
-	];
-	const links = [
-		{ href: '/docs/moon/guides', label: 'Guides' },
-		{ href: '/blog', label: 'Blog' },
-		{ href: 'https://github.com/moonrepo', label: 'GitHub' },
-	];
+/** A plain link, or a dropdown menu of links. */
+export type HeaderNavItem =
+	| { href: string; label: string }
+	| { items: NavMenuItem[]; label: string };
 
+export interface HeaderProps {
+	className?: string;
+	/** Where the wordmark links to. */
+	logoHref: string;
+	nav: HeaderNavItem[];
+	onSearch?: () => void;
+}
+
+export function Header({ className, logoHref, nav, onSearch }: HeaderProps) {
 	return (
-		<header className="flex h-[100px] items-center gap-12 px-6 md:px-12">
+		<header
+			className={cn(
+				'flex h-[100px] items-center gap-12 px-6 md:px-12',
+				className,
+			)}
+		>
 			<a
 				className="font-display font-medium font-stretch-125% text-[28px] text-graphite-500 tracking-[0.06em] dark:text-brand"
-				href="/ui"
+				href={logoHref}
 			>
 				MOONREPO
 			</a>
 
 			<nav aria-label="Main" className="hidden items-center gap-8 lg:flex">
-				<NavMenu items={products} label="Products" />
-				<NavMenu items={docs} label="Docs" />
-				{links.map((link) => (
-					<a className={navLinkClass} href={link.href} key={link.label}>
-						{link.label}
-					</a>
-				))}
+				{nav.map((item) =>
+					'items' in item ? (
+						<NavMenu items={item.items} key={item.label} label={item.label} />
+					) : (
+						<a className={navLinkClass} href={item.href} key={item.label}>
+							{item.label}
+						</a>
+					),
+				)}
 			</nav>
 
 			<div className="ml-auto flex items-center gap-4">
@@ -42,6 +48,7 @@ export function Header() {
 
 				<button
 					className="hidden h-9 w-56 items-center gap-2 rounded-full border border-paper-300 bg-paper-50 px-2.5 text-graphite-800 shadow-sm sm:flex dark:border-graphite-surface dark:bg-graphite-950 dark:text-paper-50"
+					onClick={onSearch}
 					type="button"
 				>
 					<Search className="size-5" />
