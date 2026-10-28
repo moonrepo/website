@@ -1,8 +1,10 @@
 {
   "title": "Documentation",
   "description": "Guides, concepts, and commands",
+  "icon": "BookOpen",
   "root": true,
   "pages": [
+    "---Core---",
     "(fundamentals)",
     "advanced",
     "guides",
