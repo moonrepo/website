@@ -1,3 +1,113 @@
 ---
-title: Notifications
+title: Terminal notifications
+icon: BellRing
 ---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+
+moon can send operating system desktop notifications for specific events in the
+[action pipeline](<../(fundamentals)/action.mdx>), on behalf of your terminal application. This is
+useful for long-running builds and test suites: kick off a command, switch to something else, and
+get a notification when it's done (or when something breaks), instead of checking back on the
+terminal.
+
+## Enabling notifications
+
+Notifications are opt-in, and are enabled with the
+[`notifier.terminalNotifications`](/moon/api/NotifierConfig#terminalnotifications) setting in
+[`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>).
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    notifier: {
+      terminalNotifications: "always",
+    },
+  }}
+/>
+
+The setting accepts one of the following [values](/moon/api/NotifierEventType#variants):
+
+- `never` (default) - Never send notifications.
+- `always` - When the pipeline succeeds or fails.
+- `success` - When the pipeline succeeds.
+- `failure` - When the pipeline fails.
+- `task-failure` - Each time a task fails. Pipeline success and failure notifications are not sent
+  with this value.
+
+Notifications are sent by commands that run the action pipeline, like
+[`moon run`](../commands/run.mdx), [`moon check`](../commands/check.mdx), and
+[`moon exec`](../commands/exec.mdx).
+
+### Pipeline versus task failures
+
+The pipeline level values (`always`, `success`, and `failure`) reflect the outcome of the pipeline
+itself, not of each task. The pipeline fails when it hits a failure it can't continue from, for
+example, when a toolchain or its dependencies fail to install. A task that exits with a non-zero
+code is recorded as a failed action, but doesn't fail the pipeline on its own.
+
+If you want to know about failing tasks (the common case for test and lint runs), use
+`task-failure`. Each notification is titled with the failing task's
+[target](<../(fundamentals)/target.mdx>), like "Task app:test failed", and contains the error
+message.
+
+### Where notifications aren't sent
+
+Desktop notifications only make sense when someone is sitting at the machine, so moon skips them in
+remote environments, even when enabled:
+
+- CI environments.
+- SSH sessions.
+- Cloud development environments, like GitHub Codespaces, Gitpod, or VS Code Dev Containers.
+- When stdin or stdout isn't a terminal, for example, when piping moon's output to another command.
+
+Because of this, it's safe to enable notifications in configuration that's shared with CI.
+
+<Callout>
+  Looking to report on pipelines from CI instead? Use
+  [webhooks](./webhooks.mdx), which send every pipeline event to an HTTP
+  endpoint.
+</Callout>
+
+## Setup
+
+Notifications must also be allowed at the operating system level. If you've enabled the setting but
+don't see anything, check the following for your platform. To confirm whether moon attempted to
+send a notification (and whether the OS rejected it), run the command with `--log debug`.
+
+### Linux
+
+Linux support is based on the
+[XDG desktop notifications specification](https://specifications.freedesktop.org/notification-spec/latest/),
+and is sent over D-Bus to the `org.freedesktop.Notifications` service. This requires a running
+notification server, which most desktop environments (GNOME, KDE Plasma, and others) provide, or a
+standalone daemon like `dunst` or `mako`. Refer to your desktop environment for how to manage
+notifications.
+
+Notifications are sent with the `moon` application name.
+
+### macOS
+
+- Open "System Settings" (or "System Preferences" on older versions).
+- Select "Notifications" in the left sidebar.
+- Select your terminal application from the list (for example, "Terminal", "iTerm", or "Visual
+  Studio Code").
+- Ensure "Allow notifications" is enabled.
+- Customize the other settings as desired.
+
+Notifications are sent on behalf of the terminal application you're running moon in, so they
+respect that application's notification settings. The application is detected from the
+`__CFBundleIdentifier` environment variable (which macOS sets for processes launched from an
+application), falling back to the `TERM_PROGRAM` environment variable. If the terminal can't be
+detected, notifications are sent from "Finder".
+
+### Windows
+
+- Open "Settings".
+- Go to the "System" panel.
+- Select "Notifications" (or "Notifications & actions") in the sidebar.
+- Ensure notifications are enabled, both globally and for your terminal application.
+
+Notifications are sent from Windows Terminal when moon is running inside of it, or when it's
+installed (the `wt` command is available on `PATH`). Otherwise, they're sent from Windows
+PowerShell.

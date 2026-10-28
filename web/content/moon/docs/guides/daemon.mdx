@@ -1,3 +1,250 @@
 ---
 title: Daemon
+icon: ServerCog
 ---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+
+As workspaces grow, a surprising amount of each `moon` command's time is spent on work that isn't
+running your tasks: archiving outputs into the cache, uploading them to a
+[remote cache](./remote-cache.mdx), cleaning stale cache entries, sending webhooks, and rebuilding
+the [project](<../(fundamentals)/project-graph.mdx>) and [task graphs](<../(fundamentals)/task-graph.mdx>)
+after configuration changes.
+
+The daemon is a long-lived background process (one per workspace) that takes this work off the
+critical path. While a command runs, heavy operations are handed off to the daemon and processed in
+the background, freeing the pipeline to run more tasks, and letting the command exit sooner. Between
+commands, the daemon watches the workspace for configuration changes, and rebuilds the graphs ahead
+of time.
+
+<Callout type="warning">
+  This feature is currently **unstable** and must be explicitly enabled. Its
+  behavior and configuration may change in future releases.
+</Callout>
+
+## Enabling the daemon
+
+Enable the daemon with the [`unstable_daemon`](/moon/api/WorkspaceConfig#daemon) setting in
+[`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>).
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    unstable_daemon: true,
+  }}
+/>
+
+Alternatively, use the `MOON_DAEMON` environment variable, which takes precedence over the setting.
+This is useful for trying the daemon out before committing to the change, or for disabling it for a
+single command. A value of `true`, `1`, `yes`, or `on` enables it, and any other value (like
+`false`) disables it.
+
+```shell
+# Try the daemon without changing configuration
+$ MOON_DAEMON=true moon run :build
+
+# Run without the daemon, even though it's enabled
+$ MOON_DAEMON=false moon run :build
+```
+
+### When the daemon is used
+
+Once enabled, you don't need to start the daemon yourself. Commands that run the action pipeline
+([`moon ci`](../commands/ci.mdx), [`moon check`](../commands/check.mdx),
+[`moon exec`](../commands/exec.mdx), [`moon run`](../commands/run.mdx), and
+[`moon sync`](../commands/sync.mdx)) start it in the background as early as possible, or connect to
+the one that's already running. Other commands, like [`moon query`](../commands/query.mdx) or
+[`moon project`](../commands/project.mdx), never use it.
+
+Even when enabled, the daemon is _not_ used in the following environments, and commands run as if
+it were disabled. Enabling it with `MOON_DAEMON` doesn't change this.
+
+- **CI environments** - Each run starts fresh, so there's nothing for the daemon to reuse. A
+  detached daemon would also outlive the job, and its background work may not finish before the
+  machine is torn down.
+- **Docker containers** - One-off containers (`docker run`, `docker build`, and so on) have the
+  same lifecycle problems as CI. Long-lived development containers (like VS Code Dev Containers,
+  GitHub Codespaces, DevPod, and Gitpod) _do_ use the daemon.
+
+This makes it safe to enable the daemon in configuration that's shared between local development
+and CI. To verify whether the daemon was skipped, and why, run the command with `--log debug`.
+
+## How it works
+
+### Lifecycle
+
+When a command needs the daemon and none is running, moon spawns a new `moon daemon server` process
+that detaches from the terminal, and keeps running after the command completes. Subsequent commands
+connect to it instead of starting their own. Concurrent commands coordinate through lock files, so
+only one daemon is ever spawned per workspace.
+
+The daemon is purely an optimization. If it can't be started within 10 seconds, or can't be
+reached, moon logs a warning and carries on without it, doing all of the work in its own process.
+The command itself doesn't fail.
+
+When connecting, moon compares the daemon's moon version (and internal protocol version) against
+its own. On a mismatch, like after upgrading moon, the old daemon is stopped and a new one is
+started automatically. [`moon upgrade`](../commands/upgrade.mdx) also stops the running daemon for
+you.
+
+The daemon shuts itself down when:
+
+- It's stopped with [`moon daemon stop`](../commands/daemon/stop.mdx).
+- It hasn't received a request for 4 hours.
+- Its workspace has been deleted.
+- It receives a `SIGHUP`, `SIGINT`, or `SIGTERM` signal (or Ctrl+C on Windows).
+
+Before exiting, it waits (for up to 30 seconds) for any queued background work, like archiving or
+webhooks, to finish.
+
+### Communication
+
+The daemon communicates with `moon` processes over a local IPC channel: a Unix domain socket on
+macOS and Linux, and a named pipe on Windows. The behavior is equivalent on all platforms.
+
+All of the daemon's files live in `.moon/cache/daemon` (or `.config/moon/cache/daemon`):
+
+- `moond.sock` - The Unix socket. On Windows, the named pipe is `\\.\pipe\moon-daemon-<hash>`
+  instead, where the hash is derived from the daemon directory.
+- `daemon.json` - An informational record of the running daemon's process ID, moon version,
+  endpoint, and start time.
+- `daemon.lock` - An advisory lock that the daemon holds for its entire lifetime, which is how it
+  takes exclusive ownership of the workspace. The operating system releases the lock when the
+  process exits, even if it crashes, so a stale socket or state file never blocks the next start.
+- `spawn.lock` - Held briefly while a daemon is being started or stopped, to prevent races.
+- `server.log` - The daemon's logs. See [viewing logs](#viewing-logs).
+
+Whether the daemon is running is always determined by connecting to it, never by checking whether
+a recorded process ID is still alive.
+
+### Background processing
+
+While a pipeline is running, the following work is handed off to the daemon:
+
+- **Task output archiving** - After a task runs, its outputs are stored in the remote cache (and in
+  the local cache when the
+  [`experiments.casOutputsCache`](/moon/api/ExperimentsConfig#casoutputscache) experiment is
+  enabled) by the daemon, in the background. The pipeline doesn't wait for uploads to finish before
+  moving on, and the command can exit while they're still in progress.
+- **Task output hydration** - On a cache hit, outputs from those same caches are restored by the
+  daemon.
+- **Cache cleanup** - When [`pipeline.autoCleanCache`](/moon/api/PipelineConfig#autocleancache) is
+  enabled, stale cache entries are cleaned by the daemon after the pipeline completes, instead of at
+  the tail-end of the command.
+- **Webhooks** - [Webhook](./webhooks.mdx) requests are sent by the daemon, unless
+  [`notifier.webhookAcknowledge`](/moon/api/NotifierConfig#webhookacknowledge) is enabled.
+
+If a request to the daemon fails (for example, the daemon went away mid-run), moon falls back to
+doing the work in its own process, instead of failing the task.
+
+<Callout>
+  Because this work happens in the background, failures while archiving or
+  hydrating outputs are written to the daemon's logs, instead of the command's
+  output. If task outputs seem to be missing from the cache, or stale, inspect
+  the logs with [`moon daemon logs`](../commands/daemon/logs.mdx).
+</Callout>
+
+### File watching
+
+The daemon watches the workspace root recursively for file system changes. Events are debounced
+(coalesced within a 500 millisecond window) to avoid redundant work during rapid edits, like a
+branch switch. The following directories are always ignored:
+
+- `.git`, `.svn`, and `node_modules` (at any depth).
+- `.moon/cache` and `.moon/docker`.
+
+Changes to the following files trigger a reload:
+
+- `.prototools` - Reloads the [proto](/proto/docs) environment.
+- [`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>) - Reloads workspace settings. The
+  graphs are rebuilt when [`projects`](/moon/api/WorkspaceConfig#projects) or
+  [`defaultProject`](/moon/api/WorkspaceConfig#defaultproject) change.
+- [`.moon/toolchains.config`](<../(fundamentals)/toolchain.mdx>) - Reloads toolchain settings, and
+  downloads toolchain plugins in the background when they change.
+- [`.moon/extensions.config`](<../(fundamentals)/extension.mdx>) - Reloads extension settings, and
+  downloads extension plugins in the background when they change.
+- [`.moon/tasks/*.config`](<../(fundamentals)/task-inheritance.mdx>) - Reloads inherited tasks, and
+  rebuilds the graphs when inheritance changes.
+- [`moon.config`](<../(fundamentals)/project.mdx>) in any project - Rebuilds the graphs.
+- Directories matching the configured [`projects`](/moon/api/WorkspaceConfig#projects) being created
+  or removed - Rebuilds the graphs.
+
+Rebuilding the graphs refreshes moon's workspace graph cache (in `.moon/cache/states`), so the next
+command can load the graphs from that cache, instead of building them from scratch. Rebuilds happen
+asynchronously, and a newer change cancels a rebuild that's still in progress, so the daemon stays
+responsive to commands throughout.
+
+## Managing the daemon
+
+The [`moon daemon`](../commands/daemon.mdx) command provides sub-commands for managing the daemon's
+lifecycle. In most cases you won't need them, since the daemon starts automatically and stays out of
+the way, but they're useful for debugging or manual control.
+
+```shell
+# Start the daemon if it's not running, reusing the existing process otherwise
+$ moon daemon start
+
+# Stop the daemon gracefully, killing it if it doesn't exit within a few seconds
+$ moon daemon stop
+
+# Stop the running daemon and start a new one
+$ moon daemon restart
+
+# View the process ID, endpoint, uptime, and file paths of the running daemon
+$ moon daemon status
+```
+
+[`moon daemon start`](../commands/daemon/start.mdx) and
+[`moon daemon restart`](../commands/daemon/restart.mdx) require the daemon to be enabled, while
+[`moon daemon stop`](../commands/daemon/stop.mdx) and
+[`moon daemon status`](../commands/daemon/status.mdx) work regardless.
+
+### Viewing logs
+
+The daemon writes detailed, trace level logs to `.moon/cache/daemon/server.log`, covering file
+watcher events, config reloads, graph rebuilds, and the requests it handles. Each time a daemon
+starts, the previous log is rotated to `server.1.log`, `server.2.log`, and so on, keeping up to 7
+old logs.
+
+Use [`moon daemon logs`](../commands/daemon/logs.mdx) to tail the current log in real time (the
+daemon must be running), or open the files directly in an editor.
+
+```shell
+$ moon daemon logs
+```
+
+## Troubleshooting
+
+### The daemon isn't being used
+
+- Verify the daemon is enabled: check that `unstable_daemon` is set to `true` in
+  [`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>), or that `MOON_DAEMON` is set, and
+  isn't `false`.
+- Verify you're running a command that uses the daemon, and that you're not in an
+  [unsupported environment](#when-the-daemon-is-used), by running the command with `--log debug`.
+- Check whether a daemon is running with [`moon daemon status`](../commands/daemon/status.mdx), and
+  look for startup errors in `.moon/cache/daemon/server.log`.
+- As a last resort, stop the daemon, delete the `.moon/cache/daemon` directory, and try again.
+
+### Task outputs are missing or stale
+
+Archiving and hydration failures are only reported in the daemon's logs. Inspect them with
+[`moon daemon logs`](../commands/daemon/logs.mdx), or temporarily disable the daemon with
+`MOON_DAEMON=false` to surface the error in the command's output.
+
+### The graphs seem stale
+
+If tasks or projects appear to be missing or outdated despite config changes, the file watcher may
+have missed an event. Run [`moon daemon restart`](../commands/daemon/restart.mdx) to start over with
+a fresh daemon.
+
+### After disabling the daemon
+
+Commands stop connecting to the daemon as soon as it's disabled, but a daemon that's already running
+stays alive until it retires on its own. Stop it right away with
+[`moon daemon stop`](../commands/daemon/stop.mdx).
+
+### In CI
+
+The daemon is [never used in CI](#when-the-daemon-is-used). If you start one manually with
+[`moon daemon start`](../commands/daemon/start.mdx) in a CI job, other commands won't use it.

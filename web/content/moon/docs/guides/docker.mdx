@@ -1,3 +1,599 @@
 ---
 title: Docker
+icon: Container
 ---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
+
+Using [Docker](https://www.docker.com/) to run your applications, or to build your artifacts? moon
+has a robust integration layer for Docker, built on top of the
+[project graph](<../(fundamentals)/project-graph.mdx>), that takes full advantage of Docker's layer
+caching without copying the entire repository into every image.
+
+<Callout type="success">
+
+Looking to speed up your Docker builds? Want to build in the cloud? [Give Depot a try](https://depot.dev?ref=moonrepo)!
+
+</Callout>
+
+## Requirements
+
+### Ignoring the cache
+
+The first requirement, which is very important, is adding `.moon/cache` to the `.dockerignore` at
+the workspace root (moon assumes builds are run from the root). Not all files in `.moon/cache` are
+portable across machines and environments, so copying them into an image will cause
+interoperability issues.
+
+```text title=".dockerignore"
+.moon/cache
+```
+
+[`moon docker scaffold`](../commands/docker/scaffold.mdx) checks for this line, and logs a warning
+when it's missing. If you're not building from the workspace root, or are ignoring the cache by
+other means, the warning can be ignored.
+
+### Git within Docker
+
+moon runs `git` commands under the hood, so there are some considerations when running moon inside
+a container. The skeletons created by [`moon docker scaffold`](#scaffolding-the-repository) never
+include the `.git` directory, so by default moon runs without Git in the image. You have 2 options:
+
+1. _(Recommended)_ Add `.git` to `.dockerignore`, so that it's not part of the build context. moon
+   continues to work, but functionality that depends on Git is disabled, like task output caching
+   and affected detection. Within Docker, layer caching takes the place of moon's cache anyway.
+2. Install `git` in the image, and copy the `.git` directory into the stage that runs moon. moon
+   works with full functionality, at the cost of a larger build context and image. The scaffolded
+   skeletons include each project's `.gitignore`, so that installed dependencies aren't treated as
+   untracked files.
+
+## The problem
+
+Before writing a `Dockerfile`, let's look at the pain points we're trying to avoid. To use layer
+caching effectively in a monorepo, you need to copy _only_ the manifests and lockfiles that are
+required to install dependencies, then install, and only then copy source files. Without moon, that
+looks something like the following.
+
+```docker title="Dockerfile"
+FROM node:24
+WORKDIR /app
+
+# Copy every manifest and lockfile in the repository
+COPY ./package.json ./pnpm-lock.yaml ./pnpm-workspace.yaml ./
+COPY ./apps/client/package.json ./apps/client/package.json
+COPY ./apps/server/package.json ./apps/server/package.json
+COPY ./packages/ui/package.json ./packages/ui/package.json
+COPY ./packages/utils/package.json ./packages/utils/package.json
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy the project, and the projects it depends on
+COPY ./packages/utils ./packages/utils
+COPY ./packages/ui ./packages/ui
+COPY ./apps/client ./apps/client
+
+# Build the project
+RUN pnpm --filter client build
+```
+
+This is very brittle. Every time a project is added, renamed, or gains a new dependency, every
+`Dockerfile` in the repository has to be updated. Because it's so tedious, most developers give up
+and write `COPY . .`, which invalidates the dependency layer on every change and copies far more than
+the build needs. Let's remedy this by letting moon do the bookkeeping!
+
+## How it works
+
+moon's integration is made up of the [`moon docker`](../commands/docker.mdx) commands, which are
+chained together within a `Dockerfile`:
+
+1. [`moon docker scaffold`](../commands/docker/scaffold.mdx) - Copies a skeleton of the repository
+   into `.moon/docker`, split into 2 independent directories:
+   - `configs` - Mirrors the folder structure of the entire workspace, but only contains the files
+     needed to install dependencies: manifests, lockfiles, `moon.config` files, and moon's own
+     configuration in `.moon`.
+   - `sources` - Contains all source files of the projects passed to the command, and the projects
+     they depend on (resolved transitively through the project graph), but not the rest of the
+     repository.
+2. [`moon docker setup`](../commands/docker/setup.mdx) - Installs toolchains and dependencies for the
+   scaffolded projects. Run this after copying `configs`, but before copying `sources`, so the
+   dependency layer is only invalidated when a manifest or lockfile changes.
+3. [`moon docker prune`](../commands/docker/prune.mdx) - Deletes vendor directories (like
+   `node_modules`), and reinstalls production-only dependencies, once the project has been built.
+
+Both skeletons also receive a `dockerManifest.json` file, which records the projects that were
+scaffolded. Because the skeletons are copied into the root of the image's working directory,
+[`moon docker setup`](../commands/docker/setup.mdx) and [`moon docker prune`](../commands/docker/prune.mdx)
+read this manifest from the workspace root, and fail if it doesn't exist.
+
+## Generating a `Dockerfile`
+
+The quickest way to get started is with [`moon docker file`](../commands/docker/file.mdx), which
+generates a multi-staged `Dockerfile` in the project's root, pre-wired to run the commands above in
+the correct order. It prompts for a base image, and for the tasks to build and start the project,
+unless they're passed as options or `--defaults` is passed.
+
+```shell
+# Generate a Dockerfile, prompting for options
+$ moon docker file client
+
+# Generate a Dockerfile without prompting
+$ moon docker file client --image node:24 --build-task build --start-task start
+```
+
+The second command generates the following file. We suggest generating a file, then reading the
+rest of this guide to understand what each stage does.
+
+```docker title="apps/client/Dockerfile"
+#### BASE STAGE
+#### Installs moon.
+
+FROM node:24 AS base
+WORKDIR /app
+
+# Install moon binary
+RUN curl -fsSL https://moonrepo.dev/install/moon.sh | bash
+ENV PATH="/root/.moon/bin:/root/.proto/bin:$PATH"
+
+#### SKELETON STAGE
+#### Scaffolds repository skeleton structures.
+
+FROM base AS skeleton
+
+# Copy entire repository and scaffold
+COPY . .
+RUN moon docker scaffold client
+
+#### BUILD STAGE
+#### Builds the project.
+
+FROM base AS build
+
+# Copy workspace configs
+COPY --from=skeleton /app/.moon/docker/configs .
+
+# Install toolchains and dependencies
+RUN moon docker setup
+
+# Copy project sources
+COPY --from=skeleton /app/.moon/docker/sources .
+
+# Build the project
+RUN moon run client:build
+
+# Prune extraneous dependencies
+RUN moon docker prune
+
+#### START STAGE
+#### Runs the project.
+
+FROM base AS start
+
+# Copy built sources
+COPY --from=build /root/.proto /root/.proto
+COPY --from=build /app /app
+
+CMD moon run client:start
+```
+
+When no image is provided or [configured](#configuring-generation), moon uses the image of the
+first of the project's toolchains that defines one (for
+example, `node:<version>` for [Node.js](../toolchains/javascript/node.mdx#docker-integration)), and
+otherwise `scratch`. When no build or start task is chosen, that step (or the entire `start` stage)
+is left out.
+
+### Configuring generation
+
+Instead of passing options every time, configure the [`docker.file`](/moon/api/DockerConfig#file)
+settings in [`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>) for every project, or in a
+project's [`moon.config`](<../(fundamentals)/project.mdx#docker>) to override them. Command line
+options take precedence over both.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    docker: {
+      file: {
+        image: "node:24-slim",
+        buildTask: "build",
+        startTask: "start",
+        runPrune: false,
+      },
+    },
+  }}
+/>
+
+- [`image`](/moon/api/DockerFileConfig#image) - The base image used by every stage.
+- [`buildTask`](/moon/api/DockerFileConfig#buildtask) and
+  [`startTask`](/moon/api/DockerFileConfig#starttask) - Tasks within the project to run in the
+  `build` stage, and in the `CMD` instruction of the `start` stage.
+- [`runSetup`](/moon/api/DockerFileConfig#runsetup) and
+  [`runPrune`](/moon/api/DockerFileConfig#runprune) - Whether to run
+  [`moon docker setup`](../commands/docker/setup.mdx) and
+  [`moon docker prune`](../commands/docker/prune.mdx) in the `build` stage. Both default to `true`.
+- [`template`](/moon/api/DockerFileConfig#template) - A custom template to render the file with
+  (see below).
+
+### Custom templates
+
+If the built-in structure doesn't fit, provide your own [Tera](https://keats.github.io/tera/)
+template, relative from the workspace root, with the [`template`](/moon/api/DockerFileConfig#template)
+setting or the `--template` option. The template is rendered with the following variables:
+
+- `image` - The base image.
+- `project` - The ID of the project.
+- `build_task` and `start_task` - The fully qualified targets of the build and start tasks (like
+  `client:build`), when chosen.
+- `run_setup` and `run_prune` - Whether to run `moon docker setup` and `moon docker prune`.
+- `disable_toolchain` - Whether to rely on system binaries instead of moon's toolchain (see
+  [system binaries](#using-system-binaries)).
+
+```docker title="docker/Dockerfile.tera"
+FROM {{ image }}
+WORKDIR /app
+
+{%- if build_task %}
+RUN moon run {{ build_task }}
+{%- endif %}
+
+{%- if start_task %}
+CMD moon run {{ start_task }}
+{% endif %}
+```
+
+## Writing a `Dockerfile`
+
+Prefer to write the file yourself? The rest of this guide builds the same `Dockerfile` step by step.
+There are 2 approaches to choose from:
+
+- **Multi-staged** - [`moon docker scaffold`](../commands/docker/scaffold.mdx) runs _inside_ Docker,
+  in a dedicated stage. The build is self-contained, and this is what
+  [`moon docker file`](../commands/docker/file.mdx) generates.
+- **Non-staged** - [`moon docker scaffold`](../commands/docker/scaffold.mdx) runs _before_
+  `docker build`, outside of Docker. The `Dockerfile` is simpler, but every build must remember to
+  scaffold first, and `.moon/docker` must not be listed in `.dockerignore`.
+
+<Callout type="warning">
+  This guide, and our Docker approach, is merely a suggestion and not a
+  requirement for using moon with Docker! Use it as a starting point, or not at
+  all. Choose the approach that works best for you!
+</Callout>
+
+### Scaffolding the repository
+
+The first step is to copy the bare minimum of files necessary for installing dependencies, which is
+the `configs` skeleton, then install toolchains and dependencies with
+[`moon docker setup`](../commands/docker/setup.mdx). This replaces copying each manifest by hand,
+and running your package manager's install command.
+
+<Tabs groupId="dockerfile" items={['Multi-staged', 'Non-staged']}>
+<Tab>
+
+```docker title="Dockerfile"
+#### BASE
+FROM node:24 AS base
+WORKDIR /app
+
+# Install moon binary
+RUN curl -fsSL https://moonrepo.dev/install/moon.sh | bash
+ENV PATH="/root/.moon/bin:/root/.proto/bin:$PATH"
+
+#### SKELETON
+FROM base AS skeleton
+
+# Copy entire repository and scaffold
+COPY . .
+RUN moon docker scaffold client
+
+#### BUILD
+FROM base AS build
+
+# Copy workspace configs
+COPY --from=skeleton /app/.moon/docker/configs .
+
+# Install toolchains and dependencies
+RUN moon docker setup
+```
+
+Copying the entire repository only happens in the `skeleton` stage, which is cheap to re-run. The
+`build` stage only receives the skeleton, so its layers stay cached for as long as the skeleton
+doesn't change.
+
+</Tab>
+<Tab>
+
+This assumes [`moon docker scaffold client`](../commands/docker/scaffold.mdx) was run on the host,
+before `docker build`.
+
+```docker title="Dockerfile"
+FROM node:24
+WORKDIR /app
+
+# Install moon binary
+RUN curl -fsSL https://moonrepo.dev/install/moon.sh | bash
+ENV PATH="/root/.moon/bin:/root/.proto/bin:$PATH"
+
+# Copy workspace configs
+COPY ./.moon/docker/configs .
+
+# Install toolchains and dependencies
+RUN moon docker setup
+```
+
+</Tab>
+</Tabs>
+
+And with this, our dependencies are layer cached effectively!
+
+### Copying source files
+
+The next step is to copy all source files necessary for `CMD`, or any `RUN` command, to execute
+correctly. This requires the source files of the project _and_ the source files of the projects it
+depends on... but NOT the entire repository!
+
+Luckily, [`moon docker scaffold`](../commands/docker/scaffold.mdx) has already done this for us, in
+the `sources` skeleton. Let's append the following to our `Dockerfile`:
+
+<Tabs groupId="dockerfile" items={['Multi-staged', 'Non-staged']}>
+<Tab>
+
+```docker title="Dockerfile"
+# Copy project sources
+COPY --from=skeleton /app/.moon/docker/sources .
+
+# Build the project (optional)
+RUN moon run client:build
+```
+
+</Tab>
+<Tab>
+
+```docker title="Dockerfile"
+# Copy project sources
+COPY ./.moon/docker/sources .
+
+# Build the project (optional)
+RUN moon run client:build
+```
+
+</Tab>
+</Tabs>
+
+If your commands need additional files to run successfully, configure the
+[`docker.scaffold`](#customizing-the-scaffold) settings.
+
+### Pruning extraneous files
+
+Now that we've built the project, we should prune the image of files and folders that aren't needed
+at runtime. We can do this with [`moon docker prune`](../commands/docker/prune.mdx), which _must be
+run_ within the context of a `Dockerfile`.
+
+```docker title="Dockerfile"
+# Prune extraneous dependencies
+RUN moon docker prune
+```
+
+For each dependencies workspace used by the scaffolded projects (like a pnpm workspace root, or a
+Cargo workspace), this command does the following, in order:
+
+- Deletes vendor directories (like `node_modules`) and other development artifacts. This is handled
+  by each toolchain plugin.
+- Reinstalls production-only dependencies, scoped to the scaffolded projects.
+
+This process can be customized with the [`docker.prune`](#customizing-pruning) settings.
+
+### Final result
+
+And with this, every `Dockerfile` in the repository looks the same, regardless of how many projects
+or dependencies it has. Adding a new project, or a new dependency between projects, doesn't require
+updating any of them!
+
+<Tabs groupId="dockerfile" items={['Multi-staged', 'Non-staged']}>
+<Tab>
+
+```docker title="Dockerfile"
+#### BASE
+FROM node:24 AS base
+WORKDIR /app
+
+# Install moon binary
+RUN curl -fsSL https://moonrepo.dev/install/moon.sh | bash
+ENV PATH="/root/.moon/bin:/root/.proto/bin:$PATH"
+
+#### SKELETON
+FROM base AS skeleton
+
+# Copy entire repository and scaffold
+COPY . .
+RUN moon docker scaffold client
+
+#### BUILD
+FROM base AS build
+
+# Copy workspace configs
+COPY --from=skeleton /app/.moon/docker/configs .
+
+# Install toolchains and dependencies
+RUN moon docker setup
+
+# Copy project sources
+COPY --from=skeleton /app/.moon/docker/sources .
+
+# Build the project
+RUN moon run client:build
+
+# Prune extraneous dependencies
+RUN moon docker prune
+
+#### START
+FROM base AS start
+
+# Copy built sources
+COPY --from=build /root/.proto /root/.proto
+COPY --from=build /app /app
+
+CMD moon run client:start
+```
+
+</Tab>
+<Tab>
+
+```docker title="Dockerfile"
+FROM node:24
+WORKDIR /app
+
+# Install moon binary
+RUN curl -fsSL https://moonrepo.dev/install/moon.sh | bash
+ENV PATH="/root/.moon/bin:/root/.proto/bin:$PATH"
+
+# Copy workspace configs
+COPY ./.moon/docker/configs .
+
+# Install toolchains and dependencies
+RUN moon docker setup
+
+# Copy project sources
+COPY ./.moon/docker/sources .
+
+# Build the project
+RUN moon run client:build
+
+# Prune extraneous dependencies
+RUN moon docker prune
+
+CMD moon run client:start
+```
+
+</Tab>
+</Tabs>
+
+## Customizing the scaffold
+
+Out of the box, each toolchain decides which files are copied into the skeletons, like
+`package.json` files and lockfiles for JavaScript, or `Cargo.toml` and `Cargo.lock` for Rust, and
+vendor directories (like `node_modules`) are always excluded. Every toolchain's page documents
+what it contributes, under its "Docker integration" section (for example,
+[JavaScript](../toolchains/javascript/index.mdx#docker-integration) and
+[Rust](../toolchains/rust.mdx#docker-integration)). moon also copies the `moon.config` and
+`.gitignore` file of each project, and of the workspace root.
+
+When your build needs more than that, like a `tsconfig.json` during install, or a `.env` file while
+building, configure the [`docker.scaffold`](/moon/api/DockerConfig#scaffold) settings in
+[`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>):
+
+- [`configsPhaseGlobs`](/moon/api/DockerScaffoldConfig#configsphaseglobs) - Globs of additional files
+  to copy into the `configs` skeleton.
+- [`sourcesPhaseGlobs`](/moon/api/DockerScaffoldConfig#sourcesphaseglobs) - Globs of files to copy
+  into the `sources` skeleton. When not configured, every file in each project is copied.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    docker: {
+      scaffold: {
+        configsPhaseGlobs: ["tsconfig*.json"],
+        sourcesPhaseGlobs: ["src/**/*", "!**/*.test.ts"],
+      },
+    },
+  }}
+/>
+
+Globs are relative to each project's root (and the workspace root), and support negation with `!`.
+A project can override these settings with [`docker.scaffold`](/moon/api/ProjectDockerConfig#scaffold)
+in its [`moon.config`](<../(fundamentals)/project.mdx#docker>). The project's globs replace the
+workspace's globs, rather than being merged with them.
+
+<Callout>
+  Dependencies on the [root-level project](./root-project.mdx) aren't followed
+  when scaffolding sources, as that would copy the entire repository. If you
+  need the root project's sources, pass it to [`moon docker
+  scaffold`](../commands/docker/scaffold.mdx) explicitly.
+</Callout>
+
+## Customizing pruning
+
+The [`docker.prune`](/moon/api/DockerConfig#prune) settings in
+[`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>) control what
+[`moon docker prune`](../commands/docker/prune.mdx) does. For example, if your runtime needs the
+dependencies that were installed for the build, disable both steps:
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    docker: {
+      prune: {
+        deleteVendorDirectories: false,
+        installToolchainDependencies: false,
+      },
+    },
+  }}
+/>
+
+- [`deleteVendorDirectories`](/moon/api/DockerPruneConfig#deletevendordirectories) - Delete vendor
+  directories, like `node_modules` or Cargo's `target` (binaries are preserved). Defaults to
+  `true`.
+- [`installToolchainDependencies`](/moon/api/DockerPruneConfig#installtoolchaindependencies) -
+  Reinstall production-only dependencies after deleting. Defaults to `true`.
+
+## Running `docker` commands
+
+When running `docker` commands, they _must_ be run from moon's workspace root (typically the
+repository root), so that the project graph and all `moon docker` commands resolve correctly.
+
+```shell
+# Build with a Dockerfile at the workspace root
+$ docker build .
+
+# Build with a Dockerfile located in a project
+$ docker build -f ./apps/client/Dockerfile .
+```
+
+When using the non-staged approach, scaffold before every build:
+
+```shell
+$ moon docker scaffold client && docker build -f ./apps/client/Dockerfile .
+```
+
+## Troubleshooting
+
+### Using system binaries
+
+By default, [`moon docker setup`](../commands/docker/setup.mdx) installs the toolchains configured in
+[`.moon/toolchains.config`](<../(fundamentals)/toolchain.mdx>) through [proto](/proto/docs). If your
+base image already contains the binaries you need, like `node` in a `node:*` image, set the
+`MOON_TOOLCHAIN_FORCE_GLOBALS` environment variable to use them instead. It accepts `true` (or `1`)
+for every toolchain, or a comma-separated list of toolchain IDs, like `node,pnpm`, for only some of
+them.
+
+```docker title="Dockerfile"
+FROM node:24
+
+# Use the system binaries for every toolchain
+ENV MOON_TOOLCHAIN_FORCE_GLOBALS=true
+```
+
+[`moon docker file`](../commands/docker/file.mdx) sets this variable for you when passed
+`--no-toolchain`.
+
+### Alpine images
+
+moon's install script requires Bash and `curl`, which Alpine based images don't include by default,
+so install them before installing moon. When the base image's name contains `alpine`,
+[`moon docker file`](../commands/docker/file.mdx) also sets `MOON_TOOLCHAIN_FORCE_GLOBALS` (see
+[system binaries](#using-system-binaries)), so that the binaries provided by the image are used.
+
+```docker title="Dockerfile"
+FROM node:24-alpine AS base
+WORKDIR /app
+
+# Install requirements for the moon install script
+RUN apk add --no-cache bash curl
+
+# Install moon binary
+RUN curl -fsSL https://moonrepo.dev/install/moon.sh | bash
+ENV PATH="/root/.moon/bin:/root/.proto/bin:$PATH"
+
+# Rely on the binaries in the image
+ENV MOON_TOOLCHAIN_FORCE_GLOBALS=1
+```

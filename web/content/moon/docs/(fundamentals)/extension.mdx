@@ -36,15 +36,19 @@ This is the model used by moon's built-in extensions, and is well suited to one-
 as downloading a file, unpacking an archive, or migrating configuration from another task runner.
 
 ```shell
-$ moon ext unpack -- --input ./archive.tar.gz --output ./out
+$ moon ext unpack -- --src ./archive.tar.gz --dest ./out
 ```
 
 ### Project graph extension
 
 During project graph construction, extensions implementing `extend_project_graph` are given the
-set of discovered project sources and can return additional projects, aliases, and input files to
-register. This allows an extension to teach moon about projects that its own conventions define,
-rather than requiring them to be listed in [`.moon/workspace.config`](./workspace.mdx).
+ID and source of every project discovered through [`.moon/workspace.config`](./workspace.mdx). For
+each of those projects, they can return an alias, implicit dependencies, and tasks, typically
+extracted from a manifest file that moon doesn't understand natively. They can also return a list
+of input files that were read, so that changes to those files invalidate the project graph cache.
+
+Extensions can only extend projects that moon has already discovered; they can't add new projects to
+the graph.
 
 ### Command augmentation
 
@@ -54,9 +58,9 @@ Before a process runs, extensions can rewrite it:
 - `extend_task_command` - Applies to a [task](./task.mdx) that runs a command.
 - `extend_task_script` - Applies to a task that runs a script.
 
-Each hook can prepend arguments, inject environment variables, and contribute additional `PATH`
-lookup paths, which makes it possible to wrap tasks in a runner or profiler without editing every
-task definition.
+Each hook can replace the command, modify its arguments, add or remove environment variables, and
+contribute additional `PATH` lookup paths, which makes it possible to wrap tasks in a runner or
+profiler without editing every task definition.
 
 ### Workspace and project syncing
 
@@ -75,8 +79,18 @@ alone is enough, and moon resolves the plugin for you:
 - `migrate-turborepo` - Migrate a Turborepo workspace's configuration to moon.
 - `unpack` - Unpack an archive (zip, tar, and so on) to a destination.
 
-These identifiers also work with [`moon ext`](../commands/ext.mdx) and
-[`moon extension info`](../commands/extension/info.mdx) without being configured first.
+Built-in extensions still need to be configured before they can be executed with
+[`moon ext`](../commands/ext.mdx), which only loads extensions that exist in
+[`.moon/extensions.config`](#configuration). However,
+[`moon extension add`](../commands/extension/add.mdx) and
+[`moon extension info`](../commands/extension/info.mdx) accept these identifiers without a plugin
+locator.
+
+```shell
+# Register the built-in extension, then execute it
+$ moon extension add unpack
+$ moon ext unpack -- --src ./archive.zip --dest ./out
+```
 
 ## Configuration
 

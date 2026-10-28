@@ -7,9 +7,12 @@ contents of two hash manifests. This is extremely useful for debugging why a tas
 being cached, and for understanding exactly what inputs (files, environment variables, tool
 versions, etc) went into computing a task's hash.
 
-Manifests are looked up from `.moon/cache/hashes` by matching the provided hash against the
-`.json` files stored there. The hash argument can be either the fully qualified hash or a partial
-(short) prefix of it, as long as the prefix uniquely resolves to a single manifest file.
+Manifests are stored as blobs in moon's local content-addressable cache (`.moon/cache/blobs`), and
+are looked up by matching the provided hash against the stored blobs. The hash argument can be
+either the fully qualified hash or a partial (short) prefix of it, as long as the prefix uniquely
+resolves to a single manifest. If the prefix matches multiple blobs, the command errors, and you'll
+need to provide more characters. Since blobs are keyed by content, always read
+manifests through this command, instead of from the cache directory.
 
 ### Inspecting a hash
 

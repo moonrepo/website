@@ -4,6 +4,7 @@ icon: CodeXml
 ---
 
 import { ConfigTabs } from "@/components/ConfigTabs";
+import { TypeLabel } from "@/components/TypeLabel";
 
 Code generation provides an easy mechanism for automating common development workflows and file
 structures. Whether it's scaffolding a new library or application, updating configuration, or
@@ -17,27 +18,36 @@ files to a destination.
 
 The following concepts are important to understand when working with code generation in moon.
 
-- **Template** - A set of files, directories, and variables that define the structure and content to be generated, encapsulated by the `template.*` configuration file.
-- **Template locator** - A reference to the template's location, which can be defined as a file path, Git URL, npm package, and more.
-- **Text file** - A text file within a template that can contain variables to be rendered.
+- **Template** - A set of files, directories, and variables that define the structure and content
+  to be generated, encapsulated by a [`template.config`][config] configuration file.
+- **Template locator** - A reference to the location of templates, which can be defined as a file
+  path, glob, Git repository, npm package, or archive URL.
+- **Text file** - A text file within a template that can contain variables and logic to be rendered.
 - **Asset file** - A binary file within a template that is copied as-is without any rendering.
-- **Variable** - A placeholder within a template file that is replaced with a specific value during rendering.
+- **Variable** - A placeholder within a template file that is replaced with a specific value during
+  rendering.
 - **Destination** - The target directory where the generated files will be written.
-- **Renderer** - The engine that processes template files, replacing variables with their corresponding values, and writing the output to the destination.
-- **Generator** - The command-line tool that orchestrates the code generation process, including loading templates, rendering files, and writing to the destination.
+- **Renderer** - The engine ([Tera](https://keats.github.io/tera/)) that processes template files,
+  replacing variables with their corresponding values, and writing the output to the destination.
+- **Generator** - The [`moon generate`][command] command, which orchestrates the code generation
+  process, including loading templates, gathering variable values, rendering files, and writing to
+  the destination.
 
 ## Creating a new template
 
-To create a new template, run [`moon generate --template`][command]. This
-will create a template directory in the 1st file-based template
-location defined in [`generator.templates`][gen-templates].
+To create a new template, run [`moon generate --template`][command]. This will create a template
+directory in the first file-based template location defined in [`generator.templates`][gen-templates]
+(globs, Git repositories, npm packages, and archives are skipped), and fail if there isn't one.
 
 ```shell
-$ moon generate <name> --template
+# Create a template named "npm-package"
+$ moon generate npm-package --template
 ```
 
 Every template requires a [`template.config`][config] file in the template's directory root. This file
-acts as a schema and declares metadata and variables required by the generator.
+acts as a schema and declares metadata and variables required by the generator. Only
+[`title`](/moon/api/TemplateConfig#title) and [`description`](/moon/api/TemplateConfig#description)
+are required, and both are displayed when generating.
 
 <ConfigTabs
   file="template"
@@ -56,7 +66,606 @@ acts as a schema and declares metadata and variables required by the generator.
   }}
 />
 
-TODO
+The command writes a YAML file whose `$schema` points to `.moon/cache/schemas/template.json`, so
+your editor can validate and autocomplete it. That schema is generated the first time a task is run,
+or on demand with [`moon sync config-schemas`](../commands/sync/config-schemas.mdx).
+
+A template's identifier is the name of its directory, unless overridden with the
+[`id`](/moon/api/TemplateConfig#id) setting. Identifiers must be unique across every configured
+template location.
+
+### Declaring variables
+
+Variables are the values that make a template reusable, like a package name or whether to include
+tests. They're declared with the [`variables`](/moon/api/TemplateConfig#variables) setting, a map of
+variable names to their configuration, where `type` is one of:
+
+- [`string`](/moon/api/TemplateVariableStringSetting) <TypeLabel type="string" /> - A single line of
+  text.
+- [`number`](/moon/api/TemplateVariableNumberSetting) <TypeLabel type="number" /> - A whole number
+  (integer). Negative numbers are allowed.
+- [`boolean`](/moon/api/TemplateVariableBoolSetting) <TypeLabel type="boolean" /> - A yes or no
+  toggle.
+- [`array`](/moon/api/TemplateVariableArraySetting) <TypeLabel type="unknown[]" /> - A list of
+  values. When prompted, the value is entered as a JSON array.
+- [`object`](/moon/api/TemplateVariableObjectSetting) <TypeLabel type="Record<string, unknown>" /> -
+  A map of values. When prompted, the value is entered as a JSON object.
+- [`enum`](/moon/api/TemplateVariableEnumSetting) <TypeLabel type="string | string[]" /> - One (or
+  many) of a predefined list of [`values`](/moon/api/TemplateVariableEnumSetting#values), selected
+  from a list. Values can be plain strings, or objects with a `label` (displayed in the prompt) and
+  a `value` (passed to the template). Enable [`multiple`](/moon/api/TemplateVariableEnumSetting#multiple)
+  to allow selecting more than one value.
+
+<ConfigTabs
+  file="template"
+  config={{
+    title: "React component",
+    description: "Scaffolds a React component, with optional tests.",
+    variables: {
+      name: {
+        type: "string",
+        default: "",
+        required: true,
+        prompt: "Component name?",
+        order: 1,
+      },
+      tests: {
+        type: "boolean",
+        default: true,
+        prompt: "Include tests?",
+      },
+      styling: {
+        type: "enum",
+        values: ["css", { label: "Tailwind CSS", value: "tailwind" }, "none"],
+        default: "css",
+        prompt: "How should the component be styled?",
+      },
+      license: {
+        type: "string",
+        default: "MIT",
+        internal: true,
+      },
+    },
+  }}
+/>
+
+Each variable type supports the following settings (enums support all except `required`):
+
+- [`default`](/moon/api/TemplateVariableStringSetting#default) - The value used when the variable
+  isn't prompted for, or isn't provided. For enums, it must be one of the configured `values`, and
+  can only be a list when `multiple` is enabled.
+- [`prompt`](/moon/api/TemplateVariableStringSetting#prompt) - The question to ask in the terminal.
+  Variables without a prompt are never asked for, and use their default value, unless passed as a
+  [command line argument](#passing-variables-as-arguments).
+- [`order`](/moon/api/TemplateVariableStringSetting#order) - The order in which variables are
+  prompted for, lowest first. Defaults to `100`.
+- [`required`](/moon/api/TemplateVariableStringSetting#required) - Reject an empty value when
+  prompting: an empty string, a `0` number, or an empty array or object.
+- [`internal`](/moon/api/TemplateVariableStringSetting#internal) - Prevent the value from being set
+  with command line arguments. Pair it with no `prompt` to define constants that are shared across a
+  template's files.
+
+### Extending templates
+
+Templates can be composed with the [`extends`](/moon/api/TemplateConfig#extends) setting, which
+accepts one or many template identifiers. This is useful for sharing a common base, like a license,
+a README, or a CI workflow, between multiple templates.
+
+<ConfigTabs
+  file="template"
+  config={{
+    title: "React library",
+    description: "Scaffolds a React library, on top of the base npm package.",
+    extends: ["npm-package"],
+  }}
+/>
+
+When generating a template that extends others:
+
+- Files from extended templates are generated alongside the template's own files. When both define
+  a file at the same path, the extending template's file wins.
+- Variables from extended templates are inherited, so they're prompted for as well. When both
+  define a variable with the same name, the extending template's configuration wins.
+- [Partials](#partials) and macros from extended templates can be included in the template's own
+  files.
+- Extended templates can extend other templates themselves.
+
+## Template files
+
+Add any files and folders to the template that you'd like to be generated by consumers! These files
+will then be scaffolded 1:1 in structure at the target destination, with the `template.config` file
+itself excluded.
+
+An example of the templates folder structure may look something like the following:
+
+```text
+templates/
+├── npm-package/
+│   ├── src/
+│   │   └── index.ts
+│   ├── tests/
+│   ├── package.json
+│   └── template.yml
+└── react-app/
+```
+
+Every text file is rendered with the [template engine](#template-engine), so it can use variables,
+conditions, loops, and more.
+
+### Interpolating file paths
+
+Variables can be interpolated into file and folder paths using the form `[varName]`. For example, if
+you had a template file `src/[type].ts`, and a variable `type` with a value of "bin", then the
+destination file path would be `src/bin.ts`.
+
+This syntax also supports [filters](#filters), such as `[varName | camel_case]`. However, spaces may
+cause issues with file path encoding, so this form is primarily recommended for the
+[`destination`](/moon/api/TemplateConfig#destination) setting, which supports interpolation as well.
+
+<ConfigTabs
+  file="template"
+  config={{
+    title: "npm package",
+    description: "Scaffolds an npm package.",
+    destination: "packages/[name | kebab_case]",
+  }}
+/>
+
+Only names that match a configured variable are interpolated, and all other brackets are left
+as-is. This means framework conventions, like a Next.js dynamic route at `pages/[slug].tsx`, work
+without any escaping.
+
+### File extensions
+
+To enable syntax highlighting for template engine syntax, you may use the `.tera` (preferred) or
+`.twig` file extensions, for example `package.json.tera`. These extensions are optional, but must be
+the last extension in the file name, and are removed when the files are generated.
+
+Depending on your preferred editor, these extensions may be supported through a plugin, or can be
+configured based on file type.
+
+- **VS Code**
+  - [Tera extension](https://marketplace.visualstudio.com/items?itemName=karunamurti.tera)
+  - [Twig extension](https://marketplace.visualstudio.com/items?itemName=mblode.twig-language-2)
+- **JetBrains IDEs**
+  - [Twig plugin](https://plugins.jetbrains.com/plugin/7303-twig)
+
+### Partials
+
+Partials are special template files that are used for
+[composition](https://keats.github.io/tera/docs/#include) and
+[inheritance](https://keats.github.io/tera/docs/#inheritance). Because of this, these files _are
+not_ generated into the target destination, and _do not_ support [frontmatter](#frontmatter).
+
+To mark a file as a partial, include the word "partial" anywhere in its path, for example
+`partials/header.tpl` or `header.partial.tpl`. Then reference it by its path, relative from the
+template root, and without a `.tera` or `.twig` extension.
+
+```twig
+{% include "partials/header.tpl" %}
+```
+
+<Callout type="warning">
+  The match is on the entire path, so a regular file like
+  `src/partial-refund.ts` is treated as a partial, and won't be generated.
+</Callout>
+
+### Raw files
+
+Raw template files bypass all rendering, and are copied as-is instead. This is useful for files that
+contain syntax that conflicts with Tera, like other templating languages, or GitHub Actions
+expressions (`${{ github.sha }}`).
+
+To mark a file as raw, add a `.raw` extension, for example: `file.raw.js` or `file.js.raw`. When the
+file is generated, the `.raw` extension will be removed. Raw files still support
+[frontmatter](#frontmatter), but it isn't rendered, so its values must be static.
+
+### Frontmatter
+
+Frontmatter is a well-known concept for "per-file configuration", and is achieved by inserting YAML
+at the top of the file, delimited by wrapping `---`. This provides more control than the
+alternatives, and allows for some very cool integrations. The following fields are supported:
+
+- `force` <TypeLabel type="boolean" /> - Always overwrite the file if it already exists at the
+  destination, without prompting.
+- `skip` <TypeLabel type="boolean" /> - Don't write the file to the destination at all.
+- `to` <TypeLabel type="string" /> - Write the file to a different path, relative from the
+  destination directory.
+
+```twig title="package.json"
+---
+force: true
+---
+
+{
+  "name": "{{ name | kebab_case }}",
+  "version": "0.0.1"
+}
+```
+
+Since the frontmatter is part of the file itself, it's rendered along with the rest of the file,
+and you can take advantage of the rendering engine to populate the field values dynamically. For
+example, if you're scaffolding a React component, you can convert the component name and file name
+to PascalCase.
+
+```twig title="component.tsx"
+{% set component_name = name | pascal_case %}
+
+---
+to: components/{{ component_name }}.tsx
+---
+
+export function {{ component_name }}() {
+  return <div />;
+}
+```
+
+Or only generate a file when a variable is enabled.
+
+```twig title="component.test.tsx"
+---
+skip: {{ not tests }}
+---
+
+test("renders", () => {});
+```
+
+Frontmatter must be the first thing in the rendered file (leading whitespace is ignored), and is
+removed from the generated output.
+
+### Assets
+
+Assets are binary files that are copied as-is to the destination, without any rendering, and no
+support for frontmatter. moon inspects each file's content to detect them, so this applies to all
+non-text files, like images, fonts, audio, and video, regardless of their extension.
+
+Asset paths still support [interpolation](#interpolating-file-paths). Unlike text files, assets are
+always written, even when a file already exists at the destination.
+
+## Template engine
+
+Rendering templates is powered by [Tera](https://keats.github.io/tera/), a Rust based template
+engine with syntax similar to Twig, Liquid, Django, and more. We highly encourage everyone to read
+Tera's documentation for an in-depth understanding, but as a quick reference, Tera supports the
+following:
+
+- [Variable interpolation](https://keats.github.io/tera/docs/#variables) (defined with the
+  [`variables`](/moon/api/TemplateConfig#variables) setting), with
+  [built-in filters](https://keats.github.io/tera/docs/#built-in-filters).
+
+```twig
+{{ varName }} -> foo
+{{ varName | upper }} -> FOO
+```
+
+- [Conditional blocks](https://keats.github.io/tera/docs/#if) and
+  [loops](https://keats.github.io/tera/docs/#for).
+
+```twig
+{% if price < 10 or always_show %}
+  Price is {{ price }}.
+{% elif price > 1000 and not rich %}
+  That's expensive!
+{% else %}
+  N/A
+{% endif %}
+```
+
+```twig
+{% for item in items %}
+  {{ loop.index }} - {{ item.name }}
+{% endfor %}
+```
+
+- And many more features, like macros, white space control, and math operators!
+
+### Filters
+
+Filters are a mechanism for transforming values during interpolation and are written using pipes
+(`|`). Tera provides many [built-in filters](https://keats.github.io/tera/docs/#built-in-filters),
+but we also provide the following custom filters:
+
+- Strings - `camel_case`, `pascal_case`, `snake_case`, `upper_snake_case`, `kebab_case`,
+  `upper_kebab_case`, `lower_case`, `upper_case`
+
+```twig
+{{ some_value | upper_case }}
+```
+
+- Paths - `path_join` (requires a `part`), and `path_relative` (requires a `from` or `to`)
+
+```twig
+{{ some_path | path_join(part = "another/folder") }}
+{{ some_path | path_relative(from = other_path) }}
+{{ some_path | path_relative(to = other_path) }}
+```
+
+### Built-in variables
+
+The following variables are always available within a template, in addition to those declared in
+[`template.config`][config]:
+
+- `dest_dir` - Absolute path to the destination folder.
+- `dest_rel_dir` - Relative path to the destination folder from the working directory.
+- `working_dir` - Current working directory.
+- `workspace_root` - The moon workspace root.
+
+<Callout>
+
+To debug what's available while writing a template, render Tera's `{{ __tera_context }}` variable,
+which prints every variable and its value as JSON.
+
+</Callout>
+
+## Generating code from a template
+
+Once a template has been created and configured, you can generate files based on it using the
+[`moon generate`][command] command! This is also known as scaffolding or code generation.
+
+This command accepts the identifier of a template as the first argument. If not provided, you'll be
+prompted to select one. To see which templates are available, run
+[`moon templates`](../commands/templates.mdx), or [`moon template`](../commands/template.mdx) to
+inspect a single template's variables and files.
+
+```shell
+# Generate the npm-package template
+$ moon generate npm-package
+```
+
+A destination path can be provided with the `--to` option, relative from the current working
+directory, or relative from the workspace root when it starts with `/`. If not provided, the
+[`destination`](/moon/api/TemplateConfig#destination) setting configured in
+[`template.config`][config] will be used, or you'll be prompted during generation to provide one.
+
+```shell
+# Generate into a directory relative from the working directory
+$ moon generate npm-package --to ./packages/example
+
+# Generate into a directory relative from the workspace root
+$ moon generate npm-package --to /packages/example
+```
+
+This command is extremely interactive, as we'll prompt you for the destination path, variable
+values, whether to overwrite files, and more. If you'd prefer to avoid interactions, pass
+`--defaults`, or `--force`, or both. Variable prompts are also skipped, and default values used,
+when moon isn't running in an interactive terminal.
+
+To preview a generation without writing any files, pass `--dry-run`. All files that would be created,
+merged, replaced, or skipped are still listed.
+
+```shell
+# Use default variable values, and overwrite existing files
+$ moon generate npm-package --to ./packages/example --defaults --force
+
+# Walk through the prompts, without writing files
+$ moon generate npm-package --dry-run
+```
+
+Templates can also be discovered and generated by AI coding assistants, through moon's
+[MCP server](./mcp.mdx).
+
+### Passing variables as arguments
+
+During generation, you'll be prompted in the terminal to provide a value for any configured
+variables. However, you can pre-fill these variable values by passing arbitrary command line
+arguments after `--` to [`moon generate`][command]. Argument names must exactly match the variable
+names.
+
+Using the package template example above, we could pre-fill the `name` variable like so:
+
+```shell
+# Pre-fill the name variable, and enable the private variable
+$ moon generate npm-package --to ./packages/example -- --name '@company/example' --private
+```
+
+Arguments are parsed based on each variable's type:
+
+- String and number variables accept a single value, like `--name example` or `--count 3`.
+- Boolean variables are enabled with `--<name>`, and disabled with `--no-<name>`.
+- Array variables, and enum variables with `multiple`, accept the same argument multiple times, like
+  `--tags a --tags b`. Array items that look like JSON (numbers, booleans, quoted strings, arrays,
+  and objects) are parsed as JSON.
+- Enum variables only accept one of their configured `values`.
+- Object variables, and `internal` variables, can't be set through arguments.
+
+Any variable that's passed as an argument won't be prompted for.
+
+### Handling existing files
+
+When a file already exists at the destination, moon asks how to proceed:
+
+- For JSON (`.json`) and YAML (`.yaml`, `.yml`) files, you can keep the existing file, deeply merge
+  the new file into the existing one, or replace it.
+- For all other files, you're asked whether to overwrite it.
+
+Passing `--force`, or enabling `force` in a file's [frontmatter](#frontmatter), replaces existing
+files without prompting. Once generation completes, moon lists every file and whether it was
+created, merged, replaced, or skipped.
+
+## Configuring template locations
+
+Templates can be located anywhere, especially when [being shared](#sharing-templates). Because of
+this, our generator loads templates from every location configured in
+[`generator.templates`][gen-templates], which defaults to `./templates`. A location is a directory
+that _contains_ templates, where each template is a child directory with a
+[`template.config`][config] file.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    generator: {
+      templates: [
+        "./templates",
+        "projects/*/templates",
+        "git://github.com/moonrepo/templates#master",
+      ],
+    },
+  }}
+/>
+
+Every location is loaded when generating, so template identifiers must be unique across all of
+them. If two templates share an identifier, generation fails with an error that lists both paths.
+
+### File paths
+
+Literal file paths are relative from the workspace root, and may optionally use the `file://`
+protocol.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    generator: {
+      templates: ["./templates", "file://other/templates"],
+    },
+  }}
+/>
+
+### Globs
+
+If you'd prefer more control over literal file paths (above), you can instead use glob paths or the
+`glob://` protocol. Globs are relative from the workspace root, and each matching directory is used
+as a template location. This is useful for co-locating templates with the projects that own them.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    generator: {
+      templates: ["projects/*/templates", "glob://packages/*/templates"],
+    },
+  }}
+/>
+
+<Callout type="warning">
+  Like file paths, globs must match the directories that contain templates, not
+  the template directories themselves. For example, use `./templates`, not
+  `./templates/*`.
+</Callout>
+
+### Git repositories
+
+Template locations can also reference templates in an external Git repository using the `git://`
+(or `git+https://`) locator protocol. This locator requires the Git host, repository path, and
+revision (branch, tag, or commit), separated with a `#`.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    generator: {
+      templates: [
+        "git://github.com/moonrepo/templates#master",
+        "git://gitlab.com/org/repo#v1.2.3",
+      ],
+    },
+  }}
+/>
+
+Repositories are cloned with the `git` binary, using an HTTPS URL (not an SSH URL), into
+`~/.moon/templates/git/<host>/<path>`. On every generation, moon fetches the latest changes and
+checks out the configured revision, and when the revision is a branch, pulls the latest commits. Pin
+a tag or commit for reproducible output.
+
+### npm packages
+
+Additionally, template locations can reference npm packages using the `npm://` locator protocol
+(`pnpm://` and `yarn://` are aliases). This locator requires a package name and an exact published
+version, separated with a `#`.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    generator: {
+      templates: [
+        "npm://@moonrepo/templates#1.2.3",
+        "npm://other-templates#4.5.6",
+      ],
+    },
+  }}
+/>
+
+Packages are downloaded from the public npm registry (`registry.npmjs.org`), and unpacked into
+`~/.moon/templates/npm/<package>/<version>`. Once unpacked, a version is never downloaded again.
+
+### Archive URLs
+
+Template locations can also reference archives through `https://` URLs. These archives should
+contain templates at their root, and will be downloaded and unpacked. The URL must end with a
+supported archive extension, like `.zip`, `.tar`, `.tar.gz`, `.tgz`, `.tar.xz`, `.tar.bz2`, or
+`.zst`.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    generator: {
+      templates: ["https://domain.com/some/path/to/archive.zip"],
+    },
+  }}
+/>
+
+Archives are unpacked into `~/.moon/templates/archive/<host>/<name>`, where `<name>` is the file name
+up to its first `.`, and are never downloaded again while that directory exists. To ship changes,
+publish the archive under a new file name, or delete the cached directory.
+
+<Callout>
+  Remote templates are stored in `~/.moon/templates`, which can be relocated
+  with the `MOON_HOME` environment variable.
+</Callout>
+
+## Sharing templates
+
+Although moon is designed for a monorepo, you may be using multiple repositories and would like to
+use the same templates across all of them. So how can we share templates across repositories? Why
+not try...
+
+- Git submodules
+- Git repositories (using the `git://` protocol)
+- File archives (using `https://` URLs)
+- Node.js modules
+- npm packages (using the `npm://` protocol)
+- Another packaging system
+
+Regardless of the choice, simply configure [`generator.templates`][gen-templates] to point to these
+locations:
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    generator: {
+      templates: [
+        "./templates",
+        "./path/to/submodule",
+        "git://github.com/org/repo#main",
+        "./node_modules/@company/shared-templates",
+        "npm://@company/shared-templates#1.2.3",
+      ],
+    },
+  }}
+/>
+
+### Layout structure
+
+If you plan to share templates using Git repositories, npm packages, or archives, then the layout of
+those projects must follow these guidelines:
+
+- A project must support multiple templates
+- A template is denoted by a folder in the root of the project
+- Each template must have a [`template.config`][config] file
+- Template names are derived from the folder name, or the [`id`](/moon/api/TemplateConfig#id)
+  setting in [`template.config`][config]
+
+An example of this layout structure may look something like the following:
+
+```text
+<root>
+├── template-one/
+│   └── template.yml
+├── template-two/
+│   └── template.yml
+├── template-three/
+│   └── template.yml
+└── package.json, etc
+```
+
+These templates can then be referenced by name, such as `moon generate template-one`.
 
 [config]: /moon/api/TemplateConfig
 [command]: ../commands/generate.mdx

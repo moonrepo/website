@@ -1,3 +1,212 @@
 ---
-title: MCP
+title: MCP integration
+icon: Bot
 ---
+
+[Model Context Protocol](https://modelcontextprotocol.io) (MCP) is an open standard that enables AI
+models to interact with external tools and services through a unified interface. The moon CLI
+contains an MCP server, started with [`moon mcp`](../commands/mcp.mdx), that you can register with
+your code editor or AI agent, so that LLMs can query and operate on your moon workspace directly,
+instead of guessing from configuration files.
+
+<Callout>
+  The MCP server implements the stateless MCP `2026-07-28` protocol, so your
+  client (code editor, AI agent, etc) must support this protocol version. Older
+  protocol versions (`2025-11-25` and below) and the `initialize` handshake are
+  not supported.
+</Callout>
+
+## How it works
+
+The server communicates over stdio, so it's never ran manually. Instead, your client spawns
+`moon mcp` as a subprocess, which requires the `moon` binary to be available on the client's `PATH`.
+
+When started, the server loads the project and task graph of the workspace once, and answers every
+request from it. If you change configuration while the server is running, restart the server from
+your client to pick up the changes.
+
+The workspace is located by searching upwards from the server's working directory for a `.moon`
+directory, which works when the client starts the server within your repository. When it doesn't,
+like with a global configuration, set the `MOON_WORKSPACE_ROOT` environment variable to the absolute
+path of the workspace.
+
+## Setup
+
+### Claude Code
+
+To use [MCP servers in Claude Code](https://code.claude.com/docs/en/mcp), run the following command
+in your terminal. With the `project` scope, the server is written to an `.mcp.json` file at the root
+of your project, so it can be shared with your team.
+
+```shell
+# Register the server for everyone in the project
+$ claude mcp add moon -s project -- moon mcp
+```
+
+Or create the `.mcp.json` file in your project directory manually:
+
+```json title=".mcp.json"
+{
+  "mcpServers": {
+    "moon": {
+      "command": "moon",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+### Cursor
+
+To use [MCP servers in Cursor](https://cursor.com/docs/context/mcp), create a `.cursor/mcp.json`
+file in your project directory, or `~/.cursor/mcp.json` globally, with the following content. As the
+global configuration isn't tied to a project, it requires `MOON_WORKSPACE_ROOT`.
+
+```json title=".cursor/mcp.json"
+{
+  "mcpServers": {
+    "moon": {
+      "type": "stdio",
+      "command": "moon",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+Once configured, the moon MCP server should appear in the MCP section of Cursor's settings.
+
+### VS Code
+
+To use MCP servers in VS Code, you must have
+[GitHub Copilot](https://code.visualstudio.com/docs/copilot/overview) set up. Then create a
+`.vscode/mcp.json` file with the following content. The server runs from your workspace folder by
+default, but it can also be set explicitly with `cwd`.
+
+```json title=".vscode/mcp.json"
+{
+  "servers": {
+    "moon": {
+      "type": "stdio",
+      "command": "moon",
+      "args": ["mcp"],
+      "cwd": "${workspaceFolder}"
+    }
+  }
+}
+```
+
+Once your MCP server is configured, you can use it with
+[Copilot's agent mode](https://code.visualstudio.com/docs/copilot/chat/chat-agent-mode):
+
+- Open the Chat view in VS Code.
+- Select the agent mode from the mode dropdown.
+- Toggle on moon's tools using the "Tools" button.
+
+### Zed
+
+To use [MCP servers in Zed](https://zed.dev/docs/ai/mcp), add the server to a `.zed/settings.json`
+file in your project directory, or to your global Zed settings, with the following content. The
+global settings require `MOON_WORKSPACE_ROOT`.
+
+```json title=".zed/settings.json"
+{
+  "context_servers": {
+    "moon": {
+      "command": "moon",
+      "args": ["mcp"],
+      "env": {}
+    }
+  }
+}
+```
+
+Once configured, the server should be marked as active in the MCP servers section of Zed's AI
+settings. Which tools the agent can use is controlled by your agent profile, so make sure moon's
+tools are enabled in the profile you're using.
+
+### Other clients
+
+Most other clients accept a similar configuration: a command of `moon`, arguments of `["mcp"]`, and
+optionally a `MOON_WORKSPACE_ROOT` environment variable.
+
+```json
+{
+  "mcpServers": {
+    "moon": {
+      "command": "moon",
+      "args": ["mcp"],
+      "env": {
+        "MOON_WORKSPACE_ROOT": "/absolute/path/to/your/moon/workspace"
+      }
+    }
+  }
+}
+```
+
+## Available tools
+
+The following tools are available in the moon MCP server, and can be executed by LLMs in agent mode.
+Clients discover each tool's input schema automatically, so the inputs below are for reference.
+Responses are pretty-printed JSON.
+
+### Reading the workspace
+
+These tools only read from the workspace graph, so they're safe to call repeatedly.
+
+- `get_project` - Get a [project](<../(fundamentals)/project.mdx>) and its tasks by `id`. Set
+  `include_dependencies` to also return the projects it depends on.
+- `get_projects` - Get a summary of all projects.
+- `get_task` - Get a [task](<../(fundamentals)/task.mdx>) by its fully-qualified `target`, like
+  `app:build`. Set `include_dependencies` to also return the tasks it depends on.
+- `get_tasks` - Get a summary of all tasks. Set `include_internal` to also return
+  [internal](<../(fundamentals)/task.mdx#internal-only>) tasks.
+- `get_template` - Get a [template](./codegen.mdx) by `id`, with its full variable schema (types,
+  defaults, prompts, required flags, and enum values), and its
+  [`extends`](/moon/api/TemplateConfig#extends) chain resolved. Internal variables are excluded.
+- `get_templates` - List all templates with their id, title, and description. Pass `filter` to only
+  return templates whose ID matches a case-insensitive regular expression.
+- `get_changed_files` - Get changed files from version control. By default, only uncommitted
+  changes are returned when running locally. Set `remote` to `true` to compare the `base` revision
+  (defaults to [`vcs.defaultBranch`](/moon/api/VcsConfig#defaultbranch)) against the `head`
+  revision (defaults to `HEAD`) instead, which is the default in CI and other remote environments.
+
+### Changing the workspace
+
+These tools write files, so your client may ask for confirmation before running them.
+
+- `sync_projects` - Run the `SyncProject` action for each project in `ids`, or for all projects
+  when `ids` is empty (like [`moon sync projects`](../commands/sync/projects.mdx)). Returns the
+  actions that ran.
+- `sync_workspace` - Run the `SyncWorkspace` action, which syncs workspace-level files, like code
+  owners and VCS hooks, depending on what's configured. Unlike [`moon sync`](../commands/sync.mdx),
+  projects aren't synced. Returns the actions that ran.
+- `generate` - Generate code from a `template` into the `to` destination, by running
+  [`moon generate`](../commands/generate.mdx). Pass template `variables` as an object, and set
+  `dry_run` or `force` as needed. Returns whether it succeeded, and the error if it didn't.
+
+<Callout>
+  The [response
+  shapes](https://github.com/moonrepo/moon/blob/master/packages/types/src/mcp.ts)
+  for these tools are defined as TypeScript types in the
+  [`@moonrepo/types`](https://www.npmjs.com/package/@moonrepo/types) package.
+</Callout>
+
+## Troubleshooting
+
+If a tool isn't working as expected, write the server's logs to a file, and set the `MOON_DEBUG_MCP`
+environment variable to also include logs from the underlying MCP libraries.
+
+```json
+{
+  "mcpServers": {
+    "moon": {
+      "command": "moon",
+      "args": ["mcp", "--log", "debug", "--log-file", "/tmp/moon-mcp.log"],
+      "env": {
+        "MOON_DEBUG_MCP": "true"
+      }
+    }
+  }
+}
+```

@@ -1,0 +1,140 @@
+---
+title: Root-level project
+icon: FolderRoot
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+
+Coming from other repositories or task runners, you may be familiar with tasks available at the
+repository root, in which one-off, organization, maintenance, or process oriented tasks can be run.
+moon supports this through a concept known as a root-level project.
+
+## Adding the root project
+
+Begin by adding the root to the [`projects`](/moon/api/WorkspaceConfig#projects) setting in
+[`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>), with a source value of `.` (the
+workspace root itself).
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    projects: {
+      root: ".",
+      client: "apps/client",
+      server: "apps/server",
+    },
+  }}
+/>
+
+When using globs, include `.` in the list. To mix globs with an explicitly named root project, use
+the [`globs`](/moon/api/WorkspaceProjectsConfig#globs) and
+[`sources`](/moon/api/WorkspaceProjectsConfig#sources) settings together.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    projects: {
+      globs: ["apps/*", "packages/*"],
+      sources: {
+        root: ".",
+      },
+    },
+  }}
+/>
+
+<Callout type="warning">
+  When the root is found by a glob (`.`, or a glob that matches its
+  `moon.config`), its identifier is inferred from the name of the repository
+  folder. Be wary of this, as it can change based on where a developer has
+  checked out the repository.
+</Callout>
+
+Once added, create a [`moon.config`](<../(fundamentals)/project.mdx>) in the root of the
+repository. From here you can define tasks that can be run using this new root-level project's
+identifier, for example, `moon run root:<task>`.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      versionCheck: {
+        command: "yarn version check",
+        options: {
+          cache: false,
+        },
+      },
+    },
+  }}
+/>
+
+```shell
+$ moon run root:versionCheck
+```
+
+And that's it, but there are a few caveats to be aware of...
+
+## Caveats
+
+### Inputs are empty by default
+
+Tasks normally default their [`inputs`](<../(fundamentals)/task.mdx#inputs>) to `**/*`, which for
+the root project would mean hashing _every_ file in the repository. To avoid this very expensive
+operation, tasks in the root project of a multi-project workspace default to no inputs instead.
+
+Without inputs, changes to files don't affect the task's hash, so once a task has run, it's
+considered cached until its command, arguments, or environment change. Because of this, either
+disable caching for one-off tasks with [`options.cache`](/moon/api/TaskOptionsConfig#cache) (like
+the `versionCheck` example above), or configure a succinct list of inputs.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      format: {
+        command: "prettier --check .",
+        inputs: ["*.{js,json,md}", ".prettierrc"],
+      },
+    },
+  }}
+/>
+
+When the root is the _only_ project in the workspace (a single-project repository), this doesn't
+apply, and inputs default to `**/*` as usual.
+
+### Inherited tasks
+
+Because a root project is still a project in the workspace, it inherits tasks from
+[`.moon/tasks/*.config`](<../(fundamentals)/task-inheritance.mdx>) like any other project, which may
+be unexpected. For example, a `lint` task meant for applications would also run as `root:lint`
+when running `moon run :lint`. To mitigate this, exclude some or all of these tasks in the root's
+`moon.config` with [`workspace.inheritedTasks`](/moon/api/ProjectWorkspaceConfig#inheritedtasks).
+
+<ConfigTabs
+  file="moon"
+  config={{
+    workspace: {
+      inheritedTasks: {
+        include: [],
+      },
+    },
+  }}
+  comments={{
+    include: "Don't inherit any tasks",
+  }}
+/>
+
+Use [`exclude`](/moon/api/ProjectWorkspaceInheritedTasksConfig#exclude) instead to skip only
+specific tasks. See [filtering what a project inherits](<../(fundamentals)/task-inheritance.mdx#filtering-what-a-project-inherits>)
+for more information.
+
+### Depending on the root project
+
+Tasks in other projects can depend on tasks in the root project, like `deps: ["root:setup"]`. In
+this case, the root project becomes an implicit dependency with the `root`
+[scope](<../(fundamentals)/project.mdx#scopes>), and unlike other dependencies, it isn't linked to
+the dependent project in the [project graph](<../(fundamentals)/project-graph.mdx>). The task
+dependency itself still works as usual.
+
+This avoids treating every project as depending on the entire repository. For example,
+[`moon docker scaffold`](../commands/docker/scaffold.mdx) doesn't copy the root project's sources
+(which would be the whole repository) when scaffolding a project that depends on it.

@@ -1,0 +1,25 @@
+{
+  "title": "Guides",
+  "pages": [
+    "ci",
+    "codegen",
+    "codeowners",
+    "daemon",
+    "debug-task",
+    "docker",
+    "exec-plan",
+    "extensions",
+    "mcp",
+    "notifications",
+    "offline-mode",
+    "open-source",
+    "profile",
+    "remote-cache",
+    "renovate",
+    "root-project",
+    "sharing-config",
+    "vcs-hooks",
+    "wasm-plugins",
+    "webhooks"
+  ]
+}

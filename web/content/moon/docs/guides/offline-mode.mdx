@@ -1,3 +1,109 @@
 ---
 title: Offline mode
+icon: WifiOff
 ---
+
+moon assumes that an internet connection is usually available, as it downloads and installs tools
+into the [toolchain](<../(fundamentals)/toolchain.mdx>), resolves versions against upstream
+manifests, downloads WASM plugins, and installs dependencies. Having a constant connection isn't
+always viable though, like on a flight, behind a restrictive firewall, or in a sandboxed
+environment.
+
+To support these workflows, moon automatically checks for an internet connection when something
+needs one, and drops into offline mode if it can't find one. Instead of failing on network
+timeouts, moon skips what it can, and uses what's already been downloaded.
+
+## What's disabled when offline
+
+When offline, moon skips or changes the following:
+
+- **Dependency installation** - [`InstallDependencies`](<../(fundamentals)/toolchain.mdx#installing-and-deduping-dependencies>)
+  actions are skipped (with a warning), and tasks run with the dependencies that are already
+  installed.
+- **Tool installation** - Tools that are already installed are used as-is. Tools that aren't
+  installed can't be downloaded, so their `SetupToolchain` action fails. Version requirements are
+  resolved against previously cached version lists, no matter how old they are.
+- **proto installation** - If proto isn't installed at the required version, an existing proto
+  binary is used instead, even if it's a different version. If there's none, setup fails.
+- **Plugins** - Toolchain and extension plugins that have been downloaded before are used from the
+  cache, even if the cache is stale. Plugins that have never been downloaded fail to load, unless
+  they're sourced from the local file system.
+- **Version checks** - The check for a new moon version is skipped.
+- **Upgrading** - [`moon upgrade`](../commands/upgrade.mdx) fails with an error, as it requires an
+  internet connection.
+
+If a tool isn't installed, and you can't get online, you can still run tasks against a binary
+that's already on your `PATH`, by setting the `MOON_TOOLCHAIN_FORCE_GLOBALS` environment variable
+(see [installing with proto](<../(fundamentals)/toolchain.mdx#installing-with-proto>)).
+
+```shell
+# Use the Node.js binary on PATH instead of installing one
+$ MOON_TOOLCHAIN_FORCE_GLOBALS=node moon run app:build
+```
+
+## How detection works
+
+Offline detection is provided by [proto](/proto/docs), so moon and proto share the same behavior
+and environment variables. The check runs lazily, only when something needs to know, and at most
+once per command. Whether moon is online is determined by the first of:
+
+1. **The `PROTO_OFFLINE` environment variable** - When set, it forces a mode. See
+   [forcing a mode](#forcing-a-mode).
+2. **AI agent sandboxes** - When running inside an AI coding agent that reports its network policy
+   through environment variables (like a Codex sandbox with network access disabled), that policy
+   is trusted: a disabled network means offline, while an open or filtered network means online.
+3. **Connection probes** - moon attempts TCP connections, in parallel, to the IPv4 and IPv6
+   addresses of Cloudflare's and Google's public DNS servers (like `1.1.1.1` and `8.8.8.8`, on port
+   53). These don't require resolving host names, so they typically finish in milliseconds. If none
+   of them connect, moon then tries the `clients3.google.com:80`, `detectportal.firefox.com:80`, and
+   `google.com:80` hosts, plus any [custom hosts](#customizing-detection). If none of those connect
+   either, moon is offline.
+
+Each probe waits up to the [timeout](#customizing-detection) (750 milliseconds by default), for
+both resolving a host and connecting to it.
+
+## Forcing a mode
+
+Automatic detection can be bypassed with the `PROTO_OFFLINE` environment variable. A value of `1`
+or `true` forces offline mode, while `0` or `false` forces online mode (and skips the check
+entirely). Any other value is ignored, and detection runs as normal.
+
+```shell
+# Force offline mode, for example, to avoid slow network timeouts
+$ PROTO_OFFLINE=true moon run app:build
+
+# Force online mode, for example, when the probes are blocked by a firewall
+$ PROTO_OFFLINE=false moon run app:build
+```
+
+## Customizing detection
+
+The probes can be customized with the following environment variables.
+
+- `PROTO_OFFLINE_TIMEOUT` - The timeout for each probe, in milliseconds. Defaults to `750`. Lower it
+  to detect offline mode faster, or raise it on slow or high latency networks, to avoid false
+  positives.
+- `PROTO_OFFLINE_HOSTS` - Additional hosts to probe, after the default hosts, separated by commas.
+  Each host must include a port, like `artifactory.company.com:443`.
+- `PROTO_OFFLINE_OVERRIDE_HOSTS` - When `true`, skips the default IP addresses and hosts, and only
+  probes the hosts in `PROTO_OFFLINE_HOSTS`. Useful on networks that block public DNS servers, but
+  where an internal registry or mirror is reachable. Without any custom hosts, this always results
+  in offline mode.
+- `PROTO_OFFLINE_IP_VERSION` - Limits the default IP address probes to a single IP version, `4` or
+  `6`. If not defined, both are probed. This doesn't affect host probes.
+
+```shell
+# Only consider the machine online if the internal mirror is reachable
+$ PROTO_OFFLINE_OVERRIDE_HOSTS=true PROTO_OFFLINE_HOSTS=artifactory.company.com:443 moon run app:build
+```
+
+Instead of exporting these in every shell, the timeout and hosts can also be configured in
+`.prototools`, under proto's `[settings.offline]` table. Environment variables take precedence over
+these settings.
+
+```toml title=".prototools"
+[settings.offline]
+timeout = 1000
+custom-hosts = ["artifactory.company.com:443"]
+override-default-hosts = true
+```
