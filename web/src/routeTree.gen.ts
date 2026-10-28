@@ -14,8 +14,6 @@ import { Route as ProductRouteImport } from './routes/$product'
 import { Route as LlmsFullDottxtRouteImport } from './routes/llms-full[.]txt'
 import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as UiRouteImport } from './routes/ui'
-import { Route as UiBlogRouteImport } from './routes/ui-blog'
-import { Route as UiDocsRouteImport } from './routes/ui-docs'
 import { Route as ProductIndexRouteImport } from './routes/$product/index'
 import { Route as ProductSplatRouteImport } from './routes/$product/$'
 import { Route as ApiSearchRouteImport } from './routes/api/search'
@@ -48,16 +46,6 @@ const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
 const UiRoute = UiRouteImport.update({
   id: '/ui',
   path: '/ui',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const UiBlogRoute = UiBlogRouteImport.update({
-  id: '/ui-blog',
-  path: '/ui-blog',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const UiDocsRoute = UiDocsRouteImport.update({
-  id: '/ui-docs',
-  path: '/ui-docs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProductIndexRoute = ProductIndexRouteImport.update({
@@ -107,8 +95,6 @@ export interface FileRoutesByFullPath {
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/ui': typeof UiRoute
-  '/ui-blog': typeof UiBlogRoute
-  '/ui-docs': typeof UiDocsRoute
   '/$product/$': typeof ProductSplatRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
@@ -123,8 +109,6 @@ export interface FileRoutesByTo {
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/ui': typeof UiRoute
-  '/ui-blog': typeof UiBlogRoute
-  '/ui-docs': typeof UiDocsRoute
   '/$product/$': typeof ProductSplatRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
@@ -141,8 +125,6 @@ export interface FileRoutesById {
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/ui': typeof UiRoute
-  '/ui-blog': typeof UiBlogRoute
-  '/ui-docs': typeof UiDocsRoute
   '/$product/$': typeof ProductSplatRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
@@ -160,8 +142,6 @@ export interface FileRouteTypes {
     | '/llms-full.txt'
     | '/llms.txt'
     | '/ui'
-    | '/ui-blog'
-    | '/ui-docs'
     | '/$product/$'
     | '/api/search'
     | '/blog/$'
@@ -176,8 +156,6 @@ export interface FileRouteTypes {
     | '/llms-full.txt'
     | '/llms.txt'
     | '/ui'
-    | '/ui-blog'
-    | '/ui-docs'
     | '/$product/$'
     | '/api/search'
     | '/blog/$'
@@ -193,8 +171,6 @@ export interface FileRouteTypes {
     | '/llms-full.txt'
     | '/llms.txt'
     | '/ui'
-    | '/ui-blog'
-    | '/ui-docs'
     | '/$product/$'
     | '/api/search'
     | '/blog/$'
@@ -211,8 +187,6 @@ export interface RootRouteChildren {
   LlmsFullDottxtRoute: typeof LlmsFullDottxtRoute
   LlmsDottxtRoute: typeof LlmsDottxtRoute
   UiRoute: typeof UiRoute
-  UiBlogRoute: typeof UiBlogRoute
-  UiDocsRoute: typeof UiDocsRoute
   ApiSearchRoute: typeof ApiSearchRoute
   BlogSplatRoute: typeof BlogSplatRoute
   BlogIndexRoute: typeof BlogIndexRoute
@@ -256,20 +230,6 @@ declare module '@tanstack/react-router' {
       path: '/ui'
       fullPath: '/ui'
       preLoaderRoute: typeof UiRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/ui-blog': {
-      id: '/ui-blog'
-      path: '/ui-blog'
-      fullPath: '/ui-blog'
-      preLoaderRoute: typeof UiBlogRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/ui-docs': {
-      id: '/ui-docs'
-      path: '/ui-docs'
-      fullPath: '/ui-docs'
-      preLoaderRoute: typeof UiDocsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$product/': {
@@ -350,8 +310,6 @@ const rootRouteChildren: RootRouteChildren = {
   LlmsFullDottxtRoute: LlmsFullDottxtRoute,
   LlmsDottxtRoute: LlmsDottxtRoute,
   UiRoute: UiRoute,
-  UiBlogRoute: UiBlogRoute,
-  UiDocsRoute: UiDocsRoute,
   ApiSearchRoute: ApiSearchRoute,
   BlogSplatRoute: BlogSplatRoute,
   BlogIndexRoute: BlogIndexRoute,
