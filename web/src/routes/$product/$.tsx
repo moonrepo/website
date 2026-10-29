@@ -103,6 +103,10 @@ const clientLoaders = {
 		id: 'schematic',
 		component: renderContent,
 	}),
+	wasm: browserCollections.wasm.createClientLoader({
+		id: 'wasm',
+		component: renderContent,
+	}),
 } satisfies Record<Product, unknown>;
 
 function Page() {

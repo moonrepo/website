@@ -1,5 +1,5 @@
 import type { ProductTheme } from '@moonrepo/ui/theme';
-import { FileCogIcon, MoonIcon, SparklesIcon } from 'lucide-react';
+import { FileCogIcon, MoonIcon, PuzzleIcon, SparklesIcon } from 'lucide-react';
 
 // Kept separate from `source.ts`, so that routes can validate products
 // on the client without bundling the content collections.
@@ -19,6 +19,11 @@ export const PRODUCTS = {
 		title: 'schematic',
 		description: 'Layered configuration and schema modeling for Rust',
 		icon: FileCogIcon,
+	},
+	wasm: {
+		title: 'wasm',
+		description: 'WASM based plugins',
+		icon: PuzzleIcon,
 	},
 } as const;
 

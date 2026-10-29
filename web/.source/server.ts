@@ -46,3 +46,14 @@ export const schematic = await create.docs("schematic", "content/schematic", imp
   "query": "?collection=schematic",
   "eager": true
 }));
+
+export const wasm = await create.docs("wasm", "content/wasm", import.meta.glob(["./**/*.{json,yaml}"], {
+  "base": "./../content/wasm",
+  "query": "?collection=wasm",
+  "import": "default",
+  "eager": true
+}), import.meta.glob(["./**/*.{mdx,md}"], {
+  "base": "./../content/wasm",
+  "query": "?collection=wasm",
+  "eager": true
+}));

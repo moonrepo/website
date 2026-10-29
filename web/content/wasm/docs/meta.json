@@ -1,0 +1,7 @@
+{
+  "title": "Documentation",
+  "description": "Concepts, references, and more",
+  "icon": "BookOpen",
+  "root": true,
+  "pages": ["index"]
+}

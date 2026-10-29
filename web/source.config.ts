@@ -35,6 +35,8 @@ export const proto = defineProduct('proto');
 
 export const schematic = defineProduct('schematic');
 
+export const wasm = defineProduct('wasm');
+
 export const blog = defineCollections({
 	type: 'doc',
 	dir: 'content/blog',
