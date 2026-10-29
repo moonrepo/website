@@ -392,6 +392,10 @@ every run, which you can use to build your own tooling. `moon ci` writes it to
 to `.moon/cache/runReport.json`. Because these files live in `.moon/cache`, later runs overwrite
 them, so copy the report elsewhere if you need to keep it, like uploading it as a CI artifact.
 
+A report describes a single run. To track durations, cache hit rates, and flaky tasks across every
+run, export them to an observability backend with
+[OpenTelemetry](./opentelemetry.mdx#exporting-from-ci) instead.
+
 ### Community offerings
 
 The following GitHub actions are provided by the community:

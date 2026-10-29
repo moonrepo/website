@@ -28,7 +28,7 @@ $ MOON_LOG=debug moon run app:build
 - `--log` <TypeLabel type="off | error | warn | info | debug | trace | verbose" /> - The lowest [log level](#logging) to output. Defaults to `info`. Can also be set via the `MOON_LOG` environment variable.
 - `--log-file` <TypeLabel type="string" /> - Path to a file to [write logs to](#writing-logs-to-a-file). Can also be set via the `MOON_LOG_FILE` environment variable.
 - `--otel` - Export [traces and metrics](#opentelemetry) over OTLP. Can also be set via the `MOON_OTEL` environment variable.
-- `--otel-logs` - Also export log events as OTLP logs. Can also be set via the `MOON_OTEL_LOGS` environment variable.
+- `--otel-logs` - Export log events as OTLP logs. Can also be set via the `MOON_OTEL_LOGS` environment variable.
 - `--otel-service-name` <TypeLabel type="string" /> - The service name to report to OTLP. Can also be set via the `MOON_OTEL_SERVICE_NAME` environment variable.
 - `-q`, `--quiet` - Hide moon's own console output, like the checkpoints and statistics printed while running tasks. Can also be set via the `MOON_QUIET` environment variable.
 - `--theme` <TypeLabel type="dark | light" /> - The terminal [theme](#themes) to print with. Defaults to `dark`. Can also be set via the `MOON_THEME` environment variable.
@@ -171,122 +171,14 @@ $ moon run app:build --dump
 
 ## OpenTelemetry
 
-moon can export [OpenTelemetry](https://opentelemetry.io/) (OTEL) traces, metrics, and logs over
-[OTLP](https://opentelemetry.io/docs/specs/otlp/), for observability backends like Grafana,
-Honeycomb, or Datadog. Traces are built from the same spans that power [`--dump`](#profiling) and
-[`--log verbose`](#logging), so the entire run, from building the
-[action graph](<../(fundamentals)/action-graph.mdx>) to running tasks and calling plugins, is
-reported as a tree of spans. It answers questions like "what is CI actually spending its time on?"
-with a flame graph, instead of a hunch.
-
-Exporting is opt-in, and enabled with the following options:
-
-- `--otel` (`MOON_OTEL`) - Export traces and [metrics](#metrics).
-- `--otel-logs` (`MOON_OTEL_LOGS`) - Also export log events as OTLP logs. This respects `--log`, so
-  a less verbose level exports fewer events.
-- `--otel-service-name` (`MOON_OTEL_SERVICE_NAME`) - The service name to report. When not
-  provided, falls back to the standard `OTEL_SERVICE_NAME` environment variable, then `service.name`
-  in `OTEL_RESOURCE_ATTRIBUTES`.
-
-Where the data is sent is configured with the standard `OTEL_EXPORTER_OTLP_*` environment
-variables, like `OTEL_EXPORTER_OTLP_ENDPOINT`.
+When the `--otel` option (or `MOON_OTEL`) is passed, moon exports
+[OpenTelemetry](https://opentelemetry.io/) traces and metrics over OTLP, to an observability backend
+like Grafana, Honeycomb, or Datadog, while `--otel-logs` (or `MOON_OTEL_LOGS`) exports logs.
+Where the data is sent is configured with the standard `OTEL_EXPORTER_OTLP_*` environment variables.
+Refer to the [OpenTelemetry guide](../guides/opentelemetry.mdx) for configuring the exporter, and
+for the traces and metrics that moon records.
 
 ```shell
 $ export OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4318"
 $ moon --otel ci
 ```
-
-### Transports
-
-OTLP can be sent over HTTP (`http/protobuf`) or gRPC (`grpc`). The transport is chosen with the
-standard environment variables, where a per-signal variable takes precedence over the generic one:
-
-- `OTEL_EXPORTER_OTLP_TRACES_PROTOCOL`, `OTEL_EXPORTER_OTLP_METRICS_PROTOCOL`, and
-  `OTEL_EXPORTER_OTLP_LOGS_PROTOCOL` - The transport for an individual signal.
-- `OTEL_EXPORTER_OTLP_PROTOCOL` - The transport for all signals. Defaults to `http/protobuf`, which
-  is also used for any value other than `grpc`.
-
-Endpoints follow the same precedence, with `OTEL_EXPORTER_OTLP_ENDPOINT` and the per-signal
-`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` (and so on) variables. When an endpoint starts with
-`https://`, TLS is enabled, and the collector's certificate is verified against your operating
-system's certificate store.
-
-```shell
-# Send OTLP over gRPC
-$ export OTEL_EXPORTER_OTLP_PROTOCOL="grpc"
-$ export OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4317"
-$ moon --otel run app:build
-```
-
-### Metrics
-
-Alongside traces, moon records metrics for every task, action, and operation that runs in the
-pipeline. [Actions](<../(fundamentals)/action.mdx>) are the units of work in the action graph
-(running a task, syncing a project, installing dependencies, and so on), while
-[operations](<../(fundamentals)/action.mdx#operations>) are the steps _within_ an action
-(generating a hash, hydrating outputs from the cache, executing the command, and so on). Tasks are
-recorded on their own as well, since they're the unit of work that matters most.
-
-| Metric                      | Instrument | Description                                     |
-| :-------------------------- | :--------- | :---------------------------------------------- |
-| `moon.task.runs`            | Counter    | Number of tasks ran within the pipeline.        |
-| `moon.task.duration`        | Histogram  | Duration of tasks, in milliseconds.             |
-| `moon.action.executions`    | Counter    | Number of actions executed within the pipeline. |
-| `moon.action.duration`      | Histogram  | Duration of actions, in milliseconds.           |
-| `moon.operation.executions` | Counter    | Number of operations executed within an action. |
-| `moon.operation.duration`   | Histogram  | Duration of operations, in milliseconds.        |
-
-Task metrics are the ones to reach for when building dashboards, as they can be grouped by a
-target, by a project ("which project is the most expensive in CI?"), or by a task identifier ("how
-long does `build` take across the workspace?"). They're recorded with the following attributes:
-
-- `target` - The target that was ran, like `app:build`.
-- `project` - The project the task belongs to.
-- `task` - The identifier of the task.
-- `toolchains` - Every toolchain the task ran with, sorted and comma separated, like
-  `javascript,node,npm`. This includes the toolchains required by the configured ones. It's a
-  string instead of an array, as backends don't handle array attributes consistently, so filter by
-  an individual toolchain with a "contains" match.
-- `status` - The final status of the task, like `passed`, `failed`, `cached`, or
-  `cached-from-remote`. Compare the cached statuses against the total for a cache hit rate.
-- `flaky` - Whether the task only passed after being retried, known as a
-  [flaky action](<../(fundamentals)/action.mdx#flaky-actions>).
-
-Action metrics cover the pipeline as a whole. For `run-task` actions, the duration is the same
-measurement as `moon.task.duration`, with fewer attributes to group by:
-
-- `action` - The kind of action, like `run-task` or `sync-project`.
-- `status` - The final status of the action.
-- `target` - The target that was ran, for `run-task` actions.
-- `project` - The project the action operated on, for `sync-project` actions, and for
-  `setup-environment` and `install-dependencies` actions that belong to a project.
-- `toolchain` - The toolchain the action operated on, for toolchain related actions.
-
-Operation metrics purposefully don't record the target, project, or toolchain, as multiplying them
-by every operation would explode the number of time series. Traces provide that level of detail
-instead.
-
-- `action` - The kind of action the operation ran within.
-- `operation` - The kind of operation, like `hash-generation` or `task-execution`.
-- `status` - The final status of the operation.
-- `id` - The identifier of the operation, for setup and sync operations.
-- `plugin` - The plugin that ran the operation, if any.
-
-<Callout type="warning">
-  Since the `target` attribute is recorded for every task that runs, the number
-  of `moon.task.*` and `moon.action.*` time series grows with the number of
-  tasks in your workspace. If your backend struggles with it, drop or aggregate
-  away the attribute in your OTEL collector.
-</Callout>
-
-[Persistent tasks](<../(fundamentals)/task.mdx#persistent>) never complete, so they aren't
-recorded. Tasks that were skipped because a dependency failed _are_ recorded, with a `skipped`
-status.
-
-### Disabling signals
-
-The standard environment variables can also turn signals off, even when they're enabled with the
-options above, which is handy for opting out on a single machine. `OTEL_SDK_DISABLED=true` disables
-every signal, while `OTEL_TRACES_EXPORTER=none`, `OTEL_METRICS_EXPORTER=none`, and
-`OTEL_LOGS_EXPORTER=none` disable an individual signal. These variables can only turn a signal
-off, never on.
