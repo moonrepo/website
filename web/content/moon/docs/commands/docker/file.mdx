@@ -4,26 +4,27 @@ title: moon docker file
 
 import { TypeLabel } from "@/components/TypeLabel";
 
-Generates a multi-stage, production-oriented `Dockerfile` for a project, taking full advantage
-of Docker's layer caching. See [`moon docker`](../docker.mdx) for how this fits into the wider
-Docker workflow. The generated file is split into the following stages:
+Generates a multi-stage, production-oriented `Dockerfile` for a project, pre-wired to run the other
+[`moon docker`](../docker.mdx) commands in the correct order. The file is split into the following
+stages, and the [Docker guide](../../guides/docker.mdx#generating-a-dockerfile) walks through an
+example of the output:
 
-- `base` - Installs moon into the chosen base image (requires Bash).
-- `skeleton` - Copies in the workspace and source skeletons produced by
-  [`moon docker scaffold`](./scaffold.mdx).
-- `build` - Copies the required sources, installs toolchains and dependencies with
+- `base` - Installs moon into the chosen base image, which requires Bash and `curl`.
+- `skeleton` - Copies in the repository and runs [`moon docker scaffold`](./scaffold.mdx) for the
+  project.
+- `build` - Copies the scaffolded skeletons, installs toolchains and dependencies with
   [`moon docker setup`](./setup.mdx), optionally runs a build task, and optionally strips
   development dependencies with [`moon docker prune`](./prune.mdx).
-- `start` - Runs the project once it has been built, typically an HTTP server or a binary.
+- `start` - Runs the project with a start task, typically an HTTP server or a binary. This stage is
+  omitted when no start task is chosen.
 
-The base image is resolved in the following order: the `--image` flag, the project's or
-workspace's [`docker.file.image`](/moon/api/DockerFileConfig#image) setting, an image provided by the project's toolchain (via its
-`defineDockerMetadata` hook), and finally `scratch` if nothing else matches. The build and start
-tasks work the same way, falling back to the project's or workspace's [`docker.file.buildTask`](/moon/api/DockerFileConfig#buildtask)
-and [`docker.file.startTask`](/moon/api/DockerFileConfig#starttask) settings. When a value isn't supplied through a flag or config,
-and `--defaults` isn't passed, moon prompts interactively in the terminal for the image and for
-which of the project's tasks to use for the build and start steps (an option to select "none" is
-always available).
+Each value is resolved from its command line option first, then from the project's or workspace's
+[`docker.file`](/moon/api/DockerConfig#file) settings (see
+[configuring generation](../../guides/docker.mdx#configuring-generation)). When no image is
+configured, the image of the first of the project's toolchains that provides one (via its
+`defineDockerMetadata` hook) is used, and otherwise `scratch`. Unless `--defaults` is passed, moon
+prompts for the image, and for which of the project's tasks to use for the build and start steps
+(an option to select "none" is always available).
 
 The command writes the file to the project's root, defaulting to a file named `Dockerfile`, or a
 custom `[DEST]` path relative from the project root. It does not build or run Docker itself; it
@@ -48,8 +49,9 @@ $ moon docker file app ./docker/Dockerfile --image node:20-slim
 
 ## Options
 
-- `--defaults` - Use default options derived from configuration (or the first available task)
-  instead of prompting for the image and build/start tasks in the terminal.
+- `--defaults` - Use default options derived from configuration instead of prompting for the image
+  and build/start tasks in the terminal. When a build or start task isn't configured, that step is
+  left out.
 - `--build-task` <TypeLabel type="string" /> - ID of a task within the project to run in the
   `build` stage. When omitted, falls back to the project's or workspace's
   [`docker.file.buildTask`](/moon/api/DockerFileConfig#buildtask) setting, or prompts for a task (or none) interactively. When no build
@@ -62,12 +64,14 @@ $ moon docker file app ./docker/Dockerfile --image node:20-slim
 - `--no-setup` - Do not run [`moon docker setup`](./setup.mdx) in the `build` stage. Overrides the
   project's or workspace's [`docker.file.runSetup`](/moon/api/DockerFileConfig#runsetup) setting, which defaults to `true`.
 - `--no-toolchain` - Do not install moon's toolchain into the image, and instead rely on system
-  binaries that already exist in the base image.
+  binaries that already exist in the base image, by setting `MOON_TOOLCHAIN_FORCE_GLOBALS` in the
+  `base` stage. This is implied when the image name contains `alpine`. See
+  [using system binaries](../../guides/docker.mdx#using-system-binaries).
 - `--start-task` <TypeLabel type="string" /> - ID of a task within the project to run via the
   `CMD` instruction in the `start` stage. When omitted, falls back to the project's or
   workspace's [`docker.file.startTask`](/moon/api/DockerFileConfig#starttask) setting, or prompts for a task (or none) interactively.
-  When no start task is used, the `CMD` instruction is omitted from the file.
-- `--template` <TypeLabel type="string" /> - Path to a custom [Tera](https://keats.github.io/tera/)
-  template, relative from the workspace root, used to render the `Dockerfile` instead of moon's
+  When no start task is used, the `start` stage is omitted from the file.
+- `--template` <TypeLabel type="string" /> - Path to a
+  [custom Tera template](../../guides/docker.mdx#custom-templates), relative from the workspace root, used to render the `Dockerfile` instead of moon's
   built-in template. Falls back to the project's or workspace's [`docker.file.template`](/moon/api/DockerFileConfig#template) setting.
   Errors if the resolved path does not exist.

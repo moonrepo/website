@@ -152,18 +152,18 @@ specific parts of moon, the following environment variables reveal more informat
   default, only `MOON_` variables are shown, to avoid leaking sensitive values.
 - `MOON_DEBUG_PROCESS_INPUT` - Reveal the full stdin passed to child processes. By default, it's
   truncated, to avoid flooding the console with large inputs.
-- `MOON_DEBUG_REMOTE` - Log more information about the [remote cache](../advanced/cache.mdx),
-  including internal connection errors.
-- `MOON_DEBUG_WASM` - Log more information about WASM plugins, like
+- `MOON_DEBUG_REMOTE` - Log more information about the
+  [remote cache](../guides/remote-cache.mdx#debugging), including internal connection errors.
+- `MOON_DEBUG_WASM` - Log more information about [WASM plugins](../guides/wasm-plugins.mdx), like
   [toolchains](<../(fundamentals)/toolchain.mdx>) and
   [extensions](<../(fundamentals)/extension.mdx>), and dump their memory and core profiles.
 
 ## Profiling
 
 When the `--dump` option (or `MOON_DUMP`) is passed, moon writes a trace profile of the command to
-a `dump-<timestamp>.json` file in the current working directory. Open it in
-[Perfetto](https://ui.perfetto.dev/) (or Chrome, via `chrome://tracing`) to inspect the command as
-a flame chart, which is the quickest way to find out where a slow command spends its time.
+a `dump-<timestamp>.json` file in the current working directory, which is the quickest way to find
+out where a slow command spends its time. Refer to the
+[profiling guide](../guides/profile.mdx#profiling-moon) for how to record and analyze a trace.
 
 ```shell
 $ moon run app:build --dump

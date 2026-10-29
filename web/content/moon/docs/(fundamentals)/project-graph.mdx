@@ -40,7 +40,8 @@ The whole graph is rarely what you want to look at. A graph can be **focused** o
 project, reducing it to that project and its dependencies, and optionally its dependents as well.
 [`moon project-graph <id>`](../commands/project-graph.mdx) does exactly this, and
 [`moon docker scaffold`](../commands/docker/scaffold.mdx) uses the same mechanism to work out the
-minimum set of files a Docker build context needs.
+minimum set of files a Docker build context needs (see
+[how the Docker integration works](../guides/docker.mdx#how-it-works)).
 
 ```shell
 # The whole graph

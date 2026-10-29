@@ -6,9 +6,9 @@ icon: Toolbox
 import { ConfigTabs } from "@/components/ConfigTabs";
 import { TypeLabel } from "@/components/TypeLabel";
 
-A **toolchain** is a WASM plugin that integrates a language, ecosystem, or tool into moon, like Go,
-JavaScript, or Rust. Toolchains are what make moon language aware: they detect which
-[projects](./project.mdx) and [tasks](./task.mdx) use a language, teach the
+A **toolchain** is a [WASM plugin](../guides/wasm-plugins.mdx) that integrates a language,
+ecosystem, or tool into moon, like Go, JavaScript, or Rust. Toolchains are what make moon language
+aware: they detect which [projects](./project.mdx) and [tasks](./task.mdx) use a language, teach the
 [project graph](./project-graph.mdx) about manifests and lockfiles, install dependencies before tasks
 run, and download and pin the tools themselves, so every developer and CI machine runs the same
 versions.
@@ -138,11 +138,12 @@ a toolchain ID. For built-in toolchains, the ID is all moon needs, so an empty e
 toolchain with its default settings.
 
 Third-party and custom toolchains also require a [`plugin`](/moon/api/ToolchainPluginConfig#plugin)
-locator, which tells moon where to download the WASM file from. Locators support the `file://`,
-`https://`, `github://`, and `registry://` protocols, and relative `file://` paths are resolved
-from the `.moon` directory. The ID is up to you, and is how projects, tasks, and environment
-variables refer to the toolchain. An ID that isn't built-in and has no locator fails with an error
-like "a locator is required for plugins".
+locator, which tells moon where to download the WASM file from.
+[Locators](../guides/wasm-plugins.mdx#plugin-locators) support the `file://`, `https://`,
+`github://`, and `registry://` protocols, and relative `file://` paths are resolved from the `.moon`
+directory. The ID is up to you, and is how projects, tasks, and environment variables refer to the
+toolchain. An ID that isn't built-in and has no locator fails with an error like "a locator is
+required for plugins".
 
 <ConfigTabs
   file=".moon/toolchains"
@@ -548,7 +549,9 @@ manager. The version comes from the first of:
 
 1. A project's `version` [override](#project-overrides), for that project's tasks.
 2. The `MOON_<ID>_VERSION` environment variable, using the configured ID in uppercase (like
-   `MOON_NODE_VERSION` or `MOON_UNSTABLE_PYTHON_VERSION`), to temporarily use a different version.
+   `MOON_NODE_VERSION` or `MOON_UNSTABLE_PYTHON_VERSION`), to temporarily use a different version,
+   like when [testing against multiple versions](../guides/open-source.mdx#testing-multiple-tool-versions)
+   in CI.
 3. The `version` setting in [`.moon/toolchains.config`](#configuration).
 4. The `.prototools` file in the directory moon runs in (normally the workspace root), matched by the
    toolchain's stable ID, unless
@@ -574,7 +577,9 @@ precedence.
 
 To use the binaries on your `PATH` instead, set the `MOON_TOOLCHAIN_FORCE_GLOBALS` environment
 variable to `true` for every toolchain, or to a comma-separated list of toolchain IDs. moon then
-doesn't install those tools, or add them to `PATH`.
+doesn't install those tools, or add them to `PATH`. This is useful in Docker images that already
+include the tools (see [using system binaries](../guides/docker.mdx#using-system-binaries)), or
+when [offline](../guides/offline-mode.mdx) and a tool isn't installed yet.
 
 ```shell
 # Print the path to the Node.js binary managed by moon

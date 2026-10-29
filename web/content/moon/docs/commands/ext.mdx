@@ -2,21 +2,26 @@
 title: moon ext
 ---
 
-Execute an extension, a WASM plugin that extends moon with custom functionality, has whitelisted
-access to the file system, and can receive partial information about the current workspace.
+Execute an [extension](<../(fundamentals)/extension.mdx>), a [WASM plugin](../guides/wasm-plugins.mdx)
+that extends moon with custom functionality, has whitelisted access to the file system, and can
+receive partial information about the current workspace.
 
 To execute an extension, moon looks up the provided extension `id` in the workspace's configured
 extensions (typically defined in [`.moon/extensions.config`](<../(fundamentals)/extension.mdx>)), resolves and loads its WASM plugin
-(downloading and caching it locally if it's referenced by a URL), and then calls the plugin's
+from its [plugin locator](../guides/wasm-plugins.mdx#plugin-locators) (downloading and caching it
+locally, unless it's a local file), and then calls the plugin's
 `execute_extension` function. Any arguments passed after a `--` separator are not parsed by
 `moon ext` itself, but are instead forwarded verbatim to the extension, which is responsible for
 parsing them on its own.
 
 Extensions must first be registered with the workspace before they can be executed with this
-command, either manually within [`.moon/extensions.config`](<../(fundamentals)/extension.mdx>), or by running
+command, even [built-in extensions](<../(fundamentals)/extension.mdx#built-in-extensions>), either
+manually within [`.moon/extensions.config`](<../(fundamentals)/extension.mdx>), or by running
 [`moon extension add`](./extension/add.mdx). To inspect what an extension supports before running it,
 use [`moon extension info`](./extension/info.mdx). See [`moon extension`](./extension.mdx) for managing
 extensions as a whole.
+
+For example, to run the built-in [`download`](../extensions/download.mdx) extension:
 
 ```shell
 $ moon ext download -- --url https://github.com/moonrepo/moon/releases/latest/download/moon-x86_64-unknown-linux.tar.xz

@@ -50,6 +50,8 @@ $ moon project client --no-tasks
 ## Options
 
 - `--json` - Print the entire project, including its expanded configuration, dependencies,
-  file groups, and tasks, as JSON, instead of the formatted terminal output.
+  file groups, and tasks, as JSON, instead of the formatted terminal output. The root `inherited`
+  object lists the task configuration files the project inherited from, which is useful when
+  [debugging inherited configuration](../skills/debug-task.mdx#verify-inherited-configuration).
 - `--no-tasks` - Exclude the "Tasks" section from the formatted output. Has no effect
   when combined with `--json`.

@@ -310,7 +310,7 @@ Dependencies come from the project graph, so both explicit
 the JavaScript toolchain infers from `package.json`) are synced. moon skips any dependency that:
 
 - Isn't associated with the TypeScript toolchain.
-- Is the workspace root-level project.
+- Is the workspace [root-level project](../guides/root-project.mdx).
 - Has a `build` or `root` [scope](<../(fundamentals)/project.mdx#scopes>). For example, the
   JavaScript toolchain infers `optionalDependencies` from `package.json` with the `build` scope.
 - Has no project config file (`tsconfig.json` by default).
@@ -544,6 +544,9 @@ that make `tsc` runnable. Instead, tasks inherit their project's toolchains as-i
 before targeting only `typescript`.
 
 ### Docker integration
+
+The TypeScript toolchain integrates with the following steps of the
+[Docker workflow](../guides/docker.mdx):
 
 - [`moon docker scaffold`](../commands/docker/scaffold.mdx) - Copies the following files from the
   workspace root and the root of each project:

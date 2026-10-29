@@ -13,8 +13,8 @@ For example, `app:build` selects the `build` task in the `app` project, while `:
 building the project graph. When a target appears on the command line, moon resolves it while
 building the action graph for that run.
 
-Targets are intentionally compact because they show up everywhere: task dependencies, execution
-plans, affected checks, logs, and CLI commands.
+Targets are intentionally compact because they show up everywhere: task dependencies,
+[execution plans](../guides/exec-plan.mdx#targets), affected checks, logs, and CLI commands.
 
 ## Project scopes
 
@@ -339,4 +339,6 @@ default because not every dependency or tagged project is expected to expose the
 When an explicit project target or project tag target creates a cross-project task dependency, moon
 also records an implicit project dependency for graph correctness. This helps affected detection and
 execution ordering understand that the owning project relies on the referenced project, even if it
-was not listed manually in [`dependsOn`](/moon/api/ProjectConfig#dependson).
+was not listed manually in [`dependsOn`](/moon/api/ProjectConfig#dependson). A dependency on the
+[root-level project](../guides/root-project.mdx#depending-on-the-root-project) is recorded with the
+`root` scope, and isn't linked in the project graph.

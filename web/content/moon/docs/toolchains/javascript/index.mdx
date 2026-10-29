@@ -344,8 +344,8 @@ packages are named `@acme/utils` and `@acme/test-utils`):
 ```
 
 A dependency is only synced when its `package.json` has both a `name` and a `version`, and
-existing entries are never overwritten. Projects at the workspace root are skipped, both as the
-project being synced and as a dependency.
+existing entries are never overwritten. A [root-level project](../../guides/root-project.mdx) at
+the workspace root is skipped, both as the project being synced and as a dependency.
 
 ### Inferring tasks from scripts
 
@@ -490,6 +490,9 @@ project with only a `package.json` is associated with the JavaScript, Node.js, a
 
 ### Docker integration
 
+The JavaScript toolchain integrates with the following steps of the
+[Docker workflow](../../guides/docker.mdx):
+
 - [`moon docker scaffold`](../../commands/docker/scaffold.mdx) - Copies `package.json` files,
   lockfiles, and package manager configuration files (including the `.yarn` directory). The runtime
   toolchains also copy scripts, like those used by `postinstall` hooks.
@@ -504,7 +507,8 @@ project with only a `package.json` is associated with the JavaScript, Node.js, a
 Refer to each package manager's page for the specifics: [Bun](./bun.mdx#docker-integration),
 [Deno](./deno.mdx#docker-integration), [npm](./npm.mdx#docker-integration),
 [Nub](./nub.mdx#docker-integration), [pnpm](./pnpm.mdx#docker-integration), and
-[Yarn](./yarn.mdx#docker-integration).
+[Yarn](./yarn.mdx#docker-integration). To keep `node_modules` in the image, or to skip the
+production install, see [customizing pruning](../../guides/docker.mdx#customizing-pruning).
 
 ## Tier 2: Ecosystem integration
 

@@ -38,7 +38,11 @@ The migration touches the following files:
   `unstable_remote` becomes `remote`, `vcs.manager` becomes `vcs.client`, and
   `vcs.syncHooks` becomes `vcs.sync`. If an `extensions` setting is present, it's
   extracted out of `workspace.yml` entirely and written to a new
-  `.moon/extensions.yml` file.
+  `.moon/extensions.yml` file. Refer to the
+  [code owners](../../guides/codeowners.mdx#generating-codeowners),
+  [Docker](../../guides/docker.mdx), [remote cache](../../guides/remote-cache.mdx), and
+  [VCS hooks](../../guides/vcs-hooks.mdx#automatically-for-everyone) guides for how the
+  renamed settings work in v2.
 - **`.moon/toolchain.yml`** - Deleted and replaced with a new `.moon/toolchains.yml`
   file. Any top-level setting prefixed with `unstable_` is promoted to its stable name
   (the prefix is dropped). Toolchain-specific settings are reshuffled into the new
@@ -70,7 +74,8 @@ The migration touches the following files:
   present) is renamed to `.moon/tasks/all.yml`.
 - **`<project>/moon.yml`** (every project config in the workspace) - `toolchain`
   becomes `toolchains`, `platform` becomes `toolchains.default`, and `type` becomes
-  `layer`. `docker.scaffold.include` becomes `docker.scaffold.sourcesPhaseGlobs`.
+  `layer`. `docker.scaffold.include` becomes `docker.scaffold.sourcesPhaseGlobs` (see
+  [customizing the scaffold](../../guides/docker.mdx#customizing-the-scaffold)).
   Under `project`, `name` becomes `title`, and any `project.metadata` fields are
   flattened directly onto `project`. A `disabled` setting under any entry in
   `toolchains` is removed. Tasks defined on the project are migrated the same way as

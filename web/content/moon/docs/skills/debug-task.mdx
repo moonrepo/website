@@ -6,7 +6,8 @@ icon: Bug
 Running [tasks](<../(fundamentals)/task.mdx>) is the most common way to interact with moon, so what
 do you do when your task isn't working as expected? Diagnose it of course! Diagnosing the root cause
 of a broken task can be quite daunting, but do not fret, as the following steps will help guide you
-in this endeavor.
+in this endeavor. If the task works, but is slow, see the [profiling guide](../guides/profile.mdx)
+instead.
 
 ## Using an AI skill
 
@@ -67,7 +68,9 @@ Some issues to look out for:
 - Have [tokens](../advanced/tokens.mdx) resolved correctly? If not, verify syntax or try another
   token type.
 - Have `inputFiles`, `inputGlobs`, and `inputEnv` expanded correctly from
-  [`inputs`](/moon/api/TaskConfig#inputs)?
+  [`inputs`](/moon/api/TaskConfig#inputs)? In a multi-project workspace, tasks in the
+  [root-level project](../guides/root-project.mdx#inputs-are-empty-by-default) have no inputs by
+  default.
 - Have `outputFiles` and `outputGlobs` expanded correctly from
   [`outputs`](/moon/api/TaskConfig#outputs)?
 - Are the `toolchains` correct for the command, and in the right order? The first toolchain is the
@@ -113,6 +116,11 @@ $ MOON_DEBUG_PROCESS_ENV=true MOON_DEBUG_PROCESS_INPUT=true moon run app:build -
   only those prefixed with `MOON_` or `PROTO_`.
 - `MOON_DEBUG_PROCESS_INPUT` logs the full input passed to child processes, instead of truncating
   it.
+
+Not every problem shows up in these logs. When the daemon is enabled, failures to archive or restore
+outputs are only reported in [its own logs](../guides/daemon.mdx#task-outputs-are-missing-or-stale),
+and connection errors with a [remote cache](../guides/remote-cache.mdx#debugging) are only logged
+when `MOON_DEBUG_REMOTE` is set.
 
 Once ran, a large amount of information will be logged to the terminal (pass `--log-file <path>` to
 write it to a file instead). However, most of it can be ignored, as we're only interested in how

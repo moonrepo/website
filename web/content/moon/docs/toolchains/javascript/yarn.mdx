@@ -206,6 +206,9 @@ as well as the classic `.yarnrc` file and anything in a `.yarn` directory.
 
 ### Docker integration
 
+The Yarn toolchain integrates with the following steps of the
+[Docker workflow](../../guides/docker.mdx):
+
 - [`moon docker scaffold`](../../commands/docker/scaffold.mdx) - Copies `package.json`, `yarn.lock`,
   `.npmrc`, and `.yarnrc.*` files. The [JavaScript toolchain](./index.mdx) also copies `.yarnrc` and
   `.yarn/**` files, so releases, plugins, and patches committed to `.yarn` are available before

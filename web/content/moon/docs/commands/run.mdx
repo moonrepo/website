@@ -67,8 +67,9 @@ $ moon run app:lint --affected --base master
   [`options.outputStyle`](/moon/api/TaskOptionsConfig#outputstyle) setting, including for the
   targets passed on the command line, which otherwise always display their output. See
   [output style](<../(fundamentals)/task.mdx#output-style>) for more information.
-- `-p`, `--plan` <TypeLabel type="string" /> - Relative path to an execution plan file (JSON) that
-  customizes the action graph and pipeline before it runs, such as pre-defining targets, affected
+- `-p`, `--plan` <TypeLabel type="string" /> - Relative path to an
+  [execution plan](../guides/exec-plan.mdx) file (JSON) that customizes the action graph and
+  pipeline before it runs, such as pre-defining targets, affected
   settings, graph depth, or parallelism/job partitioning. Can also be set via the
   `MOON_EXEC_PLAN` environment variable. Targets passed on the command line are merged into the
   plan when the plan itself doesn't already define any.

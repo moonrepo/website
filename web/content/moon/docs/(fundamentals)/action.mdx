@@ -36,7 +36,7 @@ explains what happened:
 - `Passed` - The action ran and succeeded.
 - `Failed` - The action ran and failed.
 - `Cached` - The result was restored from the local cache, so nothing was re-executed.
-- `CachedFromRemote` - The result was restored from [remote cache](../advanced/cache.mdx).
+- `CachedFromRemote` - The result was restored from a [remote cache](../guides/remote-cache.mdx).
 - `Skipped` - Nothing needed to happen.
 - `Invalid` - The action could not be performed as configured.
 - `TimedOut` - The action exceeded its [`options.timeout`](/moon/api/TaskOptionsConfig#timeout).
@@ -101,9 +101,10 @@ from cache, or execute and then archive what was produced.
 ## Reports
 
 After every run, moon writes a machine-readable report of every action to
-`.moon/cache/runReport.json`, including each action's node, status, duration, operations, and any
-error. It's the most complete record available, and useful for building your own tooling around a
-run.
+`.moon/cache/runReport.json` (or `.moon/cache/ciReport.json` for [`moon ci`](../commands/ci.mdx)),
+including each action's node, status, duration, operations, and any error. It's the most complete
+record available, and useful for building your own tooling around a run, like
+[reporting run results](../guides/ci.mdx#reporting-run-results) on a pull request.
 
 The same data drives the terminal summary. [`moon run --summary`](../commands/run.mdx) controls how much
 of it is printed, from `none` through `minimal`, `normal`, and `detailed`.
@@ -115,7 +116,8 @@ parallelism are buying you.
 
 To track actions across many runs instead of one, like in CI, export them to an observability
 backend as [OpenTelemetry metrics](../commands/overview.mdx#metrics), which record the status and
-duration of every task, action, and operation.
+duration of every task, action, and operation, or stream every pipeline event to an HTTP endpoint
+with [webhooks](../guides/webhooks.mdx).
 
 ```shell
 # Run with the most verbose summary

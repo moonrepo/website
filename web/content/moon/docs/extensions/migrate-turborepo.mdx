@@ -40,7 +40,8 @@ $ moon extension add migrate-turborepo
 />
 
 The extension has no settings. Without a `plugin` locator, moon uses the version of the extension
-that it was released with. To use a different version, set the locator explicitly, for example
+that it was released with. To use a different version, set the
+[locator](../guides/wasm-plugins.mdx#plugin-locators) explicitly, for example
 `registry://ghcr.io/moonrepo/migrate_turborepo_extension:1.0.5`.
 
 Once the migration is complete, the entry can be removed.
@@ -159,6 +160,8 @@ The following have no moon equivalent, and are ignored:
 - `globalPassThroughEnv` and task `passThroughEnv`.
 - Task settings like `interruptible` and `with`.
 - `outputLogs` values of `full` and `none`.
+
+To replace `daemon`, configure moon's [daemon](../guides/daemon.mdx) separately.
 
 ## Caveats
 

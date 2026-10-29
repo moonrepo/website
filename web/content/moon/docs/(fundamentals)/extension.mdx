@@ -5,11 +5,11 @@ icon: Puzzle
 
 import { ConfigTabs } from "@/components/ConfigTabs";
 
-**Extensions** are WASM plugins that extend moon with functionality that doesn't belong to a
-[toolchain](./toolchain.mdx) or a [task](./task.mdx). They're the general purpose escape hatch of the plugin
-system: an extension can be invoked directly from the command line as a one-off utility, or it can
-hook into moon's internals to shape the project graph, augment commands before they execute, and
-participate in workspace and project syncing.
+**Extensions** are [WASM plugins](../guides/wasm-plugins.mdx) that extend moon with functionality
+that doesn't belong to a [toolchain](./toolchain.mdx) or a [task](./task.mdx). They're the general
+purpose escape hatch of the plugin system: an extension can be invoked directly from the command
+line as a one-off utility, or it can hook into moon's internals to shape the project graph, augment
+commands before they execute, and participate in workspace and project syncing.
 
 Because extensions are WASM, they run in a sandbox with whitelisted file system access, receive only
 the information moon explicitly passes them, and are portable across every platform moon supports.
@@ -20,8 +20,9 @@ the information moon explicitly passes them, and are portable across every platf
   of the workspace.
 - **Configuration driven** - Registered by a unique identifier in
   [`.moon/extensions.config`](#configuration), alongside any settings the plugin declares.
-- **Distributable** - Sourced from a plugin locator, so they can live in a Git repository, on
-  GitHub releases, behind a URL, or on the local file system.
+- **Distributable** - Sourced from a [plugin locator](../guides/wasm-plugins.mdx#plugin-locators),
+  so they can be published to GitHub releases or an OCI registry, served from a URL, or live on the
+  local file system.
 - **Self describing** - Each plugin reports its own name, description, and version, and may declare
   a JSON schema for its settings.
 - **Optional hooks** - A plugin implements only the functions it needs; moon skips the rest.
@@ -114,7 +115,8 @@ the plugin itself.
 
 The `plugin` setting can be omitted entirely for [built-in extensions](#built-in-extensions), as
 moon knows where to find them. Configuration files can also be composed with the [`extends`](/moon/api/ExtensionsConfig#extends) setting,
-which accepts a relative file path or a secure URL.
+which accepts a relative file path or a secure URL, and merges extensions by their identifier (see
+[sharing configuration](../guides/sharing-config.mdx#merging)).
 
 Extensions can be added and inspected from the command line, instead of editing the configuration
 file by hand:

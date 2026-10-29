@@ -38,7 +38,8 @@ $ moon extension add migrate-nx
 />
 
 The extension has no settings. Without a `plugin` locator, moon uses the version of the extension
-that it was released with. To use a different version, set the locator explicitly, for example
+that it was released with. To use a different version, set the
+[locator](../guides/wasm-plugins.mdx#plugin-locators) explicitly, for example
 `registry://ghcr.io/moonrepo/migrate_nx_extension:1.0.5`.
 
 Once the migration is complete, the entry can be removed.
@@ -201,6 +202,9 @@ The following have no moon equivalent, and are ignored:
 - Named inputs that reference other named inputs, as file groups can't reference each other.
 - A target's `defaultConfiguration` and `params` in `dependsOn`.
 - Project `root` and `sourceRoot`, as moon derives them from the project's location.
+
+To replace `useDaemonProcess` and Nx Cloud's remote caching, configure moon's
+[daemon](../guides/daemon.mdx) and [remote cache](../guides/remote-cache.mdx) separately.
 
 ## Caveats
 

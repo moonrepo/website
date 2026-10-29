@@ -16,7 +16,8 @@ Changed files are gathered using the following logic:
 - If neither `--base` nor `--head` is provided (or the `MOON_BASE`/`MOON_HEAD` environment
   variables), and the current branch is the workspace's default branch, and `--default-branch` is
   enabled, files are compared against the previous revision (`HEAD~1`). This mirrors what
-  [continuous integration](../ci.mdx) uses by default.
+  [continuous integration](../ci.mdx) uses by default (see
+  [comparing revisions](../../guides/ci.mdx#comparing-revisions)).
 - If `--local` is enabled (and neither `--base`, `--head`, nor `MOON_BASE`/`MOON_HEAD` are set),
   only files from your local working tree are returned (equivalent to `git status`).
 - Otherwise, files are diffed between `--base` (defaulting to the workspace's configured [`vcs.defaultBranch`](/moon/api/VcsConfig#defaultbranch))
@@ -28,8 +29,8 @@ Changed files are gathered using the following logic:
   head is set.
 
 When running outside of CI, `--local` behavior and skipping `--default-branch` comparisons are
-enabled automatically; the opposite is true when running inside CI. If the repository is a shallow
-clone and no explicit `--base` was given, moon can't reliably diff revisions and instead returns an
+enabled automatically; the opposite is true when running inside CI. If the repository is a
+[shallow clone](../../guides/ci.mdx#integrating-with-a-provider) and no explicit `--base` was given, moon can't reliably diff revisions and instead returns an
 empty file list with `shallow: true` in the output (a warning is also logged).
 
 ```shell

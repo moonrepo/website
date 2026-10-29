@@ -327,6 +327,9 @@ so use `python` (or `pip`, `poetry`, and `uv`).
 
 ### Docker integration
 
+The Python toolchain integrates with the following steps of the
+[Docker workflow](../../guides/docker.mdx):
+
 - [`moon docker scaffold`](../../commands/docker/scaffold.mdx) - Copies `pyproject.toml`, `requirements.in`,
   `requirements.txt`, `constraints.txt`, `pylock.toml`, `Pipfile`, `Pipfile.lock`, `.python-version`, and any
   `poetry.*` or `uv.*` files.
@@ -341,7 +344,9 @@ so use `python` (or `pip`, `poetry`, and `uv`).
   - uv - `uv sync --no-dev`, with `--package <name>` for the package name of each focused project.
 
 Refer to each package manager's page for the specifics: [pip](./pip.mdx#docker-integration),
-[Poetry](./poetry.mdx#docker-integration), [uv](./uv.mdx#docker-integration).
+[Poetry](./poetry.mdx#docker-integration), [uv](./uv.mdx#docker-integration). To keep the virtual
+environments of dependency projects in the image, or to skip the production install, see
+[customizing pruning](../../guides/docker.mdx#customizing-pruning).
 
 ### Version detection
 

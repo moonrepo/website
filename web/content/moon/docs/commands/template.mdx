@@ -12,13 +12,14 @@ one from the list of templates available (the same list rendered by
 [`moon templates`](./templates.mdx)). When not running in a terminal, an `id` must be passed
 explicitly.
 
-Once resolved, moon loads the template's configuration and files (rendering any interpolated file
-names using default variable values) and renders:
+Once resolved, moon loads the template's configuration and files (rendering any
+[interpolated file names](../guides/codegen.mdx#interpolating-file-paths) using default variable
+values) and renders:
 
 - **About** - The template's ID, its root location on the file system (hidden in test
   environments), its configured [`destination`](/moon/api/TemplateConfig#destination) path (if any), the IDs of any templates it [`extends`](/moon/api/TemplateConfig#extends)
-  from, and the names of its non-template asset files and template files.
-- **Variables** - Every variable defined in [`template.config`](../guides/codegen.mdx), alongside its type (`bool`, `number`,
+  from (see [extending templates](../guides/codegen.mdx#extending-templates)), and the names of its non-template asset files and template files.
+- **Variables** - Every [variable](../guides/codegen.mdx#declaring-variables) defined in `template.config`, alongside its type (`bool`, `number`,
   `string`, an array, an enum, or an object), whether it's `internal`, `multiple` (enums that
   accept more than one value), or `required`, and its configured prompt text, if any.
 

@@ -40,7 +40,8 @@ $ moon extension add download
 />
 
 The extension has no settings. Without a `plugin` locator, moon uses the version of the extension
-that it was released with. To use a different version, set the locator explicitly, for example
+that it was released with. To use a different version, set the
+[locator](../guides/wasm-plugins.mdx#plugin-locators) explicitly, for example
 `registry://ghcr.io/moonrepo/download_extension:1.0.4`.
 
 ## Usage
@@ -71,9 +72,9 @@ When executed, the extension:
 
 1. Validates that `--url` is an HTTP(S) URL.
 2. Resolves the destination directory, and fails if the destination is an existing file.
-3. Requests the URL through moon's HTTP client (plugins can't make network requests on their
-   own). The download fails if the response isn't a `2xx` status, or if the response body is
-   empty.
+3. Requests the URL through moon's HTTP client
+   ([plugins can't make network requests on their own](../guides/wasm-plugins.mdx#sending-requests)).
+   The download fails if the response isn't a `2xx` status, or if the response body is empty.
 4. Creates the destination directory if it doesn't exist, and writes the file into it.
 
 ## Caveats

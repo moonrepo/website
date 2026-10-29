@@ -109,7 +109,8 @@ The Nub toolchain is built into moon, but unlike the other built-in toolchains, 
 its [`plugin`](/moon/api/ToolchainPluginConfig#plugin) locator automatically yet. If `unstable_nub`
 is configured without a `plugin`, moon fails to load the configuration with an error like "a locator
 is required for plugins; accepts file paths and URLs". Until that's fixed, enable it by adding an
-`unstable_nub` entry with an explicit `plugin` locator (the same one moon uses for npm, pnpm, and
+`unstable_nub` entry with an explicit `plugin`
+[locator](../../guides/wasm-plugins.mdx#plugin-locators) (the same one moon uses for npm, pnpm, and
 Yarn) to [`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>), or by running
 [`moon toolchain add`](../../commands/toolchain/add.mdx) with the locator as the second argument.
 Only an explicitly passed locator is written to the configuration.
@@ -225,6 +226,9 @@ Projects and tasks that use the JavaScript toolchain are also associated with Nu
 `packageManager` is `nub` (see [requiring other toolchains](#requiring-other-toolchains)).
 
 ### Docker integration
+
+The Nub toolchain integrates with the following steps of the
+[Docker workflow](../../guides/docker.mdx):
 
 - [`moon docker scaffold`](../../commands/docker/scaffold.mdx) - Copies `package.json`, `nub.lock`,
   `nub.jsonc`, and `.npmrc` files.

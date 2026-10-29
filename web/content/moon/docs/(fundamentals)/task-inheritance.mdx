@@ -53,7 +53,7 @@ Each file uses the same shape, and supports the following settings:
 - [`env`](/moon/api/InheritedTasksConfig#env) - Environment variables merged into every inheriting
   project's `env`.
 - [`extends`](/moon/api/InheritedTasksConfig#extends) - Extends another tasks configuration file, by
-  relative path or secure URL.
+  relative path or secure URL, to [share tasks](../guides/sharing-config.mdx) across repositories.
 
 <ConfigTabs
   file=".moon/tasks/all"
@@ -232,7 +232,8 @@ A project can opt out of, or rename, the tasks it would otherwise inherit, throu
 [`workspace.inheritedTasks`](/moon/api/ProjectWorkspaceConfig#inheritedtasks) setting in its [`moon.config`](./project.mdx#inheritance-overrides).
 
 - [`include`](/moon/api/ProjectWorkspaceInheritedTasksConfig#include) <TypeLabel type="string[]" /> - Only inherit tasks with these identifiers. When
-  undefined, all matching tasks are inherited; when an empty list, none are.
+  undefined, all matching tasks are inherited; when an empty list, none are, which is common for a
+  [root-level project](../guides/root-project.mdx#inherited-tasks).
 - [`exclude`](/moon/api/ProjectWorkspaceInheritedTasksConfig#exclude) <TypeLabel type="string[]" /> - Inherit everything except these identifiers.
 - [`rename`](/moon/api/ProjectWorkspaceInheritedTasksConfig#rename) <TypeLabel type="Record<string, string>" /> - Map an inherited task's identifier to a
   new one, scoped to this project.
@@ -279,7 +280,9 @@ setting, which accepts the same four strategies described above.
 Because a single task can be assembled from several files, it's often useful to see what a project
 actually ended up with. [`moon task <target>`](../commands/task.mdx) prints a task's fully resolved
 configuration, including the config layers it inherited from, and
-[`moon project <id>`](../commands/project.mdx) does the same for a project as a whole.
+[`moon project <id>`](../commands/project.mdx) does the same for a project as a whole. See
+[verify inherited configuration](../skills/debug-task.mdx#verify-inherited-configuration) for how to
+read the inherited layers.
 
 ```shell
 $ moon task app:lint

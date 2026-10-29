@@ -40,7 +40,7 @@ Bundler has no workspaces, so every `Gemfile` is an independent dependencies roo
 
 #### Single application
 
-The repository is a single Ruby application or gem, configured as a root-level project.
+The repository is a single Ruby application or gem, configured as a [root-level project](../guides/root-project.mdx).
 
 ```text
 ./
@@ -93,7 +93,7 @@ A single `Gemfile` at the workspace root provides gems for every project.
 └── Gemfile.lock
 ```
 
-In this layout, every project resolves to the workspace root as its dependencies root, but moon only configures Bundler and installs gems for a project located at the root, such as a root-level project. Ruby tasks in nested projects still run with the root's binstubs on `PATH`, but don't trigger an install (see [caveats](#caveats)).
+In this layout, every project resolves to the workspace root as its dependencies root, but moon only configures Bundler and installs gems for a project located at the root, such as a [root-level project](../guides/root-project.mdx). Ruby tasks in nested projects still run with the root's binstubs on `PATH`, but don't trigger an install (see [caveats](#caveats)).
 
 See [locating dependencies root](#locating-dependencies-root) for how the root is found.
 
@@ -227,6 +227,8 @@ project configures a [`language`](/moon/api/ProjectConfig#language), its languag
 A task is associated with the Ruby toolchain when its command (or the first word of its script) is `ruby`, `bundle`, `bundler`, `gem`, `rake`, or `irb`. Other commands, like `rspec` or `rails`, aren't detected, but still inherit a Ruby project's toolchain.
 
 ### Docker integration
+
+The Ruby toolchain integrates with the following steps of the [Docker workflow](../guides/docker.mdx):
 
 - [`moon docker scaffold`](../commands/docker/scaffold.mdx) - Copies `Gemfile`, `gems.rb`, `Gemfile.lock`, `gems.locked`, `*.gemspec`, `.ruby-version`, and `.rubocop.yml`.
 - [`moon docker file`](../commands/docker/file.mdx) - Uses `ruby:<version>` (or `ruby:latest` when no version is configured) as the default base image.

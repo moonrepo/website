@@ -14,9 +14,13 @@ first. For each focused project, moon builds an [action graph](<../../(fundament
 the toolchain(s) and dependencies required by that project, then runs the action pipeline to
 execute those actions.
 
-This is intended to be run inside a `Dockerfile`, in the `build` stage, after the scaffolded
-files from [`moon docker scaffold`](./scaffold.mdx) have been copied into the image but before the project itself
-is built.
+This is intended to be run inside a `Dockerfile`, in the `build` stage, after the `configs`
+skeleton from [`moon docker scaffold`](./scaffold.mdx) has been copied into the image, but before
+the `sources` skeleton, so that the dependency layer is only invalidated when a manifest or
+lockfile changes (see [scaffolding the repository](../../guides/docker.mdx#scaffolding-the-repository)).
+Toolchains are installed through [proto](/proto/docs) by default; to use binaries that already
+exist in the base image instead, see
+[using system binaries](../../guides/docker.mdx#using-system-binaries).
 
 ```shell
 $ moon docker setup
