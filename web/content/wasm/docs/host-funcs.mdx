@@ -16,10 +16,10 @@ The following host functions are available to all plugins:
 - `send_request` - Request a URL on the host machine using a Rust-based HTTP client (not WASM).
 - `set_env_var` - Set an environment variable on the host environment.
 
-Our PDKs wraps these host functions in friendlier functions and macros, which are
-covered in the sections below. The functions can be used as-is, but the macros call the host
-function directly, so you'll need to declare the host functions you use at the top of your Rust
-file with the `host_fn` attribute from the [extism-pdk](https://crates.io/crates/extism-pdk) crate.
+Our PDKs wrap these host functions in friendlier functions and macros, which are covered in the
+sections below. The functions can be used as-is, but the macros call the host function directly, so
+you'll need to declare the host functions you use at the top of your Rust file with the `host_fn`
+attribute from the [extism-pdk](https://crates.io/crates/extism-pdk) crate.
 
 ```rust
 #[host_fn]
@@ -48,8 +48,17 @@ set_host_env_var("ENV_VAR", "value")?;
 let value = get_host_env_var("ENV_VAR")?;
 ```
 
-Additionally, the [`add_host_paths`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.add_host_paths.html)
-function appends paths to the `PATH` environment variable.
+A few things to be aware of:
+
+- Getting a variable returns `None` when it's not set, _and_ when it's set to an empty string.
+- Setting a variable changes the host process's environment, so the value is inherited by commands
+  that are executed afterwards.
+- Setting `PATH` appends to the existing value instead of overwriting it. Both `:` and `;`
+  separators are supported, as plugins can't assume the host's OS, and
+  [virtual paths](./virtual-paths.mdx) are converted to real paths.
+
+The [`add_host_paths`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.add_host_paths.html)
+function is a shorthand for appending paths to the `PATH` environment variable.
 
 ```rust
 // Append to path
@@ -76,10 +85,25 @@ if output.exit_code == 0 {
 exec_streamed("npm", ["install"])?;
 ```
 
-For full control, pass an `ExecCommandInput` to the
-[`exec`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.exec.html) function, which supports a
-custom working directory (`cwd`), environment variables (`env`), additional `PATH` lookups
-(`paths`), and a `shell` to wrap the command in.
+Both functions return an
+[`ExecCommandOutput`](https://docs.rs/warpgate_api/latest/warpgate_api/struct.ExecCommandOutput.html),
+and a non-zero exit code is _not_ an error, so check the `exit_code` field yourself. When streamed,
+the output goes straight to the host's terminal, so the `stdout` and `stderr` fields are empty. The
+`get_output` method returns both streams combined and trimmed. Commands don't have access to stdin,
+so they can't prompt the user for input.
+
+For full control, pass an
+[`ExecCommandInput`](https://docs.rs/warpgate_api/latest/warpgate_api/struct.ExecCommandInput.html)
+to the [`exec`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.exec.html) function, which
+supports the following fields:
+
+- `cwd` - A virtual path to run the command in.
+- `env` - Environment variables to pass to the command. Append `?` to a name to only set the
+  variable if it's not already set, or `!` to remove the variable from the inherited environment.
+- `paths` - Paths to prepend to `PATH` for this command only.
+- `shell` - A shell to wrap the command in, like `bash` or `pwsh`. Defaults to the `PROTO_SHELL`
+  environment variable when set.
+- `stream` - Stream the output instead of capturing it.
 
 ```rust
 exec(ExecCommandInput {
@@ -88,6 +112,40 @@ exec(ExecCommandInput {
     cwd: Some(VirtualPath::new("/workspace/packages/app")),
     ..Default::default()
 })?;
+```
+
+The input also has builder methods, so the same command can be written as:
+
+```rust
+exec(
+    ExecCommandInput::pipe("npm", ["install"])
+        .cwd(VirtualPath::new("/workspace/packages/app"))
+        .shell("bash"),
+)?;
+```
+
+The [`exec_command!`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/macro.exec_command.html)
+macro calls the host function directly, and supports pipe, inherit, and raw modes. Raw mode returns
+the host function's `Result` instead of failing, which is useful for handling a missing command.
+
+```rust
+let result = exec_command!(raw, "which", ["node"]);
+```
+
+We also provide helpers for common command use cases:
+
+- [`command_exists`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.command_exists.html) -
+  Check whether a command exists on the host, using `which` on Unix, or `Get-Command` on Windows.
+- [`load_git_tags`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.load_git_tags.html) - Load
+  all tags from a remote Git repository with `git ls-remote`, which is useful for resolving
+  available versions.
+
+```rust
+let env = get_host_environment()?;
+
+if command_exists(env, "git") {
+    let tags = load_git_tags("https://github.com/nodejs/node")?;
+}
 ```
 
 ## Downloading files
@@ -106,48 +164,70 @@ output.file; // Virtual path written to
 output.size; // Size in bytes
 ```
 
-For full control, like custom headers, pass a `DownloadFileInput` to the
-[`download`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.download.html) function.
+For full control, like custom headers, pass a
+[`DownloadFileInput`](https://docs.rs/warpgate_api/latest/warpgate_api/struct.DownloadFileInput.html)
+to the [`download`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.download.html) function.
 
 ```rust
-download(DownloadFileInput {
-    url: "https://some.com/url/to/file.tar.xz".into(),
-    destination: temp_dir.join("file.tar.xz"),
-    ..Default::default()
-})?;
+let mut input = DownloadFileInput::new(
+    "https://some.com/url/to/file.tar.xz",
+    temp_dir.join("file.tar.xz"),
+);
+
+input.headers.insert("Authorization".into(), "Bearer ${GITHUB_TOKEN}".into());
+
+download(input)?;
 ```
+
+Header values can reference host environment variables with the `${VAR}` syntax, which are
+expanded on the host. This keeps secrets like tokens out of the plugin entirely. If the variable
+isn't set, the value is sent as-is.
 
 ## Sending requests
 
-The [`fetch`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.fetch.html)
-function requests a URL on the host instead of from WASM, using the same HTTP client as the host CLI
-(which supports `.netrc` credentials). It returns a response object with the raw body in bytes,
-and the status code. Non-OK responses must be handled by you.
+The [`fetch`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.fetch.html) function requests a
+URL on the host instead of from WASM, using the same HTTP client as the host CLI (which supports
+`.netrc` credentials). It returns a response object with the raw body in bytes, and the status
+code, or an error if the response isn't successful (2xx) or the body is empty.
 
 ```rust
 let response = fetch(SendRequestInput::new("https://some.com/url/to/fetch"))?;
-
-if response.status == 200 {
-    let text = response.text()?; // Or `response.json::<T>()?`
-} else {
-    // Error!
-}
+let text = response.text()?; // Or `response.json::<T>()?`
 ```
 
-To simplify the handling of requests and responses, we provide the
+To simplify the handling of responses, we also provide the
 [`fetch_bytes`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.fetch_bytes.html),
 [`fetch_json`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.fetch_json.html), and
 [`fetch_text`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.fetch_text.html) functions, which
-return an error for non-2xx responses and empty bodies.
+consume the body for you.
 
 ```rust
 let json: T = fetch_json("https://some.com/url/to/fetch.json")?;
 ```
 
+To handle unsuccessful responses yourself, for example to treat a 404 as "not found", use the
+[`send_request!`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/macro.send_request.html) macro
+instead, which returns the response regardless of its status code.
+
+```rust
+let response = send_request!("https://some.com/url/to/fetch");
+
+if response.status == 404 {
+    // Not found
+}
+```
+
 Requests are sent with the `GET` method by default. To send a `POST` request instead, set the
 `method` field on the input, or use the
 [`SendRequestInput::post`](https://docs.rs/warpgate_api/latest/warpgate_api/struct.SendRequestInput.html)
-constructor.
+constructor. Requests can't include a body. Like [downloads](#downloading-files), requests support
+custom `headers`, with `${VAR}` environment variable expansion.
+
+<Callout>
+  Outside of Docker, proto caches `GET` responses on disk according to their
+  HTTP cache headers, for up to 7 days, so repeated requests for the same URL
+  may not reach the network.
+</Callout>
 
 ## Logging
 
@@ -157,8 +237,8 @@ messages to the host, using the `host_log` host function. It supports the same a
 the terminal.
 
 - `stdout` and `stderr` write directly to the host's terminal.
-- `debug`, `warn`, `error`, and `trace` write to host's logger, which are visible with the `--log`
-  option.
+- `debug`, `warn`, `error`, and `trace` write to the host's logs, which are visible with the
+  `--log` option. When no target is provided, the message is logged at the `trace` level.
 
 ```rust
 host_log!(stdout, "Some message");
@@ -167,7 +247,8 @@ host_log!(debug, "Processing <path>{}</path>", path);
 ```
 
 If you want full control, like providing data/fields, use the input mode and provide a
-[`HostLogInput`](https://docs.rs/warpgate_api/latest/warpgate_api/struct.HostLogInput.html).
+[`HostLogInput`](https://docs.rs/warpgate_api/latest/warpgate_api/struct.HostLogInput.html). When
+writing to the terminal, the data is printed after the message.
 
 ```rust
 let mut input = HostLogInput::new("Some message with data");
@@ -188,8 +269,39 @@ warn!("Proceed with caution");
 error!("Oh no, something went wrong");
 ```
 
-<Callout type="idea">
-  To debug a plugin, run moon/proto with `--log trace` to see every host
-  function call, and set the `MOON_DEBUG_WASM` or `PROTO_DEBUG_WASM` environment
-  variable to also include Extism's own runtime logs.
-</Callout>
+## Tracing
+
+If your plugin, or a crate it depends on, emits events with the
+[tracing](https://crates.io/crates/tracing) crate, they can be forwarded to the host's logs. Enable
+the `tracing` feature of `warpgate_pdk` (or of `proto_pdk`, which re-exports it), and call
+`initialize_tracing` once per plugin instance. Calling it a second time panics, so guard it.
+
+```rust
+use std::sync::Once;
+
+static TRACING: Once = Once::new();
+
+#[plugin_fn]
+pub fn register_tool(Json(_): Json<RegisterToolInput>) -> FnResult<Json<RegisterToolOutput>> {
+    TRACING.call_once(initialize_tracing);
+
+    // ...
+}
+```
+
+To filter events by level, or by module (the event's target), use `initialize_tracing_with_options`
+with `WarpgateTracingOptions` instead. Each event is tagged with the
+[plugin's ID](./plugin-id.mdx).
+
+## Debugging
+
+When a plugin isn't behaving as expected, the following can help:
+
+- Run moon or proto with `--log trace` to see host function calls, along with their inputs and
+  timings.
+- Set the `MOON_DEBUG_WASM` or `PROTO_DEBUG_WASM` environment variable to also include Extism's own
+  runtime logs. In moon, this also prints the plugin's own stdout and stderr, and writes memory and
+  core dumps (`wasm-plugin.mem` and `wasm-plugin.core`) when a plugin crashes.
+- Set the `WARPGATE_DEBUG_COMMAND` environment variable to include the stdout and stderr of
+  [executed commands](#executing-commands) in the trace logs. Set it to `stream` to also stream
+  every command's output to the terminal.
