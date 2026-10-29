@@ -1,0 +1,570 @@
+---
+title: Webhooks
+icon: Webhook
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+import { TypeLabel } from "@/components/TypeLabel";
+
+Looking to gather metrics for your pipelines? Gain insight into run durations, cache hit rates, and
+failures? Maybe you want to post a Slack or Discord message when a build breaks? Webhooks make all
+of this possible, by streaming every event in moon's action pipeline to an HTTP endpoint you own.
+
+## Enabling webhooks
+
+Configure the [`notifier.webhookUrl`](/moon/api/NotifierConfig#webhookurl) setting in
+[`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>) with the URL that should receive
+events. moon will then `POST` a JSON payload to it for every event emitted by the
+[action pipeline](<../(fundamentals)/action.mdx>).
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    notifier: {
+      webhookUrl: "https://api.company.com/moon/webhooks",
+    },
+  }}
+/>
+
+The URL must use `https://`; plain `http://` is only accepted for `localhost` and `127.0.0.1`.
+
+Requests aren't signed, and no authentication headers are sent, so treat the URL itself as a
+secret (for example, by including a token in its path or query). Instead of committing it, you can
+provide it through the `MOON_WEBHOOK_URL` environment variable, which is easy to wire up to your CI
+provider's secrets:
+
+```shell
+# Send webhooks for this run only
+$ MOON_WEBHOOK_URL=https://api.company.com/moon/webhooks/$TOKEN moon ci
+```
+
+### When webhooks are sent
+
+Webhooks are sent by any command that runs the action pipeline, like [`moon run`](../commands/run.mdx),
+[`moon ci`](../commands/ci.mdx), [`moon check`](../commands/check.mdx), and
+[`moon exec`](../commands/exec.mdx).
+
+For security and privacy reasons, webhooks are only sent from remote environments, never from a
+developer's interactive terminal. moon considers the environment remote when it's running in CI, in
+an SSH session, in a cloud development environment (like GitHub Codespaces or a VS Code Dev
+Container), or without a terminal attached (stdin or stdout isn't a TTY). Elsewhere, the setting is
+ignored.
+
+## Delivery
+
+Every request is sent with `Content-Type: application/json` and `Accept: application/json`
+headers. How moon sends them depends on the
+[`notifier.webhookAcknowledge`](/moon/api/NotifierConfig#webhookacknowledge) setting.
+
+### Endpoint verification
+
+The first event of a run ([`pipeline.started`](#pipelinestarted)) is always sent before the
+pipeline starts, and moon waits for its response. If the request fails, or the endpoint responds
+with a non-2xx status, moon logs a warning and disables webhooks for the rest of the run. This
+protects the pipeline from a misconfigured or unreachable endpoint.
+
+### Background delivery
+
+By default, every subsequent event is sent in the background, so webhooks never slow down your
+tasks. Requests are sent concurrently, so they may arrive out of order; use each payload's
+`createdAt` timestamp, or the event types themselves, to reconstruct the timeline.
+
+When the [daemon](./daemon.mdx) is running, requests are handed off to it and sent from there.
+Otherwise, moon sends them itself, and waits for all in-flight requests to finish after the
+[`pipeline.completed`](#pipelinecompleted) event, before the command exits.
+
+### Acknowledged delivery
+
+Enable [`notifier.webhookAcknowledge`](/moon/api/NotifierConfig#webhookacknowledge) (or set
+`MOON_WEBHOOK_ACKNOWLEDGE=true`) when your endpoint needs every event, in order.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    notifier: {
+      webhookUrl: "https://api.company.com/moon/webhooks",
+      webhookAcknowledge: true,
+    },
+  }}
+/>
+
+With this enabled, moon bypasses the daemon, sends each request from its own process, one at a
+time, and waits for the response before the pipeline continues. Events arrive in the order they
+were emitted, at the cost of the pipeline waiting on your endpoint for each one. A failed request
+after the first isn't retried, and doesn't fail the run.
+
+<Callout>
+  Whichever mode you choose, respond with a 2xx status as soon as you've
+  received the payload, and process it asynchronously. Some payloads, like
+  `pipeline.completed`, contain every action in the run and can be large.
+</Callout>
+
+## Payload structure
+
+Every webhook is posted with the following request body, known as a payload:
+
+- `createdAt` <TypeLabel type="string" /> - When the event was created, as a UTC timestamp in ISO
+  8601 format, without a timezone offset (for example, `2026-10-28T17:04:12.534287`).
+- `environment` <TypeLabel type="object | null" /> - Information about the current
+  [CI environment](#pipeline-environment), or `null` if it couldn't be detected.
+- `event` <TypeLabel type="object | null" /> - The event specific data. Each [event](#events)
+  documents its own structure.
+- `type` <TypeLabel type="string" /> - The type of [event](#events), like `task.ran`.
+- `uuid` <TypeLabel type="string" /> - A unique identifier shared by every webhook in the current
+  pipeline run. Use it to group events, and to tell concurrently running pipelines apart. (When the
+  URL points to `127.0.0.1`, a fixed placeholder is used instead, for testing.)
+- `trace` <TypeLabel type="string" /> - The value of the `MOON_TRACE_ID` environment variable, or
+  an empty string if it isn't set.
+
+```json
+{
+  "createdAt": "2026-10-28T17:04:12.534287",
+  "environment": {
+    // ...
+  },
+  "event": {
+    // ...
+  },
+  "type": "pipeline.started",
+  "uuid": "0b4d1f6e-8a2c-4c3e-9f7a-5d2b1e6c8a90",
+  "trace": ""
+}
+```
+
+Since `uuid` is unique per pipeline run, it can't correlate events across multiple moon commands.
+That's what `trace` is for. For example, when a CI workflow runs [`moon ci`](../commands/ci.mdx)
+across several parallel jobs, set `MOON_TRACE_ID` to the workflow's run ID in each job, and group
+all of their webhooks by it.
+
+```shell
+# Correlate webhooks from every job in a GitHub Actions workflow
+$ MOON_TRACE_ID=$GITHUB_RUN_ID moon ci
+```
+
+### Pipeline environment
+
+When moon detects a CI provider, the `environment` field contains information about the current
+pipeline. Unlike the rest of the payload, these fields are in snake case.
+
+- `base_branch` <TypeLabel type="string | null" /> - For a pull/merge request, the target (base)
+  branch, otherwise `null`.
+- `base_revision` <TypeLabel type="string | null" /> - For a pull/merge request, the target
+  revision, when the provider exposes it.
+- `branch` <TypeLabel type="string" /> - For a pull/merge request, the source (head) branch,
+  otherwise the branch that triggered the pipeline.
+- `env_prefix` <TypeLabel type="string | null" /> - The prefix of the provider's environment
+  variables, like `GITHUB_`.
+- `head_revision` <TypeLabel type="string | null" /> - For a pull/merge request, the source
+  revision, when the provider exposes it.
+- `id` <TypeLabel type="string" /> - The ID of the current pipeline run.
+- `provider` <TypeLabel type="string" /> - The CI provider, in kebab case, like `github-actions`,
+  `gitlab`, `circleci`, or `buildkite`.
+- `request_id` <TypeLabel type="string | null" /> - The ID (or number) of the pull/merge request.
+- `request_url` <TypeLabel type="string | null" /> - A link to the pull/merge request.
+- `revision` <TypeLabel type="string" /> - The commit, revision, or ref that triggered the
+  pipeline.
+- `url` <TypeLabel type="string | null" /> - A link to the current pipeline, when available.
+
+Which fields are populated depends on what the provider exposes. For example, a pull request
+running in GitHub Actions looks like:
+
+```json
+{
+  "base_branch": "master",
+  "base_revision": null,
+  "branch": "feature/auth",
+  "env_prefix": "GITHUB_",
+  "head_revision": null,
+  "id": "11482946210",
+  "provider": "github-actions",
+  "request_id": "742",
+  "request_url": null,
+  "revision": "3f6c1d2a9b8e7f6a5d4c3b2a1f0e9d8c7b6a5f4e",
+  "url": null
+}
+```
+
+## Events
+
+Events are emitted in a predictable sequence. A run starts with [`pipeline.started`](#pipelinestarted)
+and ends with [`pipeline.completed`](#pipelinecompleted). In between, every
+[action](<../(fundamentals)/action.mdx>) emits [`action.started`](#actionstarted) and
+[`action.completed`](#actioncompleted), and most action types emit an additional pair of events
+between those two:
+
+| Action                | Events                                                                                                       |
+| --------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `SyncWorkspace`       | [`workspace.syncing`](#workspacesyncing), [`workspace.synced`](#workspacesynced)                             |
+| `SyncProject`         | [`project.syncing`](#projectsyncing), [`project.synced`](#projectsynced)                                     |
+| `SetupToolchain`      | [`toolchain.installing`](#toolchaininstalling), [`toolchain.installed`](#toolchaininstalled)                 |
+| `SetupEnvironment`    | [`environment.initializing`](#environmentinitializing), [`environment.initialized`](#environmentinitialized) |
+| `InstallDependencies` | [`dependencies.installing`](#dependenciesinstalling), [`dependencies.installed`](#dependenciesinstalled)     |
+| `RunTask` (all kinds) | [`task.running`](#taskrunning), [`task.ran`](#taskran)                                                       |
+| `SetupProto`          | None, only the `action.*` events                                                                             |
+
+The examples below only show the `event` field of the payload. Large nested objects, like a project
+or an action's operations, are abbreviated with `// ...`.
+
+A few things are useful to know when consuming events:
+
+- **Durations** are serialized as an object with whole seconds and the remaining nanoseconds, like
+  `{ "secs": 3, "nanos": 120004000 }`.
+- **Action nodes** are serialized as `{ "action": "...", "params": { ... } }`, where `action` is the
+  kebab cased action type, like `run-task` or `setup-toolchain`. Filter on this rather than on an
+  action's `label`, which is meant for humans.
+- **Errors** are `null` on success, and the error message on failure.
+- **Workspace roots** are serialized as an empty string in `root` fields, while other roots are
+  relative paths from the workspace root, like `packages/app`.
+
+### `pipeline.started`
+
+Emitted when the pipeline has been created, but before any actions have started to run. Includes
+the number of actions, their nodes, and the run's context (which targets were requested, what was
+affected, and so on).
+
+```json
+{
+  "actionsCount": 4,
+  "actionNodes": [
+    { "action": "sync-workspace" },
+    {
+      "action": "setup-toolchain",
+      "params": {
+        "toolchain": { "id": "node", "req": "24.12.0" }
+      }
+    },
+    {
+      "action": "sync-project",
+      "params": { "projectId": "app" }
+    },
+    {
+      "action": "run-task",
+      "params": {
+        "args": [],
+        "env": {},
+        "interactive": false,
+        "persistent": false,
+        "priority": 2,
+        "target": "app:build",
+        "id": 9876543210123456789
+      }
+    }
+  ],
+  "context": {
+    "affected": null,
+    "initialTargets": ["app:build"],
+    "outputStyle": null,
+    "passthroughArgs": [],
+    "primaryTargets": ["app:build"],
+    "targetStates": {},
+    "changedFiles": []
+  }
+}
+```
+
+### `pipeline.completed`
+
+Emitted when the pipeline has finished, with every action that ran, the final context, and the
+total duration. The `status` is one of `completed`, `aborted` (an action failed and the pipeline
+bailed), `interrupted` (for example, Ctrl+C), or `terminated` (the process received a termination
+signal).
+
+The `error` field is only set when the pipeline itself fails, for example, when a toolchain fails
+to install. A task that exits with a non-zero code is recorded as a failed action, but doesn't set
+the pipeline's error. To detect failed tasks, check each action's `status` (`failed`, `timed-out`,
+or `aborted`).
+
+```json
+{
+  "actions": [
+    {
+      "allowFailure": false,
+      "createdAt": "2026-10-28T17:04:12.541203",
+      "duration": { "secs": 3, "nanos": 120004000 },
+      "expectFailure": false,
+      "finishedAt": "2026-10-28T17:04:15.721381",
+      "flaky": false,
+      "label": "RunTask(app:build)",
+      "node": {
+        "action": "run-task",
+        "params": {
+          // ...
+        }
+      },
+      "nodeIndex": 3,
+      "operations": [
+        // ...
+      ],
+      "startedAt": "2026-10-28T17:04:12.601377",
+      "status": "passed"
+    }
+    // ...
+  ],
+  "context": {
+    // ...
+    "targetStates": {
+      "app:build": { "state": "passed", "hash": "c3b1e8f2..." }
+    }
+  },
+  "duration": { "secs": 8, "nanos": 412995000 },
+  "error": null,
+  "status": "completed"
+}
+```
+
+This is the most useful event for reporting, as it summarizes the entire run. For example:
+
+- **Run duration** - The top-level `duration`, or each action's `duration`.
+- **Cache hit rate** - The ratio of `run-task` actions with a `cached` or `cached-from-remote`
+  status.
+- **Failures** - Actions with a `failed`, `timed-out`, or `aborted` status, and their `error`.
+
+### `action.started`
+
+Emitted when an action has started to run. The `action` object describes the action, while `node`
+describes what it does.
+
+```json
+{
+  "action": {
+    "allowFailure": false,
+    "createdAt": "2026-10-28T17:04:12.541203",
+    "expectFailure": false,
+    "flaky": false,
+    "label": "RunTask(app:build)",
+    "node": {
+      // ...
+    },
+    "nodeIndex": 3,
+    "operations": [],
+    "startedAt": "2026-10-28T17:04:12.601377",
+    "status": "running"
+  },
+  "node": {
+    "action": "run-task",
+    "params": {
+      // ...
+    }
+  }
+}
+```
+
+### `action.completed`
+
+Emitted when an action has finished running, either successfully or with a failure. The action's
+`status` is one of `passed`, `failed`, `cached`, `cached-from-remote`, `skipped`, `invalid`,
+`timed-out`, or `aborted` (see [action statuses](<../(fundamentals)/action.mdx#statuses>)). If the
+action failed, the `error` field (and the action's own `error` field) is set with the error
+message.
+
+```json
+{
+  "action": {
+    "allowFailure": false,
+    "createdAt": "2026-10-28T17:04:12.541203",
+    "duration": { "secs": 3, "nanos": 120004000 },
+    "expectFailure": false,
+    "finishedAt": "2026-10-28T17:04:15.721381",
+    "flaky": false,
+    "label": "RunTask(app:build)",
+    "node": {
+      // ...
+    },
+    "nodeIndex": 3,
+    "operations": [
+      // ...
+    ],
+    "startedAt": "2026-10-28T17:04:12.601377",
+    "status": "passed"
+  },
+  "error": null,
+  "node": {
+    "action": "run-task",
+    "params": {
+      // ...
+    }
+  }
+}
+```
+
+### `workspace.syncing`
+
+Emitted when the workspace has started syncing (the `SyncWorkspace` action). This event has no
+data, so its `event` field is `null`.
+
+```json
+null
+```
+
+### `workspace.synced`
+
+Emitted when the workspace has finished syncing. If syncing failed, the `error` field is set.
+
+```json
+{
+  "error": null
+}
+```
+
+### `project.syncing`
+
+Emitted when a [project](<../(fundamentals)/project.mdx>) has started syncing (the `SyncProject`
+action), which happens before the project's tasks run. Includes the entire project, including its
+configuration.
+
+```json
+{
+  "project": {
+    "config": {
+      // ...
+    },
+    "id": "app",
+    "language": "typescript",
+    "layer": "application",
+    "root": "/home/runner/work/repo/apps/app",
+    "source": "apps/app",
+    "stack": "frontend",
+    "toolchains": ["node", "typescript"]
+    // ...
+  }
+}
+```
+
+### `project.synced`
+
+Emitted when a project has finished syncing. If syncing failed, the `error` field is set.
+
+```json
+{
+  "error": null,
+  "project": {
+    "id": "app"
+    // ...
+  }
+}
+```
+
+### `toolchain.installing`
+
+Emitted when a [toolchain](<../(fundamentals)/toolchain.mdx>) has started to set up (the
+`SetupToolchain` action), with the toolchain ID and its configured version requirement.
+
+This event is emitted every time the action runs, even when the tool is already installed. For the
+actual outcome, check the matching [`action.completed`](#actioncompleted) event: a `passed` status
+means the tool was installed, and `skipped` means nothing needed to happen.
+
+```json
+{
+  "spec": {
+    "id": "node",
+    "req": "24.12.0"
+  }
+}
+```
+
+### `toolchain.installed`
+
+Emitted when a toolchain has finished setting up. If the install failed, the `error` field is set.
+
+```json
+{
+  "error": null,
+  "spec": {
+    "id": "node",
+    "req": "24.12.0"
+  }
+}
+```
+
+### `environment.initializing`
+
+Emitted when a toolchain's environment has started to be set up within a root (the
+`SetupEnvironment` action). When the environment belongs to a specific project, the `project` field
+is set, otherwise it's `null`.
+
+```json
+{
+  "project": null,
+  "root": "",
+  "toolchain": "node"
+}
+```
+
+### `environment.initialized`
+
+Emitted when a toolchain's environment has been set up. If setup failed, the `error` field is set.
+
+```json
+{
+  "error": null,
+  "project": null,
+  "root": "",
+  "toolchain": "node"
+}
+```
+
+### `dependencies.installing`
+
+Emitted when a toolchain has started installing dependencies in a root (the `InstallDependencies`
+action). When the root belongs to a specific project (for example, a standalone package that isn't
+part of a package workspace), the `project` field is set, otherwise it's `null`.
+
+```json
+{
+  "project": null,
+  "root": "",
+  "toolchain": "node"
+}
+```
+
+### `dependencies.installed`
+
+Emitted when dependencies have finished installing. If the install failed, the `error` field is
+set.
+
+```json
+{
+  "error": null,
+  "project": null,
+  "root": "",
+  "toolchain": "node"
+}
+```
+
+### `task.running`
+
+Emitted when a [task](<../(fundamentals)/task.mdx>) has started to run (the `RunTask`,
+`RunInteractiveTask`, or `RunPersistentTask` action). Includes the task's
+[target](<../(fundamentals)/target.mdx>), and the action node's parameters, like passthrough
+arguments and environment variables.
+
+```json
+{
+  "node": {
+    "args": [],
+    "env": {},
+    "interactive": false,
+    "persistent": false,
+    "priority": 2,
+    "target": "app:build",
+    "id": 9876543210123456789
+  },
+  "target": "app:build"
+}
+```
+
+### `task.ran`
+
+Emitted when a task has finished running. If the task failed, the `error` field is set with the
+error message. Whether the task ran or was restored from the cache is available on the matching
+[`action.completed`](#actioncompleted) event.
+
+```json
+{
+  "error": null,
+  "node": {
+    // ...
+  },
+  "target": "app:build"
+}
+```

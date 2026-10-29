@@ -30,7 +30,8 @@ $ moon setup
 Because moon automatically sets up toolchains as needed when running other commands (detecting
 affected projects, running a task, generating a build artifact, and so on), you'll rarely need to
 run this command manually. It's most useful for warming a toolchain cache ahead of time, such as
-in a Docker image build step or CI job, or for troubleshooting toolchain installation issues in
-isolation.
+in a CI job, or for troubleshooting toolchain installation issues in isolation. Within a
+`Dockerfile`, prefer [`moon docker setup`](./docker/setup.mdx), which also installs dependencies
+for the scaffolded projects (see the [Docker guide](../guides/docker.mdx)).
 
 To reverse this process and remove installed toolchains, use [`moon teardown`](./teardown.mdx).

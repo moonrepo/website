@@ -15,9 +15,10 @@ Compared to running tasks directly, `moon ci`:
   disabled, though how the comparison is made can still be customized with the affected options
   below. When running inside a supported CI provider, the base and head revisions (and whether the
   build is for a pull request) are automatically extracted from the CI environment if `--base` and
-  `--head` aren't explicitly provided.
-- Always respects each task's [`options.runInCI`](/moon/api/TaskOptionsConfig#runinci) setting, so tasks explicitly excluded
-  from CI never run.
+  `--head` aren't explicitly provided. See [comparing revisions](../guides/ci.mdx#comparing-revisions)
+  for the full resolution order.
+- Always respects each task's [`options.runInCI`](/moon/api/TaskOptionsConfig#runinci) setting, so
+  tasks that [don't run in CI](../guides/ci.mdx#configuring-tasks-to-run) never run.
 - Forces the pipeline into CI mode (as if `--ci` were passed to [`moon exec`](./exec.mdx)), which
   affects how the console renders output and how other moon features detect a CI environment.
 - Continues running remaining tasks after a failure, instead of bailing on the first one, so a
@@ -26,6 +27,8 @@ Compared to running tasks directly, `moon ci`:
   passed explicitly), to help catch regressions in tasks that depend on what changed.
 - Prints a detailed summary of the pipeline by default (unless `--summary` is passed explicitly), so
   CI logs always contain a full breakdown of what ran.
+- Writes its [run report](../guides/ci.mdx#reporting-run-results) to `.moon/cache/ciReport.json`,
+  instead of the `runReport.json` file used by other commands.
 
 When no explicit targets are passed and no `--plan` is provided, every task in the workspace is
 queued up as a candidate, and the affected and [`options.runInCI`](/moon/api/TaskOptionsConfig#runinci) checks above determine which of them
@@ -56,7 +59,8 @@ $ moon ci --output-style buffer-only-failure
 ```
 
 See the [continuous integration guide](../guides/ci.mdx) for a deeper walkthrough of wiring `moon ci`
-into common CI providers, including sharding examples.
+into common CI providers, including
+[sharding examples](../guides/ci.mdx#parallelizing-tasks).
 
 ## Arguments
 
@@ -114,9 +118,11 @@ into common CI providers, including sharding examples.
   Control how output is displayed for _all_ tasks, overriding their
   [`options.outputStyle`](/moon/api/TaskOptionsConfig#outputstyle) setting, including for primary
   targets. See [output style](<../(fundamentals)/task.mdx#output-style>) for more information.
-- `-p`, `--plan` <TypeLabel type="string" /> - Relative path to an execution plan (JSON) used to
-  further customize the action graph and pipeline for this run. Can also be set via the
-  `MOON_EXEC_PLAN` environment variable.
+- `-p`, `--plan` <TypeLabel type="string" /> - Relative path to an
+  [execution plan](../guides/exec-plan.mdx) (JSON) used to further customize the action graph and
+  pipeline for this run. The plan should define its own targets, as `moon ci` only falls back to
+  every task in the workspace when no plan is provided. Can also be set via the `MOON_EXEC_PLAN`
+  environment variable.
 - `-s`, `--summary` <TypeLabel type="boolean | string" /> - Print a summary of all actions that were
   ran in the pipeline. Accepts `none`, `minimal`, `normal`, or `detailed`. When passed without a
   value, defaults to `normal`; when omitted entirely, defaults to `detailed` (unlike

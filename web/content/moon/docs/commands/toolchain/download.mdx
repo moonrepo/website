@@ -5,8 +5,9 @@ title: moon toolchain download
 Download the WASM plugin for every [toolchain](<../../(fundamentals)/toolchain.mdx>) configured in
 [`.moon/toolchains.config`](<../../(fundamentals)/toolchain.mdx>), one of the [`moon toolchain`](../toolchain.mdx) management
 commands. This is purely a plugin-fetching step: for each
-configured toolchain, moon resolves its plugin locator, downloads the `.wasm` file (or reuses it
-from the local cache if already present), and registers the plugin so it's ready to be used.
+configured toolchain, moon resolves its [plugin locator](../../guides/wasm-plugins.mdx#plugin-locators),
+downloads the `.wasm` file (or reuses it from the local cache if already present), and registers
+the plugin so it's ready to be used.
 
 ```shell
 $ moon toolchain download
@@ -24,8 +25,9 @@ plugins as a side effect of installing toolchains.
 
 Because moon already downloads a toolchain's plugin the first time it's needed, you'll rarely have
 to run this command manually. It's most useful for warming the plugin cache ahead of time, such as
-in a CI job or Docker image build step, or to ensure everything is available before working
-offline.
+in a CI job or [Docker image](../../guides/docker.mdx) build step, or to ensure everything is
+available before working offline, as plugins that have never been downloaded can't be loaded in
+[offline mode](../../guides/offline-mode.mdx).
 
 To inspect a single plugin's capabilities instead of downloading every configured one, use
 [`moon toolchain info`](./info.mdx). To add and configure a new toolchain plugin, use

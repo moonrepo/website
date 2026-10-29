@@ -18,8 +18,9 @@ than the `--lifetime` threshold:
 
 It also runs garbage collection against any writable _local_ storage backends
 (the content-addressable blob store used for caching task outputs), removing blobs
-older than the same threshold. Remote storage backends are always skipped, as they
-manage their own eviction server-side. If a particular backend fails to be cleaned,
+older than the same threshold. Remote storage backends, like a
+[remote cache](../guides/remote-cache.mdx), are always skipped, as they manage their own eviction
+server-side. If a particular backend fails to be cleaned,
 the error is logged and moon continues on to the next one, rather than aborting.
 
 Passing `--all` forces the lifetime down to a single second, so effectively every

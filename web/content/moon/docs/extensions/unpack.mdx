@@ -1,0 +1,109 @@
+---
+title: Unpack
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+import { TypeLabel } from "@/components/TypeLabel";
+
+The `unpack` extension unpacks an archive into a destination directory. The archive can be a file
+in the workspace, or a URL that's downloaded first, which makes it handy for:
+
+- Extracting a downloaded binary, SDK, or dataset in a setup step, in a single command.
+- Writing setup scripts that don't need to know which archive tool or flags to use.
+
+## Prerequisites
+
+- **`tar`** - Required to unpack all non-zip archives (`.tar`, `.tar.gz`, `.tar.xz`, and so on).
+  The compression formats supported depend on your `tar` implementation.
+- **`unzip`** - Used to unpack `.zip` archives when it's available. Otherwise, `.zip` archives are
+  passed to `tar`, which works with the bsdtar that ships with macOS and Windows, but not with GNU
+  tar, the default on most Linux distributions. Install `unzip` on those machines.
+- **A destination inside the workspace** - The extension runs in a WASM sandbox, and can only
+  access [directories that moon exposes to it](../guides/wasm-plugins.mdx#virtual-paths), like the
+  workspace root.
+
+The extension doesn't unpack archives itself; it delegates to these commands on the host machine,
+so the applicable command must be available on your `PATH`.
+
+## Installation
+
+The `unpack` extension is built into moon, so no [`plugin`](/moon/api/ExtensionPluginConfig#plugin)
+locator is required. Register it by adding an `unpack` entry to
+[`.moon/extensions.config`](<../(fundamentals)/extension.mdx>), or by running
+[`moon extension add`](../commands/extension/add.mdx), which writes the entry for you.
+
+```shell
+$ moon extension add unpack
+```
+
+<ConfigTabs
+  file=".moon/extensions"
+  config={{
+    unpack: {},
+  }}
+/>
+
+The extension has no settings. Without a `plugin` locator, moon uses the version of the extension
+that it was released with. To use a different version, set the
+[locator](../guides/wasm-plugins.mdx#plugin-locators) explicitly, for example
+`registry://ghcr.io/moonrepo/unpack_extension:1.0.4`.
+
+## Usage
+
+Run the extension with [`moon ext`](../commands/ext.mdx), passing its arguments after a `--`
+separator.
+
+```shell
+# Unpack a local archive
+$ moon ext unpack -- --src ./path/to/archive.zip --dest ./output
+
+# Download and unpack a remote archive
+$ moon ext unpack -- --src https://example.com/path/to/archive.tar.gz --dest ./output
+
+# Unpack the contents of the archive's top-level directory, without the directory itself
+$ moon ext unpack -- --src https://example.com/path/to/archive.tar.gz --dest ./output --components 1
+```
+
+## Arguments
+
+- `--src`, `-s` <TypeLabel type="string" /> - The path or URL of the archive to unpack. Values that
+  start with `http://` or `https://` are treated as URLs. Relative paths are resolved from the
+  current working directory, while absolute paths must be within a directory that moon exposes to
+  the extension. Required.
+- `--dest`, `-d` <TypeLabel type="string" /> - The directory to unpack into, resolved the same way
+  as `--src`. Defaults to the current working directory.
+- `--components` <TypeLabel type="number" /> - The number of leading directories to strip from
+  each unpacked file, like `tar --strip-components`. For example, with `--components 1`,
+  `app-1.0.0/bin/app` is unpacked to `<dest>/bin/app`. Defaults to `0`.
+
+## How it works
+
+When executed, the extension:
+
+1. Resolves the destination directory, and fails if the destination is an existing file. This
+   happens first, so nothing is downloaded when the destination is invalid.
+2. Resolves the source archive. A URL is downloaded into moon's temporary directory
+   (`~/.moon/temp`) first, the same way as the [`download`](./download.mdx) extension, while a
+   path must point to an existing file.
+3. Creates the destination directory if it doesn't exist.
+4. Unpacks the archive, streaming the command's output to the terminal:
+   - When the archive's file name ends in `.zip` (in any case) and `unzip` is available, it runs
+     `unzip -o <src> -d <dest>`. With `--components`, the archive is unzipped into a temporary
+     `<dest>/.moon-unpack` directory, the entries nested deep enough are moved into the
+     destination, and the temporary directory is removed.
+   - Otherwise, it runs `tar -xf <src> -C <dest> --strip-components=<components>`.
+5. Deletes the downloaded archive, if the source was a URL, whether or not unpacking succeeded.
+
+If the command exits with a non-zero code, like for an invalid or corrupted archive, the extension
+fails with the exit code.
+
+## Caveats
+
+- The archive format is determined by the file name, not by the file's contents, so an archive
+  that isn't named `*.zip` is always passed to `tar`. For URLs, the query string and fragment are
+  ignored, so `https://example.com/app.zip?token=abc` is detected as a zip.
+- Existing files in the destination are overwritten.
+- Without `--components`, archives are unpacked as-is, so if the archive contains a top-level
+  directory, the files end up in `<dest>/<directory>`.
+- With `--components`, files with fewer leading directories than the provided number are skipped,
+  as with `tar`.

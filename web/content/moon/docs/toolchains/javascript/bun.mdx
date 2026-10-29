@@ -267,6 +267,9 @@ Detection makes it easy to share tasks between every Bun project with
 
 ### Docker integration
 
+The Bun toolchain integrates with the following steps of the
+[Docker workflow](../../guides/docker.mdx):
+
 - [`moon docker scaffold`](../../commands/docker/scaffold.mdx) - Copies `package.json`, `bun.lock`,
   `bun.lockb`, and `bunfig.toml` files, plus `*.js`, `*.cjs`, and `*.mjs` files, as they're commonly
   used by `postinstall` scripts.
@@ -463,4 +466,5 @@ commands.
   don't run `node` or `bun` directly inherit both, with both binaries on `PATH`, and both versions
   in their hash. Disable the unused toolchain per project with a
   [project override](#project-overrides), and configure
-  [`docker.file.image`](/moon/api/DockerFileConfig#image) when generating a `Dockerfile`.
+  [`docker.file.image`](/moon/api/DockerFileConfig#image) when
+  [generating a `Dockerfile`](../../guides/docker.mdx#generating-a-dockerfile).

@@ -1,0 +1,706 @@
+---
+title: WASM plugins
+icon: Binary
+---
+
+moon's [toolchains](<../(fundamentals)/toolchain.mdx>) and [extensions](<../(fundamentals)/extension.mdx>),
+and [proto](/proto/docs)'s tools, are plugins written in [WebAssembly (WASM)](https://webassembly.org/),
+a portable binary format. Plugins can be written in any language that compiles to WASM, like Rust,
+C, C++, Go, TypeScript, and more. Because they're real programs, plugins support complex business
+logic, have sandboxed access to the file system (via WASI), can execute commands on the host, and
+much more, while running identically on every platform moon supports.
+
+This guide covers the concepts and APIs shared by all plugins, where plugins can be located, and how
+to create, build, and publish your own.
+
+## Plugin types
+
+A plugin is a WASM module that exports a set of functions. The plugin type determines which
+functions moon looks for, and each type has one required function that registers its metadata.
+Every other function is optional: moon checks whether a function exists before calling it, so a
+plugin only implements what it needs.
+
+- **Toolchains** - Implement `register_toolchain`, and add language and ecosystem support to moon,
+  from file syncing up to tool installation. Learn more about the
+  [toolchain tiers](<../(fundamentals)/toolchain.mdx#tier-1-syncing-and-usage-detection>).
+- **Extensions** - Implement `register_extension`, and add general purpose functionality that can
+  be run with [`moon ext`](../commands/ext.mdx), or hook into moon's processes. Learn more about
+  [creating an extension](<../(fundamentals)/extension.mdx#creating-an-extension>).
+- **proto tools** - Implement `register_tool`, and teach proto how to download and install a tool.
+  These are built with the `proto_pdk` crate instead.
+
+To see which functions a plugin implements, run [`moon toolchain info`](../commands/toolchain/info.mdx)
+or [`moon extension info`](../commands/extension/info.mdx).
+
+## Powered by Extism
+
+The plugin system is powered by [Extism](https://extism.org/), a cross-language framework for
+building WASM plugins under a unified guest and host API. Under the hood, Extism uses
+[wasmtime](https://wasmtime.dev/) as its WASM runtime.
+
+You don't need to know about Extism's host SDK, as moon and proto implement it for you. However,
+you _should_ be familiar with its guest PDKs (plugin development kits), as they're what you'll use
+to implement plugins. We suggest reading the following material:
+
+- [Plugin development kits](https://extism.org/docs/concepts/pdk) (PDKs)
+- The [extism-pdk](https://github.com/extism/rust-pdk) Rust crate
+- [Host functions](https://extism.org/docs/concepts/host-functions) (how they work)
+
+## Concepts
+
+Before we begin, let's talk about a few concepts that are critical to WASM and our plugin systems.
+The examples in the rest of this guide assume the following imports.
+
+```rust title="src/lib.rs"
+use extism_pdk::*;
+use moon_pdk::*;
+use moon_pdk_api::*;
+```
+
+### Plugin identifier
+
+The plugin identifier is the key the plugin was configured with, for example `example` in
+`.moon/extensions.config`. To access it from within any plugin function, use the
+[`get_plugin_id`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.get_plugin_id.html) function.
+
+```rust
+let id = get_plugin_id()?;
+```
+
+### Virtual paths
+
+WASM doesn't have access to the host file system by default, but through [WASI](https://wasi.dev/),
+we can provide sandboxed access to a pre-defined list of allowed directories. We call these
+[virtual paths](https://docs.rs/warpgate_api/latest/warpgate_api/struct.VirtualPath.html), and all
+paths provided via function input or context use them.
+
+Virtual paths are implemented by mapping a real path (host machine) to a virtual path (guest
+runtime) using file path prefixes. The following prefixes are supported in moon:
+
+| Real path                             | Virtual path |
+| ------------------------------------- | ------------ |
+| `~` (user home directory)             | `/userhome`  |
+| `~/.moon` (or `MOON_HOME`)            | `/moon`      |
+| `~/.proto` (or `PROTO_HOME`)          | `/proto`     |
+| `~/.proto/temp` (or `PROTO_TEMP_DIR`) | `/temp`      |
+| moon workspace root                   | `/workspace` |
+
+For example, from the context of WASM, you may have a virtual path of `/proto/tools/node/1.2.3`,
+which maps back to `~/.proto/tools/node/1.2.3` on the host machine. This should almost always be
+transparent to you, the developer, and to end users.
+
+The `VirtualPath` type is a newtype wrapper around Rust's `PathBuf`, with a sibling
+[`RealPath`](https://docs.rs/warpgate_api/latest/warpgate_api/struct.RealPath.html) type that
+represents a real path on the host machine. Both types dereference to `PathBuf`, so all `Path` and
+`PathBuf` methods are available, and methods like `join` and `parent` return the same type.
+
+However, there are a few cases where you need the real path from WASM, for example, when logging
+or executing commands. For this, use the `to_real_path` method, which returns `None` if the path
+can't be mapped. Jump to [converting paths](#converting-paths) for more information.
+
+```rust
+let real_path = virtual_path.to_real_path()?; // `Option<RealPath>`
+```
+
+#### File system caveats
+
+When working with the file system from the context of WASM, there are a few caveats to be aware of.
+
+- All `fs` calls must use virtual paths. Real paths will error.
+- Paths outside of the allowed directories (the prefixes above) will error.
+- Changing file permissions is not supported (on Unix and Windows), as WASI doesn't support it.
+  This also means operations like unpacking archives aren't possible in WASM. Instead,
+  [execute a command](#executing-commands) on the host, like `tar` or `unzip`.
+
+### Host environment
+
+Since WASM executes in its own runtime, it _does not_ have access to the host's operating system,
+architecture, and so on. To bridge this gap, we provide the
+[`get_host_environment`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.get_host_environment.html)
+function, which returns a
+[`HostEnvironment`](https://docs.rs/warpgate_api/latest/warpgate_api/struct.HostEnvironment.html).
+
+```rust
+let env = get_host_environment()?;
+```
+
+The host operating system and architecture can be accessed with the `os` and `arch` fields
+respectively. Both fields are an enum in Rust, or a string in other languages.
+
+```rust
+if env.os == HostOS::Windows {
+    // Windows only
+}
+
+if env.arch == HostArch::Arm64 {
+    // aarch64 only
+}
+```
+
+On Linux, the libc implementation can be accessed with the `libc` field, which is either
+`HostLibc::Gnu` or `HostLibc::Musl`, and `HostLibc::Unknown` on other operating systems. Values that
+aren't supported by your plugin's version of the PDK (for example, a libc added in the future) are
+deserialized as `HostLibc::Unknown` instead of failing, so be sure to handle that case.
+
+```rust
+if env.libc == HostLibc::Musl {
+    // Alpine, etc
+}
+```
+
+Furthermore, the `ci` field is true when running in a CI environment, and the user's home
+directory (`~`) can be accessed with the `home_dir` field, which is a
+[virtual path](#virtual-paths).
+
+```rust
+if env.home_dir.join(".config/example").exists() {
+    // Do something
+}
+```
+
+## Host functions
+
+WASM is powerful, but it can't do everything since it's sandboxed. To work around this, we provide
+host functions, which are functions implemented on the host (in Rust) that can be called from WASM.
+The following host functions are available to all plugins:
+
+- `download_file` - Download a file from a URL directly to a file on the host machine, without
+  loading the contents into WASM memory.
+- `exec_command` - Execute a command on the host machine, with a provided list of arguments,
+  environment variables, and more.
+- `get_env_var` - Get an environment variable value from the host environment.
+- `host_log` - Log a message to the host's terminal (stdout or stderr), or to its logs.
+- `send_request` - Request a URL on the host machine using a Rust-based HTTP client (not WASM).
+- `set_env_var` - Set an environment variable on the host environment.
+
+moon plugins can also [load projects, tasks, and configuration](#loading-projects-and-tasks)
+through moon specific host functions.
+
+The `moon_pdk` crate wraps these host functions in friendlier functions and macros, which are
+covered in the sections below. The functions can be used as-is, but the macros call the host
+function directly, so you'll need to declare the host functions you use at the top of your Rust
+file with the `host_fn` attribute from the [extism-pdk](https://crates.io/crates/extism-pdk) crate.
+
+```rust
+#[host_fn]
+extern "ExtismHost" {
+    fn download_file(input: Json<DownloadFileInput>) -> Json<DownloadFileOutput>;
+    fn exec_command(input: Json<ExecCommandInput>) -> Json<ExecCommandOutput>;
+    fn get_env_var(key: String) -> String;
+    fn host_log(input: Json<HostLogInput>);
+    fn send_request(input: Json<SendRequestInput>) -> Json<SendRequestOutput>;
+    fn set_env_var(key: String, value: String);
+}
+```
+
+### Converting paths
+
+When working with virtual paths, you may need to convert them to real paths, and vice versa. The
+[`VirtualPathExt`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/trait.VirtualPathExt.html) and
+[`RealPathExt`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/trait.RealPathExt.html) extension
+traits provide `create` constructors and conversion methods for such situations. Unlike the rest of
+this section, these aren't host functions. Conversions happen directly in the guest, using the list
+of host-to-guest path mappings provided by the host.
+
+```rust
+// Create a virtual path from a real path
+let virt = VirtualPath::create("/some/real/path")?;
+
+// Convert a virtual path into a real path (returns an `Option`)
+let real = virt.to_real_path()?;
+```
+
+For lower-level control, the
+[`convert_to_virtual_path`](https://docs.rs/warpgate_api/latest/warpgate_api/fn.convert_to_virtual_path.html)
+and [`convert_to_real_path`](https://docs.rs/warpgate_api/latest/warpgate_api/fn.convert_to_real_path.html)
+functions can be used instead, paired with
+[`get_host_to_guest_paths`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.get_host_to_guest_paths.html).
+
+```rust
+let real = convert_to_real_path("/workspace/app", get_host_to_guest_paths()?);
+```
+
+### Environment variables
+
+The [`get_host_env_var`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.get_host_env_var.html)
+and [`set_host_env_var`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.set_host_env_var.html)
+functions read and write environment variables on the host, using the `get_env_var` and
+`set_env_var` host functions respectively.
+
+```rust
+// Set a value
+set_host_env_var("ENV_VAR", "value")?;
+
+// Get a value (returns an `Option`)
+let value = get_host_env_var("ENV_VAR")?;
+```
+
+Additionally, the [`add_host_paths`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.add_host_paths.html)
+function appends paths to the `PATH` environment variable.
+
+```rust
+// Append to path
+add_host_paths(["/userhome/some/virtual/path"])?;
+```
+
+### Executing commands
+
+The [`exec_captured`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.exec_captured.html) (pipe)
+and [`exec_streamed`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.exec_streamed.html)
+(inherit) functions execute a command on the host, using the `exec_command` host function. The
+command must be available on `PATH` (or be a virtual path to an executable), otherwise an error is
+returned. Commands run from the current working directory by default.
+
+```rust
+// Pipe stdout/stderr
+let output = exec_captured("which", ["node"])?;
+
+if output.exit_code == 0 {
+    let path = output.stdout.trim();
+}
+
+// Inherit stdout/stderr
+exec_streamed("npm", ["install"])?;
+```
+
+For full control, pass an `ExecCommandInput` to the
+[`exec`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.exec.html) function, which supports a
+custom working directory (`cwd`), environment variables (`env`), additional `PATH` lookups
+(`paths`), and a `shell` to wrap the command in.
+
+```rust
+exec(ExecCommandInput {
+    command: "npm".into(),
+    args: vec!["install".into()],
+    cwd: Some(VirtualPath::new("/workspace/packages/app")),
+    ..ExecCommandInput::default()
+})?;
+```
+
+The [`exec_command!`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/macro.exec_command.html)
+macro calls the host function directly, and supports pipe, inherit, and raw (returns a `Result`
+instead of failing) modes.
+
+```rust
+let result = exec_command!(raw, "which", ["node"]);
+```
+
+### Downloading files
+
+The [`download_from_url`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.download_from_url.html)
+function downloads a file from a URL straight to a destination file on the host, using the
+`download_file` host function. Unlike [sending a request](#sending-requests), the response body
+is streamed to disk and never passes through WASM memory, which avoids allocating the entire file
+in the guest. This is ideal for large artifacts, like archives and installers.
+
+```rust
+let temp_dir = VirtualPath::new("/moon/temp");
+let output = download_from_url("https://some.com/url/to/file.tar.xz", temp_dir.join("file.tar.xz"))?;
+
+output.file; // Virtual path written to
+output.size; // Size in bytes
+```
+
+For full control, like custom headers, pass a `DownloadFileInput` to the
+[`download`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.download.html) function, or use
+the [`download_file!`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/macro.download_file.html)
+macro.
+
+### Sending requests
+
+The [`send_request!`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/macro.send_request.html)
+macro requests a URL on the host instead of from WASM, using the same HTTP client as the host CLI
+(which supports `.netrc` credentials). It returns a response object with the raw body in bytes,
+and the status code. Non-OK responses must be handled by you.
+
+```rust
+let response = send_request!("https://some.com/url/to/fetch");
+
+if response.status == 200 {
+    let text = response.text()?; // Or `response.json::<T>()?`
+} else {
+    // Error!
+}
+```
+
+To simplify the handling of requests and responses, we also provide the
+[`fetch_bytes`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.fetch_bytes.html),
+[`fetch_json`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.fetch_json.html), and
+[`fetch_text`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.fetch_text.html) functions, which
+return an error for non-2xx responses and empty bodies.
+
+```rust
+let json: T = fetch_json("https://some.com/url/to/fetch.json")?;
+```
+
+Requests are sent with the `GET` method by default. To send a `POST` request instead, set the
+`method` field on the input, or use the
+[`SendRequestInput::post`](https://docs.rs/warpgate_api/latest/warpgate_api/struct.SendRequestInput.html)
+constructor.
+
+```rust
+let response = send_request!(input, SendRequestInput::post("https://some.com/url/to/post"));
+```
+
+### Logging
+
+The [`host_log!`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/macro.host_log.html) macro writes
+messages to the host, using the `host_log` host function. It supports the same argument patterns as
+`format!`, and messages support style tags like `<path>`, `<url>`, and `<id>`, which are colored in
+the terminal.
+
+- `stdout` and `stderr` write directly to the host's terminal.
+- `debug`, `warn`, `error`, and `trace` write to moon's logs, which are visible with the `--log`
+  option.
+
+```rust
+host_log!(stdout, "Some message");
+host_log!(stderr, "Some message with {}", "args");
+host_log!(debug, "Processing <path>{}</path>", path);
+```
+
+If you want full control, like providing data/fields, use the input mode and provide a
+[`HostLogInput`](https://docs.rs/warpgate_api/latest/warpgate_api/struct.HostLogInput.html).
+
+```rust
+let mut input = HostLogInput::new("Some message with data");
+input.target = HostLogTarget::Stderr;
+input.data.insert("file".into(), "example.txt".into());
+
+host_log!(input, input);
+```
+
+Furthermore, the [extism-pdk](https://crates.io/crates/extism-pdk) crate provides macros for
+writing level-based messages, which appear in moon's logs when the `--log` option is enabled.
+These also support arguments.
+
+```rust
+debug!("This is a debug message");
+info!("Something informational happened");
+warn!("Proceed with caution");
+error!("Oh no, something went wrong");
+```
+
+<Callout type="idea">
+  To debug a plugin, run moon with `--log trace` to see every host function
+  call, and set the `MOON_DEBUG_WASM` environment variable to also include
+  Extism's own runtime logs.
+</Callout>
+
+### Loading projects and tasks
+
+moon plugins can load data from the current workspace with the following functions from
+`moon_pdk`, which are powered by moon specific host functions.
+
+- `load_project` and `load_projects` - Load one or many projects by ID.
+- `load_task` and `load_tasks` - Load one or many tasks by fully-qualified target.
+- `load_extension_config` - Load the configuration of an extension by ID.
+- `load_toolchain_config` and `load_project_toolchain_config` - Load the workspace-level, or
+  project-merged, configuration of a toolchain by ID.
+
+```rust
+let project = load_project("app")?;
+let task = load_task("app:build")?;
+```
+
+<Callout type="warning">
+
+Projects and tasks can only be loaded after moon has built the workspace graph. They aren't
+available within `extend_project_graph` (which runs while the graph is being built), or within
+`execute_extension` (as [`moon ext`](../commands/ext.mdx) doesn't build the graph).
+
+</Callout>
+
+## Plugin locators
+
+To use a WASM plugin, it must be configured with a
+[plugin locator](https://docs.rs/warpgate_api/latest/warpgate_api/enum.PluginLocator.html), for
+example the [`plugin`](/moon/api/ExtensionPluginConfig#plugin) setting of an extension. proto
+uses the same format. A locator string is composed of 2 parts separated by `://`: the protocol,
+and the location.
+
+```
+<protocol>://<location>
+```
+
+Plugins located by GitHub, URL, or registry are downloaded and cached in `~/.moon/plugins`. A
+cached plugin is re-downloaded once it's stale (after 180 days by default, configurable in seconds
+with proto's `cache-duration` setting or the `PROTO_CACHE_DURATION` environment variable), and
+stale plugins are used as-is when offline. To download all configured plugins ahead of time, run
+[`moon extension download`](../commands/extension/download.mdx) or
+[`moon toolchain download`](../commands/toolchain/download.mdx).
+
+The following protocols are supported.
+
+### `file`
+
+The `file://` protocol represents a file path, either absolute or relative. Relative paths are
+resolved from the directory containing the configuration file (for example, `.moon`). File plugins
+aren't cached, so this is ideal when developing a plugin locally.
+
+```
+# Relative
+file://./plugins/example.wasm
+file://../target/wasm32-wasip1/debug/example_extension.wasm
+
+# Absolute
+file:///root/path/to/example.wasm
+```
+
+### `github`
+
+The `github://` protocol downloads an asset from a GitHub release. The location must be an
+organization and repository slug (`owner/repo`), and the release _must have_ a `.wasm` asset
+available to download.
+
+```
+github://moonrepo/example-repo
+```
+
+If you're targeting releases in a monorepo, append the project name after the repository. The
+project name is used as a tag prefix, and will match `<name>@<version>` or `<name>-<version>` tags.
+
+```
+github://moonrepo/example-repo/project-name
+```
+
+By default, the latest release is used. We suggest targeting a specific release tag instead, by
+appending it to the end of the location. This ensures every machine uses the same plugin.
+
+```
+github://moonrepo/example-repo@v1.2.3
+```
+
+This strategy is powered by the [GitHub API](https://api.github.com/) and is subject to rate
+limiting. If running in a CI environment, we suggest setting a `GITHUB_TOKEN` (or `GH_TOKEN`)
+environment variable to authorize API requests with. If using GitHub Actions, it's as simple as:
+
+```yaml
+# In some job or step...
+env:
+  GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+```
+
+### `https`
+
+The `https://` protocol is your standard URL, and must point to the `.wasm` file. Non-secure
+`http://` URLs are _not supported_!
+
+```
+https://domain.com/path/to/plugins/example.wasm
+```
+
+### `registry`
+
+The `registry://` protocol pulls a plugin from an OCI registry, like the GitHub container registry.
+The location is composed of a registry host and namespace, the image name, and an optional tag
+(defaults to `latest`). This is how moon's built-in plugins are distributed.
+
+```
+# Fully-qualified
+registry://ghcr.io/moonrepo/unpack_extension:1.0.4
+
+# Image only
+registry://unpack_extension:1.0.4
+```
+
+When the host is omitted, moon searches the registries configured in proto instead, which include
+`ghcr.io/moonrepo` by default.
+
+## Creating a plugin
+
+<Callout>
+  Although plugins can be written in any language that compiles to WASM, we've
+  only tested Rust. The rest of this guide assumes you're using Rust and Cargo!
+  Refer to [Extism](https://extism.org/)'s documentation for other languages.
+</Callout>
+
+To start, install the WASI build target, and create a new library crate with Cargo.
+
+```shell
+# Add the WASM target
+$ rustup target add wasm32-wasip1
+
+# Create the crate
+$ cargo new example_extension --lib
+$ cd example_extension
+```
+
+Set the lib type to `cdylib`, and provide other required settings.
+
+```toml title="Cargo.toml"
+[package]
+name = "example_extension"
+version = "0.0.1"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[profile.release]
+codegen-units = 1
+debug = false
+lto = true
+opt-level = "s"
+panic = "abort"
+```
+
+Our Rust plugins are powered by Extism, so add its PDK and ours as dependencies.
+
+```shell
+# For moon
+$ cargo add extism-pdk moon_pdk moon_pdk_api
+
+# For proto
+$ cargo add extism-pdk proto_pdk
+```
+
+In your Rust files, import the PDKs, and start implementing plugin functions with the `plugin_fn`
+attribute. Refer to [creating an extension](<../(fundamentals)/extension.mdx#creating-an-extension>) or the
+[toolchain tiers](<../(fundamentals)/toolchain.mdx#tier-1-syncing-and-usage-detection>) for the
+functions to implement.
+
+```rust title="src/lib.rs"
+use extism_pdk::*;
+use moon_pdk::*;
+use moon_pdk_api::*;
+
+#[plugin_fn]
+pub fn register_extension(
+    Json(_): Json<RegisterExtensionInput>,
+) -> FnResult<Json<RegisterExtensionOutput>> {
+    Ok(Json(RegisterExtensionOutput {
+        name: "Example".into(),
+        plugin_version: env!("CARGO_PKG_VERSION").into(),
+        ..Default::default()
+    }))
+}
+```
+
+We can then build the WASM binary. The file will be available at
+`target/wasm32-wasip1/debug/<name>.wasm`, and can be referenced with a
+[`file://` locator](#file) to try it out.
+
+```shell
+# Build the plugin
+$ cargo build --target wasm32-wasip1
+```
+
+### Testing
+
+The `moon_pdk_test_utils` crate (`proto_pdk_test_utils` for proto) loads your built WASM file into
+a sandboxed moon environment, so plugin functions can be tested from regular Rust tests. Add it,
+and an async runtime like [tokio](https://crates.io/crates/tokio), as dev dependencies.
+
+```rust title="tests/execute_test.rs"
+use moon_pdk_test_utils::{ExecuteExtensionInput, create_empty_moon_sandbox};
+
+#[tokio::test(flavor = "multi_thread")]
+#[should_panic(expected = "the following required arguments were not provided")]
+async fn errors_if_no_args() {
+    let sandbox = create_empty_moon_sandbox();
+    let plugin = sandbox.create_extension("example").await;
+
+    plugin
+        .execute_extension(ExecuteExtensionInput::default())
+        .await;
+}
+```
+
+The test wrappers panic when a plugin function fails, so use `should_panic` to test error cases.
+They also load the WASM file matching the package name, so build it before running the tests.
+
+```shell
+# Build, then test
+$ cargo build --target wasm32-wasip1
+$ cargo test
+```
+
+## Building and publishing
+
+At this point, you should have a fully working WASM plugin, but to make it available to the
+community, you'll still need to build and make the `.wasm` file available. The easiest solution is
+to publish a GitHub release and include the `.wasm` file as an asset.
+
+### Building, optimizing, and stripping
+
+WASM files are pretty fat, even when compiling in release mode. To reduce the size of these files,
+we can use `wasm-opt` and `wasm-strip`, both of which are provided by the
+[WebAssembly](https://github.com/WebAssembly) group. The following script is similar to what we
+use to build our own plugins.
+
+<Callout>
+  This functionality is natively supported in our
+  [moonrepo/build-wasm-plugin](https://github.com/moonrepo/build-wasm-plugin)
+  GitHub Action!
+</Callout>
+
+```bash title="build-wasm"
+#!/usr/bin/env bash
+
+target="${CARGO_TARGET_DIR:-target}"
+input="$target/wasm32-wasip1/release/$1.wasm"
+output="$target/wasm32-wasip1/$1.wasm"
+
+echo "Building"
+
+cargo build --target wasm32-wasip1 --release
+
+echo "Optimizing"
+
+# https://github.com/WebAssembly/binaryen
+~/binaryen/bin/wasm-opt -Os "$input" --output "$output"
+
+echo "Stripping"
+
+# https://github.com/WebAssembly/wabt
+~/wabt/bin/wasm-strip "$output"
+```
+
+### Manually create releases
+
+When your plugin is ready to be published, you can create a release on GitHub using the following
+steps.
+
+1. Tag the release and push to GitHub.
+
+   ```shell
+   $ git tag v0.0.1
+   $ git push --tags
+   ```
+
+2. Build a release version of the plugin using the `build-wasm` script above. The file will be
+   available at `target/wasm32-wasip1/<name>.wasm`.
+
+   ```shell
+   $ build-wasm <name>
+   ```
+
+3. In GitHub, navigate to the tags page, find the new tag, create a new release, and attach the
+   built file as an asset.
+
+### Automate releases
+
+If you're using GitHub Actions, you can automate the release process with our official
+[moonrepo/build-wasm-plugin](https://github.com/moonrepo/build-wasm-plugin) action. The action can
+also publish the plugin to ghcr.io, for use with the [`registry://` locator](#registry).
+
+1. Create a new workflow file at `.github/workflows/release.yml`. Refer to the link above for a
+   working example.
+
+2. Tag the release and push to GitHub.
+
+   ```shell
+   # In a polyrepo
+   $ git tag v0.0.1
+
+   # In a monorepo
+   $ git tag example_extension-v0.0.1
+
+   # Push the tags
+   $ git push --tags
+   ```
+
+3. The action will automatically build the plugin, create a release, and attach the built file as
+   an asset.

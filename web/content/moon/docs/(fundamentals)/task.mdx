@@ -8,7 +8,7 @@ import { TypeLabel } from "@/components/TypeLabel";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 
-Tasks are the fundamental building blocks of moon's execution system. They define discrete units of work that can be executed within projects, such as building, testing, linting, or running development servers. Tasks form the backbone of moon's automation capabilities, providing incremental builds, smart hashing, local/remote caching, and parallel execution.
+Tasks are the fundamental building blocks of moon's execution system. They define discrete units of work that can be executed within projects, such as building, testing, linting, or running development servers. Tasks form the backbone of moon's automation capabilities, providing incremental builds, smart hashing, local/[remote caching](../guides/remote-cache.mdx), and parallel execution.
 
 ## Configuration
 
@@ -54,7 +54,9 @@ _only_ be ran locally, such as, development servers and watchers, we provide a m
 
 To mark a task as local only, disable [`options.runInCI`](#options) or configure the appropriate [`preset`](#presets).
 
-When `runInCI` isn't configured, only `build` and `test` [types](#types) run in CI, so `run` tasks are local only by default. [Persistent](#persistent) tasks are also local only by default, regardless of their type, as a task that never completes would keep the CI pipeline running until it times out.
+When `runInCI` isn't configured, only `build` and `test` [types](#types) run in CI, so `run` tasks are local only by default. [Persistent](#persistent) tasks are also local only by default, regardless of their type, as a task that never completes would keep the CI pipeline running until it times out, and [interactive](#interactive) tasks never run in CI.
+
+Besides `true` and `false`, `runInCI` accepts values like `"always"` and `"skip"`, for finer control over how [`moon ci`](../commands/ci.mdx) treats a task. See [configuring tasks to run](../guides/ci.mdx#configuring-tasks-to-run) for every value.
 
 <ConfigTabs
   file="moon"
@@ -678,7 +680,7 @@ This only applies to variables from [`env`](/moon/api/TaskConfig#env) and [`deps
 ## Inputs
 
 Task inputs specify which sources affect a task's execution cycle. They're critical for effective caching, as we generate a smart content hash from all inputs,
-and when inputs and the hash change, the cached result is invalidated and the task re-runs.
+and when inputs and the hash change, the cached result is invalidated and the task re-runs. To find out why a hash changed, see [inspecting the hash manifest](../skills/debug-task.mdx#inspect-the-hash-manifest).
 
 Inputs can be defined with the [`inputs`](/moon/api/TaskConfig#inputs) setting, which accepts a list of strings or objects, and defaults `**/*` (all files in the project). The string format is a simple and concise way to define inputs, while the object format provides more flexibility and options for each input.
 
@@ -1052,7 +1054,7 @@ Environment variables can also be used as inputs, and must start with a `$`. The
 
 ## Outputs
 
-Task outputs are the opposite of inputs, in that they are sources that are _created_ as a result of the task's execution! These are also known as build artifacts, generated files, or compiled outputs. They're critical for effective caching and incremental builds, as these outputs are _hydrated_ on a cache hit, and the task is skipped instead of re-ran.
+Task outputs are the opposite of inputs, in that they are sources that are _created_ as a result of the task's execution! These are also known as build artifacts, generated files, or compiled outputs. They're critical for effective caching and incremental builds, as these outputs are _hydrated_ on a cache hit (from the local cache, or a [remote cache](../guides/remote-cache.mdx)), and the task is skipped instead of re-ran.
 
 Outputs can be defined with the [`outputs`](/moon/api/TaskConfig#outputs) setting, which accepts a list of strings or objects. The string format is a simple and concise way to define outputs, while the object format provides more flexibility and options for each output.
 

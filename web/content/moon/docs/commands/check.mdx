@@ -109,8 +109,9 @@ This command can also be run with the `moon c` alias.
   Control how output is displayed for _all_ tasks, overriding their
   [`options.outputStyle`](/moon/api/TaskOptionsConfig#outputstyle) setting, including for primary
   targets. See [output style](<../(fundamentals)/task.mdx#output-style>) for more information.
-- `-p`, `--plan` <TypeLabel type="string" /> - Relative path to an execution plan (JSON) used to
-  further customize the action graph and pipeline for this run. Can also be set via the
+- `-p`, `--plan` <TypeLabel type="string" /> - Relative path to an
+  [execution plan](../guides/exec-plan.mdx) (JSON) used to further customize the action graph and
+  pipeline for this run. Can also be set via the
   `MOON_EXEC_PLAN` environment variable.
 - `-s`, `--summary` <TypeLabel type="boolean | string" /> - Print a summary of all actions that were
   ran in the pipeline. Accepts `none`, `minimal`, `normal` (default when the flag is passed without

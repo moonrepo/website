@@ -235,6 +235,9 @@ The [JavaScript toolchain](./index.mdx) detects the same files and executables, 
 
 ### Docker integration
 
+The npm toolchain integrates with the following steps of the
+[Docker workflow](../../guides/docker.mdx):
+
 - [`moon docker scaffold`](../../commands/docker/scaffold.mdx) - Copies `package.json`,
   `package-lock.json`, `npm-shrinkwrap.json`, and `.npmrc` files.
 - [`moon docker prune`](../../commands/docker/prune.mdx) - Deletes the `node_modules` directory in

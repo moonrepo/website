@@ -1,3 +1,113 @@
 ---
-title: Open source
+title: Open source usage
+icon: HeartHandshake
 ---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+
+Although moon was designed for large monorepos, it can also be used for open source projects,
+especially when coupled with our [built-in continuous integration support](./ci.mdx).
+
+## Testing multiple tool versions
+
+A pain point with moon is that each tool in the [toolchain](<../(fundamentals)/toolchain.mdx>) has an
+explicitly configured version, but open source projects typically need to run checks against
+multiple versions! For example, a library may pin Node.js 24 for development, while still supporting
+older releases.
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    node: {
+      version: "24.0.0",
+    },
+  }}
+/>
+
+To mitigate this problem, you can override the version with an environment variable, in the format
+of `MOON_<TOOLCHAIN>_VERSION`. `<TOOLCHAIN>` is the toolchain's ID as configured in
+[`.moon/toolchains.config`](<../(fundamentals)/toolchain.mdx#configuration>), in uppercase with
+dashes converted to underscores, like `MOON_NODE_VERSION`, `MOON_RUST_VERSION`, or
+`MOON_UNSTABLE_PYTHON_VERSION`. The variable only applies to toolchains that are configured, and
+accepts any version that proto supports, like `22` or `22.12.0`.
+
+The variable takes precedence over the [`version`](/moon/api/ToolchainPluginConfig#version) setting
+and `.prototools`, and moon installs the requested version through proto before running tasks. A
+project's own version [override](<../(fundamentals)/toolchain.mdx#project-overrides>) still wins
+for that project's tasks (see
+[installing with proto](<../(fundamentals)/toolchain.mdx#installing-with-proto>)).
+
+In CI, set the variable from your build matrix, so each job runs against a different version.
+
+```yaml title=".github/workflows/ci.yml"
+name: "Pipeline"
+on:
+  push:
+    branches:
+      - "master"
+  pull_request:
+jobs:
+  ci:
+    name: "CI"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ["ubuntu-latest", "windows-latest"]
+        node-version: [20, 22, 24]
+    steps:
+      # Checkout repository
+      - uses: "actions/checkout@v4"
+        with:
+          fetch-depth: 0
+      # Install Node.js
+      - uses: "actions/setup-node@v6"
+        with:
+          node-version: ${{ matrix.node-version }}
+      # Install dependencies
+      - run: "yarn install --immutable"
+      # Run moon and affected tasks
+      - run: "yarn moon ci"
+        env:
+          MOON_NODE_VERSION: ${{ matrix.node-version }}
+```
+
+<Callout>
+  This example is only for GitHub Actions, but the same mechanism can be applied
+  to other CI environments, or locally.
+</Callout>
+
+```shell
+# Run tests against Node.js 22, regardless of the configured version
+$ MOON_NODE_VERSION=22 moon run app:test
+```
+
+## Reporting run results
+
+We also suggest using our
+[`moonrepo/run-report-action`](https://github.com/marketplace/actions/moon-ci-run-reports) GitHub
+action. This action reports the results of a [`moon ci`](../commands/ci.mdx) run to a pull request
+as a comment and workflow summary. Since the workflow above uses a build matrix, pass it with the
+`matrix` input, otherwise the comments of each matrix job overwrite each other.
+
+```yaml title=".github/workflows/ci.yml"
+# ...
+jobs:
+  ci:
+    name: "CI"
+    # ...
+    steps:
+      # ...
+      - run: "yarn moon ci"
+      - uses: "moonrepo/run-report-action@v1"
+        if: success() || failure()
+        with:
+          access-token: ${{ secrets.GITHUB_TOKEN }}
+          matrix: ${{ toJSON(matrix) }}
+```
+
+The report looks something like the following:
+
+![moon ci run report](./images/run-report.png)
+
+For where the report is written, and how to keep it, see the
+[continuous integration guide](./ci.mdx#reporting-run-results).

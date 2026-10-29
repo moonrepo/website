@@ -40,7 +40,8 @@ The Node.js toolchain supports the following repository layouts. Directories onl
 
 #### Single package
 
-A single `package.json` lives at the repository root, which is configured as a project.
+A single `package.json` lives at the repository root, which is configured as a
+[root-level project](../../guides/root-project.mdx).
 
 ```text
 ./
@@ -234,9 +235,8 @@ The profile is written to the `.moon` directory within the project's root:
 - `cpu` - Passes `--cpu-prof`, and writes a `snapshot.cpuprofile` file.
 - `heap` - Passes `--heap-prof`, and writes a `snapshot.heapprofile` file.
 
-Open these files in the Performance or Memory panel of Chrome DevTools. Each run overwrites the
-previous profile. As profiling is meant for temporary debugging, enable it for a single project with
-an [override](#project-overrides), and remove it once you're done.
+Each run overwrites the previous profile. As profiling is meant for temporary debugging, enable it
+for a single project with an [override](#project-overrides), and remove it once you're done.
 
 <ConfigTabs
   file="moon"
@@ -254,6 +254,11 @@ an [override](#project-overrides), and remove it once you're done.
 
 The setting doesn't affect task hashes, so run a cached task with
 [`moon run --force`](../../commands/run.mdx) to profile it (see [caveats](#caveats)).
+
+To open and analyze the profiles, see [analyzing in Chrome](../../guides/profile.mdx#analyzing-in-chrome)
+in the profiling guide, which also covers
+[profiling tasks that run Node.js indirectly](../../guides/profile.mdx#with-node_options), like
+`vitest`.
 
 ## Tier 1: Syncing and usage detection
 
@@ -274,6 +279,9 @@ toolchain's `packageManager` is `pnpm`, a `node ./server.js` task runs with the 
 and `pnpm` toolchains.
 
 ### Docker integration
+
+The Node.js toolchain integrates with the following steps of the
+[Docker workflow](../../guides/docker.mdx):
 
 - [`moon docker scaffold`](../../commands/docker/scaffold.mdx) - Copies `package.json` files, and
   `*.js`, `*.cjs`, and `*.mjs` files (commonly needed by `postinstall` scripts and tool configs).

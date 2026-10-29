@@ -1,0 +1,222 @@
+---
+title: VCS hooks
+icon: Combine
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+
+VCS hooks (most popular with [Git](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks)) are a
+mechanism for running scripts at pre-defined phases in the VCS's lifecycle, most commonly
+pre-commit, pre-push, or pre-merge. With moon, we provide a built-in solution for managing hooks,
+and syncing them across developers and machines, without needing a separate tool like Husky or
+Lefthook.
+
+- [Learn more about Git hooks](https://git-scm.com/docs/githooks)
+
+## Defining hooks
+
+Hooks can be configured with the [`vcs.hooks`](/moon/api/VcsConfig#hooks) setting in
+[`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>). This setting requires a map of hook
+names (in the format required by your VCS, like `pre-commit` or `pre-push` for Git), to a list of
+arbitrary commands to run within the hook script. Commands are used as-is and are not formatted or
+interpolated in any way, and a hook with an empty list of commands is not generated.
+
+To demonstrate this, let's configure a `pre-commit` hook that runs a moon `lint` task for affected
+projects, and also verifies that the commit message abides by a specified format (using
+[pre-commit](https://pre-commit.com/) and the
+[commitlint hook](https://github.com/alessandrojcm/commitlint-pre-commit-hook), for example).
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    vcs: {
+      hooks: {
+        "pre-commit": ["pre-commit run", "moon run :lint --affected"],
+        "commit-msg": [
+          "pre-commit run --hook-stage commit-msg --commit-msg-filename $ARG1",
+        ],
+      },
+    },
+  }}
+/>
+
+Commands are run in order, and the hook stops at the first command that fails, which aborts the Git
+operation (like the commit) as well.
+
+<Callout>
+  All commands are executed from the repository root (not moon's workspace root)
+  and must exist on `PATH`. If `moon` is installed as an npm dependency, you can
+  execute it using a repository relative path, like `./node_modules/.bin/moon`.
+</Callout>
+
+### Accessing arguments
+
+Git passes arguments to some hooks, like the path to the commit message file for `commit-msg`. To
+ease interoperability between operating systems and terminal shells, we set passed arguments as
+environment variables.
+
+In your hook commands, you can access these arguments using the `$ARG<n>` format, where `<n>` is the
+1-indexed position of the argument. For example, to access the first argument, you would use
+`$ARG1`, the second argument would be `$ARG2`, and so on. `$ARG0` exists and points to the current
+script.
+
+When hooks are generated as PowerShell scripts (on Windows), these references are rewritten to
+`$env:ARG<n>` automatically, so the same command works on every platform.
+
+## Enabling hooks
+
+Hooks are a divisive subject, as some developers love them, and others hate them. Finding a viable
+solution for everyone can be difficult, so with moon, we opted to support 2 distinct options, but
+only 1 can be used at a time. Choose the option that works best for your project, team, or company!
+
+### Automatically for everyone
+
+If you'd like hooks to be enforced for every contributor of the repository, then simply enable the
+[`vcs.sync`](/moon/api/VcsConfig#sync) setting in
+[`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>). This will automatically generate hook
+scripts and link them with the local VCS checkout while syncing the workspace, which happens before
+running tasks (like with [`moon run`](../commands/run.mdx)), and when running
+[`moon sync`](../commands/sync.mdx).
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    vcs: {
+      hooks: {
+        "pre-commit": ["moon run :lint --affected"],
+      },
+      sync: true,
+    },
+  }}
+/>
+
+Hooks are only regenerated when the configured hooks change, or when a script is missing, so this
+adds no noticeable overhead.
+
+<Callout type="warning">
+  Automatically activating hooks on everyone's computer is considered a
+  sensitive action, because it enables the execution of arbitrary code on the
+  computers of the team members. Be careful about the hook commands you define
+  in the `.moon/workspace.config` file.
+</Callout>
+
+### Manually by each developer
+
+If you'd prefer contributors to have a choice in whether or not they want to use hooks, then simply
+do nothing, and guide them to run the [`moon sync vcs-hooks`](../commands/sync/vcs-hooks.mdx)
+command (also available as `moon sync hooks`). This command will generate hook scripts and link them
+with the local VCS checkout.
+
+```shell
+# Generate hook scripts and link them with Git
+$ moon sync vcs-hooks
+```
+
+When the hooks change in the future, each developer will need to run the command again. Pass
+`--force` to regenerate the scripts, even when moon thinks they're up to date.
+
+## Disabling hooks
+
+If you choose to stop using hooks, you'll need to clean up the previously generated hook scripts,
+and reset the VCS checkout. To start, disable the `vcs.sync` setting.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    vcs: {
+      sync: false,
+    },
+  }}
+/>
+
+And then run the following command, which deletes the generated scripts and the hooks directory,
+and unsets Git's `core.hooksPath`. Every developer that is using hooks will need to run this
+command.
+
+```shell
+# Remove generated hooks and reset Git
+$ moon sync vcs-hooks --clean
+```
+
+<Callout type="warning">
+  The command exits early when [`vcs.hooks`](/moon/api/VcsConfig#hooks) is
+  empty, so run it _before_ removing your hooks from the configuration.
+  Alternatively, while `vcs.sync` is enabled, removing every hook (or emptying
+  their command lists) cleans up the generated scripts on the next sync
+  automatically.
+</Callout>
+
+## How it works
+
+When hooks are [enabled](#enabling-hooks), the following processes will take place.
+
+1. The configured [hooks](#defining-hooks) will be generated as individual script files in the
+   `.moon/hooks` directory, named after each hook (like `.moon/hooks/pre-commit`), and marked as
+   executable. If your workspace configuration lives in `.config/moon` instead of `.moon`, the
+   hooks are written to `.config/moon/hooks`. Whether or not you commit or ignore these script
+   files is your choice. They are written to the `.moon` directory so that they can be reviewed,
+   audited, and easily tested.
+
+2. We then sync these generated hook scripts with the current VCS. For Git, we set `core.hooksPath`
+   (scoped to the current worktree) to the absolute path of the hooks directory, which tells Git to
+   look for hook scripts in that directory instead of the default `.git/hooks` directory. When the
+   repository has linked worktrees, moon also enables Git's `extensions.worktreeConfig`, so each
+   worktree can be configured independently.
+
+<Callout type="warning">
+  Git only supports a single `core.hooksPath`, so moon replaces any path
+  configured by another hooks manager, like Husky or Lefthook. Migrate those
+  hooks to [`vcs.hooks`](/moon/api/VcsConfig#hooks) instead of using both.
+</Callout>
+
+Hooks are not generated when Git integration is disabled, for example when there's no `.git`
+directory, like in a Docker image.
+
+### Script formats
+
+The format of the generated scripts depends on the operating system, and the
+[`vcs.hookFormat`](/moon/api/VcsConfig#hookformat) setting.
+
+- **Unix (macOS, Linux)** - Hooks are always generated as Bash scripts, and require `bash` to be
+  available.
+- **Windows** - With the default `native` format, each hook is generated as a PowerShell script
+  (like `pre-commit.ps1`), along with a small `pre-commit` shim that Git executes, which runs the
+  PowerShell script. PowerShell 7 (`pwsh`) is used when it's on `PATH`, otherwise Windows
+  PowerShell (`powershell`) is used.
+
+If your hook commands rely on Bash syntax, like `export`, subshells, or `$VAR` environment variables
+(other than `$ARG<n>`), set `hookFormat` to `bash` to generate Bash scripts on Windows as well.
+These are executed by the Bash that ships with Git for Windows.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    vcs: {
+      hookFormat: "bash",
+    },
+  }}
+/>
+
+## Examples
+
+### Pre-commit
+
+A perfect use case for the `pre-commit` hook is to check linting and formatting of the files being
+committed. If either of these tasks fail, the commit will abort until they are fixed. Be sure to use
+the `--affected` option of [`moon run`](../commands/run.mdx) so that we _only run_ on
+[affected](../advanced/affected.mdx) projects, and `--status=staged` to only consider the files
+being committed!
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    vcs: {
+      hooks: {
+        "pre-commit": ["moon run :lint :format --affected --status=staged"],
+      },
+    },
+  }}
+/>
+
+By default this will run on the _entire_ project (all files). If you want to filter it to only the
+changed files, enable the [`affectedFiles`](/moon/api/TaskOptionsConfig#affectedfiles) task option.

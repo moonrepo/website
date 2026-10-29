@@ -19,7 +19,8 @@ The default output is a human-readable breakdown split into three sections:
 - **Process** — the resolved command (or script) that's actually executed, the shell used
   when [`shell`](/moon/api/TaskOptionsConfig#shell) is enabled, declared environment variables, the working directory the task
   runs from, the lookup paths used to resolve the binary, whether dependencies run in
-  parallel or serial, and whether the task is configured to run in CI.
+  parallel or serial, and whether the task is configured to
+  [run in CI](../guides/ci.mdx#configuring-tasks-to-run).
 - **Configuration** — which inherited configuration layers the task's settings came from,
   its [tags](<../(fundamentals)/project.mdx#tags>), and its fully expanded [inputs](<../(fundamentals)/task.mdx#inputs>) and
   [outputs](<../(fundamentals)/task.mdx#outputs>) (file paths, globs, and `$ENV_VAR` references), sorted
@@ -41,7 +42,9 @@ $ moon task app:build --json
 
 For a graph-based view of how this task relates to other tasks, use
 [`moon task-graph`](./task-graph.mdx) instead. To list every task across the workspace, or
-scoped to a project, use [`moon tasks`](./tasks.mdx).
+scoped to a project, use [`moon tasks`](./tasks.mdx). When a task isn't behaving as expected,
+inspecting it with this command is a good place to start
+[debugging it](../skills/debug-task.mdx#verify-configuration).
 
 ## Arguments
 

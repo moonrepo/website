@@ -9,7 +9,7 @@ Liveness is determined by actually connecting to the daemon's endpoint, not by c
 When connected, the daemon is asked for its live status over RPC, and the following is printed:
 
 - **Process** - The daemon's process ID, its IPC endpoint (a Unix socket path, or a named pipe on Windows), and how long it's been running.
-- **Paths** - The location of its state file (`.moon/cache/daemon/daemon.json`, an informational record of the pid, version, and start time) and its log file (`.moon/cache/daemon/server.log`, viewable with [`moon daemon logs`](./logs.mdx)).
+- **Paths** - The location of its state file (`.moon/cache/daemon/daemon.json`, an informational record of the pid, version, and start time) and its log file (`.moon/cache/daemon/server.log`, viewable with [`moon daemon logs`](./logs.mdx)). Refer to [communication](../../guides/daemon.mdx#communication) for every file the daemon uses.
 
 ```shell
 $ moon daemon status

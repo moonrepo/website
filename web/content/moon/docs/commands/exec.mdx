@@ -19,11 +19,9 @@ multi-select list of every task in the workspace.
 
 Instead of (or in addition to) command line flags, a declarative
 [execution plan](../guides/exec-plan.mdx) (a JSON file) can be supplied with `--plan`, describing the
-targets to run along with affected, graph, and pipeline settings. CLI targets are only used to
-populate the plan when the plan itself doesn't already define any; if both provide targets, the
-plan's targets win and a warning is logged. Values from the plan otherwise take precedence over
-their command line equivalents (base/head revision, upstream/downstream scope, job partitioning,
-and more).
+targets to run along with affected, graph, and pipeline settings. Plan values take precedence over
+their command line equivalents, and when both define targets, the plan's targets win and a warning
+is logged. See [using a plan](../guides/exec-plan.mdx#usage) for how the two are combined.
 
 `moon exec` also ships as its own standalone binary, `moonx`, so `moonx app:build` is equivalent to
 `moon exec app:build` (or its alias, `moon x app:build`).
@@ -75,7 +73,8 @@ $ moon exec app:start -- --port 8080
 
 - `--ci` <TypeLabel type="boolean" /> - Execute the pipeline as though it's running in a CI
   environment, which enables [`options.runInCI`](/moon/api/TaskOptionsConfig#runinci) task checks, syncs the workspace, and attempts to extract
-  base/head revisions from the detected CI provider. Passing the flag alone is equivalent to
+  base/head revisions from the detected CI provider (see
+  [comparing revisions](../guides/ci.mdx#comparing-revisions)). Passing the flag alone is equivalent to
   `--ci true`; use `--ci false` to force it off. Defaults to auto-detecting the current environment
   when omitted.
 - `-f`, `--force` - Force run and bypass the cache, ignore changed files, and skip affected checks
@@ -143,7 +142,8 @@ $ moon exec app:start -- --port 8080
 ### Parallelism
 
 - `--job` <TypeLabel type="number" /> - Index (zero-based) of the current job, used to partition
-  and distribute targets across multiple machines or processes. Can also be set via the `MOON_JOB`
+  and distribute targets across multiple machines or processes, like
+  [parallel CI jobs](../guides/ci.mdx#parallelizing-tasks). Can also be set via the `MOON_JOB`
   environment variable.
 - `--job-total` <TypeLabel type="number" /> - Total number of jobs being run, used alongside
   `--job` to determine this job's partition of targets. Can also be set via the `MOON_JOB_TOTAL`

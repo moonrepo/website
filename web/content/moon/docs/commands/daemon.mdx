@@ -4,27 +4,16 @@ title: moon daemon
 
 Manage moon's background daemon process (alias: `d`).
 
-The daemon is a long-lived, per-workspace background process that keeps the [project graph and task graph](<../(fundamentals)/workspace.mdx>) warm in memory between CLI invocations instead of rebuilding it from disk on every run. While running, it also watches your files for changes — `.prototools`, `.moon/*.*` workspace and toolchain configs, `.moon/tasks/**/*.*`, and every project's `moon.config` — and incrementally refreshes only the parts of its in-memory state that are affected, rather than throwing everything away. Offloading this work to a persistent process is what lets subsequent `moon` commands skip straight to execution.
+The [daemon](../guides/daemon.mdx) is a long-lived, per-workspace background process that takes heavy work off the critical path of `moon` commands. While a pipeline runs, it archives task outputs to (and hydrates them from) the [remote cache](../guides/remote-cache.mdx), cleans stale cache entries, and sends [webhooks](../guides/webhooks.mdx) in the background, and between commands, it watches the workspace for configuration changes and rebuilds the [project](<../(fundamentals)/project-graph.mdx>) and [task graphs](<../(fundamentals)/task-graph.mdx>) ahead of time. See [how it works](../guides/daemon.mdx#how-it-works) for details.
 
-The daemon does not run by default. It's gated behind the [`unstable_daemon`](/moon/api/WorkspaceConfig#daemon) setting in [`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>) (or the `MOON_DAEMON` environment variable), since it's still an evolving feature. Once enabled, any `moon` command that needs the daemon's state will transparently start it (or connect to an already-running instance) as part of its normal startup, so in everyday use you won't need to run these subcommands directly. They exist for inspecting and managing the process by hand: checking whether it's up, tailing its logs, or restarting it after a configuration change.
-
-The daemon also takes over heavy file system work from the pipeline: task outputs are archived
-(after a task runs) and hydrated (on a cache hit) in the background, so they don't block other
-tasks. Because of this, errors from archiving or hydrating are written to the daemon's logs,
-instead of the command's output. If the daemon can't archive or hydrate outputs, moon falls back to
-doing it in-process, instead of failing the task.
-
-The daemon is never used in CI, or in one-off Docker containers (like `docker run` or
-`docker build`), as each run starts fresh, and the daemon's background work may not finish before
-the machine or container is torn down. It is used in long-lived development containers, like VS
-Code Dev Containers. When the daemon is skipped, the reason is logged at the debug level.
+The daemon does not run by default, and must be [enabled](../guides/daemon.mdx#enabling-the-daemon) with the [`unstable_daemon`](/moon/api/WorkspaceConfig#daemon) setting in [`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>) (or the `MOON_DAEMON` environment variable). Once enabled, commands that run the action pipeline, like [`moon run`](./run.mdx) and [`moon exec`](./exec.mdx), transparently start it (or connect to an already-running instance), except in CI and one-off Docker containers (see [when the daemon is used](../guides/daemon.mdx#when-the-daemon-is-used)). In everyday use you won't need to run these subcommands directly. They exist for inspecting and managing the process by hand: checking whether it's up, tailing its logs, or restarting it when it seems stale.
 
 This is a parent command and does nothing on its own; use one of the following subcommands:
 
 - [`moon daemon start`](./daemon/start.mdx) - Start the daemon if it's not already running, reusing an existing process ID otherwise.
 - [`moon daemon stop`](./daemon/stop.mdx) - Stop the running daemon, gracefully if possible.
 - [`moon daemon restart`](./daemon/restart.mdx) - Stop and then start the daemon again.
-- [`moon daemon status`](./daemon/status.mdx) - View the process ID, endpoint, and uptime of the running daemon.
+- [`moon daemon status`](./daemon/status.mdx) - View the process ID, endpoint, uptime, and file paths of the running daemon.
 - [`moon daemon logs`](./daemon/logs.mdx) - Tail the daemon's log file.
 
 The daemon's own server process is launched internally (as a detached `moon daemon server` process) whenever it needs to be spawned; it's not intended to be run directly.

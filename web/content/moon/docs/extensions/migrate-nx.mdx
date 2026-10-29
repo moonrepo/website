@@ -1,0 +1,287 @@
+---
+title: Migrate Nx
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+
+The `migrate-nx` extension migrates an [Nx](https://nx.dev) repository to moon, by converting the
+`workspace.json`, `nx.json`, and `project.json` files (and the `nx` field in `package.json` files)
+into moon configuration. Use it when adopting moon in an existing Nx repository, to get a working
+starting point instead of rewriting every target by hand.
+
+Nx and moon are quite different, so the result won't be a 1:1 conversion. Treat it as a first draft:
+review the generated configuration, and test each task one at a time.
+
+## Prerequisites
+
+- **A moon workspace** - Run [`moon init`](../commands/init.mdx) in the repository root first, so
+  that a `.moon` directory exists.
+- **Version control** - The extension rewrites moon configuration, and can delete Nx files, so
+  commit or stash your changes beforehand, to review the result as a diff.
+
+## Installation
+
+The `migrate-nx` extension is built into moon, so no
+[`plugin`](/moon/api/ExtensionPluginConfig#plugin) locator is required. Register it by adding a
+`migrate-nx` entry to [`.moon/extensions.config`](<../(fundamentals)/extension.mdx>), or by running
+[`moon extension add`](../commands/extension/add.mdx), which writes the entry for you.
+
+```shell
+$ moon extension add migrate-nx
+```
+
+<ConfigTabs
+  file=".moon/extensions"
+  config={{
+    "migrate-nx": {},
+  }}
+/>
+
+The extension has no settings. Without a `plugin` locator, moon uses the version of the extension
+that it was released with. To use a different version, set the
+[locator](../guides/wasm-plugins.mdx#plugin-locators) explicitly, for example
+`registry://ghcr.io/moonrepo/migrate_nx_extension:1.0.5`.
+
+Once the migration is complete, the entry can be removed.
+
+## Usage
+
+Run the extension from anywhere in the workspace with [`moon ext`](../commands/ext.mdx), passing
+its arguments after a `--` separator.
+
+```shell
+# Migrate, and keep the Nx files
+$ moon ext migrate-nx
+
+# Migrate, and remove the Nx files
+$ moon ext migrate-nx -- --cleanup
+
+# Migrate to Bun instead of Node.js
+$ moon ext migrate-nx -- --bun
+```
+
+## Arguments
+
+- `--bun` - Migrate to the [Bun](../toolchains/javascript/bun.mdx) toolchain instead of
+  [Node.js](../toolchains/javascript/node.mdx). Inherited tasks are written to
+  `.moon/tasks/bun.yml` instead of `.moon/tasks/node.yml`, projects default to the `bun`
+  toolchain, and scripts run with `bun`.
+- `--cleanup` - Remove the `workspace.json`, `nx.json`, and `project.json` files after migrating
+  them. `package.json` files are always kept.
+
+## How it works
+
+When executed, the extension:
+
+1. Detects the package manager to run scripts with, from the lockfile in the workspace root:
+   `bun.lock` or `bun.lockb` (or `--bun`) for Bun, `pnpm-lock.yaml` for pnpm, `yarn.lock` for
+   Yarn, and npm otherwise.
+2. Migrates the root `workspace.json`, if it exists, then the root `nx.json`, if it exists. Target
+   defaults keyed by an executor are kept aside, to apply to project targets in the next step.
+3. Migrates every `project.json` and `package.json` file in the repository (excluding
+   `node_modules`), treating the directory of each file as a project. A `package.json` is only
+   migrated when it has an `nx` field.
+4. Fills in default settings that weren't migrated (see [workspace](#workspace)).
+5. Converts every dependency on a continuous target into a `wait` dependency (see
+   [targets](#targets)).
+6. Writes the configuration files:
+   - Workspace settings to `.moon/workspace.yml`
+     ([`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>)).
+   - Inherited file groups and tasks to `.moon/tasks/node.yml`
+     ([`.moon/tasks/*.config`](<../(fundamentals)/task-inheritance.mdx>)).
+   - Project settings to a `moon.yml` ([`moon.config`](<../(fundamentals)/project.mdx>)) in each
+     project.
+
+Each file is written in YAML, and is merged with an existing YAML file of the same name. The
+`.config/moon` directory is used instead of `.moon`, if it exists.
+
+## Conversions
+
+Identifiers (project names, task names, tags, file group names, and the projects and targets in
+`dependsOn`) are converted to valid moon IDs: a leading `@` is removed, `:` is replaced with `.`,
+and other unsupported characters are replaced with `-`. For example, `@org/utils` becomes
+`org/utils`, and `build:prod` becomes `build.prod`.
+
+### Workspace
+
+From `workspace.json` and `nx.json`:
+
+- `projects` in `workspace.json` become [`projects`](/moon/api/WorkspaceConfig#projects), as a map
+  of IDs to sources.
+- `workspaceLayout` becomes `projects` globs, `<appsDir>/*` and `<libsDir>/*` (defaulting to
+  `apps` and `libs`), when `projects` isn't already defined.
+- `defaultBase` (or the legacy `affected.defaultBase`) becomes
+  [`vcs.defaultBranch`](/moon/api/VcsConfig#defaultbranch).
+- `namedInputs` become [`fileGroups`](/moon/api/InheritedTasksConfig#filegroups) in
+  `.moon/tasks/node.yml`.
+- `targetDefaults` keyed by a target name become inherited
+  [`tasks`](/moon/api/InheritedTasksConfig#tasks) in `.moon/tasks/node.yml` (see
+  [targets](#targets)).
+- `targetDefaults` keyed by an executor (like `@nx/js:tsc` or `nx:run-commands`) aren't written as
+  tasks. Instead, they're applied to every project target that uses that executor, filling in the
+  settings that the target doesn't define.
+
+A `targetDefaults` value can also be a list of entries. The entries without a `filter` are
+combined in order, with each setting in a later entry replacing the same setting in an earlier
+one. Entries with a `filter` are skipped.
+
+When nothing defines them, the following defaults are filled in:
+
+- `projects` globs of `apps/*` and `packages/*`.
+- File groups named `default` (with a `**/*` input), `production`, and `sharedGlobals`, as Nx
+  implicitly provides these named inputs.
+
+### Projects
+
+From `project.json`, or the `nx` field in `package.json`:
+
+- `name` becomes [`id`](/moon/api/ProjectConfig#id).
+- `implicitDependencies` become [`dependsOn`](/moon/api/ProjectConfig#dependson).
+- `projectType` becomes [`layer`](/moon/api/ProjectConfig#layer): `application` (or `app`) to
+  `application`, and `library` (or `lib`) to `library`.
+- `tags` become [`tags`](/moon/api/ProjectConfig#tags).
+- `namedInputs` become project [`fileGroups`](/moon/api/ProjectConfig#filegroups).
+- `metadata` fields are added to [`project`](/moon/api/ProjectConfig#project) as custom
+  [`metadata`](/moon/api/ProjectMetadataConfig#metadata). Fields that share a name with a moon
+  setting, like `description` and `owner`, map to that setting.
+- `targets` become [`tasks`](/moon/api/ProjectConfig#tasks) (see [targets](#targets)).
+
+When a project doesn't have a `moon.yml` yet, the new file also sets
+[`language`](/moon/api/ProjectConfig#language) to `typescript` (when the project has a
+`tsconfig.json`) or `javascript`, and the default
+[`toolchains`](/moon/api/ProjectConfig#toolchains) to `node` (or `bun`).
+
+### Targets
+
+Every target becomes a [task](<../(fundamentals)/task.mdx>) of the same name. The task's
+[`command`](/moon/api/TaskConfig#command) depends on the target's `executor`:
+
+- `nx:run-commands` - The `command` option becomes the task's command, and the `commands` option is
+  joined with `&&`. The `env` option becomes the task's [`env`](/moon/api/TaskConfig#env), and the
+  `envFile` option becomes [`options.envFile`](/moon/api/TaskOptionsConfig#envfile). The task runs
+  with the `system` [toolchain](/moon/api/TaskConfig#toolchains).
+- `nx:run-script` - Runs the `script` option as a `package.json` script, with the detected package
+  manager, for example `pnpm run build`.
+- `nx:noop` - Becomes a `noop` task, which is useful for grouping dependencies.
+- Any other executor - The command is extracted from the executor name, by dropping the package
+  scope, and joining the package and executor names. For example, `@nx/webpack:webpack` becomes
+  `webpack`, and `@nx/js:tsc` becomes `js tsc`.
+- No executor - The target's `command` is used as-is.
+
+For all targets except `nx:run-commands` and `nx:run-script`, `options` become task
+[`args`](/moon/api/TaskConfig#args), as Nx options can also be passed on the command line:
+
+- `true` becomes `--<option>`, and `false` becomes `--no-<option>`.
+- Strings become `--<option> <value>`. The `{projectRoot}` and `{workspaceRoot}` interpolations
+  become `$projectRoot` and `$workspaceRoot` [tokens](../advanced/tokens.mdx), and other values
+  that look like paths or globs are prefixed with `$workspaceRoot/`, as Nx options are relative to
+  the workspace root, while moon tasks run from the project root.
+- Other values become `--<option> <json>`, and `null` values are skipped.
+
+Each entry in `configurations` becomes an additional `<task>.<configuration>` task, which
+[`extends`](/moon/api/TaskConfig#extends) the base task with the configuration's options as
+arguments. For example, a `build` target with a `production` configuration produces `build` and
+`build.production` tasks.
+
+The rest of the target is converted as follows:
+
+- `metadata.description` becomes [`description`](/moon/api/TaskConfig#description).
+- `dependsOn` becomes [`deps`](/moon/api/TaskConfig#deps):
+  - In the string form, a target name becomes `~:<task>` (the same project), and a `^` prefix
+    becomes `^:<task>` (the dependency projects).
+  - In the object form, `projects` set to `{self}` becomes `~:<task>`, `{dependencies}` becomes
+    `^:<task>`, and a project name (or a list of them) becomes a `<project>:<task>` dependency
+    for each project. Without `projects`, `dependencies: true` becomes `^:<task>`, and the same
+    project is used when neither is set.
+  - `waitFor` becomes a [`wait` dependency](<../(fundamentals)/task.mdx#dependency-types>), which
+    only waits for the dependency to start running. moon doesn't distinguish between `started`
+    and `ready`.
+- `inputs` become [`inputs`](/moon/api/TaskConfig#inputs). File paths, globs, and `{ fileset }`
+  inputs are kept, `{ json }` inputs include the entire file (moon can't filter by `fields`),
+  named inputs become [`@group`](../advanced/tokens.mdx) token functions, and `{ env }` inputs
+  become environment variable inputs.
+- `outputs` become [`outputs`](/moon/api/TaskConfig#outputs).
+- `cache` becomes [`options.cache`](/moon/api/TaskOptionsConfig#cache), whether it's enabled or
+  disabled.
+- `continuous: true` becomes [`options.persistent`](/moon/api/TaskOptionsConfig#persistent), and
+  also enables [`options.runInCI`](/moon/api/TaskOptionsConfig#runinci), as
+  [persistent tasks](<../(fundamentals)/task.mdx#persistent>) don't run in CI by default. Even
+  then, moon only runs a persistent task in CI when another task depends on it, or when it's
+  passed explicitly.
+
+A non-persistent task can't depend on a persistent task with a regular dependency, as it would
+never complete. So once every project is migrated, each dependency on a continuous target becomes
+a [`wait` dependency](<../(fundamentals)/task.mdx#dependency-types>) as well.
+
+The `...` spread token, which Nx uses to include the values of a target default, is removed from
+`inputs`, `outputs`, `dependsOn`, `options`, `configurations`, and the `env` option. moon merges a
+project's task with the inherited task of the same name by default, so the values of target
+defaults keyed by a target name are still included (see [caveats](#caveats)).
+
+In inputs, outputs, and file groups, Nx's interpolations are replaced with moon paths and
+[tokens](../advanced/tokens.mdx):
+
+| Nx                         | moon                                    |
+| -------------------------- | --------------------------------------- |
+| `{projectRoot}/src/**/*`   | `src/**/*` (relative to the project)    |
+| `{workspaceRoot}/tsconfig` | `/tsconfig` (relative to the workspace) |
+| `{projectName}`            | `$project`                              |
+
+## Unsupported settings
+
+The following have no moon equivalent, and are ignored:
+
+- Most `nx.json` settings, like `plugins`, `generators`, `release`, `tasksRunnerOptions`,
+  `defaultProject`, `parallel`, `cacheDirectory`, `useDaemonProcess`, and all Nx Cloud settings.
+- Root-level `implicitDependencies` in `nx.json`.
+- `targetDefaults` entries with a `filter`, and `targetDefaults` keyed by a glob (like
+  `e2e-ci--**/*`), as they match targets through Nx's project graph and inferred targets.
+- Inputs that reference other projects: `^`-prefixed named inputs (like `^production`),
+  `{ input }` objects, and `{ fileset }` objects with `dependencies: true`.
+- `dependentTasksOutputFiles`, `externalDependencies`, `runtime`, and `workingDirectory` inputs.
+  moon already includes lockfile dependencies and tool versions in task hashes.
+- Named inputs that reference other named inputs, as file groups can't reference each other.
+- Wildcard targets in `dependsOn` (like `build-*`).
+- A target's `defaultConfiguration`, and `params` in `dependsOn`.
+- Project `root` and `sourceRoot`, as moon derives them from the project's location.
+
+To replace `useDaemonProcess` and Nx Cloud's remote caching, configure moon's
+[daemon](../guides/daemon.mdx) and [remote cache](../guides/remote-cache.mdx) separately.
+
+## Caveats
+
+- **Task inheritance** - Tasks and file groups written to `.moon/tasks/node.yml` have no
+  [`inheritedBy`](/moon/api/InheritedTasksConfig#inheritedby) condition, so they're inherited by
+  _every_ project. If your workspace has projects outside of the JavaScript ecosystem, add a
+  condition after migrating.
+- **Extracted commands** - Commands extracted from executor names (like `js tsc`) are placeholders,
+  not real binaries. Replace them with the command that the executor runs.
+- **Merging with target defaults** - Nx replaces a target default's `inputs`, `outputs`, and
+  `dependsOn` with the target's own, unless they include `...`. moon instead
+  [merges](<../(fundamentals)/task-inheritance.mdx#merge-strategies>) a project's task with the
+  inherited task using the `append` strategy, so a migrated task can end up with more inputs,
+  outputs, dependencies, or arguments than the Nx target had. Set a merge option, like
+  [`options.mergeInputs`](/moon/api/TaskOptionsConfig#mergeinputs), to `replace` where needed.
+- **Target defaults by executor** - These are applied setting by setting, so a setting that the
+  target defines, like `options` or `inputs`, replaces the default's setting entirely, even when
+  it includes `...`. They're also only applied to targets that set `executor`, not to targets
+  that use the `command` shorthand.
+- **Continuous targets** - Continuous targets are matched by task name, so a dependency on a task
+  that shares its name with a continuous target in _any_ project also becomes a `wait`
+  dependency. Review these dependencies after migrating.
+- **Project patterns** - Each value in `dependsOn[].projects` is treated as a project name, and
+  cleaned like other identifiers, so patterns like `tag:web` or `*-app` don't match the projects
+  that they would in Nx. Replace them with a
+  [tag scope](<../(fundamentals)/task.mdx#tagged-projects>) (like `#web:build`) or a list of
+  projects.
+- **Multiple commands** - A `commands` list joined with `&&` is a complex command, which
+  [`command`](<../(fundamentals)/task.mdx#supported-syntax>) doesn't support. Move it to
+  [`script`](<../(fundamentals)/task.mdx#script>) instead.
+- **Working directory** - The `cwd` option of `nx:run-commands` is preserved as a `CWD` environment
+  variable, which moon doesn't use as the working directory. Tasks run from the project root by
+  default (or the workspace root with
+  [`options.runFromWorkspaceRoot`](/moon/api/TaskOptionsConfig#runfromworkspaceroot)), so adjust
+  paths in the command if needed.
+- **Configuration formats** - Only existing YAML files are merged. Since moon resolves YAML files
+  before other formats, a generated `.yml` file takes precedence over an existing configuration
+  file in another format (like `.moon/workspace.json`), so merge them by hand afterwards.

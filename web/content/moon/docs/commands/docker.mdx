@@ -7,20 +7,24 @@ Operations for integrating moon with Docker and `Dockerfile`s.
 moon's Docker support is built around its [project graph](<../(fundamentals)/project-graph.mdx>) and toolchain
 plugins, so that multi-stage Docker builds can take full advantage of layer caching, instead
 of copying the entire repository into every stage. The integration is made up of four
-subcommands that are typically chained together, either by hand-writing a `Dockerfile`, or by
-generating one with [`moon docker file`](./docker/file.mdx):
+subcommands:
 
-- [`moon docker scaffold`](./docker/scaffold.mdx) - Run first, outside of Docker (or in an early
-  build stage), to copy a minimal skeleton of the repository (manifests, lockfiles, and the
-  source files of the projects being built) into `.moon/docker`, ready to be `COPY`'d into the
-  image.
-- [`moon docker setup`](./docker/setup.mdx) - Run inside the image, after the scaffolded files have
+- [`moon docker scaffold`](./docker/scaffold.mdx) - Run first, in an early build stage (or on the
+  host before `docker build`), to copy a minimal skeleton of the repository (manifests, lockfiles,
+  and the source files of the projects being built) into `.moon/docker`, ready to be `COPY`'d into
+  the image.
+- [`moon docker setup`](./docker/setup.mdx) - Run inside the image, after the `configs` skeleton has
   been copied in, to install toolchains and dependencies for the projects that were scaffolded.
 - [`moon docker prune`](./docker/prune.mdx) - Run after the project has been built, to strip
   development-only dependencies and files back down to production-only, shrinking the final
   image.
 - [`moon docker file`](./docker/file.mdx) - An optional helper that generates a multi-stage
   `Dockerfile` for a project, pre-wired to call the three commands above in the correct order.
+
+These are typically chained together, either by
+[hand-writing a `Dockerfile`](../guides/docker.mdx#writing-a-dockerfile), or by generating one with
+[`moon docker file`](./docker/file.mdx). The [Docker guide](../guides/docker.mdx) walks through both
+approaches, and how to customize the scaffold and pruning.
 
 ```shell
 # Generate a Dockerfile for a project

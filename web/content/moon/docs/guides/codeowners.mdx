@@ -1,3 +1,305 @@
 ---
-title: Codeowners
+title: Code owners
+icon: UserCheck
 ---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
+
+Code owners enables companies to define individuals, teams, or groups that are responsible for code
+in a repository. This is useful in ensuring that pull/merge requests are reviewed and approved by a
+specific set of contributors, before the branch is merged into the base branch.
+
+With that being said, moon _does not_ implement a custom code owners solution, and instead builds
+upon the popular `CODEOWNERS` integration in VCS providers, like GitHub, GitLab, and Bitbucket.
+
+## Defining owners
+
+With moon, you _do not_ modify a `CODEOWNERS` file directly. Instead you define owners _per project_
+with [`moon.config`](<../(fundamentals)/project.mdx>), or globally with
+[`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>). These owners are then aggregated and
+[synced to a `CODEOWNERS` file](#generating-codeowners), formatted for your
+[`vcs.provider`](/moon/api/VcsConfig#provider).
+
+<Callout>
+  An owner is a user, team, or group unique to your VCS provider, like
+  `@username`, `@org/team`, or an email address. Please refer to your provider's
+  documentation for the correct format in which to define owners.
+</Callout>
+
+### Project-level
+
+For projects, we support an [`owners`](/moon/api/ProjectConfig#owners) setting in
+[`moon.config`](<../(fundamentals)/project.mdx>) that maps file paths and glob patterns to their
+owners (contributors required to review), as well as provider-specific settings for
+[required approvals](#provider-specific-settings) and optional sections.
+
+Paths configured here are relative from the project root, and will be prefixed with the project
+source (path from workspace root to project root) when the file is synced. Paths always use forward
+slashes, and spaces are escaped.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    owners: {
+      requiredApprovals: 2,
+      paths: {
+        "src/": ["@frontend", "@design-system"],
+        "*.config.js": ["@frontend-infra"],
+        "*.json": ["@frontend-infra"],
+      },
+    },
+  }}
+/>
+
+The configuration above, for a `components` project located at `packages/components`, would
+generate the following:
+
+<Tabs groupId="codeowners" items={['GitHub', 'GitLab', 'Bitbucket']}>
+<Tab>
+
+```codeowners title=".github/CODEOWNERS"
+# components
+/packages/components/src/ @frontend @design-system
+/packages/components/*.config.js @frontend-infra
+/packages/components/*.json @frontend-infra
+```
+
+</Tab>
+<Tab>
+
+```codeowners title=".gitlab/CODEOWNERS"
+# components
+[components][2]
+/packages/components/src/ @frontend @design-system
+/packages/components/*.config.js @frontend-infra
+/packages/components/*.json @frontend-infra
+```
+
+</Tab>
+<Tab>
+
+```codeowners title=".bitbucket/CODEOWNERS"
+# components
+/packages/components/src/ @frontend @design-system
+/packages/components/*.config.js @frontend-infra
+/packages/components/*.json @frontend-infra
+```
+
+</Tab>
+</Tabs>
+
+Each project's rules are grouped under a comment with the project's identifier. On GitLab, they're
+also written as a [code owners section](https://docs.gitlab.com/user/project/codeowners/reference/#sections)
+named after the project.
+
+#### Default owner
+
+When most of a project's files share the same owner, set
+[`defaultOwner`](/moon/api/OwnersConfig#defaultowner) and define
+[`paths`](/moon/api/OwnersConfig#paths) as a list instead. Each path in the list is owned by the
+default owner. In the map form, a path with an empty list of owners also falls back to the default
+owner. A default owner is required for both of these to be valid.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    owners: {
+      defaultOwner: "@frontend",
+      paths: ["src/", "*.config.js"],
+    },
+  }}
+/>
+
+<Tabs groupId="codeowners" items={['GitHub', 'GitLab', 'Bitbucket']}>
+<Tab>
+
+```codeowners title=".github/CODEOWNERS"
+# components
+/packages/components/src/ @frontend
+/packages/components/*.config.js @frontend
+```
+
+</Tab>
+<Tab>
+
+```codeowners title=".gitlab/CODEOWNERS"
+# components
+[components] @frontend
+/packages/components/src/
+/packages/components/*.config.js
+```
+
+</Tab>
+<Tab>
+
+```codeowners title=".bitbucket/CODEOWNERS"
+# components
+/packages/components/src/ @frontend
+/packages/components/*.config.js @frontend
+```
+
+</Tab>
+</Tabs>
+
+#### Provider-specific settings
+
+Some settings only apply to specific providers, and are ignored by the others:
+
+- [`requiredApprovals`](/moon/api/OwnersConfig#requiredapprovals) - GitLab and `bitbucket-legacy`
+  only. The number of approvals required for the project's paths. On GitLab, this is appended to the
+  section header, like `[components][2]`. On `bitbucket-legacy`, this writes a
+  `Check(@frontend >= 2)` condition for the [`defaultOwner`](/moon/api/OwnersConfig#defaultowner),
+  so a default owner is required. When not defined, the workspace-level
+  [`codeowners.requiredApprovals`](/moon/api/CodeownersConfig#requiredapprovals) is used instead.
+- [`optional`](/moon/api/OwnersConfig#optional) - GitLab only. Marks the section as optional, by
+  prefixing the header with `^`, like `^[components]`. Merge requests that change optional paths
+  don't require an approval from their owners.
+
+### Workspace-level
+
+Project scoped owners are great but sometimes you need to define owners for files that span across
+all projects, or files at any depth within the repository. With the
+[`codeowners.globalPaths`](/moon/api/CodeownersConfig#globalpaths) setting in
+[`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>), you can do just that.
+
+Paths configured here are used as-is, allowing for full control of what ownership is applied. Paths
+with an empty list of owners are skipped. For example, the following assigns all files to admins, a
+`config` folder at any depth to the platform team, and the root `.github` folder to the infra team.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    codeowners: {
+      globalPaths: {
+        "*": ["@admins"],
+        "config/": ["@app-platform"],
+        "/.github/": ["@infra"],
+      },
+    },
+  }}
+/>
+
+The configuration above would generate the following at the top of the file, and is the same for
+all providers:
+
+```codeowners title=".github/CODEOWNERS"
+# (workspace)
+* @admins
+config/ @app-platform
+/.github/ @infra
+```
+
+The workspace-level [`codeowners.requiredApprovals`](/moon/api/CodeownersConfig#requiredapprovals)
+setting can also be used to require the same number of approvals for every project, on GitLab and
+`bitbucket-legacy`. Projects can override it with their own `owners.requiredApprovals`.
+
+### Ordering
+
+Global paths are always written first, followed by each project's paths. GitHub and Bitbucket apply
+the _last_ matching pattern in the file, so project rules take precedence over global rules where
+both match, and a broad global rule like `*` acts as a fallback. GitLab instead evaluates each
+section separately, so a file that matches both a global rule and a project's section requires
+approval from both.
+
+Projects are ordered by their source path by default. Set
+[`codeowners.orderBy`](/moon/api/CodeownersConfig#orderby) to `project-id` to order them by
+identifier instead.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    codeowners: {
+      orderBy: "project-id",
+    },
+  }}
+/>
+
+## Generating `CODEOWNERS`
+
+Code owners is an opt-in feature, and as such, the `CODEOWNERS` file can be generated in a few ways.
+The first is manually, with the [`moon sync code-owners`](../commands/sync/code-owners.mdx) command
+(also available as `moon sync codeowners`).
+
+```shell
+# Generate the CODEOWNERS file
+$ moon sync code-owners
+
+# Regenerate the file, even if owners haven't changed
+$ moon sync code-owners --force
+```
+
+While this works, it is a manual process, and can easily be forgotten, resulting in an out-of-date
+file.
+
+An alternative solution is the [`codeowners.sync`](/moon/api/CodeownersConfig#sync) setting in
+[`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>). When enabled, moon will automatically
+generate the `CODEOWNERS` file while syncing the workspace, which happens before running tasks (like
+with [`moon run`](../commands/run.mdx) or [`moon ci`](../commands/ci.mdx)), and when running
+[`moon sync`](../commands/sync.mdx). The file is only rewritten when ownership has changed.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    codeowners: {
+      sync: true,
+    },
+  }}
+/>
+
+Because the file is generated from configuration, it should be committed to the repository, so
+that your VCS provider can read it. Enabling sync ensures it's updated alongside the `moon.config`
+changes that affect it. Workspace syncing can be disabled entirely with the
+[`pipeline.syncWorkspace`](/moon/api/PipelineConfig#syncworkspace) setting.
+
+To remove a previously generated file, for example when moving away from moon-managed owners, run:
+
+```shell
+# Delete the generated CODEOWNERS file
+$ moon sync code-owners --clean
+```
+
+## FAQ
+
+### What providers or formats are supported?
+
+The following providers are supported, based on the [`vcs.provider`](/moon/api/VcsConfig#provider)
+setting.
+
+- [Bitbucket](https://support.atlassian.com/bitbucket-cloud/docs/set-up-and-use-code-owners/)
+  (`bitbucket`) - Bitbucket's native code owners, which uses the same syntax as GitHub.
+- Bitbucket legacy (`bitbucket-legacy`) - For the 3rd-party
+  [Code Owners for Bitbucket](https://marketplace.atlassian.com/apps/1218598/code-owners-for-bitbucket?tab=overview&hosting=cloud)
+  app, which uses a root `CODEOWNERS` file and the `Check()` syntax for required approvals.
+- [GitHub](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners)
+  (`github`, the default)
+- [GitLab](https://docs.gitlab.com/user/project/codeowners/reference/) (`gitlab`) - Includes
+  support for sections, optional sections, and required approvals.
+- Other (`other`) - A very basic syntax, the same as GitHub.
+
+### Where does the `CODEOWNERS` file get created?
+
+The location of the file is dependent on the configured provider.
+
+- GitHub -> `.github/CODEOWNERS`
+- GitLab -> `.gitlab/CODEOWNERS`
+- Bitbucket -> `.bitbucket/CODEOWNERS`
+- Everything else (including `bitbucket-legacy`) -> `CODEOWNERS`
+
+The file begins with a comment noting that it's generated by moon, so any manual edits will be
+overwritten on the next sync.
+
+### Why are owners defined in `moon.config` and not an alternative like `OWNERS`?
+
+A very popular pattern for defining owners is through an `OWNERS` file, which can appear in any
+folder, at any depth, within the repository. All of these files are then aggregated into a single
+`CODEOWNERS` file.
+
+While this is useful for viewing ownership of a folder at a glance, it incurs a massive performance
+hit as we'd have to constantly glob the _entire_ repository to find all `OWNERS` files. We found it
+best to define owners in [`moon.config`](<../(fundamentals)/project.mdx>) instead for the following
+reasons:
+
+- No performance hit, as we're already loading and parsing these config files.
+- Co-locates owners with the rest of moon's configuration.
+- Ownership is now a part of the project graph, enabling future features.

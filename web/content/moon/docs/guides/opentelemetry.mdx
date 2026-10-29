@@ -1,0 +1,252 @@
+---
+title: OpenTelemetry
+icon: Activity
+---
+
+import { TypeLabel } from "@/components/TypeLabel";
+
+moon can export [OpenTelemetry](https://opentelemetry.io/) (OTEL) traces, metrics, and logs over
+[OTLP](https://opentelemetry.io/docs/specs/otlp/), to any observability backend that accepts it,
+like Grafana, Honeycomb, or Datadog. A [run report](<../(fundamentals)/action.mdx#reports>) or a
+[trace profile](./profile.mdx#profiling-moon) describes a single run, while exported telemetry
+builds up across every run, which makes it the tool for questions that one run can't answer:
+
+- Where does CI actually spend its time, and is it getting slower?
+- What's the cache hit rate, and which tasks keep missing the cache?
+- Which projects are the most expensive to build or test?
+- Which tasks are [flaky](<../(fundamentals)/action.mdx#flaky-actions>)?
+
+## Enabling exports
+
+Exporting is opt-in, and controlled with the following
+[global options](../commands/overview.mdx#global-options), which every command accepts:
+
+- `--otel` (`MOON_OTEL`) - Export [traces](#traces) and [metrics](#metrics).
+- `--otel-logs` (`MOON_OTEL_LOGS`) - Export [logs](#logs). This is independent of `--otel`, so pass
+  both to export all 3 signals.
+- `--otel-service-name` <TypeLabel type="string" /> (`MOON_OTEL_SERVICE_NAME`) - The service name
+  to report. When not provided, falls back to the standard `OTEL_SERVICE_NAME` environment
+  variable, then `service.name` in `OTEL_RESOURCE_ATTRIBUTES`, and finally to `unknown_service:`
+  followed by the executable name. Set it, so that moon's telemetry is easy to find.
+
+Where the data is sent is configured with the standard `OTEL_EXPORTER_OTLP_*` environment
+variables, as described in [configuring the exporter](#configuring-the-exporter). When none are
+set, moon sends to a collector on `localhost`, which makes it easy to try out with a local backend,
+like Grafana's all-in-one OpenTelemetry image.
+
+```shell
+# Start a local backend, with Grafana served at http://localhost:3000
+$ docker run --rm -p 3000:3000 -p 4317:4317 -p 4318:4318 grafana/otel-lgtm
+
+# In another terminal, run a task with exporting enabled
+$ moon --otel --otel-service-name moon run app:build
+```
+
+Telemetry is batched while a command runs, and flushed before moon exits, so short commands are
+exported in full.
+
+## Exporting from CI
+
+CI is where telemetry pays off the most, as every run is recorded in the same place, on similar
+machines. Set the options as environment variables at the job (or workflow) level, so that every
+moon command in the job exports, without passing flags to each one. Keep credentials, like an API
+key, in your CI provider's secrets.
+
+```yaml title=".github/workflows/ci.yml"
+jobs:
+  ci:
+    name: "CI"
+    runs-on: "ubuntu-latest"
+    env:
+      MOON_OTEL: "true"
+      MOON_OTEL_SERVICE_NAME: "moon"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "https://otlp.example.com"
+      OTEL_EXPORTER_OTLP_HEADERS: "authorization=Bearer ${{ secrets.OTLP_TOKEN }}"
+      OTEL_RESOURCE_ATTRIBUTES: "deployment.environment.name=ci"
+    steps:
+      # ...
+      - run: "moon ci"
+```
+
+Resource attributes, set with `OTEL_RESOURCE_ATTRIBUTES`, are attached to every signal, so use them
+to tell CI runs apart from local ones, or one repository from another. Refer to the
+[continuous integration guide](./ci.mdx) for setting up moon in CI itself.
+
+## Configuring the exporter
+
+moon reads the standard OpenTelemetry environment variables, so if you've configured OTLP exporting
+for another tool, the same variables work here. Most come in a generic variant that applies to all
+signals, like `OTEL_EXPORTER_OTLP_ENDPOINT`, and a per-signal variant for traces, metrics, and logs,
+like `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, which takes precedence over the generic one.
+
+### Endpoints
+
+- `OTEL_EXPORTER_OTLP_ENDPOINT` - The base URL of the collector, for all signals. Over HTTP, the
+  path of each signal (`/v1/traces`, `/v1/metrics`, or `/v1/logs`) is appended to it.
+- `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT`, and
+  `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` - The URL of an individual signal. These are used as-is, so
+  over HTTP, they must include the path.
+
+When no endpoint is set, moon sends to `http://localhost:4318` over HTTP, or
+`http://localhost:4317` over gRPC. When an endpoint starts with `https://`, TLS is enabled, and the
+collector's certificate is verified against your operating system's certificate store.
+
+### Transports
+
+OTLP can be sent over HTTP (`http/protobuf`) or gRPC (`grpc`). The transport is chosen with the
+following variables:
+
+- `OTEL_EXPORTER_OTLP_PROTOCOL` - The transport for all signals. Defaults to `http/protobuf`, which
+  is also used for any value other than `grpc`.
+- `OTEL_EXPORTER_OTLP_TRACES_PROTOCOL`, `OTEL_EXPORTER_OTLP_METRICS_PROTOCOL`, and
+  `OTEL_EXPORTER_OTLP_LOGS_PROTOCOL` - The transport for an individual signal.
+
+```shell
+# Send OTLP over gRPC
+$ export OTEL_EXPORTER_OTLP_PROTOCOL="grpc"
+$ export OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4317"
+$ moon --otel run app:build
+```
+
+### Other settings
+
+- `OTEL_EXPORTER_OTLP_HEADERS` - Headers to send with every export, as comma separated `key=value`
+  pairs, like `x-api-key=abc123,x-team=platform`. Values may be percent-encoded. Hosted backends
+  typically authenticate with one of these headers.
+- `OTEL_EXPORTER_OTLP_TIMEOUT` - How long to wait for the collector to accept an export, in
+  milliseconds. Defaults to `10000`.
+- `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE` - The aggregation temporality of metrics,
+  either `cumulative` (default), `delta`, or `lowmemory`. Some backends only accept delta
+  temporality, so check your backend's OTLP documentation.
+- `OTEL_RESOURCE_ATTRIBUTES` - Comma separated `key=value` attributes attached to every signal.
+
+<Callout type="warning">
+  moon doesn't support compressing exports, so setting
+  `OTEL_EXPORTER_OTLP_COMPRESSION` (or a per-signal variant) to `gzip` or `zstd`
+  fails the command before it runs, with a "Failed to initialize OTLP exporter"
+  error.
+</Callout>
+
+## Traces
+
+Traces are built from the same spans that power [`--dump`](./profile.mdx#profiling-moon) and
+[`--log verbose`](../commands/overview.mdx#logging), so the entire run, from building the
+[action graph](<../(fundamentals)/action-graph.mdx>) to running tasks and calling plugins, is
+reported as a tree of spans. In your backend, a trace answers "what is CI actually spending its
+time on?" with a flame graph, instead of a hunch.
+
+Which spans are recorded depends on the [`--log`](../commands/overview.mdx#logging) level:
+
+- moon's spans are recorded at the `info` level, so the default level (or any level above it)
+  records all of them, while `warn`, `error`, and `off` exclude them from the trace.
+- Log events that happen within a span are attached to it as span events, so `debug` and `trace`
+  produce more detailed (and larger) traces.
+- `verbose` also records the spans of moon's dependencies, which is rarely worth the noise.
+
+moon doesn't pass the trace context to the processes it runs, so a task's span covers the whole
+process, and any telemetry a task exports on its own is reported as a separate trace.
+
+## Metrics
+
+Alongside traces, moon records metrics for every task, action, and operation that runs in the
+[action pipeline](<../(fundamentals)/action.mdx>), so they're only recorded by commands that run
+it, like [`moon run`](../commands/run.mdx), [`moon ci`](../commands/ci.mdx),
+[`moon check`](../commands/check.mdx), and [`moon exec`](../commands/exec.mdx).
+[Actions](<../(fundamentals)/action.mdx>) are the units of work in the action graph (running a
+task, syncing a project, installing dependencies, and so on), while
+[operations](<../(fundamentals)/action.mdx#operations>) are the steps _within_ an action
+(generating a hash, hydrating outputs from the cache, executing the command, and so on). Tasks are
+recorded on their own as well, since they're the unit of work that matters most.
+
+| Metric                      | Instrument | Description                                     |
+| :-------------------------- | :--------- | :---------------------------------------------- |
+| `moon.task.runs`            | Counter    | Number of tasks ran within the pipeline.        |
+| `moon.task.duration`        | Histogram  | Duration of tasks, in milliseconds.             |
+| `moon.action.executions`    | Counter    | Number of actions executed within the pipeline. |
+| `moon.action.duration`      | Histogram  | Duration of actions, in milliseconds.           |
+| `moon.operation.executions` | Counter    | Number of operations executed within an action. |
+| `moon.operation.duration`   | Histogram  | Duration of operations, in milliseconds.        |
+
+### Task metrics
+
+Task metrics are the ones to reach for when building dashboards, as they can be grouped by a
+target, by a project ("which project is the most expensive in CI?"), or by a task identifier ("how
+long does `build` take across the workspace?"). They're recorded with the following attributes:
+
+- `target` - The target that was ran, like `app:build`.
+- `project` - The project the task belongs to.
+- `task` - The identifier of the task.
+- `toolchains` - Every toolchain the task ran with, sorted and comma separated, like
+  `javascript,node,npm`. This includes the toolchains required by the configured ones. It's a
+  string instead of an array, as backends don't handle array attributes consistently, so filter by
+  an individual toolchain with a "contains" match.
+- `status` - The final status of the task, like `passed`, `failed`, `cached`, or
+  `cached-from-remote`.
+- `flaky` - Whether the task only passed after being retried, known as a
+  [flaky action](<../(fundamentals)/action.mdx#flaky-actions>).
+
+A few examples of what these attributes make possible:
+
+- **Cache hit rate** - Divide the `moon.task.runs` with a `cached` or `cached-from-remote` status by
+  the total. Group it by `project` to find the projects that rarely hit the cache, and then
+  [debug why](../skills/debug-task.mdx).
+- **Slowest projects** - Sum `moon.task.duration` grouped by `project`, to see where CI time goes.
+- **Flaky tasks** - Count `moon.task.runs` where `flaky` is true, grouped by `target`, to find the
+  tasks that need their [retries](/moon/api/TaskOptionsConfig#retrycount) fixed at the source.
+
+[Persistent tasks](<../(fundamentals)/task.mdx#persistent>) never complete, so they aren't
+recorded. Tasks that were skipped because a dependency failed _are_ recorded, with a `skipped`
+status.
+
+### Action metrics
+
+Action metrics cover the pipeline as a whole. For `run-task` actions, the duration is the same
+measurement as `moon.task.duration`, with fewer attributes to group by:
+
+- `action` - The kind of action, like `run-task` or `sync-project`.
+- `status` - The final status of the action.
+- `target` - The target that was ran, for `run-task` actions.
+- `project` - The project the action operated on, for `sync-project` actions, and for
+  `setup-environment` and `install-dependencies` actions that belong to a project.
+- `toolchain` - The toolchain the action operated on, for toolchain related actions.
+
+### Operation metrics
+
+Operation metrics purposefully don't record the target, project, or toolchain, as multiplying them
+by every operation would explode the number of time series. Traces provide that level of detail
+instead.
+
+- `action` - The kind of action the operation ran within.
+- `operation` - The kind of operation, like `hash-generation` or `task-execution`.
+- `status` - The final status of the operation.
+- `id` - The identifier of the operation, for setup and sync operations.
+- `plugin` - The plugin that ran the operation, if any.
+
+<Callout type="warning">
+  Since the `target` attribute is recorded for every task that runs, the number
+  of `moon.task.*` and `moon.action.*` time series grows with the number of
+  tasks in your workspace. If your backend struggles with it, drop or aggregate
+  away the attribute in your OTEL collector.
+</Callout>
+
+## Logs
+
+When `--otel-logs` is passed, every log event is exported as an OTLP log record. The export respects
+[`--log`](../commands/overview.mdx#logging), so a less verbose level exports fewer events. Logs are opt-in separately from traces and metrics, as
+exporting every event is far noisier, so reach for them when you want to search a run's logs in your
+backend, instead of reading them in a CI job's output.
+
+```shell
+$ moon --otel --otel-logs --log debug ci
+```
+
+## Disabling signals
+
+The standard environment variables can turn signals off, even when they're enabled with the
+options above, which is handy for opting out on a single machine:
+
+- `OTEL_SDK_DISABLED=true` - Disable every signal.
+- `OTEL_TRACES_EXPORTER=none`, `OTEL_METRICS_EXPORTER=none`, and `OTEL_LOGS_EXPORTER=none` -
+  Disable an individual signal.
+
+These variables can only turn a signal off, never on.

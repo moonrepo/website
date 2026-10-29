@@ -403,6 +403,8 @@ they aren't detected. Set their `language` to `go` in
 
 ### Docker integration
 
+The Go toolchain integrates with the following steps of the [Docker workflow](../guides/docker.mdx):
+
 - [`moon docker scaffold`](../commands/docker/scaffold.mdx) - Copies `go.mod`, `go.work`, `go.sum`,
   and `go.work.sum` files.
 - [`moon docker file`](../commands/docker/file.mdx) - Uses `golang:<version>` (or `golang:latest`
@@ -411,6 +413,9 @@ they aren't detected. Set their `language` to `go` in
   ([`vendorDir`](#vendoring-dependencies)) in each dependencies root, then installs dependencies
   with `go mod download` (or `go work sync`). Go doesn't distinguish production dependencies, so
   all module dependencies are downloaded.
+
+To keep the vendor directory in the image, or to skip the download, see
+[customizing pruning](../guides/docker.mdx#customizing-pruning).
 
 ### Version detection
 

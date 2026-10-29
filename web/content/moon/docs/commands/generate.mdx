@@ -6,8 +6,9 @@ import { TypeLabel } from "@/components/TypeLabel";
 
 The `moon generate` (or `moon g`) command scaffolds files and folders into your workspace from a
 pre-defined [template](../guides/codegen.mdx), using an interactive series of prompts. Templates are
-located based on the [`generator.templates`](/moon/api/GeneratorConfig#templates) setting in [`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>), and can live on the
-local file system, a Git repository, or an npm package.
+loaded from every [location](../guides/codegen.mdx#configuring-template-locations) configured in the
+[`generator.templates`](/moon/api/GeneratorConfig#templates) setting in [`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>), which can be file paths or
+globs on the local file system, Git repositories, npm packages, or archive URLs.
 
 When run, moon will:
 
@@ -21,20 +22,22 @@ When run, moon will:
 5. Write the rendered files (and copy any binary assets) to the destination, unless `--dry-run`
    was passed.
 
-If a destination file already exists, moon handles it based on the file type: JSON and YAML files
-can be merged into the existing file, while all other files prompt you to confirm an overwrite.
-Pass `--force` to skip these prompts and always replace existing files. Once generation completes,
-moon prints a list of every file that was created, merged, replaced, or skipped.
+If a destination file already exists, moon
+[handles it based on the file type](../guides/codegen.mdx#handling-existing-files): JSON and YAML
+files prompt you to keep, merge into, or replace the existing file, while all other files prompt
+you to confirm an overwrite. Pass `--force` to skip these prompts and always replace existing
+files. Once generation completes, moon prints a list of every file that was created, merged,
+replaced, or skipped.
 
 Variable values can also be supplied non-interactively by appending arguments after `--`. These
 arguments are parsed as long flags matching each variable's name, using a type-aware parser derived
-from the template's variable configuration:
+from the template's [variable configuration](../guides/codegen.mdx#passing-variables-as-arguments):
 
 - `string` and `number` variables accept a single value, e.g. `--name example`.
 - `boolean` variables are toggled with `--name` (true) or `--no-name` (false).
 - `array` and multi-value `enum` variables accept repeated flags, e.g. `--tags foo --tags bar`.
 - Single-value `enum` variables accept one of their configured possible values.
-- `object` variables cannot be set from the command line and always resolve to their default.
+- `object` variables, and variables marked `internal`, cannot be set from the command line.
 
 Any variable not supplied on the command line falls back to an interactive prompt, unless
 `--defaults` is passed (or moon isn't running in a terminal), in which case the template's

@@ -1,0 +1,4 @@
+{
+  "title": "Extensions",
+  "pages": ["download", "migrate-nx", "migrate-turborepo", "unpack"]
+}

@@ -12,17 +12,22 @@ The command reads the `dockerManifest.json` file from the workspace root, which 
 versus pulled in as dependencies. If this manifest doesn't exist, the command fails and suggests
 running [`moon docker scaffold`](./scaffold.mdx) first.
 
-For every toolchain-specific dependency workspace used by the focused projects (for example, a
-Yarn workspace root or a Cargo workspace root), moon runs two steps in parallel across
-workspaces:
+For every toolchain-specific dependencies workspace used by the focused projects (for example, a
+pnpm workspace root or a Cargo workspace root), moon runs the following steps, processing
+workspaces in parallel. When none of the focused projects belong to a dependencies workspace,
+there's nothing to prune, and the command does nothing.
 
-1. Each toolchain plugin's own pruning logic is invoked first, which typically deletes vendor
-   directories (`node_modules`, build caches, and similar) and other files not needed at
-   runtime. This step is controlled by the [`docker.prune.deleteVendorDirectories`](/moon/api/DockerPruneConfig#deletevendordirectories) setting
-   (`true` by default).
-2. If [`docker.prune.installToolchainDependencies`](/moon/api/DockerPruneConfig#installtoolchaindependencies) is enabled (`true` by default), dependencies
-   are reinstalled with production-only flags, scoped to just the packages used by the focused
-   and related projects, with the install output streamed to the console.
+1. Each toolchain plugin's own pruning logic runs first, which typically deletes vendor directories
+   (like `node_modules`) and other files not needed at runtime, as controlled by the
+   [`docker.prune.deleteVendorDirectories`](/moon/api/DockerPruneConfig#deletevendordirectories)
+   setting.
+2. If [`docker.prune.installToolchainDependencies`](/moon/api/DockerPruneConfig#installtoolchaindependencies)
+   is enabled, dependencies are reinstalled with production-only flags, scoped to the focused
+   projects, with the install output streamed to the console.
+
+Both settings default to `true`, and are configured in
+[`.moon/workspace.config`](<../../(fundamentals)/workspace.mdx>). See
+[customizing pruning](../../guides/docker.mdx#customizing-pruning) for an example.
 
 ```shell
 $ moon docker prune

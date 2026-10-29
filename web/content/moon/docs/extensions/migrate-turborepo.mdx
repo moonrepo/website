@@ -1,0 +1,237 @@
+---
+title: Migrate Turborepo
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+
+The `migrate-turborepo` extension migrates a [Turborepo](https://turborepo.com) repository to moon,
+by converting every `turbo.json` (or `turbo.jsonc`) file into moon configuration. Use it when
+adopting moon in an
+existing Turborepo repository, to get a working starting point instead of rewriting every task by
+hand.
+
+Turborepo and moon are quite different, so the result won't be a 1:1 conversion. Treat it as a
+first draft: review the generated configuration, and test each task one at a time.
+
+## Prerequisites
+
+- **A moon workspace** - Run [`moon init`](../commands/init.mdx) in the repository root first, so
+  that a `.moon` directory exists.
+- **Named packages** - Every package that tasks are migrated for must have a `package.json` with a
+  `name` field.
+- **Version control** - The extension rewrites moon configuration, and can delete Turborepo files,
+  so commit or stash your changes beforehand, to review the result as a diff.
+
+## Installation
+
+The `migrate-turborepo` extension is built into moon, so no
+[`plugin`](/moon/api/ExtensionPluginConfig#plugin) locator is required. Register it by adding a
+`migrate-turborepo` entry to [`.moon/extensions.config`](<../(fundamentals)/extension.mdx>), or by
+running [`moon extension add`](../commands/extension/add.mdx), which writes the entry for you.
+
+```shell
+$ moon extension add migrate-turborepo
+```
+
+<ConfigTabs
+  file=".moon/extensions"
+  config={{
+    "migrate-turborepo": {},
+  }}
+/>
+
+The extension has no settings. Without a `plugin` locator, moon uses the version of the extension
+that it was released with. To use a different version, set the
+[locator](../guides/wasm-plugins.mdx#plugin-locators) explicitly, for example
+`registry://ghcr.io/moonrepo/migrate_turborepo_extension:1.0.5`.
+
+Once the migration is complete, the entry can be removed.
+
+## Usage
+
+Run the extension from anywhere in the workspace with [`moon ext`](../commands/ext.mdx), passing
+its arguments after a `--` separator.
+
+```shell
+# Migrate, and keep the Turborepo files
+$ moon ext migrate-turborepo
+
+# Migrate, and remove the Turborepo files
+$ moon ext migrate-turborepo -- --cleanup
+
+# Migrate to Bun instead of Node.js
+$ moon ext migrate-turborepo -- --bun
+```
+
+## Arguments
+
+- `--bun` - Migrate to the [Bun](../toolchains/javascript/bun.mdx) toolchain instead of
+  [Node.js](../toolchains/javascript/node.mdx). Inherited tasks are written to
+  `.moon/tasks/bun.yml` instead of `.moon/tasks/node.yml`, projects default to the `bun`
+  toolchain, and scripts run with `bun`.
+- `--cleanup` - Remove every `turbo.json` and `turbo.jsonc` file after migrating it.
+
+## How it works
+
+When executed, the extension:
+
+1. Detects the package manager to run scripts with, from the lockfile in the workspace root:
+   `bun.lock` or `bun.lockb` (or `--bun`) for Bun, `pnpm-lock.yaml` for pnpm, `yarn.lock` for
+   Yarn, and npm otherwise.
+2. Finds every `package.json` in the repository (excluding `node_modules`) that has a `name`.
+   These packages are used to resolve package references in task keys and `dependsOn`, by either
+   their package name (like `@org/app`) or directory name (like `app`). The directory name is used
+   as the project ID.
+3. Migrates the root `turbo.json` or `turbo.jsonc`, if one exists.
+4. Migrates every `turbo.json` and `turbo.jsonc` in a package.
+5. Writes the configuration files:
+   - Workspace settings to `.moon/workspace.yml`
+     ([`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>)).
+   - Inherited tasks and implicit inputs to `.moon/tasks/node.yml`
+     ([`.moon/tasks/*.config`](<../(fundamentals)/task-inheritance.mdx>)).
+   - Project tasks to a `moon.yml` ([`moon.config`](<../(fundamentals)/project.mdx>)) in each
+     project.
+
+Each file is written in YAML, and is merged with an existing YAML file of the same name. The
+`.config/moon` directory is used instead of `.moon`, if it exists.
+
+## Conversions
+
+### Workspace
+
+From the root `turbo.json` (or `turbo.jsonc`):
+
+- [`projects`](/moon/api/WorkspaceConfig#projects) globs are derived from the parent directory of
+  every named package, for example `apps/*` and `packages/*`, when `projects` isn't already
+  defined.
+- `globalDependencies` and `global.inputs` (and the legacy `globalDotEnv`) become workspace-relative
+  [`implicitInputs`](/moon/api/InheritedTasksConfig#implicitinputs), so `tsconfig.json` becomes
+  `/tsconfig.json`, and `!.env.example` becomes `!/.env.example`.
+- `globalEnv` and `global.env` become environment variable implicit inputs, with entries that
+  contain `*` becoming environment variable globs, like `$MY_API_*`.
+
+Implicit inputs are included in the hash of every inherited task. The `global` settings come from
+Turborepo's `futureFlags.globalConfiguration` format, and are read alongside the top-level
+settings.
+
+### Tasks
+
+Each entry in `tasks` (or the legacy `pipeline`) becomes a [task](<../(fundamentals)/task.mdx>).
+Where the task is written depends on its key:
+
+| Key                                 | Task location                                                                |
+| ----------------------------------- | ---------------------------------------------------------------------------- |
+| `build` in the root `turbo.json`    | An inherited task in `.moon/tasks/node.yml`, inherited by every project      |
+| `build` in a package's `turbo.json` | A task in that package's `moon.yml`                                          |
+| `app#build`                         | A task in the `moon.yml` of the `app` package (by directory or package name) |
+| `//#build`                          | A task in the `moon.yml` of the workspace root                               |
+
+In a package's `turbo.json`, a task with `extends: false` opts out of the task it would inherit
+from the root: its identifier is added to the project's
+[`workspace.inheritedTasks.exclude`](/moon/api/ProjectWorkspaceInheritedTasksConfig#exclude) list
+(see [filtering what a project inherits](<../(fundamentals)/task-inheritance.mdx#filtering-what-a-project-inherits>)).
+When `extends: false` is the task's only setting, no task is created. Otherwise, a new task is
+created from its settings, without inheriting anything.
+
+Each task's [`command`](/moon/api/TaskConfig#command) runs the `package.json` script of the same
+name with the detected package manager, for example `pnpm run build`. The rest of the task is
+converted as follows:
+
+- `description` becomes [`description`](/moon/api/TaskConfig#description).
+- `dependsOn` becomes [`deps`](/moon/api/TaskConfig#deps): `^build` becomes `^:build`, `build`
+  becomes `~:build`, and `app#build` becomes `app:build`. Legacy `$VAR` entries become
+  environment variable inputs instead.
+- `with` becomes `deps` with the `wait` [dependency type](<../(fundamentals)/task.mdx#dependency-types>),
+  using the same target conversion as `dependsOn`. The task starts once these dependencies have
+  _started_ running, instead of waiting for them to complete, so `with: ["api#dev"]` becomes
+  `{ target: "api:dev", type: "wait" }`.
+- `env` becomes environment variable [`inputs`](/moon/api/TaskConfig#inputs), with entries that
+  contain `*` becoming environment variable globs.
+- `inputs` become [`inputs`](/moon/api/TaskConfig#inputs). For structured inputs (objects with a
+  `mode`):
+  - `startup` and `jit` globs both become regular inputs, as moon hashes a task's inputs right
+    before it runs.
+  - `withDefaults: true` adds `**/*`, like `$TURBO_DEFAULT$`.
+  - `dependencyOutputs` inputs are dropped. A dependency already invalidates the task when the
+    dependency declares outputs (see
+    [`cacheStrategy`](/moon/api/TaskDependencyConfig#cachestrategy)), so declare outputs on the
+    dependencies whose files matter.
+- `outputs` become [`outputs`](/moon/api/TaskConfig#outputs). Globs ending in `/**` have `/*`
+  appended, so `dist/**` becomes `dist/**/*`.
+- `tags` become task [`tags`](/moon/api/TaskConfig#tags).
+- `cache: false` becomes [`options.cache`](/moon/api/TaskOptionsConfig#cache).
+- `outputLogs` (or the legacy `outputMode`) becomes
+  [`options.outputStyle`](/moon/api/TaskOptionsConfig#outputstyle): `hash-only` to `hash`,
+  `new-only` to `buffer`, and `errors-only` to `buffer-only-failure`.
+- `interactive: true` becomes [`options.interactive`](/moon/api/TaskOptionsConfig#interactive).
+- `persistent: true` applies the [`server`](<../(fundamentals)/task.mdx#server>)
+  [`preset`](/moon/api/TaskConfig#preset), which marks the task as persistent, disables caching,
+  streams its output, and skips it in CI.
+- The legacy `dotEnv` becomes [`options.envFile`](/moon/api/TaskOptionsConfig#envfile).
+
+Turborepo's microsyntax is converted as well:
+
+- `$TURBO_DEFAULT$` in `inputs` becomes `**/*`, every file in the project. moon uses the same
+  [default inputs](<../(fundamentals)/task.mdx#inputs>), but only when a task has no inputs, so
+  it's written explicitly.
+- `$TURBO_ROOT$/` in `inputs` and `outputs` becomes `/`, which makes the path workspace-relative,
+  so `$TURBO_ROOT$/tsconfig.base.json` becomes `/tsconfig.base.json`.
+- `$TURBO_EXTENDS$` is dropped from every list, as appending to the inherited values is moon's
+  default [merge strategy](<../(fundamentals)/task-inheritance.mdx#merge-strategies>).
+
+### Projects
+
+From a package's `turbo.json` (or `turbo.jsonc`), `tags` become project
+[`tags`](/moon/api/ProjectConfig#tags).
+
+When a project doesn't have a `moon.yml` yet, the new file also sets
+[`language`](/moon/api/ProjectConfig#language) to `typescript` (when the project has a
+`tsconfig.json`) or `javascript`, and the default
+[`toolchains`](/moon/api/ProjectConfig#toolchains) to `node` (or `bun`).
+
+## Unsupported settings
+
+The following have no moon equivalent, and are ignored:
+
+- Top-level settings like `extends`, `cacheDir`, `daemon`, `envMode`, `ui`, `noUpdateNotifier`,
+  `futureFlags`, and `dangerouslyDisablePackageManagerCheck`. moon projects inherit tasks
+  automatically, so a package's `extends: ["//"]` isn't needed.
+- `global` settings other than `inputs` and `env`, like `cacheDir`, `envMode`, and `ui`.
+- `globalPassThroughEnv`, `global.passThroughEnv`, and task `passThroughEnv`.
+- Task settings like `interruptible`.
+- The `from` setting of structured inputs.
+- `outputLogs` values of `full` and `none`.
+
+To replace `daemon`, configure moon's [daemon](../guides/daemon.mdx) separately.
+
+## Caveats
+
+- **Task inheritance** - Tasks and implicit inputs written to `.moon/tasks/node.yml` have no
+  [`inheritedBy`](/moon/api/InheritedTasksConfig#inheritedby) condition, so they're inherited by
+  _every_ project, including projects that don't have the matching `package.json` script. Add a
+  condition, or move tasks to the projects that need them, after migrating.
+- **Root tasks** - `//#` tasks are written to a `moon.yml` in the workspace root, but the root
+  isn't added to `projects`. Add it to make it a [root-level project](../guides/root-project.mdx).
+- **Replacing inherited values** - In Turborepo, a package task's lists replace the inherited
+  ones, unless they include `$TURBO_EXTENDS$`. In moon, a project task
+  [appends](<../(fundamentals)/task-inheritance.mdx#merge-strategies>) to the inherited task by
+  default, so every migrated package task appends, with or without `$TURBO_EXTENDS$`. For tasks
+  that should replace instead, set a merge option, like
+  [`options.mergeOutputs`](/moon/api/TaskOptionsConfig#mergeoutputs), to `replace`.
+- **Environment variable only inputs** - In Turborepo, `env` is hashed in addition to the task's
+  default file inputs. In moon, any configured input, including an environment variable, replaces
+  the `**/*` default. A task with `env` but no `inputs` is only hashed by its environment variables
+  after migrating, so add `**/*` to its inputs to keep hashing the project's files.
+- **Negated environment variables** - Negated `env`, `globalEnv`, and `global.env` entries, like
+  `!MY_API_SECRET`, are written as `$!MY_API_SECRET`. moon's environment variable inputs don't
+  support negation, so these aren't treated as environment variables, and don't exclude anything.
+  Remove them after migrating.
+- **Unknown packages** - The migration fails when a key, `dependsOn`, or `with` entry references a
+  package that doesn't exist in the workspace, or that doesn't have a `name`.
+- **Multiple `.env` files** - A legacy `dotEnv` with multiple files becomes `envFile: true`, which
+  loads moon's [default list of `.env` files](<../(fundamentals)/task.mdx#env-files>) instead of
+  the files you listed. List them in [`options.envFile`](/moon/api/TaskOptionsConfig#envfile)
+  instead, which accepts a list.
+- **Configuration formats** - Only existing YAML files are merged. Since moon resolves YAML files
+  before other formats, a generated `.yml` file takes precedence over an existing configuration
+  file in another format (like `.moon/workspace.json`), so merge them by hand afterwards.

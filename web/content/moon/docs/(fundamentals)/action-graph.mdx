@@ -31,6 +31,9 @@ Every one of these steps is conditional. A toolchain that manages no versioned t
 `SetupToolchain` node; a task whose toolchains install nothing contributes no
 `InstallDependencies`. Commands can also disable whole categories of action — this is what
 [`moon run --no-actions`](../commands/run.mdx) does, reducing the graph to task execution alone.
+[`moon exec`](../commands/exec.mdx) also controls how deep dependencies and dependents are followed,
+with `--upstream` and `--downstream`, which can also be configured in the
+[`graph`](../guides/exec-plan.mdx#graph) block of an execution plan.
 
 ## Ordering
 
@@ -104,8 +107,8 @@ the most granular — a single task expands into several nodes here.
   the graph with `--dot` (Graphviz) or `--json`. Pass targets to focus it.
 - [`moon run --summary`](../commands/run.mdx) - Prints a summary of every action the pipeline ran,
   after the fact.
-- [`moon ci`](../commands/ci.mdx) - Builds the graph from affected targets, and shards it across jobs
-  with `--job` and `--job-total`.
+- [`moon ci`](../commands/ci.mdx) - Builds the graph from affected targets, and
+  [shards it across jobs](../guides/ci.mdx#parallelizing-tasks) with `--job` and `--job-total`.
 
 ```shell
 # Visualize everything moon would do for a target

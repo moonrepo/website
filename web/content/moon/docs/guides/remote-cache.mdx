@@ -1,0 +1,363 @@
+---
+title: Remote caching
+icon: CloudUpload
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
+
+Is your CI pipeline running slower than usual? Are you tired of running the same build over and over,
+although nothing has changed? Do you wish to reuse the same local cache across other machines and
+environments? These are just a few scenarios that remote caching aims to solve.
+
+Remote caching shares task artifacts between machines, to improve performance, reduce unnecessary
+computation time, and alleviate resources. moon uploads the artifacts of a task to a remote cache
+service, keyed by the task's [hash](../advanced/cache.mdx), and downloads them on demand when another
+machine runs a task with the same hash. The service decides where artifacts are stored, like local
+disk, AWS S3, or Google Cloud Storage.
+
+## How it works
+
+Once a remote cache is configured, it's used alongside the local cache whenever a task runs:
+
+- **Reading** - Before running a task, moon checks the local cache first, and then the remote cache.
+  On a hit, the task's outputs are downloaded and restored, its logs are replayed, and the task is
+  skipped.
+- **Writing** - After a task runs successfully, its artifact is uploaded in the background, so the
+  next task doesn't wait on the upload. Before exiting, moon waits for pending uploads to complete
+  (for up to 5 minutes).
+- **Failing safely** - A remote cache is an optimization, so it never fails a run. If the service
+  can't be connected to, it's disabled for the rest of the command, and errors while reading are
+  treated as cache misses, so the task simply runs.
+- **Verifying** - Every downloaded blob is checked against its expected size and SHA256 digest, and
+  discarded if it doesn't match.
+
+Remote caching applies to every task that's cacheable. To control this per task, set its
+[`options.cache`](/moon/api/TaskOptionsConfig#cache) setting to `"local"` to only cache locally,
+`"remote"` to only cache remotely, or `false` to disable caching entirely. The global
+[`--cache`](../commands/overview.mdx#caching) option also applies, so `--cache read` downloads from
+the remote cache without uploading to it.
+
+## Self-hosted
+
+moon supports any remote caching service that's compatible with the
+[Bazel Remote Execution v2 API](https://github.com/bazelbuild/remote-apis/tree/main/build/bazel/remote/execution/v2),
+such as [`bazel-remote`](https://github.com/buchgr/bazel-remote). The service must support the
+following features:
+
+- Action result caching
+- Content addressable storage caching
+- SHA256 digest hashing
+- gRPC or HTTP requests
+
+### Host your service
+
+When you have chosen (or built) a compatible service, host it and make it available through gRPC or
+HTTP. For example, if you plan to use `bazel-remote`, you can do something like the following:
+
+```shell
+$ bazel-remote --dir /path/to/moon-cache --max_size 10 --storage_mode uncompressed --grpc_address 0.0.0.0:9092
+```
+
+If you've configured [compression](#compression) as `"zstd"`, run the service with that storage mode
+as well.
+
+```shell
+$ bazel-remote --dir /path/to/moon-cache --max_size 10 --storage_mode zstd --grpc_address 0.0.0.0:9092
+```
+
+<Callout>
+  View the official
+  [`bazel-remote`](https://github.com/buchgr/bazel-remote#usage) documentation
+  for all the available options, like storing artifacts in S3, configuring
+  authentication (TLS/mTLS), proxies, and more.
+</Callout>
+
+## Cloud-hosted
+
+### Depot
+
+If you'd prefer not to host your own solution, you could use
+[Depot Cache](https://depot.dev/products/cache), a cloud-based caching solution. To make use of
+Depot, follow these steps:
+
+- Create an account on [depot.dev](https://depot.dev)
+- Create an organization
+- Go to organization settings -> API tokens
+- Create a new API token
+- Add the token as a `DEPOT_TOKEN` environment variable to your moon pipelines
+
+Once these steps have been completed, you can enable remote caching in moon with the following
+configuration. If your Depot account has more than 1 organization, you'll need to set the
+`X-Depot-Org` header.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    remote: {
+      host: "grpcs://cache.depot.dev",
+      auth: {
+        token: "DEPOT_TOKEN",
+        headers: {
+          "X-Depot-Org": "<your-org-id>",
+        },
+      },
+    },
+  }}
+/>
+
+## Configuration
+
+Once your service is running, enable remote caching by configuring the
+[`remote`](/moon/api/WorkspaceConfig#remote) settings in
+[`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>). At minimum, the only setting that's
+required is [`host`](/moon/api/RemoteConfig#host). gRPC is used by default, and HTTP is enabled by
+setting [`api`](/moon/api/RemoteConfig#api) to `"http"`.
+
+<Tabs groupId="remote-api" items={['gRPC', 'HTTP']}>
+<Tab>
+
+Use a `grpc://` host, or `grpcs://` for a secure connection.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    remote: {
+      host: "grpcs://your-host.com:9092",
+    },
+  }}
+/>
+
+</Tab>
+<Tab>
+
+Use an `http://` host, or `https://` for a secure connection. Artifacts are read and written at
+`<host>/<instanceName>/ac/<hash>` and `<host>/<instanceName>/cas/<hash>`, which is the layout used by
+`bazel-remote`'s HTTP API.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    remote: {
+      api: "http",
+      host: "https://your-host.com:8080",
+    },
+  }}
+/>
+
+</Tab>
+</Tabs>
+
+The host and API can also be set with the `MOON_REMOTE_HOST` and `MOON_REMOTE_API` environment
+variables, which is a great way to conditionally enable remote caching, for example only in CI.
+
+<Callout>
+  A host pointing to `localhost` or `0.0.0.0` is ignored in CI and other remote
+  environments (like SSH sessions or cloud devboxes), as it's unlikely to be
+  reachable from there.
+</Callout>
+
+The gRPC and HTTP APIs have a few differences to be aware of:
+
+- **Batching** - gRPC uploads and downloads blobs in batches, and streams large blobs. HTTP sends a
+  request per blob (up to 100 in parallel).
+- **Compression** - Only supported by gRPC (see [compression](#compression)).
+- **Retries** - Only supported by HTTP (see [retries](#retries)).
+
+### Read-only local caches
+
+By default, every machine uploads to the remote cache, including developer machines. If you'd prefer
+that only CI populates the cache, which keeps the results of unverified local changes out of it,
+enable [`cache.localReadOnly`](/moon/api/RemoteCacheConfig#localreadonly). Local machines then only
+download artifacts, and uploads only happen in CI.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    remote: {
+      host: "grpcs://your-host.com:9092",
+      cache: {
+        localReadOnly: true,
+      },
+    },
+  }}
+/>
+
+### Instance names
+
+Artifacts are stored under an [`instanceName`](/moon/api/RemoteCacheConfig#instancename), which
+defaults to `moon-outputs`. Configure a unique name to share a single service between multiple
+repositories, without their artifacts mixing.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    remote: {
+      host: "grpcs://your-host.com:9092",
+      cache: {
+        instanceName: "acme-web",
+      },
+    },
+  }}
+/>
+
+### Authentication
+
+For services that require a bearer token, configure [`auth.token`](/moon/api/RemoteAuthConfig#token)
+with the _name_ of an environment variable that contains the token, not the token itself. moon
+sends it as an `Authorization: Bearer <token>` header with every request. Additional headers can be
+configured with [`auth.headers`](/moon/api/RemoteAuthConfig#headers), whose values can reference
+environment variables with `$VAR` or `${VAR}`.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    remote: {
+      host: "grpcs://your-host.com:9092",
+      auth: {
+        token: "REMOTE_CACHE_TOKEN",
+        headers: {
+          "X-Team": "${REMOTE_CACHE_TEAM}",
+        },
+      },
+    },
+  }}
+/>
+
+If the token's environment variable isn't set, moon logs a warning and disables the remote cache. The
+exception is when [`cache.localReadOnly`](#read-only-local-caches) is enabled, where moon still
+connects without a token, so that developers can read from a cache that allows anonymous reads.
+
+### TLS and mTLS
+
+When the host uses a secure protocol (`grpcs://` or `https://`), the connection is verified against
+trusted root certificates. To also trust your own certificate authority, configure
+[`tls`](/moon/api/RemoteConfig#tls), or [`mtls`](/moon/api/RemoteConfig#mtls) to authenticate the
+client as well. When both are configured, mTLS takes precedence. Certificate paths are relative from
+the workspace root.
+
+<Tabs groupId="remote-tls" items={['TLS', 'mTLS']}>
+<Tab>
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    remote: {
+      host: "grpcs://your-host.com:9092",
+      tls: {
+        cert: "certs/ca.pem",
+        domain: "your-host.com",
+      },
+    },
+  }}
+/>
+
+</Tab>
+<Tab>
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    remote: {
+      host: "grpcs://your-host.com:9092",
+      mtls: {
+        caCert: "certs/ca.pem",
+        clientCert: "certs/client.pem",
+        clientKey: "certs/client.key",
+        domain: "your-host.com",
+      },
+    },
+  }}
+/>
+
+</Tab>
+</Tabs>
+
+When using gRPC, the [`domain`](/moon/api/RemoteTlsConfig#domain) setting overrides the domain name
+the certificate is verified against, and [`assumeHttp2`](/moon/api/RemoteTlsConfig#assumehttp2)
+can be enabled for servers that support HTTP/2 without advertising it through protocol negotiation
+(ALPN). The HTTP API ignores both settings.
+
+### Compression
+
+When using gRPC, blobs can be compressed with Zstandard while uploading and downloading, by setting
+[`cache.compression`](/moon/api/RemoteCacheConfig#compression) to `"zstd"`. This reduces network
+transfer, at the cost of some CPU time.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    remote: {
+      host: "grpcs://your-host.com:9092",
+      cache: {
+        compression: "zstd",
+      },
+    },
+  }}
+/>
+
+moon checks the compressors that the service supports when connecting. If it doesn't support
+Zstandard, moon logs a warning and falls back to uncompressed blobs. Compression is ignored by the
+HTTP API.
+
+### Retries
+
+When using the HTTP API, requests that fail with a transient error (connection failures, timeouts,
+and `5xx`, `408`, or `429` responses) are retried up to 3 times, with exponential backoff. This can
+be customized with the `remote.cache.retryCount` setting (or the `MOON_REMOTE_CACHE_RETRY_COUNT`
+environment variable), where `0` disables retries. Retries are not supported for gRPC.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    remote: {
+      api: "http",
+      host: "https://your-host.com:8080",
+      cache: {
+        retryCount: 5,
+      },
+    },
+  }}
+/>
+
+## Debugging
+
+To understand why the remote cache isn't being hit, run a task with [`--log debug`](../commands/overview.mdx#logging),
+which logs how moon connected to the service, and whether each task was a cache hit or miss. For
+even more detail, like internal connection and request errors, set the `MOON_DEBUG_REMOTE`
+environment variable.
+
+```shell
+$ MOON_DEBUG_REMOTE=true moon run app:build --log debug
+```
+
+## FAQ
+
+#### What is an artifact?
+
+In the context of moon and remote caching, an artifact is the
+[outputs of a task](<../(fundamentals)/task.mdx#outputs>), as well as the stdout, stderr, and exit
+code of the task that generated the outputs. Artifacts are uniquely identified by the
+[moon generated hash](../advanced/cache.mdx).
+
+#### Do I have to use remote caching?
+
+No, remote caching is _optional_. Its intended purpose is to store long lived build artifacts to
+speed up CI pipelines, and optionally local development. For the most part,
+[`moon ci`](../commands/ci.mdx) does a great job of only running what's affected in pull requests,
+and is a great starting point.
+
+#### Does remote caching store source code?
+
+No, remote caching _does not_ store source code. It stores the
+[outputs of a task](<../(fundamentals)/task.mdx#outputs>), which is typically built and compiled code,
+and only the files that match the task's configured outputs are uploaded.
+
+#### Does moon collect any personally identifiable information?
+
+No, moon does not collect any PII as part of the remote caching process.
+
+#### Are artifacts encrypted?
+
+We do not encrypt on moon's side, as encryption is provided by your remote caching service and
+storage provider. Use a secure host (`grpcs://` or `https://`) to encrypt artifacts in transit.

@@ -9,8 +9,9 @@ across the entire workspace instead of a subset.
 
 When invoked without a subcommand, `moon sync` performs a full workspace sync:
 
-- Syncs the workspace itself (for example, generating code owners, VCS hooks, and configuration
-  schemas, depending on what's configured).
+- Syncs the workspace itself (for example, generating configuration schemas, and
+  [code owners](../guides/codeowners.mdx) or [VCS hooks](../guides/vcs-hooks.mdx) when their
+  `sync` settings are enabled).
 - Syncs every project in the workspace, linking cross-project dependencies and ensuring
   language-specific configuration files are present and accurate.
 - Runs any task across the workspace whose [`options.runInSyncPhase`](/moon/api/TaskOptionsConfig#runinsyncphase) option is enabled, since these tasks

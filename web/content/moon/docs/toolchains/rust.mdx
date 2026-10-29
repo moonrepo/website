@@ -338,10 +338,12 @@ A task is associated with the Rust toolchain when its command (or the first word
 
 ### Docker integration
 
+The Rust toolchain integrates with the following steps of the [Docker workflow](../guides/docker.mdx):
+
 - [`moon docker scaffold`](../commands/docker/scaffold.mdx) - Copies `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`,
   `rust-toolchain`, and `.cargo/*.toml` files. Because Cargo refuses to load a manifest without a build target, it also
-  creates empty `src/lib.rs` and `src/main.rs` placeholders for each Rust project, so Cargo commands work before sources are
-  copied.
+  creates an empty placeholder for each of a Rust project's library and binary targets within `src` (like `src/lib.rs`
+  or `src/main.rs`), so Cargo commands work before sources are copied.
 - [`moon docker file`](../commands/docker/file.mdx) - Uses `rust:<version>` (or `rust:latest` when no version is configured)
   as the default base image.
 - [`moon docker prune`](../commands/docker/prune.mdx) - Deletes the `target` directory in the dependencies root, but

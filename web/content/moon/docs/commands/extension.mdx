@@ -2,11 +2,13 @@
 title: moon extension
 ---
 
-Manage extension plugins, WASM plugins that extend moon with custom functionality outside of the
-core toolchain and task running pipeline. Extensions have whitelisted access to the file system
-and can receive partial information about the current workspace, and are typically used for
-one-off utilities like downloading files, migrating from other task runners, or unpacking
-archives.
+Manage [extension](<../(fundamentals)/extension.mdx>) plugins, [WASM plugins](../guides/wasm-plugins.mdx)
+that extend moon with custom functionality outside of the core toolchain and task running
+pipeline. Extensions have whitelisted access to the file system and can receive partial
+information about the current workspace, and are typically used for one-off utilities like
+[downloading files](../extensions/download.mdx), migrating from other task runners (like
+[Nx](../extensions/migrate-nx.mdx) or [Turborepo](../extensions/migrate-turborepo.mdx)), or
+[unpacking archives](../extensions/unpack.mdx).
 
 This is a parent command and does nothing on its own; use one of the following subcommands:
 

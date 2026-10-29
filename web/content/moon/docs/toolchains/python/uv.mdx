@@ -313,6 +313,9 @@ matched against stable identifiers.
 
 ### Docker integration
 
+The uv toolchain integrates with the following steps of the
+[Docker workflow](../../guides/docker.mdx):
+
 - [`moon docker scaffold`](../../commands/docker/scaffold.mdx) - Copies `pyproject.toml`, `uv.lock`, and `uv.toml`.
 - [`moon docker prune`](../../commands/docker/prune.mdx) - The [Python toolchain](./index.mdx#docker-integration)
   handles this for uv, and installs production dependencies with `uv sync --package <name> --no-dev`, with a

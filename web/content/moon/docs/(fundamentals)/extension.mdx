@@ -5,11 +5,11 @@ icon: Puzzle
 
 import { ConfigTabs } from "@/components/ConfigTabs";
 
-**Extensions** are WASM plugins that extend moon with functionality that doesn't belong to a
-[toolchain](./toolchain.mdx) or a [task](./task.mdx). They're the general purpose escape hatch of the plugin
-system: an extension can be invoked directly from the command line as a one-off utility, or it can
-hook into moon's internals to shape the project graph, augment commands before they execute, and
-participate in workspace and project syncing.
+**Extensions** are [WASM plugins](../guides/wasm-plugins.mdx) that extend moon with functionality
+that doesn't belong to a [toolchain](./toolchain.mdx) or a [task](./task.mdx). They're the general
+purpose escape hatch of the plugin system: an extension can be invoked directly from the command
+line as a one-off utility, or it can hook into moon's internals to shape the project graph, augment
+commands before they execute, and participate in workspace and project syncing.
 
 Because extensions are WASM, they run in a sandbox with whitelisted file system access, receive only
 the information moon explicitly passes them, and are portable across every platform moon supports.
@@ -20,8 +20,9 @@ the information moon explicitly passes them, and are portable across every platf
   of the workspace.
 - **Configuration driven** - Registered by a unique identifier in
   [`.moon/extensions.config`](#configuration), alongside any settings the plugin declares.
-- **Distributable** - Sourced from a plugin locator, so they can live in a Git repository, on
-  GitHub releases, behind a URL, or on the local file system.
+- **Distributable** - Sourced from a [plugin locator](../guides/wasm-plugins.mdx#plugin-locators),
+  so they can be published to GitHub releases or an OCI registry, served from a URL, or live on the
+  local file system.
 - **Self describing** - Each plugin reports its own name, description, and version, and may declare
   a JSON schema for its settings.
 - **Optional hooks** - A plugin implements only the functions it needs; moon skips the rest.
@@ -36,15 +37,19 @@ This is the model used by moon's built-in extensions, and is well suited to one-
 as downloading a file, unpacking an archive, or migrating configuration from another task runner.
 
 ```shell
-$ moon ext unpack -- --input ./archive.tar.gz --output ./out
+$ moon ext unpack -- --src ./archive.tar.gz --dest ./out
 ```
 
 ### Project graph extension
 
 During project graph construction, extensions implementing `extend_project_graph` are given the
-set of discovered project sources and can return additional projects, aliases, and input files to
-register. This allows an extension to teach moon about projects that its own conventions define,
-rather than requiring them to be listed in [`.moon/workspace.config`](./workspace.mdx).
+ID and source of every project discovered through [`.moon/workspace.config`](./workspace.mdx). For
+each of those projects, they can return an alias, implicit dependencies, and tasks, typically
+extracted from a manifest file that moon doesn't understand natively. They can also return a list
+of input files that were read, so that changes to those files invalidate the project graph cache.
+
+Extensions can only extend projects that moon has already discovered; they can't add new projects to
+the graph.
 
 ### Command augmentation
 
@@ -54,9 +59,9 @@ Before a process runs, extensions can rewrite it:
 - `extend_task_command` - Applies to a [task](./task.mdx) that runs a command.
 - `extend_task_script` - Applies to a task that runs a script.
 
-Each hook can prepend arguments, inject environment variables, and contribute additional `PATH`
-lookup paths, which makes it possible to wrap tasks in a runner or profiler without editing every
-task definition.
+Each hook can replace the command, modify its arguments, add or remove environment variables, and
+contribute additional `PATH` lookup paths, which makes it possible to wrap tasks in a runner or
+profiler without editing every task definition.
 
 ### Workspace and project syncing
 
@@ -67,16 +72,28 @@ they changed, so syncing stays incremental and the results can be reported to th
 
 ## Built-in extensions
 
-moon ships with a handful of extensions that require no plugin locator — configuring the identifier
-alone is enough, and moon resolves the plugin for you:
+moon ships with the following extensions, and knows where to find their plugins, so registering them
+only requires their ID. Refer to each extension's page for its arguments and behavior.
 
-- `download` - Download a file from a URL to a destination in the workspace.
-- `migrate-nx` - Migrate an Nx workspace's configuration to moon.
-- `migrate-turborepo` - Migrate a Turborepo workspace's configuration to moon.
-- `unpack` - Unpack an archive (zip, tar, and so on) to a destination.
+| Extension                                                | ID                  | Description                                            |
+| -------------------------------------------------------- | ------------------- | ------------------------------------------------------ |
+| [Download](../extensions/download.mdx)                   | `download`          | Download a file from a URL into the workspace          |
+| [Migrate Nx](../extensions/migrate-nx.mdx)               | `migrate-nx`        | Migrate an Nx repository's configuration to moon       |
+| [Migrate Turborepo](../extensions/migrate-turborepo.mdx) | `migrate-turborepo` | Migrate a Turborepo repository's configuration to moon |
+| [Unpack](../extensions/unpack.mdx)                       | `unpack`            | Unpack a local or remote archive into a directory      |
 
-These identifiers also work with [`moon ext`](../commands/ext.mdx) and
-[`moon extension info`](../commands/extension/info.mdx) without being configured first.
+Built-in extensions still need to be configured before they can be executed with
+[`moon ext`](../commands/ext.mdx), which only loads extensions that exist in
+[`.moon/extensions.config`](#configuration). However,
+[`moon extension add`](../commands/extension/add.mdx) and
+[`moon extension info`](../commands/extension/info.mdx) accept these identifiers without a plugin
+locator.
+
+```shell
+# Register the built-in extension, then execute it
+$ moon extension add unpack
+$ moon ext unpack -- --src ./archive.zip --dest ./out
+```
 
 ## Configuration
 
@@ -98,7 +115,8 @@ the plugin itself.
 
 The `plugin` setting can be omitted entirely for [built-in extensions](#built-in-extensions), as
 moon knows where to find them. Configuration files can also be composed with the [`extends`](/moon/api/ExtensionsConfig#extends) setting,
-which accepts a relative file path or a secure URL.
+which accepts a relative file path or a secure URL, and merges extensions by their identifier (see
+[sharing configuration](../guides/sharing-config.mdx#merging)).
 
 Extensions can be added and inspected from the command line, instead of editing the configuration
 file by hand:
@@ -109,3 +127,264 @@ file by hand:
   schema, and the plugin functions it implements.
 - [`moon extension download`](../commands/extension/download.mdx) - Download and cache the WASM plugins
   for every configured extension, without executing them.
+
+## Creating an extension
+
+Extensions are built with the same tooling as every other moon plugin. Read the
+[WASM plugins guide](../guides/wasm-plugins.mdx) first, as it covers how plugins work, the sandbox they run
+in, the host functions available to them, and how to create, build, and publish a plugin crate.
+The rest of this section assumes you have a crate set up, with the following imports:
+
+```rust title="src/lib.rs"
+use extism_pdk::*;
+use moon_pdk::*;
+use moon_pdk_api::*;
+```
+
+An extension is a set of exported plugin functions. Only `register_extension` is required; moon
+checks which of the others exist and calls them when applicable. For real-world examples, refer to
+the built-in extensions in the [moonrepo/plugins](https://github.com/moonrepo/plugins) repository.
+
+### Registering metadata
+
+Every extension must implement the `register_extension` function, which provides metadata that
+moon displays to users (for example, in [`moon extension info`](../commands/extension/info.mdx)).
+The input contains the `id` the extension was configured with.
+
+```rust
+#[plugin_fn]
+pub fn register_extension(
+    Json(_): Json<RegisterExtensionInput>,
+) -> FnResult<Json<RegisterExtensionOutput>> {
+    Ok(Json(RegisterExtensionOutput {
+        name: "Example".into(),
+        description: Some("A description about what the extension does.".into()),
+        plugin_version: env!("CARGO_PKG_VERSION").into(),
+        ..Default::default()
+    }))
+}
+```
+
+### Implementing execution
+
+To make an extension runnable with [`moon ext`](../commands/ext.mdx), implement the
+`execute_extension` function. This is where the business logic of a one-off utility lives. The
+input provides the arguments passed after `--` (`args`), and a `context` with
+[virtual paths](../guides/wasm-plugins.mdx#virtual-paths) to the current working directory
+(`working_dir`) and the workspace root (`workspace_root`).
+
+```rust
+#[host_fn]
+extern "ExtismHost" {
+    fn host_log(input: Json<HostLogInput>);
+}
+
+#[plugin_fn]
+pub fn execute_extension(Json(input): Json<ExecuteExtensionInput>) -> FnResult<()> {
+    host_log!(stdout, "Executing extension!");
+
+    Ok(())
+}
+```
+
+To fail with a readable message, return an error with the `plugin_err!` macro. Messages support
+style tags like `<path>`, `<url>`, and `<id>`, which are colored in the terminal.
+
+```rust
+return Err(plugin_err!("A valid URL is required, received <url>{}</url>.", url));
+```
+
+### Supporting arguments
+
+Arguments are how users pass information into an extension at runtime. To parse them, derive the
+[`Args`](https://docs.rs/clap/latest/clap/trait.Args.html) trait from the
+[clap](https://crates.io/crates/clap) crate (re-exported by `moon_pdk`) on a struct. Refer to
+clap's [derive documentation](https://docs.rs/clap/latest/clap/_derive/index.html) for the
+supported attributes.
+
+```rust
+#[derive(Args)]
+pub struct ExampleExtensionArgs {
+    // --url, -u
+    #[arg(long, short = 'u', required = true)]
+    pub url: String,
+
+    // --dest, -d
+    #[arg(long, short = 'd')]
+    pub dest: Option<String>,
+
+    // --force
+    #[arg(long)]
+    pub force: bool,
+}
+```
+
+Then parse the input arguments into the struct with the
+[`parse_args`](https://docs.rs/moon_pdk/latest/moon_pdk/fn.parse_args.html) function. If required
+arguments are missing or a value is invalid, the error is reported to the user.
+
+```rust
+#[plugin_fn]
+pub fn execute_extension(Json(input): Json<ExecuteExtensionInput>) -> FnResult<()> {
+    let args = parse_args::<ExampleExtensionArgs>(&input.args)?;
+
+    // Resolve relative paths from the current working directory
+    let dest_dir = input
+        .context
+        .get_absolute_path(args.dest.as_deref().unwrap_or_default());
+
+    // ...
+
+    Ok(())
+}
+```
+
+### Supporting configuration
+
+Users can configure an extension with additional settings alongside
+[`plugin`](/moon/api/ExtensionPluginConfig#plugin) in
+[`.moon/extensions.config`](#configuration). Every key other than `plugin` is
+passed through to the extension as-is.
+
+<ConfigTabs
+  file=".moon/extensions"
+  config={{
+    example: {
+      plugin: "file://./plugins/example.wasm",
+      someSetting: "abc",
+      anotherSetting: 123,
+    },
+  }}
+/>
+
+In the plugin, map these settings into a struct with the `config_struct!` macro, which derives
+`Deserialize` with camelCase field names, so `some_setting` maps to `someSetting`. Settings can be
+omitted by users, so the struct must also implement `Default`. The macro relies on
+[serde](https://crates.io/crates/serde), so add it as a dependency with the `derive` feature.
+
+```rust
+config_struct!(
+    #[derive(Default)]
+    pub struct ExampleExtensionConfig {
+        pub some_setting: String,
+        pub another_setting: u32,
+    }
+);
+```
+
+Within `execute_extension`, load the configuration with the
+[`get_extension_config`](https://docs.rs/moon_pdk/latest/moon_pdk/fn.get_extension_config.html)
+function.
+
+```rust
+#[plugin_fn]
+pub fn execute_extension(Json(input): Json<ExecuteExtensionInput>) -> FnResult<()> {
+    let config = get_extension_config::<ExampleExtensionConfig>()?;
+
+    config.another_setting; // 123
+
+    Ok(())
+}
+```
+
+Other plugin functions receive the configuration as an `extension_config` JSON value in their
+input, which can be parsed with the `parse_extension_config` function. With the `schematic`
+feature of `moon_pdk` enabled, `parse_extension_config_schema` also runs the struct's validation
+rules.
+
+### Defining a configuration schema
+
+If your extension supports configuration, implement the `define_extension_config` function to
+describe its shape, so that users can discover the available settings with
+[`moon extension info`](../commands/extension/info.mdx). Schemas are built with the
+[schematic](https://crates.io/crates/schematic) crate, so derive `Schematic` on the configuration
+struct.
+
+```rust
+use schematic::{SchemaBuilder, Schematic};
+
+config_struct!(
+    #[derive(Default, Schematic)]
+    pub struct ExampleExtensionConfig {
+        pub some_setting: String,
+        pub another_setting: u32,
+    }
+);
+
+#[plugin_fn]
+pub fn define_extension_config() -> FnResult<Json<DefineExtensionConfigOutput>> {
+    Ok(Json(DefineExtensionConfigOutput {
+        schema: SchemaBuilder::build_root::<ExampleExtensionConfig>(),
+    }))
+}
+```
+
+Schematic is a heavy library, so only enable the features you need, and use the same version that
+`moon_pdk_api` depends on:
+
+```toml title="Cargo.toml"
+[dependencies]
+schematic = { version = "0.20", default-features = false, features = ["schema"] }
+```
+
+### Prompting for settings
+
+When a user runs [`moon extension add`](../commands/extension/add.mdx), moon calls the
+`initialize_extension` function (if implemented) to ask the user questions, and writes the answers
+into `.moon/extensions.config`. Each `SettingPrompt` maps a question to a setting (dot notation is
+supported), and can be a confirmation, text input, or select prompt.
+
+```rust
+#[plugin_fn]
+pub fn initialize_extension(
+    Json(_): Json<InitializeExtensionInput>,
+) -> FnResult<Json<InitializeExtensionOutput>> {
+    Ok(Json(InitializeExtensionOutput {
+        docs_url: Some("https://example.com/docs".into()),
+        prompts: vec![SettingPrompt::new(
+            "someSetting",
+            "Which value should be used for <property>someSetting</property>?",
+            PromptType::Input {
+                default: "abc".into(),
+            },
+        )],
+        ..Default::default()
+    }))
+}
+```
+
+Prompts created with `SettingPrompt::new` are shown in every flow, while those created with
+`SettingPrompt::new_full` are skipped when `--minimal` is passed. The `default_settings` field can
+also inject settings without prompting.
+
+### Hooking into moon
+
+Beyond direct execution, extensions can participate in moon's own processes by implementing any of
+the following functions. Refer to the [core features](#core-features)
+for when each is called.
+
+- `extend_project_graph` - Extend discovered projects with aliases, dependencies, and tasks.
+- `extend_command` - Modify any command moon executes.
+- `extend_task_command` - Modify the command of a task.
+- `extend_task_script` - Modify the script of a task.
+- `sync_workspace` - Run during workspace syncing.
+- `sync_project` - Run during project syncing.
+
+For example, the following injects an environment variable into every task that uses the Node.js
+toolchain, using a value from the extension's configuration.
+
+```rust
+#[plugin_fn]
+pub fn extend_task_command(
+    Json(input): Json<ExtendTaskCommandInput>,
+) -> FnResult<Json<ExtendTaskCommandOutput>> {
+    let config = parse_extension_config::<ExampleExtensionConfig>(input.extension_config)?;
+    let mut output = ExtendTaskCommandOutput::default();
+
+    if input.task.toolchains.iter().any(|id| id == "node") {
+        output.env.insert("EXAMPLE_SETTING".into(), config.some_setting);
+    }
+
+    Ok(Json(output))
+}
+```

@@ -6,8 +6,13 @@ Part of [`moon sync`](../sync.mdx), this command manually generates hook scripts
 on the commands defined in the [`vcs.hooks`](/moon/api/VcsConfig#hooks) setting of `.moon/workspace.config`. Each configured hook
 (for example `pre-commit` or `pre-push`) is written out as a script that the VCS will execute at
 the appropriate point, and the scripts are wired up to run through the VCS client's own hook
-mechanism. Refer to the [workspace](<../../(fundamentals)/workspace.mdx>) fundamentals page for more on VCS
-configuration.
+mechanism. Refer to the [VCS hooks guide](../../guides/vcs-hooks.mdx) for defining hooks and
+[how they're wired up](../../guides/vcs-hooks.mdx#how-it-works), and the
+[workspace](<../../(fundamentals)/workspace.mdx>) fundamentals page for more on VCS configuration.
+
+When [`vcs.sync`](/moon/api/VcsConfig#sync) is enabled, hooks are also generated automatically
+while syncing the workspace. Otherwise, each developer
+[opts in](../../guides/vcs-hooks.mdx#enabling-hooks) by running this command themselves.
 
 If `vcs.hooks` has no hooks configured, the command prints a warning and exits without doing
 anything.
@@ -20,7 +25,8 @@ $ moon sync vcs-hooks
 ```
 
 Use `--force` to bypass the cache and regenerate the hook scripts regardless of whether they've
-changed, or `--clean` to remove all previously generated hooks.
+changed, or `--clean` to remove all previously generated hooks (see
+[disabling hooks](../../guides/vcs-hooks.mdx#disabling-hooks)).
 
 ```shell
 $ moon sync vcs-hooks --force

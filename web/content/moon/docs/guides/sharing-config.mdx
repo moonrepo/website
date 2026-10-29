@@ -1,0 +1,125 @@
+---
+title: Sharing configuration
+icon: Share2
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+
+For large companies, open source maintainers, and those that love reusability, more often than not
+you'll want to use the same configuration across all repositories for consistency. This helps reduce
+the maintenance burden, while ensuring a similar developer experience.
+
+To help streamline this process, moon provides an `extends` setting in the following configuration
+files:
+
+- [`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>) -
+  [`extends`](/moon/api/WorkspaceConfig#extends)
+- [`.moon/toolchains.config`](<../(fundamentals)/toolchain.mdx>) -
+  [`extends`](/moon/api/ToolchainsConfig#extends)
+- [`.moon/extensions.config`](<../(fundamentals)/extension.mdx>) -
+  [`extends`](/moon/api/ExtensionsConfig#extends)
+- [`.moon/tasks/*.config`](<../(fundamentals)/task-inheritance.mdx>) -
+  [`extends`](/moon/api/InheritedTasksConfig#extends)
+
+Project level [`moon.config`](<../(fundamentals)/project.mdx>) files don't support `extends`, as
+they already inherit tasks from `.moon/tasks/*.config`.
+
+## Extending a file
+
+The `extends` setting accepts a file system path, or an `https://` URL, that points to a valid
+configuration file of the same type. A great way to share configuration is by using GitHub's "raw
+file view", as demonstrated below.
+
+<ConfigTabs
+  file=".moon/tasks/all"
+  config={{
+    extends:
+      "https://raw.githubusercontent.com/acme/moon-config/master/.moon/tasks/all.yml",
+  }}
+/>
+
+A few things to keep in mind:
+
+- **Relative paths** are resolved from the directory of the file that declares them, not the
+  current working directory. Absolute paths are supported too.
+- **URLs** must use `https://` (`localhost` and `127.0.0.1` are exempt), and are requested without
+  authentication, so the file must be publicly readable. A remote file can extend other URLs, but
+  not file paths.
+- **Formats** can be mixed, as the format is detected from the file extension. For example, a
+  `.moon/workspace.toml` can extend a shared `workspace.yml`.
+- **Remote files are cached** in `.moon/cache/temp` for 24 hours, so upstream changes can take up to
+  a day to be picked up. Delete that directory to fetch them sooner.
+
+### Extending multiple files
+
+`extends` also accepts a list, which is useful for composing configuration from multiple sources,
+like an organization-wide base and a team-specific layer. Files are applied in order, so later
+files take precedence over earlier ones, and extended files can extend other files in turn.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    extends: [
+      "https://raw.githubusercontent.com/acme/moon-config/master/workspace.yml",
+      "../shared/workspace.yml",
+    ],
+    projects: ["apps/*", "packages/*"],
+  }}
+/>
+
+### Merging
+
+The settings in your local file always take precedence over the settings it extends. Nested
+settings are merged deeply, so you only need to define the settings you want to change, while other
+values, like lists, replace the upstream value entirely. A few settings merge differently:
+
+- Toolchains in [`.moon/toolchains.config`](<../(fundamentals)/toolchain.mdx>), and extensions in
+  [`.moon/extensions.config`](<../(fundamentals)/extension.mdx>), are merged by their identifier.
+- In [`.moon/tasks/*.config`](<../(fundamentals)/task-inheritance.mdx>),
+  [`tasks`](/moon/api/InheritedTasksConfig#tasks),
+  [`fileGroups`](/moon/api/InheritedTasksConfig#filegroups), and
+  [`env`](/moon/api/InheritedTasksConfig#env) are merged by key, while
+  [`implicitDeps`](/moon/api/InheritedTasksConfig#implicitdeps) and
+  [`implicitInputs`](/moon/api/InheritedTasksConfig#implicitinputs) are appended to.
+
+For example, inherit an upstream workspace configuration, but enable a different set of projects:
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    extends: "../shared/workspace.yml",
+    projects: ["apps/*"],
+  }}
+  comments={{
+    projects: "Replaces the upstream `projects` list",
+  }}
+/>
+
+## Versioning
+
+Inheriting an upstream configuration can be dangerous, as the settings may change at any point,
+resulting in broken builds. To mitigate this, you can use a "versioned" upstream configuration,
+which is ideally a fixed point in time. How this is implemented is up to you or your company, but we
+suggest the following patterns.
+
+### Using versioned filenames
+
+A rudimentary solution is to append a version to the upstream filename. When the file is modified,
+a new version should be created, while the previous version remains untouched.
+
+```diff
+-extends: '../shared/workspace.yml'
++extends: '../shared/workspace-v1.yml'
+```
+
+### Using branches, tags, or commits
+
+When using a version control platform, like GitHub above, you can reference the upstream
+configuration through a branch, tag, or commit SHA. Since these are a reference point in time, they
+are relatively safe, and as the URL changes with each new version, they also sidestep the 24 hour
+cache.
+
+```diff
+-extends: 'https://raw.githubusercontent.com/acme/moon-config/master/.moon/tasks/all.yml'
++extends: 'https://raw.githubusercontent.com/acme/moon-config/v1.2.0/.moon/tasks/all.yml'
+```

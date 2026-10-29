@@ -5,31 +5,38 @@ title: moon docker scaffold
 Creates a repository skeleton for use within a `Dockerfile`, so that only the files necessary
 to install dependencies and build specific projects are copied into a Docker build context,
 instead of the entire repository. It's the first of the [`moon docker`](../docker.mdx) commands to
-run. This is what allows Docker's layer caching to work
-effectively across builds. The command uses the [project graph](<../../(fundamentals)/project-graph.mdx>) to
-determine which files are required, so every referenced project must be
-[configured in moon](<../../(fundamentals)/project.mdx>) or the scaffold will be incomplete.
+run, and is what allows Docker's layer caching to work effectively across builds. The command uses
+the [project graph](<../../(fundamentals)/project-graph.mdx>) to determine which files are required,
+so every referenced project must be [configured in moon](<../../(fundamentals)/project.mdx>) or the
+scaffold will be incomplete.
 
-Running the command deletes any stale skeleton at `.moon/docker` (this path should be
-`.dockerignore`'d), then recreates two independent skeletons within it:
+Running the command deletes any stale skeleton at `.moon/docker`, then recreates two independent
+skeletons within it:
 
 - `configs/` - Mirrors the folder structure of the entire repository (every project in the
   graph, plus the workspace root), but only copies the files needed to install dependencies,
-  such as manifests, lockfiles, `moon.config` project configs, and `.moon`'s own workspace and task
-  configs. Additional files can be included per toolchain (via each plugin's
-  `defineDockerMetadata` hook), and further customized with the [`docker.scaffold.configsPhaseGlobs`](/moon/api/DockerScaffoldConfig#configsphaseglobs)
-  setting, at the project or workspace level.
-- `sources/` - Contains the source files of only the project IDs passed as arguments, plus their
-  non-root-scope dependencies (resolved transitively through the project graph). Unlike
-  `configs/`, this is not a 1:1 mirror of the repository, which avoids ever having to
-  `COPY . .` the whole codebase. By default this copies every file in each included project,
-  though this can be scoped down with the [`docker.scaffold.sourcesPhaseGlobs`](/moon/api/DockerScaffoldConfig#sourcesphaseglobs) setting, at the
-  project or workspace level.
+  such as manifests, lockfiles, `moon.config` and `.gitignore` files, and `.moon`'s own workspace
+  and task configs.
+- `sources/` - Contains the source files of only the project IDs passed as arguments, plus the
+  projects they depend on (resolved transitively through the project graph, except for the
+  [root-level project](../../guides/root-project.mdx)). Unlike `configs/`, this is not a 1:1 mirror
+  of the repository, which avoids ever having to `COPY . .` the whole codebase.
+
+Each toolchain decides which of its files are copied (via its `defineDockerMetadata` hook), and the
+[`docker.scaffold.configsPhaseGlobs`](/moon/api/DockerScaffoldConfig#configsphaseglobs) and
+[`docker.scaffold.sourcesPhaseGlobs`](/moon/api/DockerScaffoldConfig#sourcesphaseglobs) settings
+include additional files, or scope down the sources, which default to every file in each included
+project. See [customizing the scaffold](../../guides/docker.mdx#customizing-the-scaffold) for
+details.
 
 Both skeletons additionally receive a `dockerManifest.json` file, recording which projects were
 passed explicitly (`focusedProjects`) versus pulled in as dependencies (`unfocusedProjects`).
 This manifest is later read by [`moon docker setup`](./setup.mdx) and
 [`moon docker prune`](./prune.mdx) to know which projects to install dependencies for and prune.
+
+Before scaffolding, the command checks that `.moon/cache` is listed in the workspace's
+`.dockerignore`, and logs a warning when it isn't (see
+[ignoring the cache](../../guides/docker.mdx#ignoring-the-cache)).
 
 ```shell
 # Scaffold a skeleton focused on a single project and its dependencies
