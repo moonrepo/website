@@ -16,7 +16,7 @@ between operating systems), so it's handy for:
 
 ## Prerequisites
 
-- **Network access** - The file is fetched over HTTP by moon itself, so no other tools are required.
+- **Network access** - The file is downloaded by moon itself, so no other tools are required.
 - **A destination inside the workspace** - The extension runs in a WASM sandbox, and can only
   write to [directories that moon exposes to it](../guides/wasm-plugins.mdx#virtual-paths), like
   the workspace root.
@@ -60,27 +60,29 @@ $ moon ext download -- --url https://github.com/moonrepo/proto/releases/latest/d
 ## Arguments
 
 - `--url`, `-u` <TypeLabel type="string" /> - The URL of the file to download. Must start with
-  `http`. Required.
+  `http://` or `https://`. Required.
 - `--dest`, `-d` <TypeLabel type="string" /> - The directory to save the file in. Relative paths
-  are resolved from the current working directory. Defaults to the current working directory.
+  are resolved from the current working directory, while absolute paths must be within a directory
+  that moon exposes to the extension. Defaults to the current working directory.
 - `--name` <TypeLabel type="string" /> - The file name to save as. Defaults to the last segment of
-  the URL (everything after the final `/`).
+  the URL's path, without the query string or fragment, so
+  `https://example.com/app.zip?token=abc` is saved as `app.zip`.
 
 ## How it works
 
 When executed, the extension:
 
-1. Validates that `--url` is an HTTP(S) URL.
+1. Validates that `--url` starts with `http://` or `https://`.
 2. Resolves the destination directory, and fails if the destination is an existing file.
-3. Requests the URL through moon's HTTP client
-   ([plugins can't make network requests on their own](../guides/wasm-plugins.mdx#sending-requests)).
-   The download fails if the response isn't a `2xx` status, or if the response body is empty.
-4. Creates the destination directory if it doesn't exist, and writes the file into it.
+3. Creates the destination directory if it doesn't exist.
+4. Downloads the file on the host machine, through moon's HTTP client
+   ([plugins can't make network requests on their own](../guides/wasm-plugins.mdx#downloading-files)).
+   The response is streamed into the file, instead of being loaded into memory, and the download
+   fails if the response isn't a `2xx` status.
 
 ## Caveats
 
 - An existing file with the same name in the destination is overwritten.
-- The default file name includes everything after the final `/`, including query strings, so pass
-  `--name` for URLs like `https://example.com/download?file=app.zip`.
-- The file is buffered in memory before it's written, so it isn't suited to very large downloads.
+- When the URL's path doesn't end in a file name, like `https://example.com/latest/`, pass
+  `--name`.
 - Archives are written as-is. Use the [`unpack`](./unpack.mdx) extension to extract them.

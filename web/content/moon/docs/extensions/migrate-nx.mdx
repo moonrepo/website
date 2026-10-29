@@ -76,12 +76,15 @@ When executed, the extension:
 1. Detects the package manager to run scripts with, from the lockfile in the workspace root:
    `bun.lock` or `bun.lockb` (or `--bun`) for Bun, `pnpm-lock.yaml` for pnpm, `yarn.lock` for
    Yarn, and npm otherwise.
-2. Migrates the root `workspace.json`, if it exists, then the root `nx.json`, if it exists.
+2. Migrates the root `workspace.json`, if it exists, then the root `nx.json`, if it exists. Target
+   defaults keyed by an executor are kept aside, to apply to project targets in the next step.
 3. Migrates every `project.json` and `package.json` file in the repository (excluding
    `node_modules`), treating the directory of each file as a project. A `package.json` is only
    migrated when it has an `nx` field.
 4. Fills in default settings that weren't migrated (see [workspace](#workspace)).
-5. Writes the configuration files:
+5. Converts every dependency on a continuous target into a `wait` dependency (see
+   [targets](#targets)).
+6. Writes the configuration files:
    - Workspace settings to `.moon/workspace.yml`
      ([`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>)).
    - Inherited file groups and tasks to `.moon/tasks/node.yml`
@@ -94,9 +97,10 @@ Each file is written in YAML, and is merged with an existing YAML file of the sa
 
 ## Conversions
 
-Identifiers (project names, task names, tags, and file group names) are converted to valid moon
-IDs: a leading `@` is removed, and `:` is replaced with `.`. For example, `@org/utils` becomes
-`org/utils`.
+Identifiers (project names, task names, tags, file group names, and the projects and targets in
+`dependsOn`) are converted to valid moon IDs: a leading `@` is removed, `:` is replaced with `.`,
+and other unsupported characters are replaced with `-`. For example, `@org/utils` becomes
+`org/utils`, and `build:prod` becomes `build.prod`.
 
 ### Workspace
 
@@ -110,8 +114,16 @@ From `workspace.json` and `nx.json`:
   [`vcs.defaultBranch`](/moon/api/VcsConfig#defaultbranch).
 - `namedInputs` become [`fileGroups`](/moon/api/InheritedTasksConfig#filegroups) in
   `.moon/tasks/node.yml`.
-- `targetDefaults` become inherited [`tasks`](/moon/api/InheritedTasksConfig#tasks) in
-  `.moon/tasks/node.yml` (see [targets](#targets)).
+- `targetDefaults` keyed by a target name become inherited
+  [`tasks`](/moon/api/InheritedTasksConfig#tasks) in `.moon/tasks/node.yml` (see
+  [targets](#targets)).
+- `targetDefaults` keyed by an executor (like `@nx/js:tsc` or `nx:run-commands`) aren't written as
+  tasks. Instead, they're applied to every project target that uses that executor, filling in the
+  settings that the target doesn't define.
+
+A `targetDefaults` value can also be a list of entries. The entries without a `filter` are
+combined in order, with each setting in a later entry replacing the same setting in an earlier
+one. Entries with a `filter` are skipped.
 
 When nothing defines them, the following defaults are filled in:
 
@@ -129,7 +141,9 @@ From `project.json`, or the `nx` field in `package.json`:
   `application`, and `library` (or `lib`) to `library`.
 - `tags` become [`tags`](/moon/api/ProjectConfig#tags).
 - `namedInputs` become project [`fileGroups`](/moon/api/ProjectConfig#filegroups).
-- `metadata` becomes [`project.metadata`](/moon/api/ProjectMetadataConfig#metadata).
+- `metadata` fields are added to [`project`](/moon/api/ProjectConfig#project) as custom
+  [`metadata`](/moon/api/ProjectMetadataConfig#metadata). Fields that share a name with a moon
+  setting, like `description` and `owner`, map to that setting.
 - `targets` become [`tasks`](/moon/api/ProjectConfig#tasks) (see [targets](#targets)).
 
 When a project doesn't have a `moon.yml` yet, the new file also sets
@@ -154,13 +168,14 @@ Every target becomes a [task](<../(fundamentals)/task.mdx>) of the same name. Th
   `webpack`, and `@nx/js:tsc` becomes `js tsc`.
 - No executor - The target's `command` is used as-is.
 
-For targets that don't use an `nx:*` executor, `options` become task
+For all targets except `nx:run-commands` and `nx:run-script`, `options` become task
 [`args`](/moon/api/TaskConfig#args), as Nx options can also be passed on the command line:
 
 - `true` becomes `--<option>`, and `false` becomes `--no-<option>`.
-- Strings become `--<option> <value>`. Values that look like paths or globs are prefixed with
-  `$workspaceRoot/`, as Nx options are relative to the workspace root, while moon tasks run from
-  the project root.
+- Strings become `--<option> <value>`. The `{projectRoot}` and `{workspaceRoot}` interpolations
+  become `$projectRoot` and `$workspaceRoot` [tokens](../advanced/tokens.mdx), and other values
+  that look like paths or globs are prefixed with `$workspaceRoot/`, as Nx options are relative to
+  the workspace root, while moon tasks run from the project root.
 - Other values become `--<option> <json>`, and `null` values are skipped.
 
 Each entry in `configurations` becomes an additional `<task>.<configuration>` task, which
@@ -170,15 +185,38 @@ arguments. For example, a `build` target with a `production` configuration produ
 
 The rest of the target is converted as follows:
 
-- `dependsOn` becomes [`deps`](/moon/api/TaskConfig#deps). A dependency on the same project
-  becomes `~:<task>`, a `^` prefix (or `dependencies: true`) becomes `^:<task>`, and a list of
-  `projects` becomes a dependency on each project.
-- `inputs` become [`inputs`](/moon/api/TaskConfig#inputs). File paths and globs are kept, named
-  inputs become [`@group`](../advanced/tokens.mdx) token functions, and `{ env }` inputs become
-  environment variable inputs.
+- `metadata.description` becomes [`description`](/moon/api/TaskConfig#description).
+- `dependsOn` becomes [`deps`](/moon/api/TaskConfig#deps):
+  - In the string form, a target name becomes `~:<task>` (the same project), and a `^` prefix
+    becomes `^:<task>` (the dependency projects).
+  - In the object form, `projects` set to `{self}` becomes `~:<task>`, `{dependencies}` becomes
+    `^:<task>`, and a project name (or a list of them) becomes a `<project>:<task>` dependency
+    for each project. Without `projects`, `dependencies: true` becomes `^:<task>`, and the same
+    project is used when neither is set.
+  - `waitFor` becomes a [`wait` dependency](<../(fundamentals)/task.mdx#dependency-types>), which
+    only waits for the dependency to start running. moon doesn't distinguish between `started`
+    and `ready`.
+- `inputs` become [`inputs`](/moon/api/TaskConfig#inputs). File paths, globs, and `{ fileset }`
+  inputs are kept, `{ json }` inputs include the entire file (moon can't filter by `fields`),
+  named inputs become [`@group`](../advanced/tokens.mdx) token functions, and `{ env }` inputs
+  become environment variable inputs.
 - `outputs` become [`outputs`](/moon/api/TaskConfig#outputs).
-- `cache: true` becomes [`options.cache`](/moon/api/TaskOptionsConfig#cache).
-- `continuous: true` becomes [`options.persistent`](/moon/api/TaskOptionsConfig#persistent).
+- `cache` becomes [`options.cache`](/moon/api/TaskOptionsConfig#cache), whether it's enabled or
+  disabled.
+- `continuous: true` becomes [`options.persistent`](/moon/api/TaskOptionsConfig#persistent), and
+  also enables [`options.runInCI`](/moon/api/TaskOptionsConfig#runinci), as
+  [persistent tasks](<../(fundamentals)/task.mdx#persistent>) don't run in CI by default. Even
+  then, moon only runs a persistent task in CI when another task depends on it, or when it's
+  passed explicitly.
+
+A non-persistent task can't depend on a persistent task with a regular dependency, as it would
+never complete. So once every project is migrated, each dependency on a continuous target becomes
+a [`wait` dependency](<../(fundamentals)/task.mdx#dependency-types>) as well.
+
+The `...` spread token, which Nx uses to include the values of a target default, is removed from
+`inputs`, `outputs`, `dependsOn`, `options`, `configurations`, and the `env` option. moon merges a
+project's task with the inherited task of the same name by default, so the values of target
+defaults keyed by a target name are still included (see [caveats](#caveats)).
 
 In inputs, outputs, and file groups, Nx's interpolations are replaced with moon paths and
 [tokens](../advanced/tokens.mdx):
@@ -196,11 +234,15 @@ The following have no moon equivalent, and are ignored:
 - Most `nx.json` settings, like `plugins`, `generators`, `release`, `tasksRunnerOptions`,
   `defaultProject`, `parallel`, `cacheDirectory`, `useDaemonProcess`, and all Nx Cloud settings.
 - Root-level `implicitDependencies` in `nx.json`.
-- Inputs that reference dependency projects (`^production` or `{ dependencies: true }`),
-  `dependentTasksOutputFiles`, `externalDependencies`, and `runtime` inputs. moon already includes
-  lockfile dependencies and tool versions in task hashes.
+- `targetDefaults` entries with a `filter`, and `targetDefaults` keyed by a glob (like
+  `e2e-ci--**/*`), as they match targets through Nx's project graph and inferred targets.
+- Inputs that reference other projects: `^`-prefixed named inputs (like `^production`),
+  `{ input }` objects, and `{ fileset }` objects with `dependencies: true`.
+- `dependentTasksOutputFiles`, `externalDependencies`, `runtime`, and `workingDirectory` inputs.
+  moon already includes lockfile dependencies and tool versions in task hashes.
 - Named inputs that reference other named inputs, as file groups can't reference each other.
-- A target's `defaultConfiguration` and `params` in `dependsOn`.
+- Wildcard targets in `dependsOn` (like `build-*`).
+- A target's `defaultConfiguration`, and `params` in `dependsOn`.
 - Project `root` and `sourceRoot`, as moon derives them from the project's location.
 
 To replace `useDaemonProcess` and Nx Cloud's remote caching, configure moon's
@@ -214,10 +256,24 @@ To replace `useDaemonProcess` and Nx Cloud's remote caching, configure moon's
   condition after migrating.
 - **Extracted commands** - Commands extracted from executor names (like `js tsc`) are placeholders,
   not real binaries. Replace them with the command that the executor runs.
-- **Target defaults by executor** - `targetDefaults` keyed by an executor (like `@nx/vite:test`)
-  instead of a target name are converted to an inherited task with an ID derived from the executor
-  (`nx/vite.test`), instead of applying to the targets that use that executor. Rename or remove
-  these tasks.
+- **Merging with target defaults** - Nx replaces a target default's `inputs`, `outputs`, and
+  `dependsOn` with the target's own, unless they include `...`. moon instead
+  [merges](<../(fundamentals)/task-inheritance.mdx#merge-strategies>) a project's task with the
+  inherited task using the `append` strategy, so a migrated task can end up with more inputs,
+  outputs, dependencies, or arguments than the Nx target had. Set a merge option, like
+  [`options.mergeInputs`](/moon/api/TaskOptionsConfig#mergeinputs), to `replace` where needed.
+- **Target defaults by executor** - These are applied setting by setting, so a setting that the
+  target defines, like `options` or `inputs`, replaces the default's setting entirely, even when
+  it includes `...`. They're also only applied to targets that set `executor`, not to targets
+  that use the `command` shorthand.
+- **Continuous targets** - Continuous targets are matched by task name, so a dependency on a task
+  that shares its name with a continuous target in _any_ project also becomes a `wait`
+  dependency. Review these dependencies after migrating.
+- **Project patterns** - Each value in `dependsOn[].projects` is treated as a project name, and
+  cleaned like other identifiers, so patterns like `tag:web` or `*-app` don't match the projects
+  that they would in Nx. Replace them with a
+  [tag scope](<../(fundamentals)/task.mdx#tagged-projects>) (like `#web:build`) or a list of
+  projects.
 - **Multiple commands** - A `commands` list joined with `&&` is a complex command, which
   [`command`](<../(fundamentals)/task.mdx#supported-syntax>) doesn't support. Move it to
   [`script`](<../(fundamentals)/task.mdx#script>) instead.
