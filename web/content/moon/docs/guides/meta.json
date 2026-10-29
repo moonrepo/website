@@ -5,7 +5,6 @@
     "codegen",
     "codeowners",
     "daemon",
-    "debug-task",
     "docker",
     "exec-plan",
     "mcp",
