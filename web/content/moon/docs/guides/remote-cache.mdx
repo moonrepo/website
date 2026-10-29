@@ -73,7 +73,40 @@ $ bazel-remote --dir /path/to/moon-cache --max_size 10 --storage_mode zstd --grp
   authentication (TLS/mTLS), proxies, and more.
 </Callout>
 
-### Configure remote caching
+## Cloud-hosted
+
+### Depot
+
+If you'd prefer not to host your own solution, you could use
+[Depot Cache](https://depot.dev/products/cache), a cloud-based caching solution. To make use of
+Depot, follow these steps:
+
+- Create an account on [depot.dev](https://depot.dev)
+- Create an organization
+- Go to organization settings -> API tokens
+- Create a new API token
+- Add the token as a `DEPOT_TOKEN` environment variable to your moon pipelines
+
+Once these steps have been completed, you can enable remote caching in moon with the following
+configuration. If your Depot account has more than 1 organization, you'll need to set the
+`X-Depot-Org` header.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    remote: {
+      host: "grpcs://cache.depot.dev",
+      auth: {
+        token: "DEPOT_TOKEN",
+        headers: {
+          "X-Depot-Org": "<your-org-id>",
+        },
+      },
+    },
+  }}
+/>
+
+## Configuration
 
 Once your service is running, enable remote caching by configuring the
 [`remote`](/moon/api/WorkspaceConfig#remote) settings in
@@ -245,14 +278,6 @@ the certificate is verified against, and [`assumeHttp2`](/moon/api/RemoteTlsConf
 can be enabled for servers that support HTTP/2 without advertising it through protocol negotiation
 (ALPN). The HTTP API ignores both settings.
 
-<Callout type="warning">
-  Our support for TLS and mTLS is rudimentary, and hasn't been thoroughly
-  tested. There are also [many](https://github.com/hyperium/tonic/issues/1652)
-  [known](https://github.com/hyperium/tonic/issues/1989)
-  [issues](https://github.com/hyperium/tonic/issues/1033) around authentication
-  in Tonic, the gRPC library we use.
-</Callout>
-
 ### Compression
 
 When using gRPC, blobs can be compressed with Zstandard while uploading and downloading, by setting
@@ -290,39 +315,6 @@ environment variable), where `0` disables retries. Retries are not supported for
       host: "https://your-host.com:8080",
       cache: {
         retryCount: 5,
-      },
-    },
-  }}
-/>
-
-## Cloud-hosted
-
-### Depot
-
-If you'd prefer not to host your own solution, you could use
-[Depot Cache](https://depot.dev/products/cache), a cloud-based caching solution. To make use of
-Depot, follow these steps:
-
-- Create an account on [depot.dev](https://depot.dev)
-- Create an organization
-- Go to organization settings -> API tokens
-- Create a new API token
-- Add the token as a `DEPOT_TOKEN` environment variable to your moon pipelines
-
-Once these steps have been completed, you can enable remote caching in moon with the following
-configuration. If your Depot account has more than 1 organization, you'll need to set the
-`X-Depot-Org` header.
-
-<ConfigTabs
-  file=".moon/workspace"
-  config={{
-    remote: {
-      host: "grpcs://cache.depot.dev",
-      auth: {
-        token: "DEPOT_TOKEN",
-        headers: {
-          "X-Depot-Org": "<your-org-id>",
-        },
       },
     },
   }}

@@ -52,7 +52,7 @@ it. Files that moon derives from those versions, like the
 Tools that are provided by third-party WASM plugins (configured under `[plugins]` in `.prototools`)
 are skipped by Renovate's `proto` manager.
 
-## Versions in moon configuration
+## Pin versions in moon configuration
 
 If you'd rather pin versions in moon's config files, or you have versions that don't live in
 `.prototools` at all (like a toolchain that isn't built into Renovate, or a CI input), moon
@@ -110,8 +110,7 @@ a trailing `# renovate:` (or `// renovate:`) comment. Add it to the _end of the 
 version, and point it at a [datasource](https://docs.renovatebot.com/modules/datasource/) and
 package. It applies to any `.moon/` (and `.config/moon/`) config,
 [`moon.config`](<../(fundamentals)/project.mdx>) project files, and
-`.github/workflows/*.yml`, in any comment-supporting format (`yml`, `yaml`, `toml`, `jsonc`, `pkl`,
-`hcl`). Strict `json` has no comments.
+`.github/workflows/*.yml`, in any comment-supporting format. Strict `json` has no comments.
 
 The comment accepts the following fields, separated by spaces, and in this order:
 

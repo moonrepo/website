@@ -32,6 +32,34 @@ path of the workspace.
 
 ## Setup
 
+Every client registers the server the same way: a command of `moon`, with arguments of `["mcp"]`.
+The examples below use a client's project-level configuration where it has one, which you can
+commit so that your team shares the setup. A global configuration isn't tied to a repository, so it
+also needs the `MOON_WORKSPACE_ROOT` environment variable, as described in
+[how it works](#how-it-works). Most clients don't document which directory they start servers in,
+so if the server can't find your workspace, set `MOON_WORKSPACE_ROOT` for project-level
+configuration too.
+
+### Amp
+
+To use [MCP servers in Amp](https://ampcode.com/docs/customize/mcp), add the server under
+`amp.mcpServers` in a `.amp/settings.json` file in your project, or in
+`~/.config/amp/settings.json` globally.
+
+```json title=".amp/settings.json"
+{
+  "amp.mcpServers": {
+    "moon": {
+      "command": "moon",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+Servers in a workspace's settings must be approved before they run, with `amp mcp approve moon`.
+Run `amp mcp doctor` to check the server's status.
+
 ### Claude Code
 
 To use [MCP servers in Claude Code](https://code.claude.com/docs/en/mcp), run the following command
@@ -41,6 +69,9 @@ of your project, so it can be shared with your team.
 ```shell
 # Register the server for everyone in the project
 $ claude mcp add moon -s project -- moon mcp
+
+# Or register it for yourself, in every project
+$ claude mcp add moon -s user -e MOON_WORKSPACE_ROOT=/absolute/path/to/workspace -- moon mcp
 ```
 
 Or create the `.mcp.json` file in your project directory manually:
@@ -56,11 +87,99 @@ Or create the `.mcp.json` file in your project directory manually:
 }
 ```
 
+Claude Code asks you to approve the servers in a project's `.mcp.json` before using them.
+
+### Claude Desktop
+
+To use [local MCP servers in Claude Desktop](https://modelcontextprotocol.io/docs/develop/connect-local-servers),
+open **Settings > Developer > Edit Config**, which opens the `claude_desktop_config.json` file
+(`~/Library/Application Support/Claude` on macOS, and `%APPDATA%\Claude` on Windows). Claude
+Desktop has no project-level configuration, so `MOON_WORKSPACE_ROOT` is required.
+
+```json title="claude_desktop_config.json"
+{
+  "mcpServers": {
+    "moon": {
+      "command": "moon",
+      "args": ["mcp"],
+      "env": {
+        "MOON_WORKSPACE_ROOT": "/absolute/path/to/workspace"
+      }
+    }
+  }
+}
+```
+
+Fully quit and restart Claude Desktop afterwards, so that it starts the server.
+
+### Cline
+
+To use [MCP servers in Cline](https://docs.cline.bot/mcp/configuring-mcp-servers), click the MCP
+Servers icon, then **Configure > Configure MCP Servers**, which opens Cline's global
+`cline_mcp_settings.json` file. Cline has no project-level configuration, so `MOON_WORKSPACE_ROOT`
+is required.
+
+```json title="cline_mcp_settings.json"
+{
+  "mcpServers": {
+    "moon": {
+      "command": "moon",
+      "args": ["mcp"],
+      "env": {
+        "MOON_WORKSPACE_ROOT": "/absolute/path/to/workspace"
+      }
+    }
+  }
+}
+```
+
+### Codex
+
+To use [MCP servers in Codex](https://developers.openai.com/codex/mcp), run the following command,
+which adds the server to `~/.codex/config.toml`. This file is shared by the Codex CLI, the IDE
+extension, and the ChatGPT desktop app.
+
+```shell
+$ codex mcp add moon --env MOON_WORKSPACE_ROOT=/absolute/path/to/workspace -- moon mcp
+```
+
+Or add it to the file manually. Servers can also be added to a `.codex/config.toml` file in a
+project, which Codex only loads for trusted projects.
+
+```toml title="~/.codex/config.toml"
+[mcp_servers.moon]
+command = "moon"
+args = ["mcp"]
+
+[mcp_servers.moon.env]
+MOON_WORKSPACE_ROOT = "/absolute/path/to/workspace"
+```
+
+Run `/mcp` in Codex, or `codex mcp list`, to check that the server is registered.
+
+### Continue
+
+To use [MCP servers in Continue](https://docs.continue.dev/customize/deep-dives/mcp), create a
+`.continue/mcpServers/moon.yaml` file in your project. MCP tools are only available in Continue's
+agent mode.
+
+```yaml title=".continue/mcpServers/moon.yaml"
+name: moon
+version: 0.0.1
+schema: v1
+mcpServers:
+  - name: moon
+    type: stdio
+    command: moon
+    args:
+      - mcp
+```
+
 ### Cursor
 
-To use [MCP servers in Cursor](https://cursor.com/docs/context/mcp), create a `.cursor/mcp.json`
-file in your project directory, or `~/.cursor/mcp.json` globally, with the following content. As the
-global configuration isn't tied to a project, it requires `MOON_WORKSPACE_ROOT`.
+To use [MCP servers in Cursor](https://cursor.com/docs/mcp), create a `.cursor/mcp.json` file in
+your project directory, or `~/.cursor/mcp.json` globally, with the following content. As the global
+configuration isn't tied to a project, it requires `MOON_WORKSPACE_ROOT`.
 
 ```json title=".cursor/mcp.json"
 {
@@ -74,14 +193,168 @@ global configuration isn't tied to a project, it requires `MOON_WORKSPACE_ROOT`.
 }
 ```
 
-Once configured, the moon MCP server should appear in the MCP section of Cursor's settings.
+Once configured, enable the server from **Customize** in Cursor's sidebar. Cursor asks for
+approval before running MCP tools by default.
+
+### Devin Desktop (Windsurf)
+
+To use [MCP servers in Devin Desktop](https://docs.devin.ai/desktop/cascade/mcp), formerly
+Windsurf, open the `…` menu in the Cascade panel, and select **Open MCP config file**. This opens
+the global `mcp_config.json` file (`~/.config/devin` on macOS and Linux, and `%APPDATA%\devin` on
+Windows). Devin Desktop has no project-level configuration, so `MOON_WORKSPACE_ROOT` is required.
+
+```json title="mcp_config.json"
+{
+  "mcpServers": {
+    "moon": {
+      "command": "moon",
+      "args": ["mcp"],
+      "env": {
+        "MOON_WORKSPACE_ROOT": "/absolute/path/to/workspace"
+      }
+    }
+  }
+}
+```
+
+Once configured, make sure the server is toggled on in the MCPs section of the Cascade panel.
+
+### Gemini CLI
+
+To use [MCP servers in Gemini CLI](https://geminicli.com/docs/tools/mcp-server/), run the
+following command, which adds the server to a `.gemini/settings.json` file in your project. Pass
+`-s user` to add it to `~/.gemini/settings.json` instead.
+
+```shell
+$ gemini mcp add moon moon mcp
+```
+
+Or create the `.gemini/settings.json` file manually:
+
+```json title=".gemini/settings.json"
+{
+  "mcpServers": {
+    "moon": {
+      "command": "moon",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+Gemini CLI only starts servers in trusted folders, so trust your project with `gemini trust`, then
+run `/mcp` to check the server's status.
+
+### GitHub Copilot CLI
+
+To use [MCP servers in GitHub Copilot CLI](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers),
+create a `.github/mcp.json` file in your repository. Copilot CLI also reads servers from a
+`.mcp.json` file in the repository, and from `~/.copilot/mcp-config.json` globally, which is where
+`copilot mcp add moon -- moon mcp` writes to.
+
+```json title=".github/mcp.json"
+{
+  "mcpServers": {
+    "moon": {
+      "type": "local",
+      "command": "moon",
+      "args": ["mcp"],
+      "tools": ["*"]
+    }
+  }
+}
+```
+
+Copilot CLI only loads a repository's servers once you've confirmed that you trust the folder. Run
+`/mcp show moon` to check the server's status.
+
+### Goose
+
+To use [extensions in Goose](https://goose-docs.ai/docs/getting-started/using-extensions), run
+`goose configure`, select **Add Extension > Command-line Extension**, and enter `moon mcp` as the
+command. Or add it to the global `~/.config/goose/config.yaml` file manually. Goose has no
+project-level configuration, so `MOON_WORKSPACE_ROOT` is required.
+
+```yaml title="~/.config/goose/config.yaml"
+extensions:
+  moon:
+    name: moon
+    type: stdio
+    cmd: moon
+    args:
+      - mcp
+    enabled: true
+    envs:
+      MOON_WORKSPACE_ROOT: /absolute/path/to/workspace
+    timeout: 300
+```
+
+### JetBrains IDEs
+
+JetBrains IDEs support MCP servers in both of their AI agents:
+
+- [AI Assistant](https://www.jetbrains.com/help/ai-assistant/mcp.html) - Open **Settings | Tools |
+  AI Assistant | Model Context Protocol (MCP)**, click **Add**, and paste the configuration below.
+  Choose whether the server is available globally or only in the current project, and set the
+  **Working directory** to your workspace, then click **Apply** to start the server.
+- [Junie](https://junie.jetbrains.com/docs/junie-cli-mcp-configuration.html) - Create a
+  `.junie/mcp/mcp.json` file in your project, or `~/.junie/mcp/mcp.json` globally. The same file is
+  used by Junie in the IDE and the Junie CLI.
+
+```json title=".junie/mcp/mcp.json"
+{
+  "mcpServers": {
+    "moon": {
+      "command": "moon",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+### Kiro
+
+To use [MCP servers in Kiro](https://kiro.dev/docs/mcp/configuration/), create a
+`.kiro/settings/mcp.json` file in your project, or `~/.kiro/settings/mcp.json` globally. When a
+server is configured in both, the project's configuration wins.
+
+```json title=".kiro/settings/mcp.json"
+{
+  "mcpServers": {
+    "moon": {
+      "command": "moon",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+MCP support must be enabled in Kiro's settings. Changes to the file are applied when it's saved.
+
+### OpenCode
+
+To use [MCP servers in OpenCode](https://opencode.ai/docs/mcp-servers/), add the server under `mcp`
+in an `opencode.json` file in your project, or in `~/.config/opencode/opencode.json` globally.
+Unlike most clients, the command and its arguments are a single list.
+
+```json title="opencode.json"
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "moon": {
+      "type": "local",
+      "command": ["moon", "mcp"],
+      "enabled": true
+    }
+  }
+}
+```
 
 ### VS Code
 
-To use MCP servers in VS Code, you must have
-[GitHub Copilot](https://code.visualstudio.com/docs/copilot/overview) set up. Then create a
-`.vscode/mcp.json` file with the following content. The server runs from your workspace folder by
-default, but it can also be set explicitly with `cwd`.
+To use [MCP servers in VS Code](https://code.visualstudio.com/docs/agent-customization/mcp-servers),
+create a `.vscode/mcp.json` file in your workspace with the following content. The server runs from
+your workspace folder, so `MOON_WORKSPACE_ROOT` isn't needed.
 
 ```json title=".vscode/mcp.json"
 {
@@ -89,19 +362,19 @@ default, but it can also be set explicitly with `cwd`.
     "moon": {
       "type": "stdio",
       "command": "moon",
-      "args": ["mcp"],
-      "cwd": "${workspaceFolder}"
+      "args": ["mcp"]
     }
   }
 }
 ```
 
-Once your MCP server is configured, you can use it with
-[Copilot's agent mode](https://code.visualstudio.com/docs/copilot/chat/chat-agent-mode):
+VS Code also supports the portable `mcpServers` format used by other clients, in a `.mcp.json`
+file at the workspace root, or in `~/.copilot/mcp-config.json` globally. Its **MCP: Add Server**
+command labels `.vscode/mcp.json` as deprecated in favor of these, but the file is still supported,
+and its servers are forwarded to Copilot sessions.
 
-- Open the Chat view in VS Code.
-- Select the agent mode from the mode dropdown.
-- Toggle on moon's tools using the "Tools" button.
+Once configured, start a chat, and enable moon's tools with **Configure Tools** in the chat input,
+or with **Chat: Open Customizations > Tools** for Copilot sessions.
 
 ### Zed
 
@@ -121,9 +394,11 @@ global settings require `MOON_WORKSPACE_ROOT`.
 }
 ```
 
-Once configured, the server should be marked as active in the MCP servers section of Zed's AI
-settings. Which tools the agent can use is controlled by your agent profile, so make sure moon's
-tools are enabled in the profile you're using.
+Zed only applies a project's settings, and starts its MCP servers, once you
+[trust the worktree](https://zed.dev/docs/worktree-trust). Once trusted, the server should be marked
+as active in the MCP servers section of Zed's AI settings. Which tools the agent can use is
+controlled by your agent profile, so make sure moon's tools are enabled in the profile you're
+using.
 
 ### Other clients
 
