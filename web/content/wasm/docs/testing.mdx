@@ -3,4 +3,247 @@ title: Testing
 icon: FlaskConical
 ---
 
-TODO
+Plugins are tested with regular Rust tests, which load your built `.wasm` file into a sandboxed
+moon or proto environment, and call its functions just like moon and proto would. We provide a
+test utilities crate for each: `moon_pdk_test_utils` and `proto_pdk_test_utils`.
+
+## Setup
+
+Add the test utilities for your plugin's host, and an async runtime like
+[tokio](https://crates.io/crates/tokio), as dev dependencies.
+
+```shell
+# For moon
+$ cargo add --dev moon_pdk_test_utils
+
+# For proto
+$ cargo add --dev proto_pdk_test_utils
+
+# For both
+$ cargo add --dev tokio --features full
+```
+
+Tests are written as integration tests in the `tests` directory. If your tests need types from the
+plugin itself, like a configuration struct, add `lib` to the crate types so the tests can import
+them.
+
+```toml title="Cargo.toml"
+[lib]
+crate-type = ["cdylib", "lib"]
+```
+
+## Running tests
+
+Tests run natively on your machine (not in WASM), and load the plugin's `.wasm` file, so build it
+before running the tests.
+
+```shell
+# Build, then test
+$ cargo build --target wasm32-wasip1
+$ cargo test
+```
+
+The test utilities look for a file named after the package (`<name>.wasm`) within a
+`target/wasm32-wasip1` directory, starting from the package's directory and traversing upwards, so
+Cargo workspaces and the `CARGO_TARGET_DIR` environment variable are supported. To load the file
+from another location, set the `WARPGATE_PLUGINS_DIR` environment variable to a Cargo target
+directory (or a directory containing one).
+
+<Callout type="warning">
+  Release builds take precedence over debug builds. If you've built the plugin
+  in release mode, tests will continue to load that file until it's rebuilt or
+  removed, even after rebuilding in debug mode.
+</Callout>
+
+Each test creates a sandbox, a temporary directory that acts as the workspace (in moon) or the
+working directory (in proto), with its own home directory, and `.moon` and `.proto` directories.
+These are mapped to the usual [virtual paths](./virtual-paths.mdx), and the
+[host functions](./host-funcs.mdx) run for real, so commands are executed and requests are sent
+over the network.
+
+A few things apply to every test:
+
+- Use tokio's multi-threaded runtime, with `#[tokio::test(flavor = "multi_thread")]`.
+- The test wrappers panic when a plugin function fails, so use `should_panic` to test error cases.
+- Within the plugin,
+  [`get_test_environment`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.get_test_environment.html)
+  returns `Some` while running in a test, which is useful for disabling behavior like
+  [tracing](./host-funcs.mdx#tracing).
+
+```rust title="tests/execute_test.rs"
+use moon_pdk_test_utils::{ExecuteExtensionInput, create_empty_moon_sandbox};
+
+#[tokio::test(flavor = "multi_thread")]
+#[should_panic(expected = "the following required arguments were not provided")]
+async fn errors_if_no_args() {
+    let sandbox = create_empty_moon_sandbox();
+    let plugin = sandbox.create_extension("example").await;
+
+    plugin
+        .execute_extension(ExecuteExtensionInput::default())
+        .await;
+}
+```
+
+## moon
+
+To create a sandbox, use `create_empty_moon_sandbox`, or `create_moon_sandbox` to start from a
+fixture. Fixtures are directories located at `tests/__fixtures__/<name>`, which are copied into the
+sandbox. The sandbox's `path` method returns its root, and `create_file` adds a file to it.
+
+Then create the plugin with `create_extension` or `create_toolchain`, passing the
+[plugin ID](./plugin-id.mdx). This loads the plugin, calls its registration function (the result is
+available in the wrapper's `metadata` field), and returns a wrapper with a method for each plugin
+function.
+
+```rust title="tests/locate_test.rs"
+use moon_pdk_test_utils::*;
+
+#[tokio::test(flavor = "multi_thread")]
+async fn finds_root_from_nested_dir() {
+    let sandbox = create_moon_sandbox("workspace");
+    let plugin = sandbox.create_toolchain("example").await;
+
+    let output = plugin
+        .locate_dependencies_root(LocateDependenciesRootInput {
+            starting_dir: VirtualPath::new(sandbox.path().join("packages/app")),
+            ..Default::default()
+        })
+        .await;
+
+    assert_eq!(output.root.unwrap(), VirtualPath::new("/workspace"));
+}
+```
+
+The wrapper methods fill in the `context` field of each input for you, and convert paths (like
+`starting_dir` above) into virtual paths, so pass real paths within the sandbox.
+
+If a toolchain also implements the [tool](./tool.mdx) functions, the wrapper's `tool` field
+contains a [proto wrapper](#proto) for testing them.
+
+### Mocking host functions
+
+The sandbox has no real workspace, so moon's functions for loading projects, tasks, and
+configuration (like `load_project`) are mocked, and return an empty object by default. To return
+your own data, mock them on the sandbox's `host_funcs` field _before_ creating the plugin.
+
+- `mock_load_project` and `mock_load_projects`
+- `mock_load_task` and `mock_load_tasks`
+- `mock_load_extension_config`
+- `mock_load_toolchain_config`
+
+Each mock receives the requested IDs, and returns a JSON value.
+
+```rust
+use serde_json::json;
+
+let mut sandbox = create_empty_moon_sandbox();
+
+sandbox
+    .host_funcs
+    .mock_load_toolchain_config(|_, _| json!({ "version": "1.2.3" }));
+
+let plugin = sandbox.create_toolchain("example").await;
+```
+
+## proto
+
+To create a sandbox, use `create_empty_proto_sandbox`, or `create_proto_sandbox` to start from a
+fixture. Fixtures work the same as [in moon](#moon).
+
+Then create the plugin with `create_plugin`, passing the [plugin ID](./plugin-id.mdx). This
+returns a wrapper with a method for each plugin function, and the underlying proto tool in its
+`tool` field.
+
+```rust title="tests/metadata_test.rs"
+use proto_pdk_test_utils::*;
+
+#[tokio::test(flavor = "multi_thread")]
+async fn registers_metadata() {
+    let sandbox = create_empty_proto_sandbox();
+    let plugin = sandbox.create_plugin("example").await;
+
+    let metadata = plugin
+        .register_tool(RegisterToolInput { id: Id::raw("example") })
+        .await;
+
+    assert_eq!(metadata.name, "Example");
+}
+```
+
+To pass configuration to the plugin, as if it were configured in `.prototools`, use
+`create_plugin_with_config` and the `tool_config` method (or `backend_config` for backends).
+Configuration is serialized, so pass your plugin's own config struct.
+
+```rust
+use example_tool::ExampleToolConfig;
+
+let plugin = sandbox
+    .create_plugin_with_config("example", |config| {
+        config.tool_config(ExampleToolConfig {
+            dist_url: "https://mirror.example/{version}/{file}".into(),
+        });
+    })
+    .await;
+```
+
+### Generated tests
+
+proto tools share a lot of behavior, so the test utilities provide macros that generate common
+tests. Most of these download and install real tools, so they require network access, and can be
+slow.
+
+- `generate_resolve_versions_tests!` - Resolves `latest`, and a map of requirements to expected
+  versions, and errors for invalid aliases and versions.
+- `generate_download_install_tests!` - Installs a version, downloads a prebuilt archive and its
+  checksum, and skips installing a version that's already installed.
+- `generate_native_install_tests!` - Installs a version with the `native_install` function.
+- `generate_build_install_tests!` - Builds and installs a version from source.
+- `generate_shims_test!` - Creates shims for the provided executables, and snapshots the shims
+  registry. Requires `starbase_sandbox` as a dev dependency.
+
+```rust title="tests/versions_test.rs"
+use proto_pdk_test_utils::*;
+
+generate_resolve_versions_tests!("example", {
+    "1.19" => "1.19.13",
+    "1.21.0" => "1.21.0",
+});
+
+generate_download_install_tests!("example", "1.21.0");
+```
+
+## Host environment
+
+By default, the sandbox uses the [host environment](./host-env.mdx) of the machine running the
+tests. To test behavior for other operating systems or architectures, override it with the
+`*_with_config` variant of the create methods, like `create_toolchain_with_config` or
+`create_plugin_with_config`.
+
+```rust
+let plugin = sandbox
+    .create_plugin_with_config("example", |config| {
+        config.host_with(|env| {
+            env.os = HostOS::Windows;
+            env.arch = HostArch::Arm64;
+        });
+    })
+    .await;
+```
+
+Only the plugin's view of the environment changes, so this is ideal for asserting outputs like
+download URLs and file names, but not for running commands.
+
+## Debugging
+
+To see a plugin's logs, call `enable_logging` on the sandbox. The logs are written to
+`<name>.log` in the current directory, which is the package's directory when running `cargo test`.
+To list the files within the sandbox, call `debug_files`.
+
+```rust
+let sandbox = create_empty_proto_sandbox();
+sandbox.enable_logging();
+
+// After running the plugin...
+sandbox.debug_files();
+```

@@ -3,15 +3,42 @@ title: Building
 icon: Blocks
 ---
 
+Debug builds are fine while [developing](./creating.mdx#trying-it-out), but plugins that are
+distributed should be built in release mode, then optimized and stripped, as every user downloads
+the file on demand.
+
+## Release builds
+
+Build the plugin with the `--release` flag. The file will be available at
+`target/wasm32-wasip1/release/<name>.wasm`.
+
+```shell
+$ cargo build --target wasm32-wasip1 --release
+```
+
+The `[profile.release]` settings in `Cargo.toml` have the biggest impact on the result. The
+settings we [suggest](./creating.mdx#setting-up-the-crate) enable link-time optimization, a single
+codegen unit, and aborting on panic, all of which reduce the size of the file. The `opt-level`
+setting is a trade-off: `"s"` and `"z"` optimize for size, while a number like `2` optimizes for
+runtime speed (which our own plugins use).
+
+## Optimizing and stripping
+
 WASM files are pretty fat, even when compiling in release mode. To reduce the size of these files,
-we can use `wasm-opt` and `wasm-strip`, both of which are provided by the
-[WebAssembly](https://github.com/WebAssembly) group. The following script is similar to what we
-use to build our own plugins.
+we can use `wasm-opt` and `wasm-strip`, which are provided by the
+[binaryen](https://github.com/WebAssembly/binaryen) and [wabt](https://github.com/WebAssembly/wabt)
+projects respectively. Both are available through most package managers.
+
+```shell
+# macOS
+$ brew install binaryen wabt
+```
+
+The following script is similar to what we use to build our own plugins.
 
 <Callout>
-  This functionality is natively supported in our
-  [moonrepo/build-wasm-plugin](https://github.com/moonrepo/build-wasm-plugin)
-  GitHub Action!
+  This functionality is natively supported in our [GitHub
+  Action](#github-action)!
 </Callout>
 
 ```bash title="build-wasm"
@@ -27,17 +54,34 @@ cargo build --target wasm32-wasip1 --release
 
 echo "Optimizing"
 
-# https://github.com/WebAssembly/binaryen
-~/binaryen/bin/wasm-opt -Os "$input" --output "$output"
+wasm-opt -Os "$input" --output "$output"
 
 echo "Stripping"
 
-# https://github.com/WebAssembly/wabt
-~/wabt/bin/wasm-strip "$output"
+wasm-strip "$output"
 ```
 
-This script can then be ran at the root of your Cargo workspace.
+This script can then be ran at the root of your Cargo workspace. The optimized file will be
+available at `target/wasm32-wasip1/<name>.wasm`.
 
 ```shell
-$ ./build-wasm example_plugin
+$ ./build-wasm example_extension
 ```
+
+## GitHub Action
+
+Our [moonrepo/build-wasm-plugin](https://github.com/moonrepo/build-wasm-plugin) GitHub Action
+automates the steps above for every plugin in a Cargo workspace. It:
+
+- Finds all workspace packages with a `cdylib` crate type.
+- Builds them in release mode, using the `wasm32-wasip1` target when your
+  [`rust-toolchain.toml`](./creating.mdx#setting-up-the-crate) pins Rust 1.78 or later.
+- Optimizes each file with `wasm-opt`, using the `opt-level` from the package's (or workspace's)
+  release profile, and strips it with `wasm-strip`.
+- Generates a `.sha256` checksum file for each plugin.
+- Writes the results to a `builds` directory at the root of the repository.
+
+When the workflow runs for a tag that includes a package name (like `example_extension-v1.0.0`),
+only that package is built, and its version must match the tag. Otherwise every plugin is built,
+which is useful for verifying pull requests. See [publishing](./publishing.mdx#automate-releases)
+for a full release workflow.

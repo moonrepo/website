@@ -13,13 +13,17 @@
     "virtual-paths",
     "---Development---",
     "creating",
-    "building",
     "testing",
+    "building",
     "publishing",
     "---APIs---",
     "backend",
     "extension",
     "tool",
-    "toolchain"
+    "toolchain",
+    "---PDKs---",
+    "external:[moon](https://docs.rs/moon_pdk)",
+    "external:[proto](https://docs.rs/proto_pdk)",
+    "external:[warpgate](https://docs.rs/warpgate_pdk)"
   ]
 }

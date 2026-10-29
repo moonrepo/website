@@ -3,8 +3,12 @@ title: Creating
 icon: Hammer
 ---
 
+import { ConfigTabs } from "@/components/ConfigTabs";
+
 Although plugins can be written in any language that compiles to WASM, we only provide Rust based PDKs, and the rest of these docs assume you're using Rust and Cargo!
 Refer to [Extism](https://extism.org/)'s documentation for other languages, but do note that you'll have to reimplement all the PDK functionality yourself.
+
+## Setting up the crate
 
 To start, install the WASI build target, and create a new library crate with Cargo.
 
@@ -13,15 +17,22 @@ To start, install the WASI build target, and create a new library crate with Car
 $ rustup target add wasm32-wasip1
 
 # Create the crate
-$ cargo new example_plugin --lib
-$ cd example_plugin
+$ cargo new example_extension --lib
+$ cd example_extension
 ```
 
-Set the lib type to `cdylib`, and provide other required settings.
+When naming the crate, use underscores instead of dashes, as the built file is named after the
+crate (`example_extension.wasm`), and our test utilities look for a file matching the package name.
+We also suggest suffixing the name with the plugin type (`_backend`, `_extension`, `_tool`, or
+`_toolchain`), as our GitHub Action uses it to determine the plugin type when
+[publishing to a registry](./publishing.mdx#publishing-to-a-registry).
+
+Set the lib type to `cdylib`, and provide other required settings. The release profile settings
+below reduce the size of the built file, which matters as plugins are downloaded on demand.
 
 ```toml title="Cargo.toml"
 [package]
-name = "example_plugin"
+name = "example_extension"
 version = "0.0.1"
 edition = "2024"
 publish = false
@@ -33,8 +44,19 @@ crate-type = ["cdylib"]
 codegen-units = 1
 debug = false
 lto = true
-opt-level = "s"
+opt-level = 2 # speed
 panic = "abort"
+```
+
+We also suggest pinning the Rust version with a `rust-toolchain.toml` file, which also installs the
+WASI target for anyone working on the plugin. Our [GitHub Action](./building.mdx#github-action)
+reads this file, and only builds with the `wasm32-wasip1` target when it pins Rust 1.78 or later
+(or nightly), so pin an explicit version instead of `stable`.
+
+```toml title="rust-toolchain.toml"
+[toolchain]
+channel = "1.99.0"
+targets = ["wasm32-wasip1"]
 ```
 
 Our Rust plugins are powered by Extism, so add its PDK and ours as dependencies.
@@ -47,9 +69,11 @@ $ cargo add extism-pdk moon_pdk moon_pdk_api
 $ cargo add extism-pdk proto_pdk proto_pdk_api
 ```
 
+## Implementing functions
+
 In your Rust files, import the PDKs, and start implementing plugin functions with the `plugin_fn`
-attribute. Refer to our plugin specific API documentation for the available
-functions to implement.
+attribute. Each function receives its input as JSON, and returns its output as JSON wrapped in an
+`FnResult`. Functions without an output return `FnResult<()>` instead.
 
 ```rust title="src/lib.rs"
 use extism_pdk::*;
@@ -68,11 +92,73 @@ pub fn register_extension(
 }
 ```
 
+Every plugin type has one required registration function, and every other function is optional,
+as the host checks whether a function exists before calling it. Refer to the API documentation for
+[backends](./backend.mdx), [extensions](./extension.mdx), [tools](./tool.mdx), and
+[toolchains](./toolchain.mdx) for the functions available to implement.
+
+Function names must match exactly, as they're exported from the WASM module as-is. A typo won't
+fail the build, the host will just never call the function.
+
+## Handling errors
+
+When a plugin function returns an error, it's propagated to moon or proto, which typically fail the
+current operation and display the error message to the user. Errors from the PDKs (and anything else that returns an
+`anyhow::Result`) can be propagated with the `?` operator.
+
+```rust
+#[plugin_fn]
+pub fn execute_extension(Json(input): Json<ExecuteExtensionInput>) -> FnResult<()> {
+    let output = exec_captured("git", ["status"])?;
+
+    // ...
+
+    Ok(())
+}
+```
+
+To return your own error, use the
+[`plugin_err!`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/macro.plugin_err.html) macro,
+which supports the same arguments as `format!`, and the same style tags as
+[logging](./host-funcs.mdx#logging).
+
+```rust
+if input.args.is_empty() {
+    return Err(plugin_err!("At least one argument is required."));
+}
+```
+
+## Trying it out
+
 We can then build the WASM binary. The file will be available at
-`target/wasm32-wasip1/debug/<name>.wasm`, and can be referenced with a
-[`file://` locator](./plugin-locators.mdx#files) to try it out.
+`target/wasm32-wasip1/debug/<name>.wasm`.
 
 ```shell
 # Build the plugin
 $ cargo build --target wasm32-wasip1
 ```
+
+To try it out, reference the file with a [`file://` locator](./plugin-locators.mdx#files). File
+plugins aren't cached, so rebuilding is all that's needed to pick up changes. In moon, configure it
+in the relevant config file, for example `.moon/extensions.config`, and run it with
+[`moon ext`](../../moon/docs/commands/ext.mdx).
+
+<ConfigTabs
+  file=".moon/extensions"
+  config={{
+    example: {
+      plugin:
+        "file://../example_extension/target/wasm32-wasip1/debug/example_extension.wasm",
+    },
+  }}
+/>
+
+In proto, configure it in the `[plugins.tools]` (or `[plugins.backends]`) section of `.prototools`.
+
+```toml title=".prototools"
+[plugins.tools]
+example = "file://./example_tool/target/wasm32-wasip1/debug/example_tool.wasm"
+```
+
+Once it works locally, write some [tests](./testing.mdx), then [build](./building.mdx) and
+[publish](./publishing.mdx) it.
