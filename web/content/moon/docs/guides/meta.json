@@ -19,6 +19,7 @@
     "sharing-config",
     "vcs-hooks",
     "wasm-plugins",
-    "webhooks"
+    "webhooks",
+    "migrate"
   ]
 }
