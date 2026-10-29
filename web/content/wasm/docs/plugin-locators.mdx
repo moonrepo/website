@@ -1,0 +1,96 @@
+---
+title: Plugin locators
+icon: MapPin
+---
+
+To use a WASM plugin, it must be configured with a
+[plugin locator](https://docs.rs/warpgate_api/latest/warpgate_api/enum.PluginLocator.html), for
+example the `plugin` setting in moon, or tools in proto. A locator string is composed of 2 parts separated by `://`: the protocol,
+and the location.
+
+```
+<protocol>://<location>
+```
+
+Plugins located by GitHub, URL, or registry are downloaded and cached in `~/.moon/plugins` or `~/.proto/plugins`. A
+cached plugin is re-downloaded once it's stale, and
+stale plugins are used as-is when offline.
+
+The following protocols are supported.
+
+## Files
+
+The `file://` protocol represents a file path, either absolute or relative. Relative paths are
+resolved from the directory containing the configuration file (for example, `.moon`). File plugins
+aren't cached, so this is ideal when developing a plugin locally.
+
+```
+# Relative
+file://./plugins/example.wasm
+file://../target/wasm32-wasip1/debug/example_extension.wasm
+
+# Absolute
+file:///root/path/to/example.wasm
+```
+
+## URLs
+
+The `https://` protocol is your standard URL, and must point to the `.wasm` file. Non-secure
+`http://` URLs are _not supported_!
+
+```
+https://domain.com/path/to/plugins/example.wasm
+```
+
+## GitHub releases
+
+The `github://` protocol downloads an asset from a GitHub release. The location must be an
+organization and repository slug (`owner/repo`), and the release _must have_ a `.wasm` asset
+available to download.
+
+```
+github://moonrepo/example-repo
+```
+
+If you're targeting releases in a monorepo, append the project name after the repository. The
+project name is used as a tag prefix, and will match `<name>@<version>` or `<name>-<version>` tags.
+
+```
+github://moonrepo/example-repo/project-name
+```
+
+By default, the latest release is used. We suggest targeting a specific release tag instead, by
+appending it to the end of the location. This ensures every machine uses the same plugin.
+
+```
+github://moonrepo/example-repo@v1.2.3
+```
+
+This strategy is powered by the [GitHub API](https://api.github.com/) and is subject to rate
+limiting. If running in a CI environment, we suggest setting a `GITHUB_TOKEN` (or `GH_TOKEN`)
+environment variable to authorize API requests with. If using GitHub Actions, it's as simple as:
+
+```yaml
+# In some job or step...
+env:
+  GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+```
+
+## OCI registry
+
+The `registry://` protocol pulls a plugin from an OCI registry, like the GitHub container registry.
+The location is composed of a registry host and namespace, the image name, and an optional tag
+(defaults to `latest`). This is how our built-in plugins are distributed.
+
+```
+# Fully-qualified
+registry://ghcr.io/moonrepo/unpack_extension:1.0.4
+
+# Image only
+registry://unpack_extension:1.0.4
+```
+
+<Callout>
+  When the host is omitted, moon/proto search through the registries configured,
+  which include `ghcr.io/moonrepo` by default. Otherwise the host is required.
+</Callout>

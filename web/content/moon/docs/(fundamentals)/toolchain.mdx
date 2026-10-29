@@ -6,7 +6,7 @@ icon: Toolbox
 import { ConfigTabs } from "@/components/ConfigTabs";
 import { TypeLabel } from "@/components/TypeLabel";
 
-A **toolchain** is a [WASM plugin](../guides/wasm-plugins.mdx) that integrates a language,
+A **toolchain** is a [WASM plugin](../../../wasm/docs/index.mdx) that integrates a language,
 ecosystem, or tool into moon, like Go, JavaScript, or Rust. Toolchains are what make moon language
 aware: they detect which [projects](./project.mdx) and [tasks](./task.mdx) use a language, teach the
 [project graph](./project-graph.mdx) about manifests and lockfiles, install dependencies before tasks
@@ -139,7 +139,7 @@ toolchain with its default settings.
 
 Third-party and custom toolchains also require a [`plugin`](/moon/api/ToolchainPluginConfig#plugin)
 locator, which tells moon where to download the WASM file from.
-[Locators](../guides/wasm-plugins.mdx#plugin-locators) support the `file://`, `https://`,
+[Locators](../../../wasm/docs/plugin-locators.mdx) support the `file://`, `https://`,
 `github://`, and `registry://` protocols, and relative `file://` paths are resolved from the `.moon`
 directory. The ID is up to you, and is how projects, tasks, and environment variables refer to the
 toolchain. An ID that isn't built-in and has no locator fails with an error like "a locator is

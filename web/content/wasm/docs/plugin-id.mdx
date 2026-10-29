@@ -1,0 +1,14 @@
+---
+title: Plugin identifiers
+icon: IdCard
+---
+
+The plugin identifier (or ID) is the key the plugin was configured with, for example `node` in
+`.moon/toolchains.config` for moon, or `rust` in `.prototools` for proto.
+
+To access the current plugin's ID from within any function, use the
+[`get_plugin_id`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.get_plugin_id.html) function.
+
+```rust
+let id = get_plugin_id()?;
+```

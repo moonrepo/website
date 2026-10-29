@@ -1,0 +1,78 @@
+---
+title: Creating
+icon: Hammer
+---
+
+Although plugins can be written in any language that compiles to WASM, we only provide Rust based PDKs, and the rest of these docs assume you're using Rust and Cargo!
+Refer to [Extism](https://extism.org/)'s documentation for other languages, but do note that you'll have to reimplement all the PDK functionality yourself.
+
+To start, install the WASI build target, and create a new library crate with Cargo.
+
+```shell
+# Add the WASM target
+$ rustup target add wasm32-wasip1
+
+# Create the crate
+$ cargo new example_plugin --lib
+$ cd example_plugin
+```
+
+Set the lib type to `cdylib`, and provide other required settings.
+
+```toml title="Cargo.toml"
+[package]
+name = "example_plugin"
+version = "0.0.1"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[profile.release]
+codegen-units = 1
+debug = false
+lto = true
+opt-level = "s"
+panic = "abort"
+```
+
+Our Rust plugins are powered by Extism, so add its PDK and ours as dependencies.
+
+```shell
+# For moon
+$ cargo add extism-pdk moon_pdk moon_pdk_api
+
+# For proto
+$ cargo add extism-pdk proto_pdk proto_pdk_api
+```
+
+In your Rust files, import the PDKs, and start implementing plugin functions with the `plugin_fn`
+attribute. Refer to our plugin specific API documentation for the available
+functions to implement.
+
+```rust title="src/lib.rs"
+use extism_pdk::*;
+use moon_pdk::*;
+use moon_pdk_api::*;
+
+#[plugin_fn]
+pub fn register_extension(
+    Json(_): Json<RegisterExtensionInput>,
+) -> FnResult<Json<RegisterExtensionOutput>> {
+    Ok(Json(RegisterExtensionOutput {
+        name: "Example".into(),
+        plugin_version: env!("CARGO_PKG_VERSION").into(),
+        ..Default::default()
+    }))
+}
+```
+
+We can then build the WASM binary. The file will be available at
+`target/wasm32-wasip1/debug/<name>.wasm`, and can be referenced with a
+[`file://` locator](./plugin-locators.mdx#files) to try it out.
+
+```shell
+# Build the plugin
+$ cargo build --target wasm32-wasip1
+```

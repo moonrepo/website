@@ -1,0 +1,74 @@
+---
+title: Virtual paths
+icon: FolderTree
+---
+
+WASM doesn't have access to the host file system by default, but through [WASI](https://wasi.dev/),
+we can provide sandboxed access to a pre-defined list of allowed directories. We call these
+[virtual paths](https://docs.rs/warpgate_api/latest/warpgate_api/struct.VirtualPath.html), and all
+paths provided via function input or context use them.
+
+Virtual paths are implemented by mapping a real path (host machine) to a virtual path (guest
+runtime) using file path prefixes. The following prefixes are supported in moon:
+
+| Real path                             | Virtual path |
+| ------------------------------------- | ------------ |
+| `~` (user home directory)             | `/userhome`  |
+| `~/.moon` (or `MOON_HOME`)            | `/moon`      |
+| `~/.proto` (or `PROTO_HOME`)          | `/proto`     |
+| `~/.proto/temp` (or `PROTO_TEMP_DIR`) | `/temp`      |
+| moon workspace root                   | `/workspace` |
+
+For example, from the context of WASM, you may have a virtual path of `/proto/tools/node/1.2.3`,
+which maps back to `~/.proto/tools/node/1.2.3` on the host machine. This should almost always be
+transparent to you, the developer, and to end users.
+
+The `VirtualPath` type is a newtype wrapper around Rust's `PathBuf`, with a sibling
+[`RealPath`](https://docs.rs/warpgate_api/latest/warpgate_api/struct.RealPath.html) type that
+represents a real path on the host machine. Both types dereference to `PathBuf`, so all `Path` and
+`PathBuf` methods are available, and methods like `join` and `parent` return the same type.
+
+However, there are a few cases where you need the real path from WASM, for example, when logging
+or executing commands. For this, use the `to_real_path` method, which returns `None` if the path
+can't be mapped. Jump to [converting paths](#converting-paths) for more information.
+
+```rust
+let real_path = virtual_path.to_real_path()?; // `Option<RealPath>`
+```
+
+## File system caveats
+
+When working with the file system from the context of WASM, there are a few caveats to be aware of.
+
+- All `fs` calls must use virtual paths. Real paths will error.
+- Paths outside of the allowed directories (the prefixes above) will error.
+- Changing file permissions is not supported (on Unix and Windows), as WASI doesn't support it.
+  This also means operations like unpacking archives aren't possible in WASM. Instead,
+  [execute a command](./host-funcs.mdx#executing-commands) on the host, like `tar` or `unzip`.
+
+## Converting paths
+
+When working with virtual paths, you may need to convert them to real paths, and vice versa. The
+[`VirtualPathExt`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/trait.VirtualPathExt.html) and
+[`RealPathExt`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/trait.RealPathExt.html) extension
+traits provide `create` constructors and conversion methods for such situations. These aren't
+[host functions](./host-funcs.mdx). Conversions happen directly in the guest, using the list of
+host-to-guest path mappings provided by the host.
+
+```rust
+// Create a virtual path from a real path
+let virt = VirtualPath::create("/some/real/path")?;
+
+// Convert a virtual path into a real path (returns an `Option`)
+let real = virt.to_real_path()?;
+```
+
+For lower-level control, the
+[`convert_to_virtual_path`](https://docs.rs/warpgate_api/latest/warpgate_api/fn.convert_to_virtual_path.html)
+and [`convert_to_real_path`](https://docs.rs/warpgate_api/latest/warpgate_api/fn.convert_to_real_path.html)
+functions can be used instead, paired with
+[`get_host_to_guest_paths`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.get_host_to_guest_paths.html).
+
+```rust
+let real = convert_to_real_path("/workspace/app", get_host_to_guest_paths()?);
+```

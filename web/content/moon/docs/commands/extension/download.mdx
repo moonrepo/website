@@ -8,7 +8,7 @@ file is fetched (or verified against the existing cache), and the plugin is load
 but it is _not_ executed. Only its `register_extension` function is called (to read its metadata),
 and `execute_extension` never runs, so this is purely a fetch-and-cache operation. Learn more about
 where plugins are cached, and when they're re-downloaded, in the
-[plugin locators](../../guides/wasm-plugins.mdx#plugin-locators) docs.
+[plugin locators](../../../../wasm/docs/plugin-locators.mdx) docs.
 
 This is handy for warming the plugin cache ahead of time, rather than paying the download cost on
 first use. For example, in a CI pipeline or when [building a Docker image](../../guides/docker.mdx),

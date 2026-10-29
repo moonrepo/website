@@ -3,5 +3,23 @@
   "description": "Concepts, references, and more",
   "icon": "BookOpen",
   "root": true,
-  "pages": ["index"]
+  "pages": [
+    "index",
+    "---Concepts---",
+    "plugin-id",
+    "plugin-locators",
+    "host-env",
+    "host-funcs",
+    "virtual-paths",
+    "---Development---",
+    "creating",
+    "building",
+    "testing",
+    "publishing",
+    "---APIs---",
+    "backend",
+    "extension",
+    "tool",
+    "toolchain"
+  ]
 }

@@ -19,7 +19,7 @@ in the workspace, or a URL that's downloaded first, which makes it handy for:
   passed to `tar`, which works with the bsdtar that ships with macOS and Windows, but not with GNU
   tar, the default on most Linux distributions. Install `unzip` on those machines.
 - **A destination inside the workspace** - The extension runs in a WASM sandbox, and can only
-  access [directories that moon exposes to it](../guides/wasm-plugins.mdx#virtual-paths), like the
+  access [directories that moon exposes to it](../../../wasm/docs/virtual-paths.mdx), like the
   workspace root.
 
 The extension doesn't unpack archives itself; it delegates to these commands on the host machine,
@@ -45,7 +45,7 @@ $ moon extension add unpack
 
 The extension has no settings. Without a `plugin` locator, moon uses the version of the extension
 that it was released with. To use a different version, set the
-[locator](../guides/wasm-plugins.mdx#plugin-locators) explicitly, for example
+[locator](../../../wasm/docs/plugin-locators.mdx) explicitly, for example
 `registry://ghcr.io/moonrepo/unpack_extension:1.0.4`.
 
 ## Usage

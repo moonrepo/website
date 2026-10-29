@@ -5,7 +5,7 @@ icon: Puzzle
 
 import { ConfigTabs } from "@/components/ConfigTabs";
 
-**Extensions** are [WASM plugins](../guides/wasm-plugins.mdx) that extend moon with functionality
+**Extensions** are [WASM plugins](../../../wasm/docs/index.mdx) that extend moon with functionality
 that doesn't belong to a [toolchain](./toolchain.mdx) or a [task](./task.mdx). They're the general
 purpose escape hatch of the plugin system: an extension can be invoked directly from the command
 line as a one-off utility, or it can hook into moon's internals to shape the project graph, augment
@@ -20,7 +20,7 @@ the information moon explicitly passes them, and are portable across every platf
   of the workspace.
 - **Configuration driven** - Registered by a unique identifier in
   [`.moon/extensions.config`](#configuration), alongside any settings the plugin declares.
-- **Distributable** - Sourced from a [plugin locator](../guides/wasm-plugins.mdx#plugin-locators),
+- **Distributable** - Sourced from a [plugin locator](../../../wasm/docs/plugin-locators.mdx),
   so they can be published to GitHub releases or an OCI registry, served from a URL, or live on the
   local file system.
 - **Self describing** - Each plugin reports its own name, description, and version, and may declare
@@ -131,7 +131,7 @@ file by hand:
 ## Creating an extension
 
 Extensions are built with the same tooling as every other moon plugin. Read the
-[WASM plugins guide](../guides/wasm-plugins.mdx) first, as it covers how plugins work, the sandbox they run
+[WASM plugin docs](../../../wasm/docs/index.mdx) first, as they cover how plugins work, the sandbox they run
 in, the host functions available to them, and how to create, build, and publish a plugin crate.
 The rest of this section assumes you have a crate set up, with the following imports:
 
@@ -170,7 +170,7 @@ pub fn register_extension(
 To make an extension runnable with [`moon ext`](../commands/ext.mdx), implement the
 `execute_extension` function. This is where the business logic of a one-off utility lives. The
 input provides the arguments passed after `--` (`args`), and a `context` with
-[virtual paths](../guides/wasm-plugins.mdx#virtual-paths) to the current working directory
+[virtual paths](../../../wasm/docs/virtual-paths.mdx) to the current working directory
 (`working_dir`) and the workspace root (`workspace_root`).
 
 ```rust

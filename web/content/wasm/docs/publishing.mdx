@@ -1,0 +1,56 @@
+---
+title: Publishing
+icon: Rocket
+---
+
+At this point, you should have a fully working WASM plugin, but to make it available to the
+community, you'll still need to build and make the `.wasm` file available. The easiest solution is
+to publish a GitHub release and include the `.wasm` file as an asset.
+
+## Manually create releases
+
+When your plugin is ready to be published, you can create a release on GitHub using the following
+steps.
+
+1. Tag the release and push to GitHub.
+
+   ```shell
+   $ git tag v0.0.1
+   $ git push --tags
+   ```
+
+2. Build a release version of the plugin using the [`build-wasm` script](./building.mdx). The file
+   will be available at `target/wasm32-wasip1/<name>.wasm`.
+
+   ```shell
+   $ build-wasm <name>
+   ```
+
+3. In GitHub, navigate to the tags page, find the new tag, create a new release, and attach the
+   built file as an asset.
+
+## Automate releases
+
+If you're using GitHub Actions, you can automate the release process with our official
+[moonrepo/build-wasm-plugin](https://github.com/moonrepo/build-wasm-plugin) action. The action can
+also publish the plugin to ghcr.io, for use with the
+[`registry://` locator](./plugin-locators.mdx#oci-registry).
+
+1. Create a new workflow file at `.github/workflows/release.yml`. Refer to the link above for a
+   working example.
+
+2. Tag the release and push to GitHub.
+
+   ```shell
+   # In a polyrepo
+   $ git tag v0.0.1
+
+   # In a monorepo
+   $ git tag example_extension-v0.0.1
+
+   # Push the tags
+   $ git push --tags
+   ```
+
+3. The action will automatically build the plugin, create a release, and attach the built file as
+   an asset.

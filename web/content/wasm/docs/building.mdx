@@ -1,0 +1,43 @@
+---
+title: Building
+icon: Blocks
+---
+
+WASM files are pretty fat, even when compiling in release mode. To reduce the size of these files,
+we can use `wasm-opt` and `wasm-strip`, both of which are provided by the
+[WebAssembly](https://github.com/WebAssembly) group. The following script is similar to what we
+use to build our own plugins.
+
+<Callout>
+  This functionality is natively supported in our
+  [moonrepo/build-wasm-plugin](https://github.com/moonrepo/build-wasm-plugin)
+  GitHub Action!
+</Callout>
+
+```bash title="build-wasm"
+#!/usr/bin/env bash
+
+target="${CARGO_TARGET_DIR:-target}"
+input="$target/wasm32-wasip1/release/$1.wasm"
+output="$target/wasm32-wasip1/$1.wasm"
+
+echo "Building"
+
+cargo build --target wasm32-wasip1 --release
+
+echo "Optimizing"
+
+# https://github.com/WebAssembly/binaryen
+~/binaryen/bin/wasm-opt -Os "$input" --output "$output"
+
+echo "Stripping"
+
+# https://github.com/WebAssembly/wabt
+~/wabt/bin/wasm-strip "$output"
+```
+
+This script can then be ran at the root of your Cargo workspace.
+
+```shell
+$ ./build-wasm example_plugin
+```
