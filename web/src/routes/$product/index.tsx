@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 import type { ComponentType } from 'react';
 import { MoonHome } from '@/components/moon/MoonHome';
 import { ProtoHome } from '@/components/proto/ProtoHome';
@@ -7,6 +7,12 @@ import { SchematicHome } from '@/components/schematic/SchematicHome';
 import { isProduct, PRODUCT_THEMES, type Product } from '@/lib/products';
 
 export const Route = createFileRoute('/$product/')({
+	// Products without a landing page go straight to their docs
+	beforeLoad: ({ params }) => {
+		if (isProduct(params.product) && !LANDING_PAGES[params.product]) {
+			throw redirect({ href: `/${params.product}/docs` });
+		}
+	},
 	component: Page,
 });
 

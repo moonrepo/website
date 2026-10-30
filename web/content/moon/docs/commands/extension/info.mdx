@@ -7,7 +7,7 @@ command downloads (or loads from cache) the extension's WASM plugin and renders:
 
 - The extension's title, description, and plugin version.
 - Its configuration schema, if the plugin
-  [defines one](<../../(fundamentals)/extension.mdx#defining-a-configuration-schema>) via
+  [defines one](../../../../wasm/docs/extension.mdx#define_extension_config) via
   `define_extension_config`.
 - A list of every extension-related API, whether the plugin implements it, and whether it's
   required (`register_extension` is always required).
@@ -19,7 +19,7 @@ Just like [`moon extension add`](./add.mdx), the `plugin` argument can be omitte
 [built-in extensions](<../../(fundamentals)/extension.mdx#built-in-extensions>) (`download`,
 `migrate-nx`, `migrate-turborepo`, and `unpack`), since their locators are already known. For any
 other extension, either configure it in [`.moon/extensions.config`](<../../(fundamentals)/extension.mdx>) first, or pass its
-[plugin locator](../../guides/wasm-plugins.mdx#plugin-locators) explicitly.
+[plugin locator](../../../../wasm/docs/plugin-locators.mdx) explicitly.
 
 ```shell
 $ moon extension info download

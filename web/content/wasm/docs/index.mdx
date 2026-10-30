@@ -1,0 +1,44 @@
+---
+title: Overview
+icon: Puzzle
+---
+
+Our plugins are written in [WebAssembly (WASM)](https://webassembly.org/),
+a portable binary format. Plugins can be written in any language that compiles to WASM, like Rust,
+C, C++, Go, TypeScript, and more. Because they're real programs, plugins support complex business
+logic, have sandboxed access to the file system (via WASI), can execute commands on the host, and
+much more, while running identically on every platform moon supports.
+
+These docs cover the concepts and APIs shared by all plugins, where plugins can be located, and how
+to create, build, and publish your own.
+
+## Powered by Extism
+
+The plugin system is powered by [Extism](https://extism.org/), a cross-language framework for
+building WASM plugins under a unified guest and host API. Under the hood, Extism uses
+[wasmtime](https://wasmtime.dev/) as its WASM runtime.
+
+You don't need to know about Extism's host SDK, as moon and proto implement it for you. However,
+you _should_ be familiar with its guest PDKs (plugin development kits), as they're what you'll use
+to implement plugins. We suggest reading the following material:
+
+- [Plugin development kits](https://extism.org/docs/concepts/pdk) (PDKs)
+- The [extism-pdk](https://github.com/extism/rust-pdk) Rust crate
+- [Host functions](https://extism.org/docs/concepts/host-functions) (how they work)
+
+## Plugin types
+
+A plugin is a WASM module that exports a set of functions. The plugin type determines which
+functions moon looks for, and each type has one required function that registers its metadata.
+Every other function is optional: moon checks whether a function exists before calling it, so a
+plugin only implements what it needs.
+
+- [**moon toolchains**](./toolchain.mdx) - Implement `register_toolchain`, and add language and
+  ecosystem support to moon, from file syncing up to tool installation.
+- [**moon extensions**](./extension.mdx) - Implement `register_extension`, and add general purpose
+  functionality that can be run with [`moon ext`](../../moon/docs/commands/ext.mdx), or hook into
+  moon's processes.
+- [**proto tools**](./tool.mdx) - Implement `register_tool`, and teach proto how to download and
+  install a tool.
+- [**proto backends**](./backend.mdx) - Implement `register_backend`, and let proto install tools
+  through another ecosystem's plugins, like asdf.

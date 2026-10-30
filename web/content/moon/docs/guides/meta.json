@@ -18,7 +18,6 @@
     "root-project",
     "sharing-config",
     "vcs-hooks",
-    "wasm-plugins",
     "webhooks",
     "migrate"
   ]

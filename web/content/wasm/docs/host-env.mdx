@@ -1,0 +1,88 @@
+---
+title: Host environment
+icon: Monitor
+---
+
+Since WASM executes in its own runtime, it _does not_ have access to the host's operating system,
+architecture, and so on. To bridge this gap, we provide the
+[`get_host_environment`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.get_host_environment.html)
+function, which returns a
+[`HostEnvironment`](https://docs.rs/warpgate_api/latest/warpgate_api/struct.HostEnvironment.html).
+
+```rust
+let env = get_host_environment()?;
+```
+
+The host passes the environment to the plugin when it's instantiated, and the PDK caches it after
+the first call, so calling this function repeatedly is cheap.
+
+## OS and architecture
+
+The host operating system and architecture can be accessed with the `os` and `arch` fields
+respectively. Both fields are an enum in Rust, or a lowercase string in other languages, like
+`linux`, `macos`, or `windows` for the OS, and `x64` or `arm64` for the architecture.
+
+```rust
+if env.os == HostOS::Windows {
+    // Windows only
+}
+
+if env.arch == HostArch::Arm64 {
+    // aarch64 only
+}
+```
+
+The OS enum also provides helper methods for common checks, and for formatting file names, which
+is especially useful when locating executables.
+
+- `is_bsd`, `is_linux`, `is_mac`, `is_unix`, `is_windows` - Check the OS, or OS family. Unix
+  includes Linux, macOS, and the BSDs.
+- `get_exe_name` - Append an `.exe` extension on Windows, and return the name as-is otherwise.
+- `get_file_name` - Like `get_exe_name`, but with a custom Windows extension, like `cmd`.
+- `for_native` - Return the first value on Unix, or the second value on Windows.
+
+```rust
+let exe = env.os.get_exe_name("node"); // node.exe on Windows
+let dir = env.os.for_native("bin", "Scripts");
+```
+
+Download URLs and file names often follow Rust's naming instead, like `x86_64` and `aarch64`. To
+produce these, use the `to_rust_arch` and `to_rust_os` methods.
+
+```rust
+let url = format!(
+    "https://example.com/download/tool-{}-{}.tar.gz",
+    env.arch.to_rust_arch(),
+    env.os.to_rust_os(),
+);
+```
+
+## C library
+
+The libc implementation can be accessed with the `libc` field, which is either `HostLibc::Gnu` or
+`HostLibc::Musl` on Linux. It's `HostLibc::Unknown` on macOS, Windows, iOS, and Android, as these
+systems don't use either implementation.
+
+Values that aren't supported by your plugin's version of the PDK (for example, a libc added in the
+future) are deserialized as `HostLibc::Unknown` instead of failing, so be sure to handle that case.
+
+```rust
+if env.libc == HostLibc::Musl {
+    // Alpine, etc
+}
+```
+
+## Other fields
+
+The `ci` field is true when running in a CI environment, which is useful for disabling interactive
+or verbose output.
+
+The user's home directory (`~`) can be accessed with the `home_dir` field, which is a
+[virtual path](./virtual-paths.mdx). It's always `/userhome`, which the host maps back to the real
+home directory.
+
+```rust
+if env.home_dir.join(".config/example").exists() {
+    // Do something
+}
+```

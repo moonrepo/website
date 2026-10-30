@@ -1,0 +1,154 @@
+---
+title: Publishing
+icon: Rocket
+---
+
+At this point, you should have a fully working WASM plugin, but to make it available to the
+community, you'll still need to build and make the `.wasm` file available. Any of the
+[plugin locators](./plugin-locators.mdx) work, but the most common options are:
+
+- **GitHub releases** - Attach the `.wasm` file to a release, for use with the
+  [`github://` locator](./plugin-locators.mdx#github-releases). This is the easiest option.
+- **OCI registries** - Push the `.wasm` file to a registry like ghcr.io, for use with the
+  [`registry://` locator](./plugin-locators.mdx#oci-registry). This is how our own plugins are
+  distributed.
+- **URLs** - Upload the `.wasm` file anywhere that serves it over HTTPS, for use with an
+  [`https://` locator](./plugin-locators.mdx#urls).
+
+## Versioning
+
+Each release should have a Git tag, and the version in the tag should match the `version` in
+`Cargo.toml`, as that's what the plugin reports to moon and proto (with
+`env!("CARGO_PKG_VERSION")`).
+
+- In a repository with a single plugin, tag with the version, like `v1.2.3`.
+- In a repository with multiple plugins, prefix the version with the package name, like
+  `example_extension-v1.2.3` or `example_extension@1.2.3`. This is the format that the
+  [`github://` locator](./plugin-locators.mdx#monorepos) matches when a project name is provided,
+  and that our GitHub Action uses to determine which plugin to release.
+
+A version with a suffix, like `v1.2.3-beta.1`, is considered a pre-release.
+
+## Manually create releases
+
+When your plugin is ready to be published, you can create a release on GitHub using the following
+steps.
+
+1. Tag the release and push to GitHub.
+
+   ```shell
+   $ git tag v0.0.1
+   $ git push --tags
+   ```
+
+2. Build a release version of the plugin using the
+   [`build-wasm` script](./building.mdx#optimizing-and-stripping). The file will be available at
+   `target/wasm32-wasip1/<name>.wasm`.
+
+   ```shell
+   $ ./build-wasm <name>
+   ```
+
+3. In GitHub, navigate to the tags page, find the new tag, create a new release, and attach the
+   built file as an asset.
+
+## Automate releases
+
+If you're using GitHub Actions, you can automate the release process with our official
+[moonrepo/build-wasm-plugin](https://github.com/moonrepo/build-wasm-plugin) action, which
+[builds](./building.mdx#github-action) every plugin into a `builds` directory. Combined with a
+release action, a release is created whenever a tag is pushed.
+
+1. Create a new workflow file at `.github/workflows/release.yml`. The following workflow builds
+   plugins for pull requests (to verify they compile), and builds and releases them for tags.
+
+   ```yaml title=".github/workflows/release.yml"
+   name: Release
+
+   permissions:
+     contents: write
+
+   on:
+     push:
+       tags:
+         - "**[0-9]+.[0-9]+.[0-9]+*"
+     pull_request:
+
+   jobs:
+     build:
+       name: Build
+       runs-on: ubuntu-latest
+       steps:
+         - uses: actions/checkout@v7
+         - uses: moonrepo/setup-rust@v1
+           with:
+             cache: false
+         - id: build
+           uses: moonrepo/build-wasm-plugin@v0
+         - if: ${{ github.event_name == 'push' && github.ref_type == 'tag' }}
+           uses: ncipollo/release-action@v1
+           with:
+             artifacts: builds/*
+             artifactErrorsFailBuild: true
+             body: ${{ steps.build.outputs.changelog-entry }}
+             prerelease: ${{ steps.build.outputs.prerelease == 'true' }}
+             skipIfReleaseExists: true
+   ```
+
+2. Tag the release and push to GitHub.
+
+   ```shell
+   # In a polyrepo
+   $ git tag v0.0.1
+
+   # In a monorepo
+   $ git tag example_extension-v0.0.1
+
+   # Push the tags
+   $ git push --tags
+   ```
+
+3. The action will automatically build the plugin, create a release, and attach the built file (and
+   its `.sha256` checksum) as assets.
+
+If the package has a `CHANGELOG.md` file, the action extracts the entry for the released version,
+and the workflow above uses it as the release's description.
+
+## Publishing to a registry
+
+The action can also publish each plugin to ghcr.io as an OCI artifact, for use with the
+[`registry://` locator](./plugin-locators.mdx#oci-registry). To enable it, add the following
+permissions to the workflow, enable the `publish` input, and pass a GitHub token.
+
+```yaml title=".github/workflows/release.yml"
+permissions:
+  contents: write
+  packages: write
+  attestations: write
+  id-token: write
+
+# ...
+
+- id: build
+  uses: moonrepo/build-wasm-plugin@v0
+  with:
+    publish: ${{ github.event_name == 'push' && github.ref_type == 'tag' }}
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+Each plugin is pushed as `ghcr.io/<owner>/<package>`, tagged with both its version and `latest`,
+where the owner is the repository's organization or user (customizable with the `namespace`
+input). The package's `README.md` and changelog entry are attached as well, and metadata from
+`Cargo.toml` (like `description`, `license`, and `repository`) is added as annotations. The plugin
+can then be located with:
+
+```
+registry://ghcr.io/<owner>/<package>:<version>
+```
+
+<Callout>
+  Check the package's visibility in GitHub after the first publish. Private
+  packages can only be pulled with
+  [authentication](./plugin-locators.mdx#private-registries).
+</Callout>

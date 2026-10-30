@@ -28,5 +28,10 @@ const browserCollections = {
     "query": "?collection=schematic",
     "eager": false
   })),
+  wasm: create.doc("wasm", import.meta.glob(["./**/*.{mdx,md}"], {
+    "base": "./../content/wasm",
+    "query": "?collection=wasm",
+    "eager": false
+  })),
 };
 export default browserCollections;

@@ -2,13 +2,13 @@ import { loader } from 'fumadocs-core/source';
 import { lucideIconsPlugin } from 'fumadocs-core/source/lucide-icons';
 // import * as icons from 'lucide-static';
 import { toFumadocsSource } from 'fumadocs-mdx/runtime/server';
-import { blog, moon, proto, schematic } from '@/generated/server';
+import { blog, moon, proto, schematic, wasm } from '@/generated/server';
 import type { BlogAuthor } from '@/lib/blog';
 import type { Product } from '@/lib/products';
 
 function createProductSource(
 	product: Product,
-	collection: typeof moon | typeof proto | typeof schematic,
+	collection: typeof moon | typeof proto | typeof schematic | typeof wasm,
 ) {
 	return loader({
 		source: collection.toFumadocsSource(),
@@ -31,6 +31,7 @@ export const productSources = {
 	moon: createProductSource('moon', moon),
 	proto: createProductSource('proto', proto),
 	schematic: createProductSource('schematic', schematic),
+	wasm: createProductSource('wasm', wasm),
 } satisfies Record<Product, unknown>;
 
 export type ProductSource = (typeof productSources)[Product];

@@ -1,0 +1,38 @@
+---
+title: Plugin identifiers
+icon: IdCard
+---
+
+The plugin identifier (or ID) is the key the plugin was configured with, for example `node` in
+`.moon/toolchains.config` for moon, or `rust` in `.prototools` for proto.
+
+The ID is chosen by whoever configures the plugin, not by the plugin itself, so the same WASM file
+can be loaded under different IDs. Avoid hardcoding an ID in your plugin, and read it at runtime
+instead.
+
+## Accessing the ID
+
+To access the current plugin's ID from within any function, use the
+[`get_plugin_id`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.get_plugin_id.html) function.
+It returns an [`Id`](https://docs.rs/starbase_id/latest/starbase_id/struct.Id.html), which
+dereferences to a string.
+
+```rust
+let id = get_plugin_id()?;
+```
+
+The host passes the ID to the plugin when it's instantiated, so it's available in every function,
+including the registration functions.
+
+## Common uses
+
+Use the ID wherever you refer to the plugin, so that messages match the user's configuration.
+
+```rust
+let id = get_plugin_id()?;
+
+host_log!(stdout, "Installing <id>{}</id>", id);
+```
+
+In moon, the ID can also be passed to the functions that load configuration by ID, like
+`load_toolchain_config` and `load_extension_config`.

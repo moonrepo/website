@@ -1,0 +1,896 @@
+---
+title: Tools
+icon: Wrench
+---
+
+Tools are [proto](../../proto/docs/index.mdx) plugins that teach proto how to manage a tool, like
+Node.js, Go, or Rust: which versions exist, how to download and install them, and which executables
+to run. The same functions power [tier 3](./toolchain.mdx#tier-3) of moon toolchains, which install
+tools through proto.
+
+This page is a reference for the functions a tool can implement. If you haven't built a plugin
+before, start with [creating a plugin](./creating.mdx). The input and output types are provided by
+the [`proto_pdk_api`](https://docs.rs/proto_pdk_api) crate, and helper functions by the
+[`proto_pdk`](https://docs.rs/proto_pdk) crate, which also re-exports the types and the
+[`warpgate_pdk`](https://docs.rs/warpgate_pdk) helpers. The examples on this page assume the
+following imports.
+
+```rust title="src/lib.rs"
+use extism_pdk::*;
+use proto_pdk::*;
+```
+
+## Concepts
+
+### Lifecycle
+
+A tool is a set of exported functions. [`register_tool`](#register_tool),
+[`load_versions`](#load_versions), and [`locate_executables`](#locate_executables) are required, as
+proto calls them without checking whether they exist, along with at least one way to install the
+tool: [`native_install`](#native_install), [`download_prebuilt`](#download_prebuilt), or
+[`build_instructions`](#build_instructions). proto checks whether each of the other functions exists
+before calling it. The following table lists when each function is called.
+
+| Function                                        | Called when                                                                                       |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| [`register_tool`](#register_tool)               | The tool is loaded, for any command that uses it                                                  |
+| [`define_tool_config`](#define_tool_config)     | Never, as proto doesn't use the schema yet                                                        |
+| [`detect_version_files`](#detect_version_files) | Detecting a version from the current directory and its parents                                    |
+| [`parse_version_file`](#parse_version_file)     | A file from `detect_version_files` is found while detecting a version                             |
+| [`load_versions`](#load_versions)               | Resolving a version, unless it's fully qualified and only being run, and running `proto versions` |
+| [`resolve_version`](#resolve_version)           | Resolving any version, before versions are loaded                                                 |
+| [`native_install`](#native_install)             | Installing a version, before any other strategy                                                   |
+| [`native_uninstall`](#native_uninstall)         | Uninstalling a version, before its directory is deleted                                           |
+| [`download_prebuilt`](#download_prebuilt)       | Installing a version from a prebuilt archive, which is the default strategy                       |
+| [`build_instructions`](#build_instructions)     | Installing a version by building it from source                                                   |
+| [`unpack_archive`](#unpack_archive)             | After a prebuilt archive has been downloaded and verified                                         |
+| [`verify_checksum`](#verify_checksum)           | After a prebuilt archive and its checksum file have been downloaded                               |
+| [`locate_executables`](#locate_executables)     | Installing a version (to create bins and shims), and running the tool                             |
+| [`activate_environment`](#activate_environment) | Running the tool with `proto run` or a shim, `proto exec`, and `proto activate`                   |
+| [`pin_version`](#pin_version)                   | Running `proto pin --tool-native`                                                                 |
+| [`unpin_version`](#unpin_version)               | Running `proto unpin --tool-native`                                                               |
+| [`sync_manifest`](#sync_manifest)               | After installing or uninstalling a version, and running `proto clean`                             |
+| [`sync_shell_profile`](#sync_shell_profile)     | After proto installs a version, including auto-installs                                           |
+
+### Context
+
+Most inputs include information about the current tool in the `context` field. Functions that run
+before a version has been resolved, like detecting and resolving versions, receive a
+[`PluginUnresolvedContext`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.PluginUnresolvedContext.html),
+with the version of proto (`proto_version`), and [virtual paths](./virtual-paths.mdx) to the
+tool's temporary directory (`temp_dir`) and the current working directory (`working_dir`).
+
+Functions that run for a specific version, like installing it and locating its executables, receive
+a [`PluginContext`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.PluginContext.html)
+instead, which also includes the resolved `version`, and a virtual path to its installation
+directory (`tool_dir`). The version is usually a fully qualified version, like `1.2.3`, but it can
+also be `canary`, or an alias that [`resolve_version`](#resolve_version) returned explicitly, like
+Rust's `stable`, so handle (or reject) these too.
+
+```rust
+#[plugin_fn]
+pub fn download_prebuilt(
+    Json(input): Json<DownloadPrebuiltInput>,
+) -> FnResult<Json<DownloadPrebuiltOutput>> {
+    if input.context.version.is_canary() {
+        return Err(plugin_err!(PluginError::UnsupportedCanary {
+            tool: "Example".into()
+        }));
+    }
+
+    // ...
+}
+```
+
+### Versions
+
+Versions are represented by 2 types from the [`version_spec`](https://docs.rs/version_spec) crate,
+which are re-exported by `proto_pdk`:
+
+- [`UnresolvedVersionSpec`](https://docs.rs/version_spec/latest/version_spec/enum.UnresolvedVersionSpec.html) -
+  What a user asked for, which is an alias (like `latest` or `lts`), `canary`, a requirement or
+  range (like `^20` or `>=1.2 <2`), or a fully qualified version.
+- [`VersionSpec`](https://docs.rs/version_spec/latest/version_spec/enum.VersionSpec.html) - A
+  resolved version, which is a fully qualified version, `canary`, or an alias.
+
+Versions and requirements can also include a scope prefix, like `temurin-21.0.5` for a Java
+distribution. A requirement with a scope only matches versions with the same scope, and the
+available versions are loaded and cached separately for each scope.
+
+### Using in moon
+
+When a moon toolchain plugin also implements the functions on this page, moon uses them to install
+the tool for [tier 3](./toolchain.mdx#tier-3). moon calls the resolution, installation, and
+execution functions, but not [`pin_version`](#pin_version), [`unpin_version`](#unpin_version), or
+[`sync_shell_profile`](#sync_shell_profile), which only apply to proto's command line. It installs
+with the `default_install_strategy` returned from [`register_tool`](#register_tool), and memoizes
+[`activate_environment`](#activate_environment).
+
+## Configuration
+
+Users configure a tool in the `[tools.<id>]` table of a `.prototools` file. Except for the settings
+that proto handles itself (`aliases`, `env`, and `plugin`), every setting is passed through to the
+plugin when it's loaded, and can be read from any function with
+[`get_tool_config`](https://docs.rs/proto_pdk/latest/proto_pdk/fn.get_tool_config.html). Settings
+are merged from every `.prototools` file that proto loads, with files closer to the current
+directory taking precedence.
+
+```toml title=".prototools"
+[tools.example]
+dist-url = "https://mirror.company.com/example"
+```
+
+Map the settings into a struct that implements
+[`Deserialize`](https://docs.rs/serde/latest/serde/trait.Deserialize.html) and `Default`, as the
+default value is returned when the tool has no settings. By convention, settings use kebab-case,
+and `deny_unknown_fields` turns a typo into an error instead of a silently ignored setting.
+
+```rust
+#[derive(Debug, Default, serde::Deserialize)]
+#[serde(default, deny_unknown_fields, rename_all = "kebab-case")]
+pub struct ExampleToolConfig {
+    pub dist_url: Option<String>,
+}
+
+let config = get_tool_config::<ExampleToolConfig>()?;
+```
+
+When the tool is part of a moon toolchain, moon reads the same `[tools.<id>]` settings from
+`.prototools`, using the toolchain's ID. To test with settings, see
+[testing proto plugins](./testing.mdx#proto).
+
+## APIs
+
+### `register_tool`
+
+| Input                                                                                                   | Output                                                                                                    | Required | Memoized |
+| ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`RegisterToolInput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.RegisterToolInput.html) | [`RegisterToolOutput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.RegisterToolOutput.html) | Yes      | Yes      |
+
+Registers the tool and returns metadata about it, and is called whenever proto loads the tool. The input contains the [ID](./plugin-id.mdx) the tool was configured
+with, which lets a single plugin manage multiple tools. Besides a display `name`, a
+[`PluginType`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/enum.PluginType.html)
+(`type_of`), and a `plugin_version`, the metadata controls how proto treats the tool:
+
+- `minimum_proto_version` - Fails with an error when the running proto is older.
+- `requires` - Other tools this tool needs, like Poetry requiring Python. A required tool must have
+  a version configured to install this tool, is installed first when installing multiple tools, and
+  is added to the environment when running this tool.
+- `default_install_strategy` - Builds from source instead of downloading a prebuilt by default
+  (see [`build_instructions`](#build_instructions)).
+- `self_upgrade_commands` - Arguments that would make the tool upgrade itself, like `upgrade`, which
+  proto refuses to run, as it manages the tool's versions.
+- `inventory_options` and `lock_options` - Customize where versions are installed, and how they're
+  recorded in the lockfile, with
+  [`ToolInventoryOptions`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.ToolInventoryOptions.html)
+  and [`ToolLockOptions`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.ToolLockOptions.html).
+  These are rarely needed, unless the tool installs versions itself, like Rust with rustup.
+- `deprecations` and `unstable` - Messages displayed when the plugin is added, and a warning
+  displayed when the tool is installed.
+
+```rust
+#[plugin_fn]
+pub fn register_tool(Json(_): Json<RegisterToolInput>) -> FnResult<Json<RegisterToolOutput>> {
+    Ok(Json(RegisterToolOutput {
+        name: "Example".into(),
+        type_of: PluginType::Language,
+        minimum_proto_version: Some(Version::new(0, 60, 0)),
+        plugin_version: Version::parse(env!("CARGO_PKG_VERSION")).ok(),
+        self_upgrade_commands: vec!["upgrade".into()],
+        ..Default::default()
+    }))
+}
+```
+
+### `define_tool_config`
+
+| Input | Output                                                                                                            | Required | Memoized |
+| ----- | ----------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| N/A   | [`DefineToolConfigOutput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.DefineToolConfigOutput.html) | No       | N/A      |
+
+Describes the shape of the tool's [configuration](#configuration) as a schema, built with the
+[schematic](https://crates.io/crates/schematic) crate. proto doesn't call this function yet, so the
+schema isn't used for validation, but it documents the available settings in a machine-readable
+format, and our official plugins implement it. Derive schematic's
+[`Schematic`](https://docs.rs/schematic/latest/schematic/trait.Schematic.html) trait on the
+configuration struct, and doc comments are used as setting descriptions.
+
+```rust
+use schematic::{SchemaBuilder, Schematic};
+
+#[derive(Debug, Default, Schematic, serde::Deserialize)]
+#[serde(default, deny_unknown_fields, rename_all = "kebab-case")]
+pub struct ExampleToolConfig {
+    /// Base URL to download archives from.
+    pub dist_url: Option<String>,
+}
+
+#[plugin_fn]
+pub fn define_tool_config() -> FnResult<Json<DefineToolConfigOutput>> {
+    Ok(Json(DefineToolConfigOutput {
+        schema: SchemaBuilder::build_root::<ExampleToolConfig>(),
+    }))
+}
+```
+
+```toml title="Cargo.toml"
+[dependencies]
+schematic = { version = "0.20", default-features = false, features = ["schema"] }
+```
+
+### Resolution
+
+Resolution turns what a user asked for into a version to install or run. When no version was
+provided explicitly, proto first detects one from the current directory, from either a
+`.prototools` file, or a file from the tool's ecosystem, like `.nvmrc`. It then resolves that
+version, which may be an alias or a requirement, against the versions that are available.
+
+### `detect_version_files`
+
+| Input                                                                                                     | Output                                                                                                      | Required | Memoized |
+| --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`DetectVersionInput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.DetectVersionInput.html) | [`DetectVersionOutput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.DetectVersionOutput.html) | No       | Yes      |
+
+Returns a list of files from the tool's ecosystem that may contain a version, like `.nvmrc` or
+`package.json`. When detecting a version, proto checks each directory from the current directory
+upwards, and within each directory, checks the files in order, using the first version it finds.
+Empty files are skipped. Whether these files are checked before or after `.prototools` files, if
+at all, depends on proto's `detect-strategy` setting, and a `PROTO_<ID>_VERSION` environment
+variable takes precedence over both.
+
+The output can also list patterns to `ignore`, and a directory is skipped when its path contains
+one of them, like `node_modules`. moon also uses this function when a toolchain is added with
+[`moon toolchain add`](../../moon/docs/commands/toolchain/add.mdx).
+
+```rust
+#[plugin_fn]
+pub fn detect_version_files(
+    Json(_): Json<DetectVersionInput>,
+) -> FnResult<Json<DetectVersionOutput>> {
+    Ok(Json(DetectVersionOutput {
+        files: vec![".nvmrc".into(), ".node-version".into(), "package.json".into()],
+        ignore: vec!["node_modules".into()],
+    }))
+}
+```
+
+### `parse_version_file`
+
+| Input                                                                                                           | Output                                                                                                            | Required | Memoized |
+| --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`ParseVersionFileInput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.ParseVersionFileInput.html) | [`ParseVersionFileOutput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.ParseVersionFileOutput.html) | No       | No       |
+
+Extracts a version from a file returned by [`detect_version_files`](#detect_version_files). Without
+this function, a file's entire content is parsed as a version, which works for files like `.nvmrc`,
+but not for files with other content, like `package.json`. The input contains the `file` name, its
+`path`, and its `content` (with surrounding whitespace trimmed). Return no version to skip the file
+and continue with the next one.
+
+```rust
+#[plugin_fn]
+pub fn parse_version_file(
+    Json(input): Json<ParseVersionFileInput>,
+) -> FnResult<Json<ParseVersionFileOutput>> {
+    let mut version = None;
+
+    if input.file == "package.json" {
+        let package: json::Value = json::from_str(&input.content)?;
+
+        // Extract from `engines.node`
+        if let Some(constraint) = package.pointer("/engines/node").and_then(|value| value.as_str()) {
+            version = Some(UnresolvedVersionSpec::parse(constraint)?);
+        }
+    } else {
+        version = Some(UnresolvedVersionSpec::parse(&input.content)?);
+    }
+
+    Ok(Json(ParseVersionFileOutput { version }))
+}
+```
+
+### `load_versions`
+
+| Input                                                                                                   | Output                                                                                                    | Required | Memoized |
+| ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`LoadVersionsInput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.LoadVersionsInput.html) | [`LoadVersionsOutput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.LoadVersionsOutput.html) | Yes      | Yes      |
+
+Returns every version of the tool that can be installed, along with the `latest` version, and a map
+of `aliases`, like `stable` or `lts`. proto resolves aliases and requirements against this list,
+preferring versions that are already installed, and validates fully qualified versions against it
+before installing them. Resolving only skips this function when running a fully qualified version,
+or when [`resolve_version`](#resolve_version) returns a version explicitly. The input contains the
+version being resolved (`initial`), which is mainly useful for its [scope](#versions).
+
+Versions are typically loaded from the network, so proto caches the output on disk for 12 hours,
+except when installing with `proto install`, which always loads the latest list. When loading fails, proto falls back to
+a previously cached list, if there is one. Most tools load versions from Git tags with
+[`load_git_tags`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.load_git_tags.html), or from
+a JSON index with [`fetch_json`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.fetch_json.html).
+[`LoadVersionsOutput::from`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.LoadVersionsOutput.html#method.from)
+creates the output from a list of strings, with the highest stable version as `latest`.
+
+```rust
+#[derive(serde::Deserialize)]
+struct Release {
+    version: String,
+    lts: bool,
+}
+
+#[plugin_fn]
+pub fn load_versions(Json(_): Json<LoadVersionsInput>) -> FnResult<Json<LoadVersionsOutput>> {
+    let releases: Vec<Release> = fetch_json("https://example.com/releases.json")?;
+
+    let mut output = LoadVersionsOutput::from(
+        releases.iter().map(|release| release.version.clone()).collect(),
+    )?;
+
+    // Releases are sorted newest first
+    if let Some(release) = releases.iter().find(|release| release.lts) {
+        output
+            .aliases
+            .insert("lts".into(), UnresolvedVersionSpec::parse(&release.version)?);
+    }
+
+    Ok(Json(output))
+}
+```
+
+### `resolve_version`
+
+| Input                                                                                                       | Output                                                                                                        | Required | Memoized |
+| ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`ResolveVersionInput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.ResolveVersionInput.html) | [`ResolveVersionOutput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.ResolveVersionOutput.html) | No       | No       |
+
+Intercepts a version before it's resolved, which is useful for supporting the syntax of the tool's
+ecosystem, like Node.js's `lts/*`. It's called with the `initial` version every time a version is
+resolved, before [`load_versions`](#load_versions), and can return either of the following:
+
+- `candidate` - A different alias, requirement, or version to resolve instead, which must exist in
+  the output of [`load_versions`](#load_versions).
+- `version` - A version to use as-is, without loading versions or validating it. Only use this for
+  versions that can't be part of the list, like Rust's `beta` and `nightly` channels.
+
+Return neither to resolve the initial version as normal. Aliases configured by the user in
+`.prototools` take precedence over the aliases from [`load_versions`](#load_versions).
+
+```rust
+#[plugin_fn]
+pub fn resolve_version(
+    Json(input): Json<ResolveVersionInput>,
+) -> FnResult<Json<ResolveVersionOutput>> {
+    let mut output = ResolveVersionOutput::default();
+
+    if let UnresolvedVersionSpec::Alias(alias) = &input.initial {
+        if alias == "lts/*" {
+            output.candidate = Some(UnresolvedVersionSpec::Alias("lts".into()));
+        }
+    }
+
+    Ok(Json(output))
+}
+```
+
+### Installation
+
+proto installs a version into its own directory, `~/.proto/tools/<id>/<version>`, which is passed to
+these functions as the `install_dir` virtual path. If the plugin implements
+[`native_install`](#native_install), it takes precedence over everything else. Otherwise, proto
+downloads a prebuilt with [`download_prebuilt`](#download_prebuilt), or builds from source with
+[`build_instructions`](#build_instructions) when running `proto install --build`, or when it's the
+tool's `default_install_strategy`.
+
+After installing, proto creates bins and shims from [`locate_executables`](#locate_executables), and
+calls [`sync_manifest`](#sync_manifest). Versions that are already installed are skipped, unless
+forced.
+
+### `native_install`
+
+| Input                                                                                                     | Output                                                                                                      | Required | Memoized |
+| --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`NativeInstallInput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.NativeInstallInput.html) | [`NativeInstallOutput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.NativeInstallOutput.html) | No       | No       |
+
+Installs the tool however it needs to be installed, like running its own installer, for tools that
+can't be installed from a prebuilt archive or source. proto creates the `install_dir` before calling
+it, and the output determines what happens next:
+
+- `installed` - The install succeeded, and proto continues as normal. An optional `checksum` is
+  used for the lockfile.
+- `skip_install` - proto falls back to its other strategies, like downloading a prebuilt.
+- Neither - The install fails with the `error` message.
+
+Unlike the other strategies, proto doesn't verify that files were written to the `install_dir`, so
+make sure [`locate_executables`](#locate_executables) can find them. Commands that exit with a
+non-zero code aren't errors, so check the `exit_code` yourself (see
+[executing commands](./host-funcs.mdx#executing-commands)).
+
+```rust
+#[plugin_fn]
+pub fn native_install(
+    Json(input): Json<NativeInstallInput>,
+) -> FnResult<Json<NativeInstallOutput>> {
+    let env = get_host_environment()?;
+
+    // Fall back to downloading a prebuilt when the installer isn't available
+    if !command_exists(env, "example-installer") {
+        return Ok(Json(NativeInstallOutput {
+            skip_install: true,
+            ..Default::default()
+        }));
+    }
+
+    let Some(dir) = input.install_dir.to_real_path()? else {
+        return Err(plugin_err!("Unable to locate the install directory."));
+    };
+
+    let version = input.context.version.to_string();
+    let result = exec_captured(
+        "example-installer",
+        ["install", &version, "--dir", &dir.to_string()],
+    )?;
+
+    Ok(Json(NativeInstallOutput {
+        installed: result.exit_code == 0,
+        error: Some(result.stderr),
+        ..Default::default()
+    }))
+}
+```
+
+### `native_uninstall`
+
+| Input                                                                                                         | Output                                                                                                          | Required | Memoized |
+| ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`NativeUninstallInput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.NativeUninstallInput.html) | [`NativeUninstallOutput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.NativeUninstallOutput.html) | No       | No       |
+
+Undoes what [`native_install`](#native_install) did outside of the install directory, like removing
+the version from the tool's own installer. It's called when a version is uninstalled, before proto
+deletes the version's directory (`uninstall_dir`), which happens regardless. Return `uninstalled`
+or `skip_uninstall`, otherwise the uninstall fails with the `error` message.
+
+```rust
+#[plugin_fn]
+pub fn native_uninstall(
+    Json(input): Json<NativeUninstallInput>,
+) -> FnResult<Json<NativeUninstallOutput>> {
+    let version = input.context.version.to_string();
+    let result = exec_captured("example-installer", ["uninstall", &version])?;
+
+    Ok(Json(NativeUninstallOutput {
+        uninstalled: result.exit_code == 0,
+        error: Some(result.stderr),
+        ..Default::default()
+    }))
+}
+```
+
+### `download_prebuilt`
+
+| Input                                                                                                           | Output                                                                                                            | Required | Memoized |
+| --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`DownloadPrebuiltInput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.DownloadPrebuiltInput.html) | [`DownloadPrebuiltOutput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.DownloadPrebuiltOutput.html) | No       | Yes      |
+
+Returns where to download a prebuilt version of the tool for the current
+[host environment](./host-env.mdx), which is how most tools are installed. proto downloads the
+`download_url` (which is subject to proto's `url-rewrites` setting) into the tool's temporary
+directory, verifies it, and installs it:
+
+- **Archives** (like `.zip`, `.tar.gz`, and `.tar.xz`) are unpacked into the install directory.
+  When the archive's contents are nested within a folder, set `archive_prefix` to that folder's
+  name, and it's removed while unpacking. To unpack it yourself, implement
+  [`unpack_archive`](#unpack_archive).
+- **Other files** are treated as the tool's executable, and are moved into the install directory,
+  named after the tool's ID, and made executable.
+
+To verify the download, return a `checksum_url` to a checksum file, like `SHASUMS256.txt`, or the
+expected `checksum` itself. The algorithm is detected from the checksum file's extension, name, or
+content, and SHA-256 and SHA-512 hashes, minisign signatures (`.minisig`), and GPG signatures
+(`.sig` and `.asc`) are supported. Signatures also require the `checksum_public_key`. When no
+checksum is provided, proto generates one for the lockfile instead. Implement
+[`verify_checksum`](#verify_checksum) to verify it yourself.
+
+The output also supports `download_name` and `checksum_name` for when the file name can't be
+extracted from the URL, `http_headers` to include in requests, and a `post_script` (relative to the
+install directory) to execute after installing.
+
+```rust
+#[plugin_fn]
+pub fn download_prebuilt(
+    Json(input): Json<DownloadPrebuiltInput>,
+) -> FnResult<Json<DownloadPrebuiltOutput>> {
+    let env = get_host_environment()?;
+
+    check_supported_os_and_arch(
+        "Example",
+        env,
+        permutations![
+            HostOS::Linux => [HostArch::X64, HostArch::Arm64],
+            HostOS::MacOS => [HostArch::X64, HostArch::Arm64],
+            HostOS::Windows => [HostArch::X64],
+        ],
+    )?;
+
+    let version = &input.context.version;
+    let arch = env.arch.to_rust_arch();
+    let filename = format!("example-v{version}-{}-{arch}.tar.gz", env.os);
+    let host = get_tool_config::<ExampleToolConfig>()?
+        .dist_url
+        .unwrap_or_else(|| "https://example.com/releases".into());
+
+    Ok(Json(DownloadPrebuiltOutput {
+        archive_prefix: Some(format!("example-v{version}")),
+        checksum_url: Some(format!("{host}/v{version}/SHASUMS256.txt")),
+        download_url: format!("{host}/v{version}/{filename}"),
+        download_name: Some(filename),
+        ..Default::default()
+    }))
+}
+```
+
+The [`check_supported_os_and_arch`](https://docs.rs/proto_pdk/latest/proto_pdk/fn.check_supported_os_and_arch.html)
+function and [`permutations!`](https://docs.rs/proto_pdk/latest/proto_pdk/macro.permutations.html)
+macro return a descriptive error on unsupported platforms, instead of attempting a download that
+doesn't exist.
+
+### `build_instructions`
+
+| Input                                                                                                             | Output                                                                                                              | Required | Memoized |
+| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`BuildInstructionsInput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.BuildInstructionsInput.html) | [`BuildInstructionsOutput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.BuildInstructionsOutput.html) | No       | Yes      |
+
+Returns how to build the tool from source, for when a user runs `proto install --build`, or when
+the tool's `default_install_strategy` is
+[`BuildFromSource`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/enum.InstallStrategy.html),
+like Ruby. proto then builds the tool in the following order:
+
+1. Installs the `system_dependencies` with the system's package manager, like `apt` or `brew`,
+   unless disabled with proto's `build.install-system-packages` setting.
+2. Checks the `requirements`, like a command existing on `PATH`, and fails if one isn't met (see
+   [`BuildRequirement`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/enum.BuildRequirement.html)).
+3. Downloads the `source` into the install directory, from an archive or a Git repository (see
+   [`SourceLocation`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/enum.SourceLocation.html)).
+4. Executes the `instructions` in order, like running commands, and moving or removing files (see
+   [`BuildInstruction`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/enum.BuildInstruction.html)).
+   Paths are relative to the install directory, which is also where commands run by default.
+
+Building can take a while and requires a lot from the host, so provide a `help_url` to
+documentation for when it fails, and prefer prebuilts where they exist.
+
+```rust
+#[plugin_fn]
+pub fn build_instructions(
+    Json(input): Json<BuildInstructionsInput>,
+) -> FnResult<Json<BuildInstructionsOutput>> {
+    let version = &input.context.version;
+
+    Ok(Json(BuildInstructionsOutput {
+        help_url: Some("https://example.com/docs/building".into()),
+        source: Some(SourceLocation::Archive(ArchiveSource {
+            url: format!("https://github.com/example/example/archive/refs/tags/v{version}.tar.gz"),
+            prefix: Some(format!("example-{version}")),
+        })),
+        requirements: vec![BuildRequirement::CommandExistsOnPath("make".into())],
+        instructions: vec![
+            BuildInstruction::RunCommand(Box::new(CommandInstruction::new("make", ["build"]))),
+            BuildInstruction::RemoveAllExcept(vec!["bin".into()]),
+        ],
+        ..Default::default()
+    }))
+}
+```
+
+### `unpack_archive`
+
+| Input                                                                                                     | Output | Required | Memoized |
+| --------------------------------------------------------------------------------------------------------- | ------ | -------- | -------- |
+| [`UnpackArchiveInput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.UnpackArchiveInput.html) | N/A    | No       | No       |
+
+Unpacks a file downloaded by [`download_prebuilt`](#download_prebuilt) (`input_file`) into the
+install directory (`output_dir`), replacing proto's own unpacking, which handles common archive
+formats, and on macOS, `.pkg` installers and `.dmg` disk images. Only implement it for formats
+proto can't handle, as the `archive_prefix` isn't applied.
+
+WASM can't change file permissions, so archives can't be unpacked from within the plugin. Instead,
+[execute a command](./host-funcs.mdx#executing-commands) on the host, passing it real paths.
+
+```rust
+#[plugin_fn]
+pub fn unpack_archive(Json(input): Json<UnpackArchiveInput>) -> FnResult<()> {
+    std::fs::create_dir_all(&input.output_dir)?;
+
+    let (Some(file), Some(dir)) = (
+        input.input_file.to_real_path()?,
+        input.output_dir.to_real_path()?,
+    ) else {
+        return Err(plugin_err!("Unable to locate the archive."));
+    };
+
+    let result = exec_captured("tar", ["-xf", &file.to_string(), "-C", &dir.to_string()])?;
+
+    if result.exit_code != 0 {
+        return Err(plugin_err!("Failed to unpack archive: {}", result.stderr));
+    }
+
+    Ok(())
+}
+```
+
+### `verify_checksum`
+
+| Input                                                                                                       | Output                                                                                                        | Required | Memoized |
+| ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`VerifyChecksumInput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.VerifyChecksumInput.html) | [`VerifyChecksumOutput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.VerifyChecksumOutput.html) | No       | No       |
+
+Verifies a file downloaded by [`download_prebuilt`](#download_prebuilt), replacing proto's own
+verification, which for SHA hashes expects each line of the checksum file to be a hash, optionally
+followed by the name of the downloaded file. It's only called when [`download_prebuilt`](#download_prebuilt)
+returns a `checksum_url` or `checksum`, and the download fails when `verified` is false.
+
+Before calling this function, proto generates a
+[`Checksum`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.Checksum.html) of the
+download (`download_checksum`), which is also used for the lockfile, so proto must still be able to
+detect the algorithm from the checksum file (`checksum_file`).
+
+```rust
+#[plugin_fn]
+pub fn verify_checksum(
+    Json(input): Json<VerifyChecksumInput>,
+) -> FnResult<Json<VerifyChecksumOutput>> {
+    let content = std::fs::read_to_string(&input.checksum_file)?;
+
+    // Match the hash on any line, regardless of the file name
+    let verified = input
+        .download_checksum
+        .and_then(|checksum| checksum.hash)
+        .is_some_and(|hash| content.lines().any(|line| line.starts_with(&hash)));
+
+    Ok(Json(VerifyChecksumOutput { verified }))
+}
+```
+
+### Execution
+
+Once a version is installed, proto needs to know which executables to expose, and the environment
+to run them in. These functions are used whenever the tool runs, whether through a shim, a bin,
+`proto run`, or moon.
+
+### `locate_executables`
+
+| Input                                                                                                             | Output                                                                                                              | Required | Memoized |
+| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`LocateExecutablesInput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.LocateExecutablesInput.html) | [`LocateExecutablesOutput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.LocateExecutablesOutput.html) | Yes      | Yes      |
+
+Returns the executables within the install directory, and where globally installed packages are
+located. It's called with the version being located, as the layout of a tool can change between
+versions. The output contains the following:
+
+- `exes` - A map of executable names to an
+  [`ExecutableConfig`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.ExecutableConfig.html),
+  with a path relative to the install directory (not a virtual path). One executable should be the
+  `primary`, which proto runs for the tool. Without one, proto looks for an executable named after
+  the tool's ID at the root of the install directory. proto creates a bin (a symlink in `~/.proto/bin`) and a
+  shim (in `~/.proto/shims`) for each executable, which can be disabled with `no_bin` and
+  `no_shim`. Executables that must be run by another, like a JavaScript file with `node`, can set a
+  `parent_exe_name`.
+- `exes_dirs` - Directories, relative to the install directory, that contain more executables,
+  which are added to `PATH` when running the tool, but don't get bins or shims.
+- `globals_lookup_dirs` - Directories that packages installed globally may be in, like
+  `$HOME/go/bin`. Environment variables are expanded (along with `~`, `$HOME`, `$PROTO_HOME`, and
+  `$TOOL_DIR`), and a directory with an undefined variable is skipped. All of them that exist are
+  added to `PATH`, and the first that contains files (otherwise the last) is passed to
+  [`activate_environment`](#activate_environment) as the `globals_dir`.
+- `globals_prefix` - A prefix that the executables of global packages share, like `cargo-`.
+
+```rust
+use std::collections::HashMap;
+
+#[plugin_fn]
+pub fn locate_executables(
+    Json(_): Json<LocateExecutablesInput>,
+) -> FnResult<Json<LocateExecutablesOutput>> {
+    let env = get_host_environment()?;
+
+    Ok(Json(LocateExecutablesOutput {
+        exes: HashMap::from_iter([
+            (
+                "go".into(),
+                ExecutableConfig::new_primary(env.os.get_exe_name("bin/go")),
+            ),
+            (
+                "gofmt".into(),
+                ExecutableConfig::new(env.os.get_exe_name("bin/gofmt")),
+            ),
+        ]),
+        globals_lookup_dirs: vec!["$GOBIN".into(), "$GOPATH/bin".into(), "$HOME/go/bin".into()],
+        ..Default::default()
+    }))
+}
+```
+
+### `activate_environment`
+
+| Input                                                                                                                 | Output                                                                                                                  | Required | Memoized |
+| --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`ActivateEnvironmentInput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.ActivateEnvironmentInput.html) | [`ActivateEnvironmentOutput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.ActivateEnvironmentOutput.html) | No       | No       |
+
+Sets up the environment for tools that need more than an executable on `PATH`, like Java expecting
+`JAVA_HOME`. It's called for installed versions when running the tool with `proto run` or a shim,
+with `proto exec`, and when activating proto in a shell with `proto activate`. moon also calls it
+before running commands for [tier 3](./toolchain.mdx#tier-3) toolchains.
+
+Return environment variables to set as `env`, which overwrite existing variables, and directories to
+prepend to `PATH` as `paths`. The tool's executable and globals directories are added to `PATH`
+automatically, so don't include them. The input contains the globals directory (`globals_dir`), if
+one was found. Values are passed to the host as-is, so convert virtual paths to real paths first.
+
+```rust
+#[plugin_fn]
+pub fn activate_environment(
+    Json(input): Json<ActivateEnvironmentInput>,
+) -> FnResult<Json<ActivateEnvironmentOutput>> {
+    let mut output = ActivateEnvironmentOutput::default();
+
+    if let Some(home) = input.context.tool_dir.to_real_path()? {
+        output.env.insert("EXAMPLE_HOME".into(), home.to_string());
+    }
+
+    Ok(Json(output))
+}
+```
+
+### Management
+
+These functions integrate proto with files outside of its own directory, like a tool's native
+version files, or the user's shell profile.
+
+### `pin_version`
+
+| Input                                                                                               | Output                                                                                                | Required | Memoized |
+| --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`PinVersionInput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.PinVersionInput.html) | [`PinVersionOutput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.PinVersionOutput.html) | No       | No       |
+
+Pins a version to one of the tool's native files, like `.nvmrc` or `package.json`, instead of
+`.prototools`. It's only called when running `proto pin --tool-native`, which fails for tools that
+don't implement it. The input contains the `version` to pin, and the directory to pin it in (`dir`),
+based on the `--to` option. Return the `file` that was written and `pinned`, otherwise the command
+fails with the `error` message.
+
+Pin to a file that [`detect_version_files`](#detect_version_files) returns, so that the version is
+detected afterwards.
+
+```rust
+#[plugin_fn]
+pub fn pin_version(Json(input): Json<PinVersionInput>) -> FnResult<Json<PinVersionOutput>> {
+    let file = input.dir.join(".example-version");
+
+    std::fs::write(&file, input.version.to_string())?;
+
+    Ok(Json(PinVersionOutput {
+        file: Some(file),
+        pinned: true,
+        ..Default::default()
+    }))
+}
+```
+
+### `unpin_version`
+
+| Input                                                                                                   | Output                                                                                                    | Required | Memoized |
+| ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`UnpinVersionInput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.UnpinVersionInput.html) | [`UnpinVersionOutput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.UnpinVersionOutput.html) | No       | No       |
+
+The reverse of [`pin_version`](#pin_version), called when running `proto unpin --tool-native`.
+Remove the version from the tool's native file in the directory (`dir`), and return the `file`,
+`unpinned`, and the `version` that was removed, which is displayed to the user. Otherwise the
+command fails with the `error` message.
+
+```rust
+#[plugin_fn]
+pub fn unpin_version(Json(input): Json<UnpinVersionInput>) -> FnResult<Json<UnpinVersionOutput>> {
+    let mut output = UnpinVersionOutput::default();
+    let file = input.dir.join(".example-version");
+
+    if file.exists() {
+        let content = std::fs::read_to_string(&file)?;
+
+        output.version = Some(UnresolvedVersionSpec::parse(content.trim())?);
+        output.unpinned = true;
+
+        std::fs::remove_file(&file)?;
+        output.file = Some(file);
+    } else {
+        output.error = Some("No .example-version file exists in this directory.".into());
+    }
+
+    Ok(Json(output))
+}
+```
+
+### `sync_manifest`
+
+| Input                                                                                                   | Output                                                                                                    | Required | Memoized |
+| ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`SyncManifestInput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.SyncManifestInput.html) | [`SyncManifestOutput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.SyncManifestOutput.html) | No       | No       |
+
+Syncs proto's list of installed versions (the tool's manifest) with versions that were installed
+outside of proto, for tools that manage their own versions, like Rust with rustup. It's called after
+a version is installed or uninstalled, when running `proto clean`, and after moon installs a
+toolchain's tool. Return the installed `versions`, which replace the list in the manifest, or nothing (or
+`skip_sync`) to leave it unchanged.
+
+```rust
+#[plugin_fn]
+pub fn sync_manifest(Json(_): Json<SyncManifestInput>) -> FnResult<Json<SyncManifestOutput>> {
+    let mut output = SyncManifestOutput::default();
+    let mut versions = vec![];
+
+    // The directory may not be accessible, so exit early instead of failing
+    let Ok(entries) = std::fs::read_dir("/userhome/.example/versions") else {
+        return Ok(Json(output));
+    };
+
+    for entry in entries.flatten() {
+        if let Ok(version) = VersionSpec::parse(entry.file_name().to_string_lossy()) {
+            versions.push(version);
+        }
+    }
+
+    if !versions.is_empty() {
+        output.versions = Some(versions);
+    }
+
+    Ok(Json(output))
+}
+```
+
+### `sync_shell_profile`
+
+| Input                                                                                                           | Output                                                                                                            | Required | Memoized |
+| --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`SyncShellProfileInput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.SyncShellProfileInput.html) | [`SyncShellProfileOutput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.SyncShellProfileOutput.html) | No       | No       |
+
+Adds environment variables and `PATH` entries to the user's shell profile after proto installs a
+version (including auto-installs when running a tool), for tools that need them outside of proto,
+like Go's `GOBIN`. proto only updates
+the profile that was chosen when proto was set up, and only if the profile doesn't already contain
+the `check_var` variable, so it's not added twice.
+
+Return the variables to export as `export_vars`, and the paths to prepend to `PATH` as
+`extend_path`, which can reference other variables. Return `skip_sync` to opt out, like when a
+setting is disabled, or when the user passed an argument after `--`, which are available as
+`passthrough_args`.
+
+```rust
+use std::collections::HashMap;
+
+#[plugin_fn]
+pub fn sync_shell_profile(
+    Json(input): Json<SyncShellProfileInput>,
+) -> FnResult<Json<SyncShellProfileOutput>> {
+    Ok(Json(SyncShellProfileOutput {
+        check_var: "GOBIN".into(),
+        export_vars: Some(HashMap::from_iter([("GOBIN".into(), "$HOME/go/bin".into())])),
+        extend_path: Some(vec!["$GOBIN".into()]),
+        skip_sync: input.passthrough_args.iter().any(|arg| arg == "--no-gobin"),
+    }))
+}
+```
+
+## Caveats
+
+- **Errors fail the operation** - An error returned from a function fails the command that called
+  it, like installing or running the tool, and its message is displayed to the user. Use the
+  [`PluginError`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/enum.PluginError.html)
+  variants for common failures, like unsupported platforms, so the messages are consistent across
+  tools.
+- **Memoized functions run once per input** - Within a single run of proto (or moon), a memoized
+  function isn't called again with the same input, so keep these functions free of side effects.
+- **Versions are cached for 12 hours** - Changes to [`load_versions`](#load_versions) may not appear
+  until the cache expires. Set the `PROTO_CACHE` environment variable to `off` to bypass it while
+  developing.
+- **Paths depend on the field** - Inputs use virtual paths, while executables are relative to the
+  install directory, and values passed to the host, like environment variables and command
+  arguments, must be real paths.
+- **No file permissions in WASM** - Changing permissions and unpacking archives isn't possible from
+  within WASM, so execute a command on the host instead, or set `update_perms` on an
+  [`ExecutableConfig`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.ExecutableConfig.html)
+  to make an executable runnable.

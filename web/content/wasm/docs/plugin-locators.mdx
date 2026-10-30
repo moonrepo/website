@@ -1,0 +1,139 @@
+---
+title: Plugin locators
+icon: MapPin
+---
+
+To use a WASM plugin, it must be configured with a
+[plugin locator](https://docs.rs/warpgate_api/latest/warpgate_api/enum.PluginLocator.html), for
+example the `plugin` setting in moon, or tools in proto. A locator string is composed of 2 parts
+separated by `://`: the protocol, and the location.
+
+```
+<protocol>://<location>
+```
+
+The following protocols are supported.
+
+## Files
+
+The `file://` protocol represents a file path, either absolute or relative. Relative paths are
+resolved from the directory containing the configuration file (for example, `.moon`). File plugins
+aren't cached, so this is ideal when developing a plugin locally.
+
+```
+# Relative
+file://./plugins/example.wasm
+file://../target/wasm32-wasip1/debug/example_extension.wasm
+
+# Absolute
+file:///root/path/to/example.wasm
+```
+
+## URLs
+
+The `https://` protocol is your standard URL, and must point to a `.wasm` file, or to an archive
+(like `.tar.gz`, `.tar.xz`, or `.zip`) that contains one. Archives are unpacked, and the first
+`.wasm` file found within is used. Non-secure `http://` URLs are _not supported_!
+
+```
+https://domain.com/path/to/plugins/example.wasm
+```
+
+## GitHub releases
+
+The `github://` protocol downloads an asset from a GitHub release. The location must be an
+organization and repository slug (`owner/repo`), and the release _must have_ a `.wasm` asset
+available to download (or an archive, when [targeting a project](#monorepos)).
+
+```
+github://moonrepo/example-repo
+```
+
+By default, the latest release is used, as determined by GitHub, which excludes drafts and
+pre-releases. We suggest targeting a specific release tag instead, by appending it to the end of
+the location. This ensures every machine uses the same plugin.
+
+```
+github://moonrepo/example-repo@v1.2.3
+```
+
+### Monorepos
+
+If you're targeting releases in a monorepo, append the project name after the repository. The
+project name is used as a tag prefix, and will match `<name>@<version>` or `<name>-<version>` tags.
+The first matching tag is used, but only the first 100 tags returned by the GitHub API are searched,
+so we suggest targeting a specific tag here too.
+
+```
+github://moonrepo/example-repo/project-name
+```
+
+An explicit tag is used as-is, so it must be the full tag name, including the project prefix.
+
+```
+github://moonrepo/example-repo/project-name@project-name-v1.2.3
+```
+
+A project's release may also provide its plugin as an asset named after the project, or as an
+archive whose name starts with the project name (like `project-name.tar.gz`), instead of a `.wasm`
+asset.
+
+### Authentication
+
+This strategy is powered by the [GitHub API](https://api.github.com/) and is subject to rate
+limiting. If running in a CI environment, we suggest setting a `GITHUB_TOKEN` (or `GH_TOKEN`)
+environment variable to authorize API requests with. If using GitHub Actions, it's as simple as:
+
+```yaml
+# In some job or step...
+env:
+  GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+```
+
+To use a different token for plugins than the rest of your tooling, set `WARPGATE_GITHUB_TOKEN`
+instead, which takes precedence over the others.
+
+## OCI registry
+
+The `registry://` protocol pulls a plugin from an OCI registry, like the GitHub container registry.
+The location is composed of a registry host and namespace, the image name, and an optional tag
+(defaults to `latest`). This is how our built-in plugins are distributed.
+
+```
+# Fully-qualified
+registry://ghcr.io/moonrepo/unpack_extension:1.0.4
+
+# Image only
+registry://unpack_extension:1.0.4
+```
+
+<Callout>
+  When the host is omitted, moon/proto search through the configured registries
+  in order (using each registry's namespace), which include `ghcr.io/moonrepo`
+  by default. To pull from any other registry, include the host.
+</Callout>
+
+The first segment of the location is treated as the host when it contains a period (like
+`ghcr.io`). Registries are configured with proto's `registries` setting in `.prototools`, which
+moon also reads.
+
+The image must have a layer with the `application/wasm` media type, or a tar layer (optionally
+compressed with gzip or zstd) that contains a `.wasm` file.
+
+### Private registries
+
+Images are pulled anonymously by default. For private registries, enable `auth` for the registry
+in the `registries` setting, and credentials will be read from your Docker configuration for that
+host, for example after running `docker login`. Only username and password credentials are
+supported.
+
+## Caching
+
+Plugins located by GitHub, URL, or registry are downloaded and cached in `~/.moon/plugins` (moon)
+or `~/.proto/plugins` (proto, or the `PROTO_PLUGINS_DIR` environment variable). Each plugin is
+cached by its locator, so changing the locator, like bumping a tag, downloads the new plugin.
+
+A cached plugin is considered stale after 180 days, and is then re-downloaded. To change this, set
+proto's `cache-duration` setting in `.prototools` (in seconds), or the `PROTO_CACHE_DURATION`
+environment variable, both of which moon also respects. A duration of `0` disables caching. When
+offline, stale plugins are used as-is.

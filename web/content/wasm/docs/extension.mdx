@@ -1,0 +1,578 @@
+---
+title: Extensions
+icon: Plug
+---
+
+[Extensions](<../../moon/docs/(fundamentals)/extension.mdx>) are moon plugins that add functionality
+that doesn't belong to a toolchain or a task. They can be run on demand as a one-off utility with
+[`moon ext`](../../moon/docs/commands/ext.mdx), or hook into moon's own processes to extend the
+project graph, rewrite commands before they run, and participate in syncing.
+
+This page is a reference for every function an extension can implement. If you haven't built a
+plugin before, start with [creating a plugin](./creating.mdx). The input and output types are
+provided by the [`moon_pdk_api`](https://docs.rs/moon_pdk_api) crate, and helper functions by the
+[`moon_pdk`](https://docs.rs/moon_pdk) crate. The examples on this page assume the following
+imports.
+
+```rust title="src/lib.rs"
+use extism_pdk::*;
+use moon_pdk::*;
+```
+
+## Concepts
+
+### Lifecycle
+
+An extension is a set of exported functions. Only [`register_extension`](#register_extension) is
+required, as moon checks whether each of the other functions exists before calling it. The
+following table lists when each function is called.
+
+| Function                                              | Called when                                                                  |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------- |
+| [`register_extension`](#register_extension)           | The extension is loaded, for any command that uses extensions                |
+| [`define_extension_config`](#define_extension_config) | Running [`moon extension info`](../../moon/docs/commands/extension/info.mdx) |
+| [`initialize_extension`](#initialize_extension)       | Running [`moon extension add`](../../moon/docs/commands/extension/add.mdx)   |
+| [`execute_extension`](#execute_extension)             | Running [`moon ext`](../../moon/docs/commands/ext.mdx)                       |
+| [`extend_project_graph`](#extend_project_graph)       | Building the project graph                                                   |
+| [`extend_command`](#extend_command)                   | Before any command is executed, including tasks                              |
+| [`extend_task_command`](#extend_task_command)         | Before a task that runs a command is executed                                |
+| [`extend_task_script`](#extend_task_script)           | Before a task that runs a script is executed                                 |
+| [`sync_project`](#sync_project)                       | Syncing a project, before its tasks run                                      |
+| [`sync_workspace`](#sync_workspace)                   | Syncing the workspace, before the pipeline runs                              |
+
+Whenever moon reaches one of these hooks, it loads every extension configured in
+[`.moon/extensions.config`](<../../moon/docs/(fundamentals)/extension.mdx#configuration>) (downloading
+it if it's not cached) to check whether it implements the function. The function is then called
+for every extension that implements it, concurrently.
+
+### Context
+
+Most inputs include a
+[`MoonContext`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.MoonContext.html) in the
+`context` field, with [virtual paths](./virtual-paths.mdx) to the current working directory
+(`working_dir`) and the workspace root (`workspace_root`).
+
+### Shared with toolchains
+
+The `extend_*` and `sync_*` functions are shared with [toolchains](./toolchain.mdx), and use the
+same input and output types. Fields that only apply to toolchains, like `toolchain_config`,
+`toolchain_workspace_config`, and `globals_dir`, are always empty for extensions.
+
+Some types used by these functions, like
+[`DependencyScope`](https://docs.rs/moon_config/latest/moon_config/enum.DependencyScope.html) and
+[`PartialTaskConfig`](https://docs.rs/moon_config/latest/moon_config/struct.PartialTaskConfig.html),
+are provided by the [`moon_config`](https://docs.rs/moon_config) crate, so add it as a dependency
+when you need them.
+
+## Configuration
+
+Every setting configured for an extension, other than `plugin`, is passed through to the plugin
+as-is. There are 2 ways to read them, and both return the type's default value when the extension
+has no settings:
+
+- [`get_extension_config`](https://docs.rs/moon_pdk/latest/moon_pdk/fn.get_extension_config.html) -
+  Loads the configuration from any function, as moon provides it when the extension is loaded.
+- [`parse_extension_config`](https://docs.rs/moon_pdk/latest/moon_pdk/fn.parse_extension_config.html) -
+  Parses the `extension_config` field that's part of every `extend_*` and `sync_*` function's
+  input.
+- [`parse_extension_config_schema`](https://docs.rs/moon_pdk/latest/moon_pdk/fn.parse_extension_config_schema.html) - Like `parse_extension_config`, but parses it using `schematic`, applying default values when applicable.
+
+Map the settings into a struct with the
+[`config_struct!`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/macro.config_struct.html)
+macro, which derives
+[`Deserialize`](https://docs.rs/serde/latest/serde/trait.Deserialize.html) with camelCase field
+names, so that `output_dir` maps to the `outputDir` setting.
+
+```rust
+config_struct!(
+    #[derive(Default)]
+    pub struct ExampleExtensionConfig {
+        pub output_dir: String,
+        pub include_dev: bool,
+    }
+);
+
+let config = get_extension_config::<ExampleExtensionConfig>()?;
+```
+
+## APIs
+
+### `register_extension`
+
+| Input                                                                                                           | Output                                                                                                            | Required | Memoized |
+| --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`RegisterExtensionInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.RegisterExtensionInput.html) | [`RegisterExtensionOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.RegisterExtensionOutput.html) | Yes      | Yes      |
+
+Registers the extension and returns metadata about it. This is the only required function, and is
+called whenever moon loads the extension. The metadata is displayed to users, for example by
+[`moon extension info`](../../moon/docs/commands/extension/info.mdx).
+
+- The input contains the `id` the extension was configured with.
+- The output contains a display `name`, an optional `description`, and the `plugin_version`.
+
+```rust
+#[plugin_fn]
+pub fn register_extension(
+    Json(_): Json<RegisterExtensionInput>,
+) -> FnResult<Json<RegisterExtensionOutput>> {
+    Ok(Json(RegisterExtensionOutput {
+        name: "Example".into(),
+        description: Some("Generates reports for every project.".into()),
+        plugin_version: env!("CARGO_PKG_VERSION").into(),
+    }))
+}
+```
+
+### `define_extension_config`
+
+| Input | Output                                                                                                                    | Required | Memoized |
+| ----- | ------------------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| N/A   | [`DefineExtensionConfigOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.DefineExtensionConfigOutput.html) | No       | Yes      |
+
+Describes the shape of the extension's configuration as a schema, so that users can discover the
+available settings with [`moon extension info`](../../moon/docs/commands/extension/info.mdx).
+moon doesn't validate settings against this schema, so validate them in the plugin instead (see
+[configuration](#configuration)).
+
+Schemas are built with the [schematic](https://crates.io/crates/schematic) crate, so derive
+[`Schematic`](https://docs.rs/schematic/latest/schematic/trait.Schematic.html) on the
+configuration struct. Doc comments are used as setting descriptions.
+
+```rust
+use schematic::{SchemaBuilder, Schematic};
+
+config_struct!(
+    #[derive(Default, Schematic)]
+    pub struct ExampleExtensionConfig {
+        /// Directory to write reports to, relative from the workspace root.
+        pub output_dir: String,
+
+        /// Include development dependencies in reports.
+        pub include_dev: bool,
+    }
+);
+
+#[plugin_fn]
+pub fn define_extension_config() -> FnResult<Json<DefineExtensionConfigOutput>> {
+    Ok(Json(DefineExtensionConfigOutput {
+        schema: SchemaBuilder::build_root::<ExampleExtensionConfig>(),
+    }))
+}
+```
+
+Schematic is a heavy library, so only enable the features you need, and use the same version that
+`moon_pdk_api` depends on:
+
+```toml title="Cargo.toml"
+[dependencies]
+schematic = { version = "0.20", default-features = false, features = ["schema"] }
+```
+
+### `initialize_extension`
+
+| Input                                                                                                             | Output                                                                                                              | Required | Memoized |
+| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`InitializeExtensionInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/type.InitializeExtensionInput.html) | [`InitializeExtensionOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/type.InitializeExtensionOutput.html) | No       | Yes      |
+
+Asks the user questions when the extension is added with
+[`moon extension add`](../../moon/docs/commands/extension/add.mdx), and writes the answers as
+settings for the extension in `.moon/extensions.config`. Without this function, the extension is
+added without any settings.
+
+The output can return a `prompts` field, which is a list of
+[`SettingPrompt`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.SettingPrompt.html)s,
+each of which maps a question to a setting (with dot notation support). A prompt's type is a
+[`PromptType`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/enum.PromptType.html), which is a
+confirmation (`Confirm`), a text input (`Input`), or a list of options (`Select`). Prompts are
+evaluated in order, and support the following behavior:
+
+- Nested `prompts` are only evaluated when the parent's answer is truthy.
+- A `condition` only evaluates the prompt when another setting matches.
+- `skip_if_falsy` doesn't write the setting when the answer is falsy.
+
+Prompts created with
+[`SettingPrompt::new`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.SettingPrompt.html#method.new)
+are shown in every flow, while prompts created with
+[`SettingPrompt::new_full`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.SettingPrompt.html#method.new_full)
+are skipped when `--minimal` is passed. When `--yes` is passed, no
+prompts are shown, and each prompt's default value is used.
+
+```rust
+#[plugin_fn]
+pub fn initialize_extension(
+    Json(_): Json<InitializeExtensionInput>,
+) -> FnResult<Json<InitializeExtensionOutput>> {
+    let mut output = InitializeExtensionOutput {
+        docs_url: Some("https://example.com/docs".into()),
+        ..Default::default()
+    };
+
+    output
+        .default_settings
+        .insert("outputDir".into(), json::Value::from("reports"));
+
+    let mut include_dev = SettingPrompt::new(
+        "includeDev",
+        "Include development dependencies in reports?",
+        PromptType::Confirm { default: false },
+    );
+
+    // Only asked when the answer above is yes
+    include_dev.prompts.push(SettingPrompt::new_full(
+        "devFormat",
+        "How should development dependencies be displayed?",
+        PromptType::Select {
+            default_index: 0,
+            options: vec![json::Value::from("inline"), json::Value::from("separate")],
+        },
+    ));
+
+    output.prompts.push(include_dev);
+
+    Ok(Json(output))
+}
+```
+
+### `execute_extension`
+
+| Input                                                                                                         | Output | Required | Memoized |
+| ------------------------------------------------------------------------------------------------------------- | ------ | -------- | -------- |
+| [`ExecuteExtensionInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.ExecuteExtensionInput.html) | N/A    | No       | No       |
+
+Executes the extension on demand, when running
+[`moon ext <id>`](../../moon/docs/commands/ext.mdx). This is where the business logic of a one-off
+utility lives, like downloading a file or migrating configuration. The input contains the arguments
+passed after `--` (`args`), and the current `context`.
+
+To parse the arguments, derive [clap](https://crates.io/crates/clap)'s
+[`Args`](https://docs.rs/clap/latest/clap/trait.Args.html) trait (re-exported by `moon_pdk`) on a
+struct, and pass it to the
+[`parse_args`](https://docs.rs/moon_pdk/latest/moon_pdk/fn.parse_args.html) function. If an
+argument is missing or invalid, the error is reported to the user.
+
+```rust
+#[derive(Args)]
+pub struct ExampleExtensionArgs {
+    // --out, -o
+    #[arg(long, short = 'o')]
+    pub out: Option<String>,
+}
+
+#[plugin_fn]
+pub fn execute_extension(Json(input): Json<ExecuteExtensionInput>) -> FnResult<()> {
+    let args = parse_args::<ExampleExtensionArgs>(&input.args)?;
+    let config = get_extension_config::<ExampleExtensionConfig>()?;
+
+    // Resolve from the current working directory
+    let out_dir = input
+        .context
+        .get_absolute_path(args.out.as_deref().unwrap_or(&config.output_dir));
+
+    std::fs::create_dir_all(&out_dir)?;
+
+    // ...
+
+    Ok(())
+}
+```
+
+```shell
+$ moon ext example -- --out ./reports
+```
+
+<Callout>
+  If an extension doesn't implement `execute_extension`, running it with [`moon
+  ext`](../../moon/docs/commands/ext.mdx) succeeds without doing anything.
+</Callout>
+
+### `extend_project_graph`
+
+| Input                                                                                                             | Output                                                                                                              | Required | Memoized |
+| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`ExtendProjectGraphInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.ExtendProjectGraphInput.html) | [`ExtendProjectGraphOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.ExtendProjectGraphOutput.html) | No       | Yes      |
+
+Extends projects in the project graph while it's being built, with information that moon doesn't
+extract natively, typically from a manifest file. This function receives every project discovered
+through [`.moon/workspace.config`](<../../moon/docs/(fundamentals)/workspace.mdx>), and can return
+the following for each of them.
+
+- An `alias`, which can be used in place of the project's ID. Aliases are skipped if they're an
+  invalid ID, conflict with an existing project, or are already used by another project.
+- Implicit `dependencies` on other projects, by their ID or alias, with a
+  [`DependencyScope`](/moon/api/DependencyScope).
+- Additional `tasks`, keyed by their ID. Tasks configured in the project's
+  [`moon.config`](<../../moon/docs/(fundamentals)/project.mdx>) take precedence, and are never
+  overwritten.
+
+It can also return the files it read information from (`input_files`), so that changes to those
+files invalidate the project graph cache. Only files within the workspace are tracked.
+
+```rust
+use moon_config::DependencyScope;
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct Manifest {
+    name: String,
+    #[serde(default)]
+    dependencies: Vec<String>,
+}
+
+#[plugin_fn]
+pub fn extend_project_graph(
+    Json(input): Json<ExtendProjectGraphInput>,
+) -> FnResult<Json<ExtendProjectGraphOutput>> {
+    let mut output = ExtendProjectGraphOutput::default();
+
+    for (id, source) in input.project_sources {
+        let manifest_path = input
+            .context
+            .get_project_root_from_source(&source)
+            .join("manifest.json");
+
+        if !manifest_path.exists() {
+            continue;
+        }
+
+        let manifest: Manifest = json::from_str(&std::fs::read_to_string(&manifest_path)?)?;
+        let mut project = ExtendProjectOutput {
+            alias: Some(manifest.name),
+            ..Default::default()
+        };
+
+        for dep in manifest.dependencies {
+            project.dependencies.push(ProjectDependency {
+                id: Id::raw(dep),
+                scope: DependencyScope::Production,
+                via: None,
+            });
+        }
+
+        output.extended_projects.insert(id, project);
+        output.input_files.push(manifest_path);
+    }
+
+    Ok(Json(output))
+}
+```
+
+Tasks are partial [task configurations](/moon/api/TaskConfig), the same as if they were configured
+in `moon.config`.
+
+```rust
+use moon_config::{PartialTaskArgs, PartialTaskConfig};
+
+project.tasks.insert(
+    Id::raw("build"),
+    PartialTaskConfig {
+        command: Some(PartialTaskArgs::List(vec!["make".into(), "build".into()])),
+        description: Some("Inherited from manifest.json.".into()),
+        ..Default::default()
+    },
+);
+```
+
+<Callout type="warn">
+  The `moon_pdk` functions for loading projects and tasks (like
+  [`load_project`](https://docs.rs/moon_pdk/latest/moon_pdk/fn.load_project.html)
+  and [`load_task`](https://docs.rs/moon_pdk/latest/moon_pdk/fn.load_task.html))
+  require the project graph, so they can't be used within `extend_project_graph`
+  (which runs while the graph is being built).
+</Callout>
+
+### `extend_command`
+
+| Input                                                                                                   | Output                                                                                                    | Required | Memoized |
+| ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`ExtendCommandInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.ExtendCommandInput.html) | [`ExtendCommandOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.ExtendCommandOutput.html) | No       | Yes      |
+
+Modifies a command before moon executes it. This applies to every command moon runs, including
+tasks (before [`extend_task_command`](#extend_task_command) or
+[`extend_task_script`](#extend_task_script)), and commands that toolchains run, like installing
+dependencies.
+
+These functions run after the equivalent toolchain functions, so an extension's changes take
+precedence. When multiple extensions modify the same command, their outputs are applied one after
+another.
+
+```rust
+#[plugin_fn]
+pub fn extend_command(
+    Json(input): Json<ExtendCommandInput>,
+) -> FnResult<Json<ExtendCommandOutput>> {
+    let mut output = ExtendCommandOutput::default();
+
+    if input.command == "npm" {
+        output
+            .env
+            .insert("NPM_CONFIG_UPDATE_NOTIFIER".into(), "false".into());
+    }
+
+    Ok(Json(output))
+}
+```
+
+### `extend_task_command`
+
+| Input                                                                                                           | Output                                                                                                          | Required | Memoized |
+| --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`ExtendTaskCommandInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.ExtendTaskCommandInput.html) | [`ExtendTaskCommandOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/type.ExtendTaskCommandOutput.html) | No       | Yes      |
+
+Modifies the command of a [task](<../../moon/docs/(fundamentals)/task.mdx>) before moon executes
+it, which makes it possible to wrap tasks in another program without editing every task
+definition. This is called for tasks that run a command, and is called after
+[`extend_command`](#extend_command).
+
+```rust
+#[plugin_fn]
+pub fn extend_task_command(
+    Json(input): Json<ExtendTaskCommandInput>,
+) -> FnResult<Json<ExtendTaskCommandOutput>> {
+    let mut output = ExtendTaskCommandOutput::default();
+    let project_root = input.context.get_project_root(&input.project);
+
+    // Run as `dotenvx run -- <command> <args>`
+    if project_root.join(".env").exists() {
+        output.command = Some("dotenvx".into());
+        output.args = Some(Extend::Prepend(vec![
+            "run".into(),
+            "--".into(),
+            input.command,
+        ]));
+    }
+
+    Ok(Json(output))
+}
+```
+
+### `extend_task_script`
+
+| Input                                                                                                         | Output                                                                                                          | Required | Memoized |
+| ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`ExtendTaskScriptInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.ExtendTaskScriptInput.html) | [`ExtendTaskScriptOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.ExtendTaskScriptOutput.html) | No       | Yes      |
+
+Modifies the script of a [task](<../../moon/docs/(fundamentals)/task.mdx>) before moon executes it.
+This is called for tasks that run a script instead of a command, and is called after
+[`extend_command`](#extend_command). Scripts don't have arguments, so the output can't modify
+them, but it can replace the script entirely.
+
+```rust
+#[plugin_fn]
+pub fn extend_task_script(
+    Json(input): Json<ExtendTaskScriptInput>,
+) -> FnResult<Json<ExtendTaskScriptOutput>> {
+    let mut output = ExtendTaskScriptOutput::default();
+    let bin_dir = input.context.get_project_root(&input.project).join("bin");
+
+    // Make the project's own executables available to the script
+    if bin_dir.exists() {
+        output.paths.push(bin_dir.into_inner());
+    }
+
+    Ok(Json(output))
+}
+```
+
+### `sync_project`
+
+| Input                                                                                               | Output                                                                                  | Required | Memoized |
+| --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | -------- | -------- |
+| [`SyncProjectInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.SyncProjectInput.html) | [`SyncOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.SyncOutput.html) | No       | No       |
+
+Syncs a project, like keeping configuration files in sync with the project's dependencies. It runs
+as part of the `SyncProject` action, after toolchains have synced the project, which runs for each
+project that owns a task being run (when [`pipeline.syncProjects`](/moon/api/PipelineConfig#syncprojects)
+is enabled), and for every project when running [`moon sync`](../../moon/docs/commands/sync.mdx).
+
+The output can define `operations`, which is a list of
+[`Operation`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.Operation.html)s, that
+track the timing and status of work performed. The easiest way to create one is with
+[`Operation::track`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.Operation.html#method.track),
+which runs a closure and records the result.
+
+```rust
+#[plugin_fn]
+pub fn sync_project(Json(input): Json<SyncProjectInput>) -> FnResult<Json<SyncOutput>> {
+    let mut output = SyncOutput::default();
+    let file = input
+        .context
+        .get_project_root(&input.project)
+        .join("DEPENDENCIES.md");
+
+    let content = input
+        .project_dependencies
+        .iter()
+        .map(|dep| format!("- {}\n", dep.id))
+        .collect::<String>();
+
+    let (op, changed) = Operation::track("sync-dependencies-file", || {
+        if std::fs::read_to_string(&file).ok().as_deref() == Some(content.as_str()) {
+            return Ok(false);
+        }
+
+        std::fs::write(&file, &content)?;
+
+        Ok(true)
+    })?;
+
+    output.operations.push(op);
+
+    if changed {
+        output.changed_files.push(file);
+    }
+
+    Ok(Json(output))
+}
+```
+
+### `sync_workspace`
+
+| Input                                                                                                   | Output                                                                                  | Required | Memoized |
+| ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | -------- | -------- |
+| [`SyncWorkspaceInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.SyncWorkspaceInput.html) | [`SyncOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.SyncOutput.html) | No       | No       |
+
+Syncs the workspace as a whole, like generating workspace-level files. It runs as part of the
+`SyncWorkspace` action, alongside toolchains, which runs before all other actions in the pipeline
+(when [`pipeline.syncWorkspace`](/moon/api/PipelineConfig#syncworkspace) is enabled), and when
+running [`moon sync`](../../moon/docs/commands/sync.mdx).
+
+```rust
+#[plugin_fn]
+pub fn sync_workspace(Json(input): Json<SyncWorkspaceInput>) -> FnResult<Json<SyncOutput>> {
+    let config = parse_extension_config::<ExampleExtensionConfig>(input.extension_config)?;
+    let mut output = SyncOutput::default();
+
+    if config.output_dir.is_empty() {
+        return Ok(Json(output));
+    }
+
+    let reports_dir = input.context.workspace_root.join(&config.output_dir);
+    let gitignore = reports_dir.join(".gitignore");
+
+    // Ignore generated reports
+    if !gitignore.exists() {
+        std::fs::create_dir_all(&reports_dir)?;
+        std::fs::write(&gitignore, "*\n")?;
+
+        output.changed_files.push(gitignore);
+    }
+
+    Ok(Json(output))
+}
+```
+
+## Caveats
+
+- **Errors fail the pipeline** - An error returned from a hook fails the operation that called
+  it, like building the project graph, running a task, or syncing. For non-critical work, use
+  [`Operation::track_with_error`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.Operation.html#method.track_with_error),
+  which records the error on the operation without failing.
+- **Changed files in CI** - When a sync function changes files in a CI environment, the sync
+  action is marked as invalid with a warning, as those changes should have been committed to the
+  repository.
+- **Order between extensions** - Extensions are called concurrently, and their outputs are applied
+  in an order that doesn't follow `.moon/extensions.config`. Avoid depending on the output of
+  another extension.
+- **Every configured extension is loaded** - Building the project graph, running tasks, and syncing
+  load every configured extension, even if it only implements `execute_extension`, so keep
+  `register_extension` fast.

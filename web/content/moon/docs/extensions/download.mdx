@@ -18,7 +18,7 @@ between operating systems), so it's handy for:
 
 - **Network access** - The file is downloaded by moon itself, so no other tools are required.
 - **A destination inside the workspace** - The extension runs in a WASM sandbox, and can only
-  write to [directories that moon exposes to it](../guides/wasm-plugins.mdx#virtual-paths), like
+  write to [directories that moon exposes to it](../../../wasm/docs/virtual-paths.mdx), like
   the workspace root.
 
 ## Installation
@@ -41,7 +41,7 @@ $ moon extension add download
 
 The extension has no settings. Without a `plugin` locator, moon uses the version of the extension
 that it was released with. To use a different version, set the
-[locator](../guides/wasm-plugins.mdx#plugin-locators) explicitly, for example
+[locator](../../../wasm/docs/plugin-locators.mdx) explicitly, for example
 `registry://ghcr.io/moonrepo/download_extension:1.0.4`.
 
 ## Usage
@@ -76,7 +76,7 @@ When executed, the extension:
 2. Resolves the destination directory, and fails if the destination is an existing file.
 3. Creates the destination directory if it doesn't exist.
 4. Downloads the file on the host machine, through moon's HTTP client
-   ([plugins can't make network requests on their own](../guides/wasm-plugins.mdx#downloading-files)).
+   ([plugins can't make network requests on their own](../../../wasm/docs/host-funcs.mdx#downloading-files)).
    The response is streamed into the file, instead of being loaded into memory, and the download
    fails if the response isn't a `2xx` status.
 

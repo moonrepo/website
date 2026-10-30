@@ -2,13 +2,13 @@
 title: moon ext
 ---
 
-Execute an [extension](<../(fundamentals)/extension.mdx>), a [WASM plugin](../guides/wasm-plugins.mdx)
+Execute an [extension](<../(fundamentals)/extension.mdx>), a [WASM plugin](../../../wasm/docs/index.mdx)
 that extends moon with custom functionality, has whitelisted access to the file system, and can
 receive partial information about the current workspace.
 
 To execute an extension, moon looks up the provided extension `id` in the workspace's configured
 extensions (typically defined in [`.moon/extensions.config`](<../(fundamentals)/extension.mdx>)), resolves and loads its WASM plugin
-from its [plugin locator](../guides/wasm-plugins.mdx#plugin-locators) (downloading and caching it
+from its [plugin locator](../../../wasm/docs/plugin-locators.mdx) (downloading and caching it
 locally, unless it's a local file), and then calls the plugin's
 `execute_extension` function. Any arguments passed after a `--` separator are not parsed by
 `moon ext` itself, but are instead forwarded verbatim to the extension, which is responsible for

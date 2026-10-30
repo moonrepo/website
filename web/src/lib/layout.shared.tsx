@@ -1,5 +1,4 @@
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
-import { NewspaperIcon } from 'lucide-react';
 
 // Products aren't listed as links, since the docs sidebar has a product switcher
 export function baseOptions(): BaseLayoutProps {
