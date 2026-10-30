@@ -3,4 +3,299 @@ title: Backends
 icon: ToyBrick
 ---
 
-TODO
+Backends are [proto](../../proto/docs/index.mdx) plugins that provide many tools from a single
+source, like packages from npm, crates from Cargo, or plugins from asdf. Instead of a plugin per
+tool, users reference a tool through a backend with a `<backend>:<tool>` identifier, and the
+backend installs and runs it.
+
+```toml title=".prototools"
+"npm:typescript" = "5.6.0"
+"cargo:ripgrep" = "14"
+```
+
+This page is a reference for the functions a backend can implement. A backend is also a
+[tool](./tool.mdx), so read that page first. If you haven't built a plugin before, start with
+[creating a plugin](./creating.mdx). The examples on this page assume the following imports.
+
+```rust title="src/lib.rs"
+use extism_pdk::*;
+use proto_pdk::*;
+```
+
+## Concepts
+
+### Backend ID
+
+The backend's ID is the part before the colon, like `npm` in `npm:typescript`. It's chosen by the
+user rather than the plugin, as it's the key the plugin is configured with, so the same plugin can
+be registered under a different ID in the `[plugins.backends]` table. proto uses it to:
+
+- Locate the backend's plugin, and its `[backends.<id>]` [configuration](#configuration).
+- Name the directory that the backend's [source](#register_backend) is acquired into,
+  `~/.proto/backends/<id>`.
+- Name the directory that versions are installed into, when `scoped_backend_dir` is enabled (see
+  [tool](#tool)).
+
+There's no PDK function for the backend's ID, but proto passes it to the plugin as the
+`proto_backend_id` configuration value, which can be read with Extism's
+[`config::get`](https://docs.rs/extism-pdk/latest/extism_pdk/config/fn.get.html) function. Don't
+confuse it with the `backend_id` returned from [`register_backend`](#register_backend), which names
+the source's directory within the backend's directory.
+
+```rust
+let backend = config::get("proto_backend_id")?.unwrap_or_default(); // npm
+```
+
+### Tool ID
+
+The tool's ID is whatever the user wrote after the colon, and is available in every function with
+[`get_plugin_id`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.get_plugin_id.html). It's
+typically the name of a package in the backend's ecosystem, which can include a leading `@` and
+forward slashes, like npm's `@angular/cli`, so take care when using it in file names.
+
+```rust
+let package = get_plugin_id()?; // typescript
+```
+
+### Loading priority
+
+When a tool is referenced with a backend, proto locates the backend's plugin by the backend's ID, from the `plugin` setting of the `[backends.<id>]` table, or the
+`[plugins.backends]` table of `.prototools`, then the built-in backends (`asdf`, `cargo`, and
+`npm`), and then the default [registry](./plugin-locators.mdx#oci-registry). It then loads a separate instance of the plugin for
+each tool, with the tool's ID as the [plugin ID](./plugin-id.mdx), and
+calls [`register_tool`](./tool.mdx#register_tool), followed by
+[`register_backend`](#register_backend).
+
+From there, proto treats the tool like any other, calling the [tool functions](#tool) to resolve,
+install, and run it. A plugin can also be loaded as a tool without a backend, in which case
+`register_backend` isn't called.
+
+## Configuration
+
+Users configure a backend in the `[backends.<id>]` table of a `.prototools` file, which applies to
+every tool from that backend. Except for the settings that proto handles itself (`env` and
+`plugin`), every setting is passed through to the plugin, and can be read from any function with
+[`get_backend_config`](https://docs.rs/proto_pdk/latest/proto_pdk/fn.get_backend_config.html).
+
+A single tool can also be configured in a `[tools."<backend>:<id>"]` table, which is read with
+[`get_tool_config`](https://docs.rs/proto_pdk/latest/proto_pdk/fn.get_tool_config.html), the same
+as for [tools](./tool.mdx#configuration). Both are merged from every `.prototools` file that proto
+loads, with files closer to the current directory taking precedence.
+
+```toml title=".prototools"
+[backends.example]
+registry = "https://registry.company.com"
+
+[tools."example:widget"]
+features = ["cli"]
+```
+
+Map each into its own struct that implements
+[`Deserialize`](https://docs.rs/serde/latest/serde/trait.Deserialize.html) and `Default`, as the
+default value is returned when nothing is configured.
+
+```rust
+#[derive(Debug, Default, serde::Deserialize)]
+#[serde(default, deny_unknown_fields, rename_all = "kebab-case")]
+pub struct ExampleBackendConfig {
+    pub registry: Option<String>,
+}
+
+#[derive(Debug, Default, serde::Deserialize)]
+#[serde(default, deny_unknown_fields, rename_all = "kebab-case")]
+pub struct ExampleToolConfig {
+    pub features: Vec<String>,
+}
+
+let backend_config = get_backend_config::<ExampleBackendConfig>()?;
+let tool_config = get_tool_config::<ExampleToolConfig>()?;
+```
+
+To test with settings, use the `backend_config` and `tool_config` methods (see
+[testing proto plugins](./testing.mdx#proto)), and create the plugin with the backend's prefix, like
+`sandbox.create_plugin("example:widget")`.
+
+## APIs
+
+### `register_backend`
+
+| Input                                                                                                         | Output                                                                                                          | Required | Memoized |
+| ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`RegisterBackendInput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.RegisterBackendInput.html) | [`RegisterBackendOutput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.RegisterBackendOutput.html) | No       | Yes      |
+
+Registers the backend for a tool, and is called whenever proto loads a tool through the backend,
+after [`register_tool`](./tool.mdx#register_tool). The input contains the tool's `id`. Backends that
+install tools with an existing package manager, like npm or Cargo, only need to return a
+`backend_id`, which is typically the tool's ID.
+
+```rust
+#[plugin_fn]
+pub fn register_backend(
+    Json(_): Json<RegisterBackendInput>,
+) -> FnResult<Json<RegisterBackendOutput>> {
+    Ok(Json(RegisterBackendOutput {
+        backend_id: get_plugin_id()?,
+        ..Default::default()
+    }))
+}
+```
+
+Other backends need files to do their work, like asdf, which installs tools with shell scripts
+from a plugin repository. Return a `source` (see
+[`SourceLocation`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/enum.SourceLocation.html)),
+and proto acquires it into `~/.proto/backends/<backend>/<backend_id>` before any other function is
+called:
+
+- **Git repositories** are cloned, and pulled again when the tool is loaded, at most once every 7
+  days.
+- **Archives** are downloaded and unpacked once, and aren't updated while the directory exists.
+
+Return the scripts within the source that need to be executable as `exes`, relative to the
+source's directory, as WASM can't change file permissions. Tools that share a `backend_id` share
+the same source, so use an ID that identifies the source, like asdf using the plugin's short name.
+
+```rust
+#[plugin_fn]
+pub fn register_backend(
+    Json(input): Json<RegisterBackendInput>,
+) -> FnResult<Json<RegisterBackendOutput>> {
+    Ok(Json(RegisterBackendOutput {
+        backend_id: input.id.clone(),
+        exes: vec!["bin/install".into(), "bin/list-versions".into()],
+        source: Some(SourceLocation::Git(GitSource {
+            url: format!("https://github.com/example/example-{}.git", input.id),
+            ..Default::default()
+        })),
+    }))
+}
+```
+
+The source is then available through the `/proto/backends/<backend>/<backend_id>`
+[virtual path](./virtual-paths.mdx), for example, when
+[executing a script](./host-funcs.mdx#executing-commands) to install the tool.
+
+```rust
+let backend = config::get("proto_backend_id")?.unwrap_or_default();
+let script = VirtualPath::new(format!("/proto/backends/{backend}/{}/bin/install", get_plugin_id()?));
+```
+
+### `define_backend_config`
+
+| Input | Output                                                                                                                  | Required | Memoized |
+| ----- | ----------------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| N/A   | [`DefineBackendConfigOutput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.DefineBackendConfigOutput.html) | No       | N/A      |
+
+Describes the shape of the backend's [configuration](#configuration) as a schema, built with the
+[schematic](https://crates.io/crates/schematic) crate. Like
+[`define_tool_config`](./tool.mdx#define_tool_config), proto doesn't call this function yet, so the
+schema isn't used for validation, but it documents the available settings in a machine-readable
+format, and our official backends implement it. Derive schematic's
+[`Schematic`](https://docs.rs/schematic/latest/schematic/trait.Schematic.html) trait on the
+configuration struct, and doc comments are used as setting descriptions.
+
+```rust
+use schematic::{SchemaBuilder, Schematic};
+
+#[derive(Debug, Default, Schematic, serde::Deserialize)]
+#[serde(default, deny_unknown_fields, rename_all = "kebab-case")]
+pub struct ExampleBackendConfig {
+    /// Custom registry to resolve packages from.
+    pub registry: Option<String>,
+}
+
+#[plugin_fn]
+pub fn define_backend_config() -> FnResult<Json<DefineBackendConfigOutput>> {
+    Ok(Json(DefineBackendConfigOutput {
+        schema: SchemaBuilder::build_root::<ExampleBackendConfig>(),
+    }))
+}
+```
+
+```toml title="Cargo.toml"
+[dependencies]
+schematic = { version = "0.20", default-features = false, features = ["schema"] }
+```
+
+### Tool implementation
+
+Everything else a backend does is implemented with the [tool functions](./tool.mdx), which are
+called for each tool from the backend, with the tool's ID as the plugin ID. This includes
+[`register_tool`](./tool.mdx#register_tool), and the functions that proto calls without checking
+whether they exist, [`load_versions`](./tool.mdx#load_versions) and
+[`locate_executables`](./tool.mdx#locate_executables). Since a backend can't know the layout of
+every tool ahead of time, these functions typically ask the ecosystem instead:
+
+- [`load_versions`](./tool.mdx#load_versions) - Queries the ecosystem for the versions of the
+  package, like `npm view <package> versions`.
+- [`native_install`](./tool.mdx#native_install) - Installs the package into the install directory
+  with the ecosystem's package manager, like `npm install --global --prefix <dir>`, or with a
+  script from the backend's source.
+- [`locate_executables`](./tool.mdx#locate_executables) - Reads the executables from the installed
+  package, like the `bin` field of its `package.json`, or scans the install directory.
+
+In [`register_tool`](./tool.mdx#register_tool), include the backend in the `name`, like
+`npm:typescript`, and set `scoped_backend_dir` in the `inventory_options`, so that versions are
+installed into a directory that includes the backend's ID. Otherwise, the tool's versions are
+installed under its ID alone, which conflicts with a tool of the same name from another backend.
+When the backend relies on another tool, like npm requiring Node.js, add it to `requires`.
+
+```rust
+#[plugin_fn]
+pub fn register_tool(Json(input): Json<RegisterToolInput>) -> FnResult<Json<RegisterToolOutput>> {
+    Ok(Json(RegisterToolOutput {
+        name: format!("example:{}", input.id),
+        type_of: PluginType::CommandLine,
+        inventory_options: ToolInventoryOptions {
+            scoped_backend_dir: true,
+            ..Default::default()
+        },
+        plugin_version: Version::parse(env!("CARGO_PKG_VERSION")).ok(),
+        ..Default::default()
+    }))
+}
+
+#[plugin_fn]
+pub fn native_install(
+    Json(input): Json<NativeInstallInput>,
+) -> FnResult<Json<NativeInstallOutput>> {
+    let package = get_plugin_id()?;
+    let config = get_backend_config::<ExampleBackendConfig>()?;
+
+    let Some(dir) = input.install_dir.to_real_path()? else {
+        return Err(plugin_err!("Unable to locate the install directory."));
+    };
+
+    let mut args = vec![
+        "install".to_string(),
+        format!("{package}@{}", input.context.version),
+        "--prefix".into(),
+        dir.to_string(),
+    ];
+
+    if let Some(registry) = config.registry {
+        args.push("--registry".into());
+        args.push(registry);
+    }
+
+    let result = exec_captured("example", args)?;
+
+    Ok(Json(NativeInstallOutput {
+        installed: result.exit_code == 0,
+        error: Some(result.stderr),
+        ..Default::default()
+    }))
+}
+```
+
+## Caveats
+
+- **Every tool is a separate instance** - Each tool from a backend loads its own instance of the
+  plugin, so [memoized](./tool.mdx#caveats) outputs and in-memory state aren't shared between
+  tools.
+- **Sources update slowly** - Git sources are only pulled once every 7 days, and archive sources are
+  never updated, so users must delete the backend's directory in `~/.proto/backends` to pick up
+  changes sooner.
+  Scripts listed in `exes` are only made executable when the source is first acquired.
+- **Fail early on unsupported platforms** - Return an error from
+  [`register_backend`](#register_backend) when the backend can't work on the host, like asdf on
+  Windows, so that every command fails with a clear message instead of a broken install.

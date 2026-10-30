@@ -34,7 +34,6 @@ title: <TITLE>
 ## APIs
 
 ### `register_tool`
-### `initialize_tool`
 ### `define_tool_config`
 
 ### Resolution
