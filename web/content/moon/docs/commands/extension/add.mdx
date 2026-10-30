@@ -4,7 +4,7 @@ title: moon extension add
 
 Register and configure a new [extension](../extension.mdx) plugin. This command downloads the
 extension's WASM plugin, extracts its metadata, and (if the plugin
-[implements an `initialize_extension` function](<../../(fundamentals)/extension.mdx#prompting-for-settings>)) runs an interactive series of prompts to gather configuration
+[implements an `initialize_extension` function](../../../../wasm/docs/extension.mdx#initialize_extension)) runs an interactive series of prompts to gather configuration
 values from you. Once complete, a new block is appended to (or updated within)
 [`.moon/extensions.config`](<../../(fundamentals)/extension.mdx>), persisting the extension's plugin locator and any configured settings so
 that it can be executed later with [`moon ext`](../ext.mdx).
