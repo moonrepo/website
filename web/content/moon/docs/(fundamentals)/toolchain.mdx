@@ -197,6 +197,15 @@ proto:
   tasks for every Python project are inherited with `python` (see
   [task inheritance](./task-inheritance.mdx#scoping-inheritance)).
 
+## Creating a toolchain
+
+Toolchains are built with the same tooling as every other moon plugin. Read the
+[WASM plugin docs](../../../wasm/docs/index.mdx) first, as they cover how plugins work, the sandbox
+they run in, the host functions available to them, and how to create, build, and publish a plugin
+crate. Then implement the [toolchain specific API functions](../../../wasm/docs/toolchain.mdx) for
+each tier your toolchain supports. Tier 3 also requires proto's
+[tool API functions](../../../wasm/docs/tool.mdx), implemented in the same plugin.
+
 ## Configuration
 
 Toolchains are configured in `.moon/toolchains.config`, by ID. Alongside its own settings

@@ -95,6 +95,12 @@ $ moon extension add unpack
 $ moon ext unpack -- --src ./archive.zip --dest ./out
 ```
 
+## Creating an extension
+
+Extensions are built with the same tooling as every other moon plugin. Read the
+[WASM plugin docs](../../../wasm/docs/index.mdx) first, as they cover how plugins work, the sandbox they run
+in, the host functions available to them, and how to create, build, and publish a plugin crate. Then implement the [extension specific API functions](../../../wasm/docs/extension.mdx) required for your extension.
+
 ## Configuration
 
 Extensions are configured through `.moon/extensions.config`, where each top-level key is the unique
@@ -127,9 +133,3 @@ file by hand:
   schema, and the plugin functions it implements.
 - [`moon extension download`](../commands/extension/download.mdx) - Download and cache the WASM plugins
   for every configured extension, without executing them.
-
-## Creating an extension
-
-Extensions are built with the same tooling as every other moon plugin. Read the
-[WASM plugin docs](../../../wasm/docs/index.mdx) first, as they cover how plugins work, the sandbox they run
-in, the host functions available to them, and how to create, build, and publish a plugin crate. Then implement the [extension specific API functions](../../../wasm/docs/extension.mdx) required for your extension.

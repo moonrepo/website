@@ -3,4 +3,1197 @@ title: Toolchains
 icon: Toolbox
 ---
 
-TODO
+[Toolchains](<../../moon/docs/(fundamentals)/toolchain.mdx>) are moon plugins that integrate a
+language or ecosystem into moon, like Go, JavaScript, or Rust. They detect which projects and tasks
+use the language, teach the project graph about manifests and lockfiles, install dependencies
+before tasks run, and can download and pin the tool itself.
+
+This page is a reference for every function a toolchain can implement. If you haven't built a
+plugin before, start with [creating a plugin](./creating.mdx). The input and output types are
+provided by the [`moon_pdk_api`](https://docs.rs/moon_pdk_api) crate, and helper functions by the
+[`moon_pdk`](https://docs.rs/moon_pdk) crate. The examples on this page assume the following
+imports.
+
+```rust title="src/lib.rs"
+use extism_pdk::*;
+use moon_pdk::*;
+use moon_pdk_api::*;
+```
+
+## Concepts
+
+### Tiers
+
+A toolchain is a set of exported functions. Only [`register_toolchain`](#register_toolchain) is
+required, as moon checks whether each of the other functions exists before calling it. The other
+functions are grouped into three tiers, so a toolchain can start small and grow over time:
+
+- **[Tier 1](#tier-1)** - Usage detection, syncing, and Docker. This is enough for moon to know
+  which projects and tasks use the toolchain.
+- **[Tier 2](#tier-2)** - Ecosystem integration. Understands manifests, lockfiles, and
+  dependencies, to extend the project graph, install dependencies, and hash tasks.
+- **[Tier 3](#tier-3)** - Tool management. Downloads and installs the tool itself through proto.
+
+Tiers aren't enforced, so implement only the functions you need. Refer to the
+[toolchain fundamentals](<../../moon/docs/(fundamentals)/toolchain.mdx#tier-1-syncing-and-usage-detection>)
+for how each tier behaves for users, and run
+[`moon toolchain info`](../../moon/docs/commands/toolchain/info.mdx) to see which functions a
+toolchain implements.
+
+### Lifecycle
+
+The following table lists when each function is called.
+
+| Function                                                | Called when                                                                                                                                       |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`register_toolchain`](#register_toolchain)             | The toolchain is loaded, for any command that uses toolchains                                                                                     |
+| [`initialize_toolchain`](#initialize_toolchain)         | Running [`moon toolchain add`](../../moon/docs/commands/toolchain/add.mdx)                                                                        |
+| [`define_toolchain_config`](#define_toolchain_config)   | Running [`moon toolchain info`](../../moon/docs/commands/toolchain/info.mdx), and generating config schemas                                       |
+| [`detect_version_files`](#detect_version_files)         | Running [`moon toolchain add`](../../moon/docs/commands/toolchain/add.mdx)                                                                        |
+| [`define_docker_metadata`](#define_docker_metadata)     | Running [`moon docker file`](../../moon/docs/commands/docker/file.mdx) and [`moon docker scaffold`](../../moon/docs/commands/docker/scaffold.mdx) |
+| [`prune_docker`](#prune_docker)                         | Running [`moon docker prune`](../../moon/docs/commands/docker/prune.mdx)                                                                          |
+| [`scaffold_docker`](#scaffold_docker)                   | Running [`moon docker scaffold`](../../moon/docs/commands/docker/scaffold.mdx)                                                                    |
+| [`sync_workspace`](#sync_workspace)                     | Syncing the workspace, before the pipeline runs                                                                                                   |
+| [`sync_project`](#sync_project)                         | Syncing a project, before its tasks run                                                                                                           |
+| [`extend_project_graph`](#extend_project_graph)         | Building the project graph                                                                                                                        |
+| [`extend_command`](#extend_command)                     | Before any command is executed with the toolchain, including tasks                                                                                |
+| [`extend_task_command`](#extend_task_command)           | Before a task that runs a command is executed                                                                                                     |
+| [`extend_task_script`](#extend_task_script)             | Before a task that runs a script is executed                                                                                                      |
+| [`hash_task_contents`](#hash_task_contents)             | Hashing a task                                                                                                                                    |
+| [`define_requirements`](#define_requirements)           | Building the action graph, and detecting a task's toolchains                                                                                      |
+| [`install_dependencies`](#install_dependencies)         | Before a task runs, and running `moon docker prune`                                                                                               |
+| [`locate_dependencies_root`](#locate_dependencies_root) | Placing projects in their dependencies roots                                                                                                      |
+| [`parse_lock`](#parse_lock)                             | Hashing a task                                                                                                                                    |
+| [`parse_manifest`](#parse_manifest)                     | Hashing a task, and checking whether dependencies need to be installed                                                                            |
+| [`setup_environment`](#setup_environment)               | After the tool is set up, before dependencies are installed                                                                                       |
+| [`setup_toolchain`](#setup_toolchain)                   | After the tool is installed, before tasks run and when running [`moon setup`](../../moon/docs/commands/setup.mdx)                                 |
+| [`teardown_toolchain`](#teardown_toolchain)             | Running [`moon teardown`](../../moon/docs/commands/teardown.mdx)                                                                                  |
+
+Functions that apply to a project or task are only called for the toolchains
+[associated with it](<../../moon/docs/(fundamentals)/toolchain.mdx#project-and-task-detection>),
+while workspace-wide functions, like `sync_workspace` and `extend_project_graph`, are called for
+every toolchain enabled in
+[`.moon/toolchains.config`](<../../moon/docs/(fundamentals)/toolchain.mdx#configuration>).
+
+### Dependencies root
+
+Most of tier 2 revolves around the
+[dependencies root](<../../moon/docs/(fundamentals)/toolchain.mdx#locating-dependencies-root>),
+the directory where dependencies are installed, which is typically where the lockfile lives.
+[`locate_dependencies_root`](#locate_dependencies_root) finds the root of each project, and moon
+passes it as the `root` field to [`install_dependencies`](#install_dependencies),
+[`setup_environment`](#setup_environment), [`parse_lock`](#parse_lock),
+[`parse_manifest`](#parse_manifest), and [`prune_docker`](#prune_docker).
+
+Installs and environment setup run once per root, no matter how many projects share it. Projects
+without a root are skipped, so these functions are never called for a toolchain that doesn't
+implement [`locate_dependencies_root`](#locate_dependencies_root).
+
+### Executing commands
+
+Instead of running commands themselves, [`install_dependencies`](#install_dependencies) and
+[`setup_environment`](#setup_environment) return the commands to run as an
+[`ExecCommand`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.ExecCommand.html). moon
+executes them in the dependencies root, with the toolchain's tools on `PATH`, and displays them in
+the console. An [`ExecCommand`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.ExecCommand.html) wraps an
+[`ExecCommandInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.ExecCommandInput.html),
+and supports the following behavior:
+
+- `cache` - Caches the command with a
+  [`CacheStrategy`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/enum.CacheStrategy.html).
+  `Memory` runs the command once per moon process, while `Hash` only runs it again when a
+  fingerprint of the command, and of its `inputs` (environment variables and files, see
+  [`CacheInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/enum.CacheInput.html)), has
+  changed. Commands aren't cached by default.
+- `parallel` - Runs the command concurrently with other parallel commands, after all serial
+  commands have run.
+- `allow_failure` and `retry_count` - Continues when the command fails, or retries it.
+- `label` - The label to display in the console, instead of the command and its arguments.
+
+```rust
+let command = ExecCommand::new(
+    ExecCommandInput::new("example", ["install"]).cwd(input.root.clone()),
+)
+.cache(CacheStrategy::Hash)
+.inputs(vec![CacheInput::FileHash(input.root.join("example.lock"))])
+.label("example-install");
+```
+
+To run a command and read its output from within a function, like when extending the project
+graph, use the [host functions for executing commands](./host-funcs.mdx#executing-commands)
+instead.
+
+### Context
+
+Most inputs include a
+[`MoonContext`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.MoonContext.html) in the
+`context` field, with [virtual paths](./virtual-paths.mdx) to the current working directory
+(`working_dir`) and the workspace root (`workspace_root`). For toolchains that support
+[tier 3](#tier-3), the inputs of [`extend_task_command`](#extend_task_command),
+[`extend_task_script`](#extend_task_script), and [`setup_environment`](#setup_environment) also
+include the tool's global executables directory (`globals_dir`), where packages installed
+globally, like with `go install`, are located.
+
+### Shared with extensions
+
+The `extend_*` and `sync_*` functions are shared with [extensions](./extension.mdx), and use the
+same input and output types. The `extension_config` field only applies to extensions, and is always
+empty for toolchains.
+
+Some types used by toolchains, like
+[`LanguageType`](https://docs.rs/moon_config/latest/moon_config/enum.LanguageType.html),
+[`DependencyScope`](https://docs.rs/moon_config/latest/moon_config/enum.DependencyScope.html), and
+[`PartialTaskConfig`](https://docs.rs/moon_config/latest/moon_config/struct.PartialTaskConfig.html),
+are provided by the [`moon_config`](https://docs.rs/moon_config) crate, so add it as a dependency
+when you need them.
+
+## Configuration
+
+Every setting configured for a toolchain in
+[`.moon/toolchains.config`](<../../moon/docs/(fundamentals)/toolchain.mdx#configuration>) is passed
+through to the plugin as-is, except for the settings that moon handles itself:
+[`plugin`](/moon/api/ToolchainPluginConfig#plugin),
+[`versionFromPrototools`](/moon/api/ToolchainPluginConfig#versionfromprototools),
+[`installDependencies`](/moon/api/ToolchainPluginConfig#installdependencies), and
+[`inheritAliases`](/moon/api/ToolchainPluginConfig#inheritaliases). There are 3 ways to read them,
+and each returns the type's default value when the toolchain has no settings:
+
+- [`get_toolchain_config`](https://docs.rs/moon_pdk/latest/moon_pdk/fn.get_toolchain_config.html) -
+  Loads the workspace settings from any function, as moon provides them when the toolchain is
+  loaded. These don't include the [`version`](/moon/api/ToolchainPluginConfig#version), or a
+  project's overrides.
+- [`parse_toolchain_config`](https://docs.rs/moon_pdk/latest/moon_pdk/fn.parse_toolchain_config.html) -
+  Parses the `toolchain_config` field that's part of most inputs. It also includes the `version`,
+  whether configured or inherited from `.prototools`, and for most functions, the
+  [overrides](<../../moon/docs/(fundamentals)/toolchain.mdx#project-overrides>) of the current
+  project.
+- [`parse_toolchain_config_schema`](https://docs.rs/moon_pdk/latest/moon_pdk/fn.parse_toolchain_config_schema.html) - Like `parse_toolchain_config`, but parses it using
+  `schematic`, applying default values and validation rules. Requires the `schematic` feature of
+  `moon_pdk`.
+
+Map the settings into a struct with the
+[`config_struct!`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/macro.config_struct.html)
+macro, which derives [`Deserialize`](https://docs.rs/serde/latest/serde/trait.Deserialize.html)
+with camelCase field names, so that `vendor_dir` maps to the `vendorDir` setting. To read the
+version, include a `version` field.
+
+```rust
+config_struct!(
+    #[derive(Default)]
+    pub struct ExampleToolchainConfig {
+        pub tidy_on_change: bool,
+        pub vendor_dir: Option<String>,
+        pub version: Option<UnresolvedVersionSpec>,
+    }
+);
+
+let config = parse_toolchain_config::<ExampleToolchainConfig>(input.toolchain_config)?;
+```
+
+The `toolchain_config` field contains the workspace settings merged with the current project's
+overrides, with the following exceptions:
+
+- [`sync_workspace`](#sync_workspace), [`extend_project_graph`](#extend_project_graph),
+  [`setup_toolchain`](#setup_toolchain), and [`teardown_toolchain`](#teardown_toolchain) only
+  receive the workspace settings.
+- [`install_dependencies`](#install_dependencies), [`setup_environment`](#setup_environment), and
+  [`prune_docker`](#prune_docker) receive the settings of the dependencies root, which are merged
+  with the overrides of the project at the root (if there is one).
+
+To read the settings of another toolchain, like a language toolchain reading the settings of its
+package manager, use
+[`load_toolchain_config`](https://docs.rs/moon_pdk/latest/moon_pdk/fn.load_toolchain_config.html),
+or [`load_project_toolchain_config`](https://docs.rs/moon_pdk/latest/moon_pdk/fn.load_project_toolchain_config.html)
+to include a project's overrides. Both fail if the other toolchain isn't configured.
+
+## APIs
+
+### `register_toolchain`
+
+| Input                                                                                                           | Output                                                                                                            | Required | Memoized |
+| --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`RegisterToolchainInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.RegisterToolchainInput.html) | [`RegisterToolchainOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.RegisterToolchainOutput.html) | Yes      | Yes      |
+
+Registers the toolchain and returns metadata about it. This is the only required function, and is
+called whenever moon loads the toolchain. Besides a display `name`, `description`, and
+`plugin_version`, the metadata describes the files and executables that belong to the toolchain,
+which moon uses throughout:
+
+- `manifest_file_names`, `lock_file_names`, and `config_file_globs` -
+  [Detect which projects](<../../moon/docs/(fundamentals)/toolchain.mdx#project-and-task-detection>)
+  use the toolchain, and are copied by
+  [`moon docker scaffold`](../../moon/docs/commands/docker/scaffold.mdx). Lockfiles and manifests
+  are also parsed when hashing tasks and checking whether to install dependencies.
+- `exe_names` - Detect which tasks use the toolchain, from their command.
+- `vendor_dir_name` - The directory that contains installed dependencies, like `node_modules`,
+  which is excluded from Docker scaffolds, and used to determine whether dependencies have been
+  installed.
+- `language` - The [`LanguageType`](/moon/api/LanguageType) of projects that use the toolchain.
+
+```rust
+use moon_config::LanguageType;
+
+#[plugin_fn]
+pub fn register_toolchain(
+    Json(_): Json<RegisterToolchainInput>,
+) -> FnResult<Json<RegisterToolchainOutput>> {
+    Ok(Json(RegisterToolchainOutput {
+        name: "Go".into(),
+        plugin_version: env!("CARGO_PKG_VERSION").into(),
+        language: Some(LanguageType::Go),
+        exe_names: vec!["go".into(), "gofmt".into()],
+        lock_file_names: vec!["go.sum".into()],
+        manifest_file_names: vec!["go.mod".into()],
+        vendor_dir_name: Some("vendor".into()),
+        ..Default::default()
+    }))
+}
+```
+
+### `initialize_toolchain`
+
+| Input                                                                                                             | Output                                                                                                              | Required | Memoized |
+| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`InitializeToolchainInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/type.InitializeToolchainInput.html) | [`InitializeToolchainOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/type.InitializeToolchainOutput.html) | No       | Yes      |
+
+Asks the user questions when the toolchain is added with
+[`moon toolchain add`](../../moon/docs/commands/toolchain/add.mdx), and writes the answers as
+settings for the toolchain in `.moon/toolchains.config`. Without this function, the toolchain is
+added without any settings. For toolchains that support [tier 3](#tier-3), moon detects or prompts
+for a `version` first, so don't prompt for it yourself.
+
+The output's `default_settings`, documentation links, and prompts work the same as for
+[extensions](./extension.mdx#initialize_extension), with each prompt being a
+[`SettingPrompt`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.SettingPrompt.html).
+
+```rust
+#[plugin_fn]
+pub fn initialize_toolchain(
+    Json(_): Json<InitializeToolchainInput>,
+) -> FnResult<Json<InitializeToolchainOutput>> {
+    Ok(Json(InitializeToolchainOutput {
+        config_url: Some("https://example.com/docs/config".into()),
+        prompts: vec![SettingPrompt::new(
+            "tidyOnChange",
+            "Run tidy when dependencies change?",
+            PromptType::Confirm { default: false },
+        )],
+        ..Default::default()
+    }))
+}
+```
+
+### `define_toolchain_config`
+
+| Input | Output                                                                                                                    | Required | Memoized |
+| ----- | ------------------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| N/A   | [`DefineToolchainConfigOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.DefineToolchainConfigOutput.html) | No       | Yes      |
+
+Describes the shape of the toolchain's configuration as a schema. Users can discover the available
+settings with [`moon toolchain info`](../../moon/docs/commands/toolchain/info.mdx), and moon
+includes the schema in the JSON schema it generates for `.moon/toolchains.config` (see
+[`moon sync config-schemas`](../../moon/docs/commands/sync/config-schemas.mdx)), which editors use
+for validation and autocompletion.
+
+Schemas are built with the [schematic](https://crates.io/crates/schematic) crate, the same as for
+[extensions](./extension.mdx#define_extension_config). When the configuration struct derives
+schematic's [`Config`](https://docs.rs/schematic/latest/schematic/trait.Config.html) instead of
+[`Schematic`](https://docs.rs/schematic/latest/schematic/trait.Schematic.html), it can also be
+parsed with [`parse_toolchain_config_schema`](https://docs.rs/moon_pdk/latest/moon_pdk/fn.parse_toolchain_config_schema.html), so the default values and validation rules defined
+with `#[setting]` attributes are applied. Doc comments are used as setting descriptions.
+
+```rust
+use schematic::{Config, SchemaBuilder};
+
+config_struct!(
+    #[derive(Config)]
+    pub struct ExampleToolchainConfig {
+        /// Run tidy when dependencies change.
+        pub tidy_on_change: bool,
+
+        /// Relative path to the vendor directory.
+        pub vendor_dir: Option<String>,
+
+        /// Version to download and install.
+        pub version: Option<UnresolvedVersionSpec>,
+    }
+);
+
+#[plugin_fn]
+pub fn define_toolchain_config() -> FnResult<Json<DefineToolchainConfigOutput>> {
+    Ok(Json(DefineToolchainConfigOutput {
+        schema: SchemaBuilder::build_root::<ExampleToolchainConfig>(),
+    }))
+}
+```
+
+```toml title="Cargo.toml"
+[dependencies]
+moon_pdk = { version = "...", features = ["schematic"] }
+schematic = { version = "0.20", default-features = false, features = ["config"] }
+```
+
+### Tier 1
+
+Tier 1 makes moon aware of a toolchain: which projects and tasks use it (from the metadata returned
+by [`register_toolchain`](#register_toolchain)), and how it takes part in syncing and Docker builds.
+Refer to
+[tier 1 in the fundamentals](<../../moon/docs/(fundamentals)/toolchain.mdx#tier-1-syncing-and-usage-detection>)
+for how it behaves for users.
+
+### `detect_version_files`
+
+| Input                                                                                                   | Output                                                                                                    | Required | Memoized |
+| ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`DetectVersionInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.DetectVersionInput.html) | [`DetectVersionOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.DetectVersionOutput.html) | No       | Yes      |
+
+Returns a list of files that may contain a version of the tool, like `.go-version` or `go.mod`.
+When the toolchain is added with
+[`moon toolchain add`](../../moon/docs/commands/toolchain/add.mdx), moon checks each file in the
+current directory, in order, and uses the first version it finds as the toolchain's `version`
+(see [version detection](<../../moon/docs/(fundamentals)/toolchain.mdx#version-detection>)). The
+output can also list patterns to `ignore`, and no version is detected when the path of the current
+directory contains one of them.
+
+This function comes from proto's tool API, and is only used by toolchains that support
+[tier 3](#tier-3). By default, a file's entire content is parsed as a version. To extract a version
+from a file with other content, also implement `parse_version_file`, which receives a
+[`ParseVersionFileInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.ParseVersionFileInput.html)
+and returns a
+[`ParseVersionFileOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.ParseVersionFileOutput.html).
+
+```rust
+#[plugin_fn]
+pub fn detect_version_files(
+    Json(_): Json<DetectVersionInput>,
+) -> FnResult<Json<DetectVersionOutput>> {
+    Ok(Json(DetectVersionOutput {
+        files: vec![".go-version".into(), "go.mod".into()],
+        ..Default::default()
+    }))
+}
+
+#[plugin_fn]
+pub fn parse_version_file(
+    Json(input): Json<ParseVersionFileInput>,
+) -> FnResult<Json<ParseVersionFileOutput>> {
+    let mut version = None;
+
+    if input.file == "go.mod" {
+        // Extract from the `go 1.24` directive
+        if let Some(line) = input.content.lines().find(|line| line.starts_with("go ")) {
+            version = Some(UnresolvedVersionSpec::parse(format!("^{}", &line[3..]))?);
+        }
+    } else {
+        version = Some(UnresolvedVersionSpec::parse(input.content)?);
+    }
+
+    Ok(Json(ParseVersionFileOutput { version }))
+}
+```
+
+### `define_docker_metadata`
+
+| Input                                                                                                                 | Output                                                                                                                  | Required | Memoized |
+| --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`DefineDockerMetadataInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.DefineDockerMetadataInput.html) | [`DefineDockerMetadataOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.DefineDockerMetadataOutput.html) | No       | Yes      |
+
+Defines information about the toolchain for moon's
+[Docker integration](<../../moon/docs/(fundamentals)/toolchain.mdx#docker-integration>):
+
+- `default_image` - The base image to use when
+  [`moon docker file`](../../moon/docs/commands/docker/file.mdx) generates a `Dockerfile` for a
+  project that uses the toolchain, typically including the configured version.
+- `scaffold_globs` - Additional files to copy into the skeleton when running
+  [`moon docker scaffold`](../../moon/docs/commands/docker/scaffold.mdx), for the workspace root and
+  each project.
+
+You don't need to include the manifests, lockfiles, and configuration files returned from
+[`register_toolchain`](#register_toolchain), as moon copies them for every toolchain, and excludes
+the vendor directory, even when this function isn't implemented.
+
+```rust
+#[plugin_fn]
+pub fn define_docker_metadata(
+    Json(input): Json<DefineDockerMetadataInput>,
+) -> FnResult<Json<DefineDockerMetadataOutput>> {
+    let config = parse_toolchain_config::<ExampleToolchainConfig>(input.toolchain_config)?;
+
+    Ok(Json(DefineDockerMetadataOutput {
+        default_image: Some(format!(
+            "golang:{}",
+            config
+                .version
+                .map(|version| version.to_string())
+                .unwrap_or_else(|| "latest".into())
+        )),
+        scaffold_globs: vec!["tools.go".into()],
+    }))
+}
+```
+
+### `prune_docker`
+
+| Input                                                                                               | Output                                                                                                | Required | Memoized |
+| --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`PruneDockerInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.PruneDockerInput.html) | [`PruneDockerOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.PruneDockerOutput.html) | No       | No       |
+
+Removes development artifacts from a Docker image, when running
+[`moon docker prune`](../../moon/docs/commands/docker/prune.mdx). It's called once for each
+[dependencies root](#dependencies-root) of the focused projects, before moon installs production
+dependencies with [`install_dependencies`](#install_dependencies).
+
+The input contains the focused `projects` within the root, the projects they depend on
+(`project_dependencies`), and the workspace's
+[`docker.prune`](/moon/api/DockerPruneConfig) settings (`docker_config`). Respect these settings,
+like only deleting vendor directories when
+[`deleteVendorDirectories`](/moon/api/DockerPruneConfig#deletevendordirectories) is enabled, and
+return the paths that were removed or modified as `changed_files`.
+
+```rust
+#[plugin_fn]
+pub fn prune_docker(Json(input): Json<PruneDockerInput>) -> FnResult<Json<PruneDockerOutput>> {
+    let config = parse_toolchain_config::<ExampleToolchainConfig>(input.toolchain_config)?;
+    let mut output = PruneDockerOutput::default();
+    let vendor_dir = input
+        .root
+        .join(config.vendor_dir.as_deref().unwrap_or("vendor"));
+
+    if vendor_dir.exists() && input.docker_config.delete_vendor_directories {
+        std::fs::remove_dir_all(&vendor_dir)?;
+
+        output.changed_files.push(vendor_dir);
+    }
+
+    Ok(Json(output))
+}
+```
+
+### `scaffold_docker`
+
+| Input                                                                                                     | Output                                                                                                      | Required | Memoized |
+| --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`ScaffoldDockerInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.ScaffoldDockerInput.html) | [`ScaffoldDockerOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.ScaffoldDockerOutput.html) | No       | No       |
+
+Customizes the skeleton created by
+[`moon docker scaffold`](../../moon/docs/commands/docker/scaffold.mdx), after moon has copied the
+toolchain's files. It's called for the workspace root (where `project` is `None`), and for the
+projects that use the toolchain, in each
+[`ScaffoldDockerPhase`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/enum.ScaffoldDockerPhase.html):
+
+- `Configs` - Every project, where the skeleton only contains the files needed to install
+  dependencies.
+- `Sources` - The focused projects and their dependencies, where the skeleton contains their source
+  files.
+
+Files are copied from `input_dir` to `output_dir`, and any files created should be returned as
+`copied_files`. This is useful when installing dependencies requires files that aren't copied until
+the sources phase.
+
+```rust
+#[plugin_fn]
+pub fn scaffold_docker(
+    Json(input): Json<ScaffoldDockerInput>,
+) -> FnResult<Json<ScaffoldDockerOutput>> {
+    let mut output = ScaffoldDockerOutput::default();
+
+    // Cargo requires target files to exist when installing dependencies,
+    // so create an empty stub until the sources phase copies the real one
+    if input.phase == ScaffoldDockerPhase::Configs
+        && input.project.is_some()
+        && input.input_dir.join("src/lib.rs").exists()
+    {
+        let file = input.output_dir.join("src/lib.rs");
+
+        std::fs::create_dir_all(input.output_dir.join("src"))?;
+        std::fs::write(&file, "")?;
+
+        output.copied_files.push(file);
+    }
+
+    Ok(Json(output))
+}
+```
+
+### `sync_workspace`
+
+| Input                                                                                                   | Output                                                                                  | Required | Memoized |
+| ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | -------- | -------- |
+| [`SyncWorkspaceInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.SyncWorkspaceInput.html) | [`SyncOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.SyncOutput.html) | No       | No       |
+
+Syncs the workspace as a whole, like keeping a workspace-level configuration file in line with
+moon's configuration. It runs as part of the `SyncWorkspace` action, which runs before all other
+actions in the pipeline (when [`pipeline.syncWorkspace`](/moon/api/PipelineConfig#syncworkspace) is
+enabled), and when running [`moon sync`](../../moon/docs/commands/sync.mdx). See
+[syncing operations](<../../moon/docs/(fundamentals)/toolchain.mdx#syncing-operations>).
+
+The output works the same as for [`sync_project`](#sync_project).
+
+```rust
+#[plugin_fn]
+pub fn sync_workspace(Json(input): Json<SyncWorkspaceInput>) -> FnResult<Json<SyncOutput>> {
+    let config = parse_toolchain_config::<ExampleToolchainConfig>(input.toolchain_config)?;
+    let mut output = SyncOutput::default();
+
+    let Some(version) = config.version else {
+        return Ok(Json(output));
+    };
+
+    let file = input.context.workspace_root.join(".go-version");
+    let content = format!("{version}\n");
+
+    // Keep the version file in sync with the configured version
+    if std::fs::read_to_string(&file).ok().as_deref() != Some(content.as_str()) {
+        std::fs::write(&file, content)?;
+
+        output.changed_files.push(file);
+    }
+
+    Ok(Json(output))
+}
+```
+
+### `sync_project`
+
+| Input                                                                                               | Output                                                                                  | Required | Memoized |
+| --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | -------- | -------- |
+| [`SyncProjectInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.SyncProjectInput.html) | [`SyncOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.SyncOutput.html) | No       | No       |
+
+Syncs a project that uses the toolchain, like writing the project's dependencies into its
+manifest. It runs as part of the `SyncProject` action, for each project that owns a task being run
+(when [`pipeline.syncProjects`](/moon/api/PipelineConfig#syncprojects) is enabled), and for every
+project when running [`moon sync`](../../moon/docs/commands/sync.mdx).
+
+The input contains the projects it depends on (`project_dependencies`), and the workspace settings
+without project overrides (`toolchain_workspace_config`), alongside the merged `toolchain_config`.
+Return the files that were created or modified as `changed_files`, and only include files that
+actually changed, so that syncing stays incremental. To track the work performed, return
+[`Operation`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.Operation.html)s, created with
+[`Operation::track`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.Operation.html#method.track).
+
+```rust
+#[plugin_fn]
+pub fn sync_project(Json(input): Json<SyncProjectInput>) -> FnResult<Json<SyncOutput>> {
+    let mut output = SyncOutput::default();
+    let file = input
+        .context
+        .get_project_root(&input.project)
+        .join("references.json");
+
+    // Sources of each dependency, relative from the workspace root
+    let references = input
+        .project_dependencies
+        .iter()
+        .map(|dep| dep.source.clone())
+        .collect::<Vec<_>>();
+
+    let (op, changed) = Operation::track("sync-references", || {
+        let content = json::to_string_pretty(&references)?;
+
+        if std::fs::read_to_string(&file).ok().as_deref() == Some(content.as_str()) {
+            return Ok(false);
+        }
+
+        std::fs::write(&file, content)?;
+
+        Ok(true)
+    })?;
+
+    output.operations.push(op);
+
+    if changed {
+        output.changed_files.push(file);
+    }
+
+    Ok(Json(output))
+}
+```
+
+### Tier 2
+
+Tier 2 integrates moon with a language's ecosystem, like its manifests, lockfiles, and
+dependencies, so that the project graph, task execution, and task hashing understand your code.
+Most of these functions revolve around the [dependencies root](#dependencies-root). Refer to
+[tier 2 in the fundamentals](<../../moon/docs/(fundamentals)/toolchain.mdx#tier-2-ecosystem-integration>)
+for how it behaves for users.
+
+### `extend_project_graph`
+
+| Input                                                                                                             | Output                                                                                                              | Required | Memoized |
+| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`ExtendProjectGraphInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.ExtendProjectGraphInput.html) | [`ExtendProjectGraphOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.ExtendProjectGraphOutput.html) | No       | Yes      |
+
+Extends projects in the project graph while it's being built, with information from their
+manifests. It receives every project in the workspace (`project_sources`), and can return the
+following for each of them (see
+[extending projects](<../../moon/docs/(fundamentals)/toolchain.mdx#extending-projects>)):
+
+- An `alias`, typically the package name in the manifest. Aliases are ignored when the user
+  disables [`inheritAliases`](/moon/api/ToolchainPluginConfig#inheritaliases).
+- Implicit `dependencies` on other projects, by their ID or alias, with a
+  [`DependencyScope`](/moon/api/DependencyScope).
+- Additional `tasks`, like scripts defined in the manifest. Tasks configured in the project's
+  [`moon.config`](<../../moon/docs/(fundamentals)/project.mdx>) take precedence.
+
+Return the files that information was read from as `input_files`, so that changes to them
+invalidate the project graph cache. The output works the same as for
+[extensions](./extension.mdx#extend_project_graph).
+
+```rust
+use moon_config::DependencyScope;
+
+#[plugin_fn]
+pub fn extend_project_graph(
+    Json(input): Json<ExtendProjectGraphInput>,
+) -> FnResult<Json<ExtendProjectGraphOutput>> {
+    let mut output = ExtendProjectGraphOutput::default();
+
+    for (id, source) in input.project_sources {
+        let manifest_path = input
+            .context
+            .get_project_root_from_source(&source)
+            .join("go.mod");
+
+        if !manifest_path.exists() {
+            continue;
+        }
+
+        let content = std::fs::read_to_string(&manifest_path)?;
+        let mut project = ExtendProjectOutput::default();
+
+        for line in content.lines() {
+            // The module path becomes an alias, like `module example.com/app`
+            if let Some(module) = line.strip_prefix("module ") {
+                project.alias = Some(module.trim().into());
+            }
+
+            // Modules in the repository are replaced with a relative path,
+            // like `replace example.com/utils => ../utils`
+            if let Some((module, path)) = line
+                .strip_prefix("replace ")
+                .and_then(|rest| rest.split_once(" => "))
+            {
+                if path.starts_with('.') {
+                    project.dependencies.push(ProjectDependency {
+                        id: Id::raw(module.trim()),
+                        scope: DependencyScope::Production,
+                        via: Some("go.mod".into()),
+                    });
+                }
+            }
+        }
+
+        output.extended_projects.insert(id, project);
+        output.input_files.push(manifest_path);
+    }
+
+    Ok(Json(output))
+}
+```
+
+<Callout type="warn">
+  The `moon_pdk` functions for loading projects and tasks (like
+  [`load_project`](https://docs.rs/moon_pdk/latest/moon_pdk/fn.load_project.html)
+  and [`load_task`](https://docs.rs/moon_pdk/latest/moon_pdk/fn.load_task.html))
+  require the project graph, so they can't be used within `extend_project_graph`
+  (which runs while the graph is being built).
+</Callout>
+
+### `extend_command`
+
+| Input                                                                                                   | Output                                                                                                    | Required | Memoized |
+| ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`ExtendCommandInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.ExtendCommandInput.html) | [`ExtendCommandOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.ExtendCommandOutput.html) | No       | Yes      |
+
+Modifies a command before moon executes it with the toolchain. This applies to tasks (before
+[`extend_task_command`](#extend_task_command) or [`extend_task_script`](#extend_task_script)), and
+the commands that toolchains return from [`install_dependencies`](#install_dependencies) and
+[`setup_environment`](#setup_environment). See
+[extending tasks](<../../moon/docs/(fundamentals)/toolchain.mdx#extending-tasks>).
+
+The output can replace the `command`, modify its `args` with an
+[`Extend`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/enum.Extend.html) strategy, add or
+remove environment variables, and prepend `paths` to `PATH`. Toolchains are applied in the order of
+the task's toolchains, followed by extensions, and the paths come before the directories of tools
+installed by moon, so they take precedence. As every command is extended, check the `command`
+before modifying its arguments.
+
+```rust
+#[plugin_fn]
+pub fn extend_command(
+    Json(input): Json<ExtendCommandInput>,
+) -> FnResult<Json<ExtendCommandOutput>> {
+    let mut output = ExtendCommandOutput::default();
+
+    // Make executables in a virtual environment available to every command
+    let venv_bin = input.current_dir.join(".venv/bin");
+
+    if venv_bin.exists() {
+        output.paths.push(venv_bin.into_inner());
+    }
+
+    Ok(Json(output))
+}
+```
+
+### `extend_task_command`
+
+| Input                                                                                                           | Output                                                                                                          | Required | Memoized |
+| --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`ExtendTaskCommandInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.ExtendTaskCommandInput.html) | [`ExtendTaskCommandOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/type.ExtendTaskCommandOutput.html) | No       | Yes      |
+
+Modifies the command of a [task](<../../moon/docs/(fundamentals)/task.mdx>) that uses the
+toolchain, before moon executes it. This is called for tasks that run a command, after
+[`extend_command`](#extend_command), and supports the same output. Unlike `extend_command`, the
+input contains the `project` and `task`, and the tool's global executables directory
+(`globals_dir`).
+
+```rust
+#[plugin_fn]
+pub fn extend_task_command(
+    Json(input): Json<ExtendTaskCommandInput>,
+) -> FnResult<Json<ExtendTaskCommandOutput>> {
+    let mut output = ExtendTaskCommandOutput::default();
+
+    // Make binaries installed with `go install` available to tasks
+    if let Some(globals_dir) = input.globals_dir {
+        output.paths.push(globals_dir.into_inner());
+    }
+
+    Ok(Json(output))
+}
+```
+
+### `extend_task_script`
+
+| Input                                                                                                         | Output                                                                                                          | Required | Memoized |
+| ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`ExtendTaskScriptInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.ExtendTaskScriptInput.html) | [`ExtendTaskScriptOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.ExtendTaskScriptOutput.html) | No       | Yes      |
+
+Modifies the script of a [task](<../../moon/docs/(fundamentals)/task.mdx>) that uses the toolchain,
+before moon executes it. This is called for tasks that run a script instead of a command, after
+[`extend_command`](#extend_command). Scripts don't have arguments, so the output can't modify them,
+but it can replace the `script`, and change environment variables and `PATH`. A toolchain that
+implements `extend_task_command` typically implements this function too, so that tasks behave the
+same either way.
+
+```rust
+#[plugin_fn]
+pub fn extend_task_script(
+    Json(input): Json<ExtendTaskScriptInput>,
+) -> FnResult<Json<ExtendTaskScriptOutput>> {
+    let mut output = ExtendTaskScriptOutput::default();
+
+    if let Some(globals_dir) = input.globals_dir {
+        output.paths.push(globals_dir.into_inner());
+    }
+
+    Ok(Json(output))
+}
+```
+
+### `hash_task_contents`
+
+| Input                                                                                                         | Output                                                                                                          | Required | Memoized |
+| ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`HashTaskContentsInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.HashTaskContentsInput.html) | [`HashTaskContentsOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.HashTaskContentsOutput.html) | No       | Yes      |
+
+Returns additional `contents` to include in the hash of a task that uses the toolchain, so that its
+cache is invalidated when they change. moon already hashes the toolchain's version, and the locked
+versions of the project's dependencies (see [`parse_lock`](#parse_lock)), so use this for anything
+else that affects the task's output, like the operating system and architecture for languages that
+compile platform-specific binaries. See
+[hashing task content](<../../moon/docs/(fundamentals)/toolchain.mdx#hashing-task-content>).
+
+```rust
+#[plugin_fn]
+pub fn hash_task_contents(
+    Json(_): Json<HashTaskContentsInput>,
+) -> FnResult<Json<HashTaskContentsOutput>> {
+    let env = get_host_environment()?;
+
+    Ok(Json(HashTaskContentsOutput {
+        contents: vec![json::json!({
+            "os": env.os.to_string(),
+            "arch": env.arch.to_string(),
+        })],
+    }))
+}
+```
+
+### `define_requirements`
+
+| Input                                                                                                             | Output                                                                                                              | Required | Memoized |
+| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`DefineRequirementsInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.DefineRequirementsInput.html) | [`DefineRequirementsOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.DefineRequirementsOutput.html) | No       | Yes      |
+
+Defines other toolchains that this toolchain `requires`, typically because it runs on top of them,
+like a package manager that runs on a language runtime. Projects and tasks that use the toolchain
+also use the required toolchains, and every required toolchain must be enabled, otherwise moon
+fails. See
+[requiring other toolchains](<../../moon/docs/(fundamentals)/toolchain.mdx#requiring-other-toolchains>).
+
+The output also controls the order of setup actions:
+
+- `for_setup_toolchain` - The tools of the required toolchains are set up before this toolchain's
+  tool.
+- `for_setup_environment` - The tools of the required toolchains are set up before this
+  toolchain's environment.
+
+Either way, the environments of the required toolchains are set up in this toolchain's
+[dependencies root](#dependencies-root) before its own, as they typically don't locate a root of
+their own.
+
+Requirements can depend on the toolchain's settings, like the JavaScript toolchain requiring the
+package manager it's configured with. Unstable toolchains must be referenced by their full ID, like
+`unstable_python`.
+
+```rust
+#[plugin_fn]
+pub fn define_requirements(
+    Json(_): Json<DefineRequirementsInput>,
+) -> FnResult<Json<DefineRequirementsOutput>> {
+    // This package manager runs on Node.js
+    Ok(Json(DefineRequirementsOutput {
+        requires: vec!["node".into()],
+        for_setup_toolchain: true,
+        ..Default::default()
+    }))
+}
+```
+
+### `install_dependencies`
+
+| Input                                                                                                               | Output                                                                                                                | Required | Memoized |
+| ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`InstallDependenciesInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.InstallDependenciesInput.html) | [`InstallDependenciesOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.InstallDependenciesOutput.html) | No       | No       |
+
+Returns the commands that install dependencies in a [dependencies root](#dependencies-root).
+moon runs them in an `InstallDependencies` action before tasks that use the toolchain, but only
+when the lockfile, manifests, or toolchain settings have changed since the last install (see
+[installing and deduping dependencies](<../../moon/docs/(fundamentals)/toolchain.mdx#installing-and-deduping-dependencies>)).
+Requires [`locate_dependencies_root`](#locate_dependencies_root).
+
+The output supports 2 [commands](#executing-commands), which are never cached:
+
+- `install_command` - Installs dependencies. When not defined, nothing is installed.
+- `dedupe_command` - Dedupes dependencies after installing. It only runs locally, never in CI, and
+  is skipped on the first install.
+
+When running [`moon docker prune`](../../moon/docs/commands/docker/prune.mdx), moon calls this
+function again with `production` enabled, and the aliases of the focused projects as `packages`,
+so that only the production dependencies of those projects are installed, where the package
+manager supports it.
+
+```rust
+#[plugin_fn]
+pub fn install_dependencies(
+    Json(input): Json<InstallDependenciesInput>,
+) -> FnResult<Json<InstallDependenciesOutput>> {
+    let config = parse_toolchain_config::<ExampleToolchainConfig>(input.toolchain_config)?;
+    let mut output = InstallDependenciesOutput::default();
+
+    if input.root.join("go.mod").exists() {
+        output.install_command = Some(
+            ExecCommandInput::new("go", ["mod", "download"])
+                .cwd(input.root.clone())
+                .into(),
+        );
+
+        if config.tidy_on_change {
+            output.dedupe_command = Some(
+                ExecCommandInput::new("go", ["mod", "tidy"])
+                    .cwd(input.root)
+                    .into(),
+            );
+        }
+    }
+
+    Ok(Json(output))
+}
+```
+
+### `locate_dependencies_root`
+
+| Input                                                                                                                     | Output                                                                                                                      | Required | Memoized |
+| ------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`LocateDependenciesRootInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.LocateDependenciesRootInput.html) | [`LocateDependenciesRootOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.LocateDependenciesRootOutput.html) | No       | Yes      |
+
+Locates the [dependencies root](#dependencies-root) of a project, by traversing upwards from the
+project's root (`starting_dir`), typically looking for a lockfile or workspace manifest. Return the
+`root` that was found, or `None` when there isn't one, which skips installs, environment setup, and
+dependency hashing for the project.
+
+When the root is a workspace, like a Cargo or pnpm workspace, also return its `members` as globs
+relative to the root. A project belongs to a root when it's the root itself, or matches one of the
+member globs. The [`locate_root`](https://docs.rs/moon_pdk/latest/moon_pdk/fn.locate_root.html) and
+[`locate_root_many`](https://docs.rs/moon_pdk/latest/moon_pdk/fn.locate_root_many.html) functions
+handle the traversal for you.
+
+```rust
+#[plugin_fn]
+pub fn locate_dependencies_root(
+    Json(input): Json<LocateDependenciesRootInput>,
+) -> FnResult<Json<LocateDependenciesRootOutput>> {
+    let mut output = LocateDependenciesRootOutput::default();
+
+    // Find `go.work` first, and use its modules as members,
+    // like `use ./app` (single-line directives for brevity)
+    if let Some(root) = locate_root(&input.starting_dir, "go.work") {
+        let members = std::fs::read_to_string(root.join("go.work"))?
+            .lines()
+            .filter_map(|line| line.strip_prefix("use "))
+            .map(|path| path.trim().trim_start_matches("./").to_owned())
+            .collect::<Vec<_>>();
+
+        output.members = Some(members);
+        output.root = Some(root);
+    }
+
+    // Otherwise the closest `go.mod`
+    if output.root.is_none() {
+        output.root = locate_root(&input.starting_dir, "go.mod");
+    }
+
+    Ok(Json(output))
+}
+```
+
+### `parse_lock`
+
+| Input                                                                                           | Output                                                                                            | Required | Memoized |
+| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`ParseLockInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.ParseLockInput.html) | [`ParseLockOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.ParseLockOutput.html) | No       | Yes      |
+
+Parses a lockfile (`path`) in a [dependencies root](#dependencies-root), and returns every locked
+dependency. When hashing a task, moon resolves each dependency declared in the project's manifest
+(see [`parse_manifest`](#parse_manifest)) against these, and includes the result in the task's
+hash, so upgrading a dependency only invalidates the tasks of projects that use it. See
+[parsing manifest and lock files](<../../moon/docs/(fundamentals)/toolchain.mdx#parsing-manifest-and-lock-files>).
+
+The output maps each dependency name to a list of
+[`LockDependency`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.LockDependency.html)s,
+as a lockfile can contain multiple versions of the same package. moon matches the entry whose
+resolved `version` satisfies the manifest's requirement, falling back to an entry with the same
+`req`, and hashes its `hash` (like a checksum or integrity), `version`, or `meta`, in that order of
+preference. This function is only called when
+[`hasher.optimization`](/moon/api/HasherConfig#optimization) is `accuracy` (the default).
+
+```rust
+#[plugin_fn]
+pub fn parse_lock(Json(input): Json<ParseLockInput>) -> FnResult<Json<ParseLockOutput>> {
+    let mut output = ParseLockOutput::default();
+
+    // Each line is `<module> <version> h1:<checksum>`
+    for line in std::fs::read_to_string(&input.path)?.lines() {
+        let mut parts = line.split_whitespace();
+
+        if let (Some(module), Some(version), Some(checksum)) =
+            (parts.next(), parts.next(), parts.next())
+        {
+            output
+                .dependencies
+                .entry(module.into())
+                .or_default()
+                .push(LockDependency {
+                    hash: checksum.strip_prefix("h1:").map(|hash| hash.into()),
+                    version: VersionSpec::parse(version.trim_start_matches('v')).ok(),
+                    ..Default::default()
+                });
+        }
+    }
+
+    Ok(Json(output))
+}
+```
+
+### `parse_manifest`
+
+| Input                                                                                                   | Output                                                                                                    | Required | Memoized |
+| ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`ParseManifestInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.ParseManifestInput.html) | [`ParseManifestOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.ParseManifestOutput.html) | No       | Yes      |
+
+Parses a manifest (`path`), and returns the dependencies it declares, grouped by scope:
+`dependencies`, `dev_dependencies`, `build_dependencies`, and `peer_dependencies`. moon calls it for
+the project's manifest and the root's manifest when hashing a task (see
+[`parse_lock`](#parse_lock)), and when a manifest has changed, for every manifest in a dependencies
+root, to check whether dependencies need to be installed again.
+
+Each dependency is a
+[`ManifestDependency`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/enum.ManifestDependency.html),
+which is a version requirement, a configuration with a local `path` or remote `url`, or inherited
+from the root's manifest (like `workspace = true` in Cargo), in which case moon uses the version
+declared there. Dependencies without a version aren't hashed.
+
+```rust
+#[plugin_fn]
+pub fn parse_manifest(
+    Json(input): Json<ParseManifestInput>,
+) -> FnResult<Json<ParseManifestOutput>> {
+    let mut output = ParseManifestOutput::default();
+
+    // Like `require example.com/lib v1.2.3` (single-line directives for brevity)
+    for line in std::fs::read_to_string(&input.path)?.lines() {
+        let Some(require) = line.strip_prefix("require ") else {
+            continue;
+        };
+
+        // Only direct dependencies affect a project's tasks
+        if require.ends_with("// indirect") {
+            continue;
+        }
+
+        if let Some((module, version)) = require.split_once(' ') {
+            output.dependencies.insert(
+                module.into(),
+                ManifestDependency::new(UnresolvedVersionSpec::parse(
+                    version.trim().trim_start_matches('v'),
+                )?),
+            );
+        }
+    }
+
+    Ok(Json(output))
+}
+```
+
+### `setup_environment`
+
+| Input                                                                                                         | Output                                                                                                          | Required | Memoized |
+| ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`SetupEnvironmentInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.SetupEnvironmentInput.html) | [`SetupEnvironmentOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.SetupEnvironmentOutput.html) | No       | Yes      |
+
+Prepares an environment in a [dependencies root](#dependencies-root) before dependencies are
+installed, like creating a virtual environment, or installing binaries. It runs in a
+`SetupEnvironment` action, after the toolchain (and the toolchains it requires) are set up, and
+when running [`moon setup`](../../moon/docs/commands/setup.mdx) for the workspace root. See
+[setting up the environment](<../../moon/docs/(fundamentals)/toolchain.mdx#setting-up-the-environment>).
+
+Return the work to perform as [`commands`](#executing-commands). moon calls this function every
+time the action runs, but only executes the commands when they, or the toolchain's settings, have
+changed since the last run. As moon doesn't check what the commands created on disk, check for
+existing files yourself, and skip commands that aren't needed.
+
+```rust
+#[plugin_fn]
+pub fn setup_environment(
+    Json(input): Json<SetupEnvironmentInput>,
+) -> FnResult<Json<SetupEnvironmentOutput>> {
+    let mut output = SetupEnvironmentOutput::default();
+
+    // Create a virtual environment if it doesn't exist
+    if !input.root.join(".venv").exists() {
+        output.commands.push(
+            ExecCommand::new(
+                ExecCommandInput::new("python", ["-m", "venv", ".venv"])
+                    .cwd(input.root.clone()),
+            )
+            .label("create-venv"),
+        );
+    }
+
+    Ok(Json(output))
+}
+```
+
+### Tier 3
+
+Tier 3 lets moon download, install, and pin the tool itself, like Go or Node.js, through
+[proto](../../proto/docs/index.mdx). Instead of a moon specific API, a toolchain supports tier 3 by
+also implementing proto's [tool](./tool.mdx) functions, like `register_tool`, `load_versions`, and
+`download_prebuilt`, in the same plugin. If you've already built a proto plugin for the tool, add
+its crate as a dependency, and re-export its functions from the toolchain crate.
+
+```rust title="src/lib.rs"
+pub use example_tool::*;
+```
+
+When a `version` is configured, moon installs that version with proto, and adds it to `PATH` for
+tasks. The following functions are optional hooks that run around that process. Refer to
+[tier 3 in the fundamentals](<../../moon/docs/(fundamentals)/toolchain.mdx#tier-3-tool-management>)
+for how it behaves for users.
+
+### `setup_toolchain`
+
+| Input                                                                                                     | Output                                                                                                      | Required | Memoized |
+| --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| [`SetupToolchainInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.SetupToolchainInput.html) | [`SetupToolchainOutput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.SetupToolchainOutput.html) | No       | No       |
+
+Runs custom setup after moon has installed the tool, in a `SetupToolchain` action, which runs before
+tasks that use the toolchain, and when running [`moon setup`](../../moon/docs/commands/setup.mdx).
+It's called every time the action runs, whether or not the tool was just installed, and is skipped
+along with the action when no `version` is configured (see
+[setup and teardown](<../../moon/docs/(fundamentals)/toolchain.mdx#setup-and-teardown>)).
+
+The input contains the `version` the user configured (`configured_version`), and the fully resolved
+`version`. Return any files that were modified as `changed_files`.
+
+```rust
+#[plugin_fn]
+pub fn setup_toolchain(
+    Json(input): Json<SetupToolchainInput>,
+) -> FnResult<Json<SetupToolchainOutput>> {
+    let mut output = SetupToolchainOutput::default();
+
+    if let Some(version) = input.version {
+        let file = input.context.workspace_root.join(".tool-version");
+        let content = version.to_string();
+
+        if std::fs::read_to_string(&file).ok().as_deref() != Some(content.as_str()) {
+            std::fs::write(&file, content)?;
+
+            output.changed_files.push(file);
+        }
+    }
+
+    Ok(Json(output))
+}
+```
+
+### `teardown_toolchain`
+
+| Input                                                                                                           | Output | Required | Memoized |
+| --------------------------------------------------------------------------------------------------------------- | ------ | -------- | -------- |
+| [`TeardownToolchainInput`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.TeardownToolchainInput.html) | N/A    | No       | No       |
+
+Runs custom teardown when running [`moon teardown`](../../moon/docs/commands/teardown.mdx), after
+moon has uninstalled the configured version of the tool. Use it to undo what
+[`setup_toolchain`](#setup_toolchain) created. Unlike setup, it's called for every enabled
+toolchain, even when no `version` is configured.
+
+```rust
+#[plugin_fn]
+pub fn teardown_toolchain(Json(input): Json<TeardownToolchainInput>) -> FnResult<()> {
+    let file = input.context.workspace_root.join(".tool-version");
+
+    if file.exists() {
+        std::fs::remove_file(&file)?;
+    }
+
+    Ok(())
+}
+```
+
+## Caveats
+
+- **Errors fail the operation** - An error returned from a function fails the operation that called
+  it, like building the project graph, installing dependencies, or running a task. For
+  non-critical work, use
+  [`Operation::track_with_error`](https://docs.rs/moon_pdk_api/latest/moon_pdk_api/struct.Operation.html#method.track_with_error),
+  which records the error on the operation without failing.
+- **Memoized functions run once per input** - Within a single run of moon, a memoized function
+  isn't called again with the same input, so keep these functions free of side effects, and
+  perform work in the `sync_*` functions, or return it as commands.
+- **Changed files in CI** - When a sync function changes files in a CI environment, the sync
+  action is marked as invalid with a warning, as those changes should have been committed to the
+  repository.
+- **Tier 2 requires a dependencies root** - Without
+  [`locate_dependencies_root`](#locate_dependencies_root), or when it returns no root,
+  [`install_dependencies`](#install_dependencies), [`setup_environment`](#setup_environment),
+  [`parse_lock`](#parse_lock), and [`parse_manifest`](#parse_manifest) are silently never called.
+- **Tier 3 requires proto's tool API** - [`detect_version_files`](#detect_version_files) is only
+  used, and the setup action only runs, when the plugin implements proto's tool functions for
+  installing the tool.
+- **Detection only checks the project root** - The files returned from
+  [`register_toolchain`](#register_toolchain) are only matched in a project's root directory, not
+  its parents or children (except for globs in `config_file_globs`).
