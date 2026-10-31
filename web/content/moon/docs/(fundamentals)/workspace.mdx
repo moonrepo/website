@@ -287,11 +287,13 @@ how processes behave:
 
 ### Caching
 
-Hashes, task outputs, and state are cached in `.moon/cache`. After each run, moon removes cached
-items older than [`pipeline.cacheLifetime`](/moon/api/PipelineConfig#cachelifetime) (`7 days` by
-default), unless [`pipeline.autoCleanCache`](/moon/api/PipelineConfig#autocleancache) is disabled.
-When the [daemon](../guides/daemon.mdx#background-processing) is enabled, this cleanup happens in
-the background. To clean it manually, run [`moon clean`](../commands/clean.mdx).
+Hash fingerprints, task outputs, and state are cached in `.moon/cache`. After each run, moon removes
+stale locks and temporary files older than
+[`pipeline.cacheLifetime`](/moon/api/PipelineConfig#cachelifetime) (`7 days` by default), unless
+[`pipeline.autoCleanCache`](/moon/api/PipelineConfig#autocleancache) is disabled. When the
+[daemon](../guides/daemon.mdx#background-processing) is enabled, it also removes stale states and
+garbage collects task outputs, in the background. Otherwise, run
+[`moon clean`](../commands/clean.mdx) to clean them.
 
 The [`cache`](/moon/api/WorkspaceConfig#cache) setting configures the local store of task outputs:
 
@@ -300,9 +302,8 @@ The [`cache`](/moon/api/WorkspaceConfig#cache) setting configures the local stor
 - [`cas.verifyIntegrity`](/moon/api/CacheCasConfig#verifyintegrity) - Verify outputs on every read,
   which is slower, but detects corruption on disk.
 - [`sharedWorktreeCache`](/moon/api/CacheConfig#sharedworktreecache) - Share task outputs between
-  the Git worktrees of a repository, so switching worktrees doesn't rebuild everything. Hashes and
-  state are still kept per worktree. This setting is unstable, and is configured as
-  `unstable_sharedWorktreeCache`.
+  the Git worktrees of a repository, so switching worktrees doesn't rebuild everything. Hash
+  fingerprints and state are still kept per worktree.
 
 <ConfigTabs
   file=".moon/workspace"

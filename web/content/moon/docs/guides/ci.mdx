@@ -324,9 +324,10 @@ demand.
 
 If you'd prefer to _not use_ remote caching at this time, you can persist artifacts between runs
 yourself, using your CI provider's cache. moon archives the outputs of cacheable tasks into the
-`.moon/cache/outputs` directory, keyed by their hash, and that's all a later run needs for a cache
-hit. All other files and folders in `.moon/cache` are specific to the machine, and _should not_ be
-persisted.
+`.moon/cache/blobs` and `.moon/cache/manifests` directories, keyed by their hash (see the
+[cache engine](../advanced/cache.mdx#folder-structure)), and that's all a later run needs for a
+cache hit. All other files and folders in `.moon/cache` are specific to the machine, and _should
+not_ be persisted.
 
 ```yaml title=".github/workflows/ci.yml"
 # ...
@@ -334,24 +335,20 @@ steps:
   # ...
   - uses: "actions/cache@v4"
     with:
-      path: ".moon/cache/outputs"
+      path: |
+        .moon/cache/blobs
+        .moon/cache/manifests
       key: "moon-outputs-${{ github.sha }}"
       restore-keys: "moon-outputs-"
   - run: "moon ci"
 ```
 
-However, because tasks generate a new hash whenever their inputs change, the contents of this
-directory drastically change between runs, and most CI caches can't be updated once saved. You'll
-need a key strategy that saves a fresh cache regularly (like the commit-based key above), while
-moon removes archives older than [`pipeline.cacheLifetime`](/moon/api/PipelineConfig#cachelifetime).
-This bookkeeping is the primary reason why the remote caching service exists.
-
-<Callout>
-  When the
-  [`experiments.casOutputsCache`](/moon/api/ExperimentsConfig#casoutputscache)
-  setting is enabled, outputs are stored in the `.moon/cache/blobs` and
-  `.moon/cache/manifests` directories instead.
-</Callout>
+However, because tasks generate a new hash whenever their inputs change, the contents of these
+directories drastically change between runs, and most CI caches can't be updated once saved. You'll
+need a key strategy that saves a fresh cache regularly (like the commit-based key above), and keep
+its size in check, by running [`moon clean`](../commands/clean.mdx) before it's saved, or setting
+[`cache.cas.maxSize`](/moon/api/CacheCasConfig#maxsize). This bookkeeping is the primary reason why
+the remote caching service exists.
 
 ## Keeping dependencies updated
 

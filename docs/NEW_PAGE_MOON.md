@@ -1,4 +1,4 @@
-Update the moon documentation page at `web/content/moon/docs/advanced/affected.mdx` by filling in each section. The contents of the sections should be based on the Rust source code at `/Users/miles/Projects/moon`.
+Update the moon documentation page at `web/content/moon/docs/advanced/cache.mdx` by filling in each section. The contents of the sections should be based on the Rust source code at `/Users/miles/Projects/moon`.
 
 ## Requirements
 
