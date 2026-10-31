@@ -2,3 +2,244 @@
 title: Query language (MQL)
 icon: ArrowDown01
 ---
+
+MQL, the moon query language, is a small expression language for selecting
+[projects](<../(fundamentals)/project.mdx>) and [tasks](<../(fundamentals)/task.mdx>) by their
+attributes, like "every TypeScript library" or "every build task tagged `release`". Where a target
+selects tasks by ID or tag, a query can combine any number of conditions.
+
+Queries are accepted by the following commands:
+
+- [`moon query projects`](../commands/query/projects.mdx) and
+  [`moon query tasks`](../commands/query/tasks.mdx) - Print the projects or tasks that match, as
+  JSON.
+- [`moon run`](../commands/run.mdx) and [`moon exec`](../commands/exec.mdx) - With `--query`, narrow
+  the projects that targets with the [all scope](<../(fundamentals)/target.mdx#all>), like `:build`,
+  run in, along with the dependents added by `--dependents`.
+
+```shell
+# Find TypeScript libraries
+$ moon query projects "language=typescript && projectLayer=library"
+
+# Find build and test tasks that aren't tagged as slow
+$ moon query tasks "taskType=[build,test] && taskTag!=slow"
+
+# Run `build` in every frontend project
+$ moon run :build --query "projectStack=frontend"
+```
+
+moon also uses queries internally, to resolve [glob targets](<../(fundamentals)/target.mdx#run-context>)
+like `"packages/*:test"`, and the projects of a `#tag` scope.
+
+## Syntax
+
+A query is made up of one or more comparisons, joined by logical operators, and optionally grouped
+with parentheses:
+
+```text
+language=rust && (projectLayer=library || projectTag~core-*)
+```
+
+Spaces around operators are optional, but tabs aren't supported. Always quote a query on the command
+line, as characters like `&`, `|`, `!`, `*`, and `[` have a special meaning in most shells.
+
+### Fields
+
+A field is the attribute being compared, like `language` or `taskType`, written in camel case.
+Some fields only apply to projects, and some apply to both projects and tasks (see
+[field types](#field-types)). An unknown field is an error.
+
+### Comparisons
+
+A comparison is written as `field operator value`, using one of the following operators:
+
+| Operator | Description                          | Value          |
+| :------- | :----------------------------------- | :------------- |
+| `=`      | Equals the value, or any in a list.  | Value or list  |
+| `!=`     | Doesn't equal the value, or any in a list. | Value or list |
+| `~`      | Matches the glob.                    | Glob           |
+| `!~`     | Doesn't match the glob.              | Glob           |
+
+A value can contain letters, numbers, `-`, `_`, `/`, `.`, and `@`, and isn't quoted. A list is
+written as `[a, b, c]`, and matches if any of its values do (or, with `!=`, if none do).
+
+```text
+projectId=app
+projectAlias=@org/app
+projectSource=packages/app
+project=[app, server, @org/utils]
+```
+
+With the `~` and `!~` operators, the value is a glob, which also supports `*`, `**`, `?`,
+`[...]`, `{a,b}`, and `!`:
+
+```text
+project~app-*
+projectSource~packages/{client,server}
+taskTag!~ci-*
+```
+
+Values are compared exactly, and are case sensitive. Globs aren't supported by the fields with a
+fixed set of values, like `language` and `taskType`, and using one is an error, as is a value that
+the field doesn't accept.
+
+### Conditions
+
+Comparisons are combined with a logical operator:
+
+- `&&` or `AND` - Every comparison must match.
+- `||` or `OR` - At least one comparison must match.
+
+```text
+projectLayer=library && projectStack=frontend
+taskType=build OR taskType=test
+```
+
+`AND` and `OR` must be written in uppercase. Every comparison must be joined by an operator, as
+there's no implicit `AND`. Both operators can't be mixed in the same group, like
+`a=1 && b=2 || c=3`, which is an error. Use [grouping](#grouping) to combine them instead.
+
+### Grouping
+
+Parentheses create a group, which is evaluated on its own, with its own logical operator. Groups
+can be nested to any depth, and are how `AND` and `OR` are combined:
+
+```text
+projectStack=frontend && (projectLayer=application || projectLayer=library)
+language=rust || (language=go && projectTag=cli)
+```
+
+A query must start with a comparison, not a group, so `(a=1 || b=2) && c=3` fails to parse. Move
+the group after a comparison instead, like `c=3 && (a=1 || b=2)`, which is equivalent.
+
+## Field types
+
+The following fields are supported, along with what they can be used for:
+
+| Field                             | Projects | Tasks | Globs |
+| :-------------------------------- | :------: | :---: | :---: |
+| [`language`](#language)           | Yes      |       |       |
+| [`project`](#project)             | Yes      | Yes   | Yes   |
+| [`projectAlias`](#projectalias)   | Yes      |       | Yes   |
+| [`projectId`](#projectid)         | Yes      |       | Yes   |
+| [`projectLayer`](#projectlayer)   | Yes      |       |       |
+| [`projectSource`](#projectsource) | Yes      |       | Yes   |
+| [`projectStack`](#projectstack)   | Yes      |       |       |
+| [`projectTag`](#projecttag)       | Yes      |       | Yes   |
+| [`task`](#task)                   | Yes      | Yes   | Yes   |
+| [`taskTag`](#tasktag)             | Yes      | Yes   | Yes   |
+| [`taskToolchain`](#tasktoolchain) | Yes      | Yes   | Yes   |
+| [`taskType`](#tasktype)           | Yes      | Yes   |       |
+
+When querying tasks, the fields that only apply to projects never match, not even with `!=`. To
+filter tasks by their project, use the [`project`](#project) field.
+
+When querying projects, the task fields match when _any_ of the project's tasks matches. This also
+applies to negations, so `task!=build` matches every project that has a task other than `build`, not
+only the projects without a `build` task.
+
+### `language`
+
+The project's [language](<../(fundamentals)/project.mdx#language>). Accepts `bash`, `batch`,
+`cplusplus` (or `cpp`), `csharp`, `dotnet`, `go`, `java`, `javascript`, `kotlin`, `php`, `python`,
+`ruby`, `rust`, `swift`, `typescript`, `unknown`, or a custom language.
+
+```text
+language=[javascript, typescript]
+```
+
+### `project`
+
+The project's [ID](<../(fundamentals)/project.mdx#identifiers>), or any of its
+[aliases](<../(fundamentals)/project.mdx#aliases>). When querying tasks, this is the task's owning
+project.
+
+```text
+project=[app, @org/utils]
+```
+
+### `projectAlias`
+
+Any of the project's [aliases](<../(fundamentals)/project.mdx#aliases>). Projects without aliases
+never match, not even with `!=`. Can also be written as `projectAliases`.
+
+```text
+projectAlias~@org/*
+```
+
+### `projectId`
+
+The project's [ID](<../(fundamentals)/project.mdx#identifiers>) only, without its aliases.
+
+```text
+projectId!=docs
+```
+
+### `projectLayer`
+
+The project's [layer](<../(fundamentals)/project.mdx#layers>). Accepts `application`, `automation`,
+`configuration`, `library`, `scaffolding`, `tool`, or `unknown`.
+
+```text
+projectLayer=[library, tool]
+```
+
+### `projectSource`
+
+The project's source directory, relative to the workspace root, like `packages/app`.
+
+```text
+projectSource~packages/*
+```
+
+### `projectStack`
+
+The project's [stack](<../(fundamentals)/project.mdx#stacks>). Accepts `backend`, `data`,
+`frontend`, `infrastructure`, `systems`, or `unknown`.
+
+```text
+projectStack!=infrastructure
+```
+
+### `projectTag`
+
+Any of the project's [tags](<../(fundamentals)/project.mdx#tags>). Projects without tags match
+`!=`. Can also be written as `projectTags` or `tag`.
+
+```text
+projectTag=[payments, billing]
+```
+
+### `task`
+
+The task's ID. When querying projects, matches projects that have a task with that ID.
+
+```text
+task~build-*
+```
+
+### `taskTag`
+
+Any of the task's [tags](<../(fundamentals)/task.mdx#tags>). Can also be written as `taskTags`.
+
+```text
+taskTag=release
+```
+
+### `taskToolchain`
+
+Any of the task's [toolchains](<../(fundamentals)/task.mdx#toolchains>), by toolchain ID. When
+querying projects, both the stable and `unstable_` prefixed IDs of a toolchain match. Can also be
+written as `taskToolchains`.
+
+```text
+taskToolchain=[node, bun]
+```
+
+### `taskType`
+
+The task's [type](<../(fundamentals)/task.mdx#types>). Accepts `build`, `run`, or `test`.
+
+```text
+taskType=build
+```

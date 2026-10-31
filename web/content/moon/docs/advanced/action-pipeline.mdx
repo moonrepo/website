@@ -2,3 +2,236 @@
 title: Action pipeline
 icon: StepForward
 ---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+
+The action pipeline is the engine that executes moon's work. Every command that runs tasks, like
+[`moon run`](../commands/run.mdx), [`moon check`](../commands/check.mdx),
+[`moon ci`](../commands/ci.mdx), and [`moon exec`](../commands/exec.mdx), first builds an
+[action graph](<../(fundamentals)/action-graph.mdx>) of everything that needs to happen, and then
+hands it to the pipeline, which:
+
+1. Dispatches each [action](<../(fundamentals)/action.mdx>) once the actions it depends on have
+   completed, running as many in parallel as allowed.
+2. Handles failures, by continuing or aborting the remaining work, and signals, like Ctrl+C.
+3. Emits events for every step, which drive the terminal output, run reports, notifications, and
+   webhooks.
+
+Where the action graph decides _what_ runs and in what order, the pipeline decides _when_ each
+action runs, and what happens when something goes wrong.
+
+## Execution
+
+### Dispatching
+
+The pipeline sorts the graph topologically, groups the actions by their
+[priority](<../(fundamentals)/action-graph.mdx#priority>), and then repeatedly dispatches the next
+action whose dependencies have all completed, starting with the highest priority group. For
+`critical` and `high` priority tasks, moon also looks ahead, and dispatches their dependencies
+first, so that high priority work becomes runnable sooner.
+
+An action is dispatched once its dependencies have _completed_, not necessarily passed. What
+happens next depends on the [failure mode](#failures): a task whose dependency failed or was skipped
+is skipped itself, instead of running in a broken state.
+
+The same action never runs twice at the same time. When a task appears in the graph more than once,
+like with different arguments or environment variables from different
+[dependencies](<../(fundamentals)/task.mdx#dependencies>), the second waits for the first to
+finish, to avoid collisions in shared files.
+
+### Concurrency
+
+The pipeline runs up to a fixed number of actions at the same time, which defaults to the number of
+CPU cores, and can be changed with the global `--concurrency` option, or the `MOON_CONCURRENCY`
+environment variable (see [concurrency](../commands/overview.mdx#concurrency)).
+
+```shell
+# Run one action at a time
+$ moon run :build --concurrency 1
+```
+
+A few kinds of actions are treated differently at run time:
+
+- **[Persistent tasks](<../(fundamentals)/action-graph.mdx#persistent-tasks>)**, like development
+  servers, and tasks that others only [`wait`](<../(fundamentals)/task.mdx#dependency-types>) on to
+  start, don't count towards the limit, so they can't starve the rest of the graph. As persistent
+  tasks never complete on their own, the pipeline keeps running until they exit, or until it's
+  stopped.
+- **[Interactive tasks](<../(fundamentals)/action-graph.mdx#interactive-tasks>)** run in isolation.
+  Nothing else is dispatched until the interactive task has completed, while actions that were
+  already running continue in the background.
+- **Tasks with a [`options.mutex`](/moon/api/TaskOptionsConfig#mutex)** wait for every other task
+  with the same mutex name in the run to finish, before running their command.
+
+## Failures
+
+### Bail and continue
+
+When an action fails, the pipeline either **bails**, aborting all remaining work, or
+**continues**, running everything that doesn't depend on the failed action. Each command uses a
+fixed mode, except for [`moon exec`](../commands/exec.mdx), which is configurable:
+
+| Command                              | Mode                                                                  |
+| :----------------------------------- | :-------------------------------------------------------------------- |
+| [`moon run`](../commands/run.mdx)    | Bail                                                                  |
+| [`moon check`](../commands/check.mdx) | Bail                                                                 |
+| [`moon ci`](../commands/ci.mdx)      | Continue                                                              |
+| [`moon exec`](../commands/exec.mdx)  | Bail, unless `--on-failure continue` (or `MOON_ON_FAILURE`) is passed |
+
+When continuing, the tasks that depend on a failed task are skipped, and their dependents in turn,
+while unrelated tasks keep running. This is why [`moon ci`](../commands/ci.mdx) continues: a
+single broken task doesn't hide the results of every other task.
+
+```shell
+# Run every test, even when some fail
+$ moon exec :test --on-failure continue
+```
+
+A task with `options.onFailure` set to `allow` never bails the pipeline, as it's permitted to fail
+(see [failures](<../(fundamentals)/action.mdx#failures>)).
+
+### Hard failures
+
+Some failures abort the pipeline in both modes, as continuing would only produce errors that hide
+the root cause:
+
+- **Provisioning failures** - When setting up proto, a toolchain, or a toolchain's environment, or
+  installing dependencies fails, every task that relies on it would run in a broken environment.
+- **Tasks that fail before running** - When a task errors before its command could be spawned, like
+  when it can't be prepared, the task never ran, so its result can't be trusted by anything else.
+
+### Aborting
+
+When the pipeline aborts, it:
+
+1. Stops dispatching new actions. Actions that were waiting for a free slot are marked as
+   `Aborted`, and the rest never start.
+2. Terminates the running processes, and force kills those still running after
+   [`pipeline.killProcessThreshold`](/moon/api/PipelineConfig#killprocessthreshold) (2 seconds by
+   default). The actions that were terminated are marked as `Aborted` too, as they didn't fail on
+   their own.
+3. Runs the [`cleanup` dependencies](<../(fundamentals)/action-graph.mdx#cleanup-and-wait-dependencies>)
+   of the tasks that already ran their command, once their processes have stopped, so that things
+   like servers and containers they started are still torn down.
+
+The first hard failure is reported as the error of the run, as it's the closest to the root cause,
+while the failures that follow are typically fallout from running in an already broken state.
+
+## Signals
+
+When moon receives `SIGINT` (Ctrl+C), `SIGTERM`, or `SIGHUP` (the terminal was closed), the
+pipeline is stopped:
+
+- Running processes receive the same signal, so tasks can shut down gracefully, and are force
+  killed after [`pipeline.killProcessThreshold`](/moon/api/PipelineConfig#killprocessthreshold). A
+  threshold of `0` lets them run to completion instead.
+- Actions that were running are marked as `Failed`, while actions that never started are marked as
+  `Skipped`.
+- Unlike an abort, `cleanup` dependencies don't run, as stopping is what was requested.
+
+## Exit codes
+
+Once the pipeline has finished, the command exits with:
+
+- `0` when every action passed, was cached, or was skipped.
+- The exit code of the task that failed, when a single fully qualified target (like `app:build`)
+  was requested. The failed task may be one of the target's dependencies.
+- `1` when any other action failed, excluding tasks that are allowed to fail.
+- `128` plus the signal number when stopped by a signal: `130` for `SIGINT`, `143` for `SIGTERM`,
+  and `129` for `SIGHUP`. This takes precedence over a task's exit code.
+- `141` when the command reading moon's output exits early (a broken pipe), like with
+  `moon run ... | head`.
+
+When no tasks match the requested targets, nothing is executed, and the command exits with `1`,
+unless only affected tasks were requested (with `--affected`, or [`moon ci`](../commands/ci.mdx)),
+where no affected tasks isn't an error.
+
+## Configuration
+
+The pipeline is configured with the [`pipeline`](/moon/api/WorkspaceConfig#pipeline) setting in
+[`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>). Most settings decide which actions
+are added to the graph:
+
+- [`installDependencies`](/moon/api/PipelineConfig#installdependencies) - Install dependencies for
+  the toolchains of running tasks. Accepts a boolean, or a list of toolchain IDs to only install
+  for those toolchains.
+- [`syncProjects`](/moon/api/PipelineConfig#syncprojects) - Sync the owning project of each running
+  task. Accepts a boolean, or a list of project IDs to only sync those projects.
+- [`syncProjectDependencies`](/moon/api/PipelineConfig#syncprojectdependencies) - Also sync the
+  projects that each synced project depends on.
+- [`syncWorkspace`](/moon/api/PipelineConfig#syncworkspace) - Sync the workspace before all other
+  actions.
+
+The others change how actions run:
+
+- [`killProcessThreshold`](/moon/api/PipelineConfig#killprocessthreshold) - How long to wait, in
+  milliseconds, before force killing running processes after an abort or a signal. Defaults to
+  `2000`.
+- [`logRunningCommand`](/moon/api/PipelineConfig#logrunningcommand) - Log each task's command and
+  arguments when it runs.
+- [`inheritColorsForPipedTasks`](/moon/api/PipelineConfig#inheritcolorsforpipedtasks) - Force
+  color output for tasks whose output is piped, matching the terminal's color support.
+- [`autoCleanCache`](/moon/api/PipelineConfig#autocleancache) and
+  [`cacheLifetime`](/moon/api/PipelineConfig#cachelifetime) - Clean stale cache items after each
+  run (see [local storage](./cache.mdx#local)).
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    pipeline: {
+      installDependencies: ["node"],
+      killProcessThreshold: 5000,
+      syncProjects: false,
+    },
+  }}
+  comments={{
+    installDependencies: "Only install dependencies for Node.js",
+  }}
+/>
+
+### Skipping actions
+
+There are 2 ways to skip the actions that prepare the environment:
+
+- The `--no-actions` option of the commands that run tasks, like [`moon run`](../commands/run.mdx)
+  and [`moon exec`](../commands/exec.mdx) (or `MOON_NO_ACTIONS`), leaves every sync and setup action
+  out of the graph, so only the tasks run.
+- The `MOON_SKIP_*` environment variables keep the actions in the graph, but mark the matching ones
+  as `Skipped` when they run, like `MOON_SKIP_INSTALL_DEPS=node`. See
+  [skipping actions](./env-vars.mdx#skipping-actions) for every variable.
+
+```shell
+# Run the task without syncing or installing anything
+$ moon run app:build --no-actions
+
+# Skip installing dependencies, but still sync the workspace and projects
+$ MOON_SKIP_INSTALL_DEPS=true moon run app:build
+```
+
+## Events
+
+As it runs, the pipeline emits an event for every step, like `pipeline.started`, `action.completed`,
+or `dependencies.installed`. Each feature that reports on a run subscribes to these events:
+
+- **Terminal output** - The progress of each action, and the summary printed at the end, which
+  `--summary` controls (see [reports](<../(fundamentals)/action.mdx#reports>)). Hidden with
+  `--quiet`.
+- **Run report** - A JSON report of every action, written to `.moon/cache/runReport.json` (or
+  `.moon/cache/ciReport.json` for [`moon ci`](../commands/ci.mdx)) once the pipeline completes. Its
+  `status` is `completed`, `aborted`, `interrupted` (by Ctrl+C), or `terminated` (by `SIGTERM` or
+  `SIGHUP`).
+- **Terminal notifications** - Native notifications when the pipeline succeeds, fails, or a task
+  fails, as configured by
+  [`notifier.terminalNotifications`](/moon/api/NotifierConfig#terminalnotifications) (see the
+  [notifications guide](../guides/notifications.mdx)).
+- **Webhooks** - Every event is sent to
+  [`notifier.webhookUrl`](/moon/api/NotifierConfig#webhookurl), but only in remote environments like
+  CI (see [when webhooks are sent](../guides/webhooks.mdx#when-webhooks-are-sent)).
+- **Cache cleanup** - Stale cache items are removed after a completed run, when
+  [`pipeline.autoCleanCache`](/moon/api/PipelineConfig#autocleancache) is enabled.
+- **Metrics** - The status and duration of every task, action, and operation are exported as
+  [OpenTelemetry metrics](../guides/opentelemetry.mdx#metrics), when `--otel` is enabled.
+
+When the [daemon](../guides/daemon.mdx#background-processing) is enabled, the slow parts of some of
+these, like delivering webhooks and cleaning the cache, are handed off to it, along with archiving
+and hydrating task outputs, so the pipeline doesn't wait on them.

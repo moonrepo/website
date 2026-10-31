@@ -3,4 +3,173 @@ title: Layout graph
 icon: LayoutPanelLeft
 ---
 
-TODO
+The layout graph describes how a workspace is laid out for its
+[toolchains](<../(fundamentals)/toolchain.mdx>): which dependencies roots exist, like a package
+manager workspace, and which [projects](<../(fundamentals)/project.mdx>) belong to each of them. It
+answers a question that many parts of moon need to agree on: for a project and one of its
+toolchains, where are its dependencies installed, what is the project's role there, and which
+version and configuration apply?
+
+moon builds the layout graph from the [project graph](<../(fundamentals)/project-graph.mdx>) and
+the configured toolchains, and uses it to build the
+[action graph](<../(fundamentals)/action-graph.mdx>), to hash tasks, and to prune Docker images.
+It can be inspected with the [`moon layout-graph`](../commands/layout-graph.mdx) command.
+
+## Dependencies roots
+
+A dependencies root is the directory where a toolchain installs dependencies, typically where its
+lockfile lives (see [locating dependencies root](<../(fundamentals)/toolchain.mdx#locating-dependencies-root>)).
+A root is one of 2 kinds:
+
+- **Workspace** - A root with member globs, like a `package.json` with `workspaces`, or a
+  `Cargo.toml` with `[workspace]`. Its members share a single install.
+- **Package** - A single package that isn't a workspace, like a standalone `package.json`.
+
+Each root belongs to a single toolchain, and is identified by that toolchain and its path. A root
+at the workspace root, and a root in `tools/scripts`, are 2 different roots, even for the same
+toolchain. They're labeled like `javascript @ .` and `javascript @ tools/scripts`.
+
+### Locating roots
+
+Roots are located by toolchains that support
+[tier 2](<../(fundamentals)/toolchain.mdx#tier-2-ecosystem-integration>), through their
+[`locate_dependencies_root`](../../../wasm/docs/toolchain.mdx#locate_dependencies_root) plugin
+function. For each project, the toolchain walks up from the project's root, and returns the closest
+root, along with its member globs when it's a workspace. Toolchains without tier 2 don't locate
+roots, so their projects aren't in a root.
+
+Projects are grouped by toolchain and configuration, and each group is located in a single batch
+when the plugin supports it, while different toolchains locate their roots concurrently. A root is
+only recorded once, no matter how many projects locate it.
+
+For each root, moon also records the files it finds there, from the names that the toolchain
+registers: its lockfiles, its manifests, and its vendor directory (like `node_modules`), along with
+whether the toolchain supports setting up the environment and installing dependencies in it.
+
+### Roles
+
+Once a root is located, the project's role in it is determined:
+
+- **Workspace root** - The project is at the root of a workspace, like a repository's root project.
+- **Workspace member** - The project's path, relative to the root, matches one of the workspace's
+  member globs.
+- **Package root** - The project is at the root of a single package.
+
+A project that located a root, but isn't a member of it, like a project that isn't matched by the
+workspace's member globs, is placed **outside** of the root. Its dependencies aren't installed by the
+root, and moon only sets up the toolchain for it.
+
+### Versions and configuration
+
+A root's actions run with a single version and configuration, which is resolved from its **owner
+project**: the project whose directory is the root, like a single package, or the root project of a
+workspace. This includes a version that the owner overrides with
+[project overrides](<../(fundamentals)/toolchain.mdx#project-overrides>). When there's no owner
+project, or the owner disables the toolchain, the root uses the version and configuration in
+[`.moon/toolchains.config`](<../(fundamentals)/toolchain.mdx>).
+
+Each project still runs its own tasks with its own version. When a member overrides the version of
+its root, its dependencies are installed with the root's version, while its tasks run with its own,
+which moon reports as a [diagnostic](#diagnostics).
+
+## Building the graph
+
+The layout graph is built in 2 ways:
+
+- **Lazily**, when running tasks. Only the toolchains of the selected tasks, and the toolchains that
+  install dependencies for the requested work, are placed, so a run never locates the roots of
+  projects it doesn't need. As a root's version and configuration only depend on the root itself,
+  never on which members were placed, a partial graph agrees with the full one.
+- **Fully**, for every project and every enabled toolchain of the project and its tasks, plus every
+  configured toolchain from the workspace root, which completes the members of every root. This is
+  what `moon layout-graph` does without a project ID.
+
+Toolchains that a project disables, toolchains that aren't configured, and the `system` toolchain
+are never placed.
+
+## How it's used
+
+### Action graph
+
+When building the [action graph](<../(fundamentals)/action-graph.mdx#how-the-graph-is-built>), moon
+places the toolchains of the selected tasks into the layout graph, before inserting any actions, so
+that roots are located concurrently, instead of one at a time. The `SetupEnvironment` and
+`InstallDependencies` [actions](<../(fundamentals)/action.mdx#types>) are then scoped to a root,
+identified by its toolchain and path, so every project in the same root shares the same actions,
+which run once:
+
+- When the root supports installing dependencies, an `InstallDependencies` action is inserted for
+  it, after the root's `SetupEnvironment` action (or `SetupToolchain`, when there's no environment
+  to set up).
+- When it doesn't, the `SetupEnvironment` action is used in its place, or only the toolchain is set
+  up.
+- A project that's outside of its root, or that isn't in a root, only sets up the toolchain.
+- A member that overrides its root's version also sets up its own version of the toolchain, which
+  its tasks run with.
+
+A toolchain that disables installing dependencies, with its
+[`installDependencies`](/moon/api/ToolchainPluginConfig#installdependencies) setting, or with
+[`pipeline.installDependencies`](/moon/api/PipelineConfig#installdependencies), only sets up the
+toolchain, regardless of its root. Commands that work from the workspace root, like [`moon setup`](../commands/setup.mdx),
+only insert root actions when the root located from the workspace root is the workspace root itself.
+
+### Task hashing
+
+A task's [hash](./cache.mdx#hash) includes the dependencies of each of its toolchains, read from
+the manifests and lockfile of the root that the task's project was placed in. A project that's
+outside of a root still hashes the root it located. This is why the action graph places every
+toolchain of a selected task, even those that don't install dependencies.
+
+### Docker
+
+[`moon docker prune`](../commands/docker/prune.mdx) places the enabled toolchains of the focused
+projects into the layout graph, and prunes each of their roots once, with the focused projects that
+belong to it. Projects that aren't in a root are skipped.
+
+## Diagnostics
+
+While building the graph, moon records diagnostics for placements that may be unexpected. They're
+shown by [`moon layout-graph --info`](../commands/layout-graph.mdx), and are only complete for a
+full graph:
+
+| Diagnostic | Level   | Description |
+| :--------- | :------ | :---------- |
+| Outside    | Info    | The project located a root, but isn't a member of it, so the root doesn't install the project's dependencies. |
+| Shadowed   | Warning | The project is in a root, while an enclosing root of the same toolchain also matches it with its member globs, so the enclosing root may install the project's dependencies as well. |
+| Divergent  | Info    | The project's version differs from its root's version, so its tasks run with a different version than its dependencies were installed with. |
+
+A shadowed project is usually a sign of a nested workspace that should be excluded from the
+enclosing workspace's member globs.
+
+## Inspecting
+
+The [`moon layout-graph`](../commands/layout-graph.mdx) command (or `moon lg`) builds the layout
+graph, and serves an interactive visualization of it in the browser, like
+[`moon project-graph`](../commands/project-graph.mdx). In the visualization, each project points to
+the root it's placed in, labeled with its role, and each root that was located from the workspace
+root points to the workspace.
+
+```shell
+# Serve the layout graph of the whole workspace
+$ moon layout-graph
+
+# Only place the toolchains of `app`, like a run would
+$ moon layout-graph app
+
+# Print each root, its files, and its projects, along with diagnostics
+$ moon layout-graph --info
+
+# Print the graph as JSON or DOT, instead of serving it
+$ moon layout-graph --json
+$ moon layout-graph --dot > layout.dot
+```
+
+With `--info`, each root is printed with its kind, member globs, owner project, version, lockfiles,
+manifests, vendor directory, which actions it supports, and its projects, with their role, and their
+own version when it differs. Projects that aren't in a root, the toolchains located from the
+workspace root, and diagnostics are printed after the roots.
+
+When a project ID is passed, only that project's toolchains are placed, so the roots only list the
+projects that were placed, and diagnostics are incomplete. See the
+[command's documentation](../commands/layout-graph.mdx) for every option, and the shape of its JSON
+output.

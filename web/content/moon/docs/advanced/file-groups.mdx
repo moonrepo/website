@@ -2,3 +2,245 @@
 title: File groups
 icon: Files
 ---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+
+File groups are named, reusable collections of file paths, globs, and environment variables, that
+tasks reference instead of repeating the same lists. A group is defined once, in a project or for
+every project that inherits it, and is then resolved into whatever shape a task needs: the paths as
+configured for [inputs](<../(fundamentals)/task.mdx#inputs>), the files that exist for a command's
+arguments, or the single directory that contains them all.
+
+This page is the reference for how file groups are defined, merged, and resolved. For an
+introduction, see [file groups](<../(fundamentals)/project.mdx#file-groups>) in the projects
+documentation.
+
+## Defining file groups
+
+File groups are defined with the `fileGroups` setting, a map of group IDs to a list of entries, in
+either of the following:
+
+- [`moon.config`](<../(fundamentals)/project.mdx>) - With the
+  [`fileGroups`](/moon/api/ProjectConfig#filegroups) setting, available to that project's tasks.
+- [`.moon/tasks/*.config`](<../(fundamentals)/task-inheritance.mdx>) - With the
+  [`fileGroups`](/moon/api/InheritedTasksConfig#filegroups) setting, available to the tasks of every
+  project that inherits the file.
+
+<ConfigTabs
+  file=".moon/tasks/all"
+  config={{
+    fileGroups: {
+      sources: ["src/**/*", "!src/**/*.test.ts"],
+      tests: ["tests/**/*", "src/**/*.test.ts"],
+      configs: ["package.json", "/tsconfig.base.json", "$NODE_ENV"],
+    },
+  }}
+/>
+
+### Entries
+
+Each entry in a group is one of the following:
+
+- **File paths** - A literal path to a file or directory, like `src/file.md`, written as a
+  string, with the `file://` protocol, or as an object with the
+  [`file`](/moon/api/FileInput#file) property.
+- **Globs** - A [glob pattern](<../(fundamentals)/config.mdx#glob-patterns>), like `src/**/*`, written
+  as a string, with the `glob://` protocol, or as an object with the
+  [`glob`](/moon/api/GlobInput#glob) property.
+- **Environment variables** - A variable name prefixed with `$`, like `$APP_ENV`. Environment
+  variables are only used when the group is included in a task's `inputs` (see
+  [as inputs](#as-inputs)).
+
+Only the path of a file or glob is kept, so parameters of the object and URI formats, like a file's
+[`optional`](/moon/api/FileInput#optional) and [`content`](/moon/api/FileInput#content), or a glob's
+[`cache`](/moon/api/GlobInput#cache), have no effect in a file group. Configure those in a task's
+`inputs` directly instead.
+
+The following entries aren't supported:
+
+- Token functions and variables, like `@files(sources)` or `$projectRoot`, which fail with an error.
+- Other file groups (`group://`) and projects (`project://`), which are ignored. A group can't be
+  composed from other groups.
+
+### Identifiers
+
+Group IDs follow the same rules as other identifiers in moon: letters, numbers, `-`, `_`, `/`, and
+`.`, with an optional leading `@`. However, [token functions](./tokens.mdx#file-groups) only accept
+ASCII letters, numbers, `-`, and `_` as their argument, so a group like `sources.main` can be used
+with `group://sources.main`, but not with `@group(sources.main)`. Prefer simple IDs, like `sources` or
+`test-fixtures`, so that a group can be referenced everywhere.
+
+## Path resolution
+
+Paths in a file group are relative to the project's root by default, or relative to the workspace
+root when prefixed with `/`. Negated globs are written with a leading
+`!`, or `!/` when relative to the workspace root. Parent directory traversal (`..`) isn't supported,
+so use a workspace-relative path to reference a file outside of the project. See
+[file and glob paths](<../(fundamentals)/config.mdx#file-and-glob-paths>) for more information.
+
+Paths are resolved for the project that uses the group, not where the group is defined. A group
+inherited from `.moon/tasks/*.config` is resolved for each inheriting project separately, so
+`src/**/*` matches the `src` directory of every project that inherits it. For a project at the root
+of the workspace, project-relative and workspace-relative paths are the same.
+
+Once resolved, every path is stored relative to the workspace root, like `packages/app/src/**/*`. To
+see a project's resolved groups, use [`moon project`](../commands/project.mdx), which lists the files
+and globs of each group, or `moon project <id> --json`, which also includes their environment
+variables.
+
+## Inheritance and merging
+
+A project's file groups are built from every `.moon/tasks/*.config` file that it inherits, in
+[inheritance order](<../(fundamentals)/task-inheritance.mdx#inheritance-order>), followed by the
+project's own `moon.config` last. Groups are merged per ID: when the same ID is defined in more
+than one place, its entries are combined into a single group, while groups with different IDs are
+left as-is.
+
+How entries are combined is controlled by the project's
+[`workspace.mergeStrategies.fileGroups`](/moon/api/ProjectWorkspaceMergeStrategiesConfig#filegroups)
+setting, using one of the [merge strategies](<../(fundamentals)/task-inheritance.mdx#merge-strategies>):
+
+- `append` (default) - Add the project's entries after the inherited entries.
+- `prepend` - Add the project's entries before the inherited entries.
+- `replace` - Use only the last definition of the group, discarding the inherited entries.
+- `preserve` - Use only the first (most global) definition of the group, ignoring the project's
+  entries.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    fileGroups: {
+      sources: ["lib/**/*"],
+    },
+    workspace: {
+      mergeStrategies: {
+        fileGroups: "replace",
+      },
+    },
+  }}
+  comments={{
+    sources: "Replaces the inherited `sources` group entirely",
+  }}
+/>
+
+The strategy is applied at every step of the chain, including between 2 inherited files that
+define the same group, and duplicate entries are kept. Within a single `.moon/tasks/*.config` file,
+a group defined both in the file and in a configuration it [`extends`](/moon/api/InheritedTasksConfig#extends)
+is replaced by the file's definition, not merged.
+
+## Resolving a group
+
+A group can be resolved into one of the following formats, either with a
+[token function](./tokens.mdx#file-groups), or with the [`format`](/moon/api/FileGroupInput#format)
+of a file group input:
+
+| Format             | Token function | Resolves to                                                                                   |
+| :----------------- | :------------- | :-------------------------------------------------------------------------------------------- |
+| `static` (default) | `@group`       | The group's file paths and globs, as configured. In `inputs`, also its environment variables. |
+| `files`            | `@files`       | The files that exist, from the group's file paths and the files its globs match.              |
+| `dirs`             | `@dirs`        | The directories that exist, from the group's file paths and the directories its globs match.  |
+| `globs`            | `@globs`       | Only the group's globs. Fails with an error when the group has none.                          |
+| `root`             | `@root`        | The lowest directory that the group's directories share, or the project root (`.`).           |
+| `envs`             | `@envs`        | Only the group's environment variables. Only supported in `inputs`.                           |
+
+The `static` and `globs` formats return the group as configured, without touching the file system.
+The `files`, `dirs`, and `root` formats walk the file system instead, so they only include paths that
+exist when the task is expanded, sorted by path. For `root`, only the directories within the
+project are considered, so a group of `src/client` and `src/server` resolves to `src`.
+
+## Using file groups
+
+### As inputs
+
+A group is included in a task's [`inputs`](<../(fundamentals)/task.mdx#file-groups>) with the
+`@group(id)` token function, the `group://id` protocol, or the
+[`group`](/moon/api/FileGroupInput#group) property of the object format. The protocol and object
+formats also accept a [`format`](/moon/api/FileGroupInput#format) (or `as`), like
+`group://sources?format=files`.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "vite build",
+        inputs: [
+          "@group(sources)",
+          "group://sources",
+          { group: "sources", format: "files" },
+        ],
+      },
+    },
+  }}
+/>
+
+When included as inputs:
+
+- File paths and globs become the task's input files and globs, and a directory becomes a glob of
+  everything inside it, like `src/**/*`.
+- Environment variables become [environment variable inputs](<../(fundamentals)/task.mdx#inputs>),
+  with the `static` and `envs` formats.
+- Entries that are also outputs of the task are removed from its inputs.
+
+Prefer the default `static` format for inputs. Globs are matched against the file system when the
+task is hashed, while the `files` and `dirs` formats are fixed to the paths that existed when the
+task was expanded, and walking the file system up front is slower.
+
+### From other projects
+
+A task can include a file group from another project, with the
+[`project`](/moon/api/ProjectInput#project) and [`group`](/moon/api/ProjectInput#group) properties
+of a [project input](<../(fundamentals)/task.mdx#other-projects>), like
+`project://utils?group=sources`. The group is resolved for that project, with the `static` format,
+so its paths point into the other project.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        inputs: [{ project: "utils", group: "sources" }],
+      },
+    },
+  }}
+/>
+
+### In commands and arguments
+
+To pass a group's paths to the task's process, use a token function in its `script`, `args`, or
+`env`, like `@files(sources)`. Token functions can also be used in `outputs`. See
+[file group tokens](./tokens.mdx#file-groups) for where each function is supported, and how its
+paths are inserted.
+
+With the [`options.inferInputs`](/moon/api/TaskOptionsConfig#inferinputs) option enabled, the paths
+of the groups referenced in `script`, `args`, and `env` are also added to the task's inputs, so a
+group only has to be referenced once.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      lint: {
+        command: "eslint",
+        args: ["@files(sources)"],
+        options: {
+          inferInputs: true,
+        },
+      },
+    },
+  }}
+  comments={{
+    inferInputs: "The files of `sources` are also inputs",
+  }}
+/>
+
+## Gotchas & caveats
+
+- **Environment variable wildcards aren't expanded.** A wildcard like `$APP_*` is accepted in a
+  group, but it's used as a literal variable name when the group is included in `inputs`, so it
+  never matches. List each variable explicitly, or use the wildcard in the task's `inputs` directly.
+- **Walking formats only negate globs.** With the `files`, `dirs`, and `root` formats, a negated glob
+  excludes the paths matched by the group's other globs, but not its literal file paths. As
+  `inputs`, negated globs exclude both.
+- **Unknown groups are an error.** Referencing a group that the project doesn't define or inherit
+  fails when the task is expanded.

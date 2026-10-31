@@ -1,0 +1,100 @@
+---
+title: moon layout-graph
+---
+
+import { TypeLabel } from "@/components/TypeLabel";
+
+Generates and displays the [layout graph](../advanced/layout-graph.mdx), which represents the
+dependencies roots that each [toolchain](<../(fundamentals)/toolchain.mdx>) located, like a package
+manager workspace, and the [projects](<../(fundamentals)/project.mdx>) placed in each of them. Use
+it to answer questions like "where are this project's dependencies installed?", "which version does
+this root install with?", or "why aren't this project's dependencies being installed?".
+
+The graph has 3 kinds of nodes: the workspace, each root (labeled by its toolchain and path, like
+`javascript @ .` or `rust @ tools/cli`), and each project. Edges point from a project to the root
+it's placed in, labeled with the project's role (`workspace-root`, `workspace-member`, or
+`package-root`), or `outside` when the project located the root but isn't a member of it. Roots
+that were located from the workspace root point to the workspace.
+
+By default, moon starts a local web server, and opens an interactive visualizer for exploring the
+graph in the browser, which runs until stopped with Ctrl+C. Alternatively, the graph can be printed
+to the terminal as a summary with `--info`, in [Graphviz DOT](https://graphviz.org/doc/info/lang.html)
+format with `--dot`, or as JSON with `--json`.
+
+```shell
+# Run the interactive visualizer for the whole workspace
+$ moon layout-graph
+
+# Only place the toolchains of `app`, like a run would
+$ moon layout-graph app
+
+# Print each root, its files, and its projects, along with diagnostics
+$ moon layout-graph --info
+
+# Print the graph in DOT format
+$ moon layout-graph --dot > layout.dot
+
+# Print the graph as JSON
+$ moon layout-graph --json
+```
+
+Without an `[ID]`, every enabled toolchain of every project and its tasks is placed, along with
+every toolchain configured in [`.moon/toolchains.config`](<../(fundamentals)/toolchain.mdx>) from
+the workspace root, like [`moon setup`](./setup.mdx) would. This builds the full graph, so every root
+lists all of its projects, and every [diagnostic](../advanced/layout-graph.mdx#diagnostics) is
+reported.
+
+When an `[ID]` is provided, only the toolchains of that project and its tasks are placed, which
+matches what a run of the project's tasks would locate. Roots then only list the projects that were
+placed, and diagnostics are incomplete, as they compare a project against every other project in
+its root.
+
+### Info output
+
+With `--info`, each root is printed as a section, with:
+
+- Its kind (`workspace` or `package`), and member globs for a workspace.
+- Its owner project, and the version that its environment setup and install run with (`global`
+  when no version is configured).
+- The lockfiles, manifests, and vendor directory that exist in the root.
+- Whether the toolchain supports setting up the environment and installing dependencies in it.
+- Its projects, with their role, and their own version when it differs from the root's.
+
+After the roots, moon prints the projects that aren't in a root (because they're outside of the
+root they located, or their toolchain didn't locate one), the root that each toolchain located from
+the workspace root, and any diagnostics.
+
+### JSON output
+
+With `--json`, the graph is printed as an object with the following fields:
+
+- `roots` - Every root, with its `toolchain`, `root` path relative to the workspace root (an empty
+  string for the workspace root), `kind`, `ownerProject`, `spec` (the toolchain and its version),
+  `config`, `files`, `capabilities`, and `members`.
+- `bindings` - A map of project IDs to a list of the project's toolchains, each with its own `spec`,
+  merged `config`, and `placement`. A placement has a `type` of `root` (with the `index` of the root
+  in `roots`, and the project's `role`), `outside` (with the `root` path it located), or `none`.
+- `workspaceBindings` - The toolchains located from the workspace root, in the same format.
+- `diagnostics` - Every diagnostic, with its `type` (`outside`, `shadowed`, or `divergent`), and the
+  `project`, `toolchain`, and `root` it applies to. A shadowed diagnostic also has the
+  `enclosingRoot`, and a divergent diagnostic has the project's `spec` and the root's `rootSpec`.
+- `complete` - Whether every project was placed, which is `false` when an `[ID]` is provided.
+
+## Arguments
+
+- `[ID]` - Optional ID of a project to only place, like a run would. When omitted, every project is
+  placed.
+
+## Options
+
+- `--host` <TypeLabel type="string" /> - The host address to bind the visualizer web server to.
+  Defaults to `127.0.0.1`. Can also be set with the `MOON_HOST` environment variable.
+- `--port` <TypeLabel type="number" /> - The port to bind the visualizer web server to. Defaults to
+  `0`, which selects a random available port. Can also be set with the `MOON_PORT` environment
+  variable.
+- `--dot` - Print the graph in DOT format to the terminal instead of starting the visualizer.
+- `--info` - Print information about each root and its projects to the terminal instead of starting
+  the visualizer.
+- `--json` - Print the graph as JSON to the terminal instead of starting the visualizer.
+
+This command can also be run as `moon lg` as a shorthand alias.

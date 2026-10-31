@@ -16,6 +16,7 @@
     "generate",
     "hash",
     "init",
+    "layout-graph",
     "mcp",
     "migrate",
     "project",

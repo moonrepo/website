@@ -462,6 +462,10 @@ Projects that share a root share a single install and environment setup, which r
 no matter how many projects need them. A project that isn't a member of its root is skipped, as is
 a project without a root, so moon only sets up the tool itself for them.
 
+Roots and the projects in them make up the [layout graph](../advanced/layout-graph.mdx). To see the
+root that each project was placed in, and its role there, run
+[`moon layout-graph --info`](../commands/layout-graph.mdx).
+
 ### Installing and deduping dependencies
 
 Before running a task, moon installs dependencies in an `InstallDependencies` action, for each of

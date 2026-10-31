@@ -12,10 +12,11 @@ grouped by project, like every other [`moon query`](../query.mdx) subcommand. Ta
 MQL is a small expression language for filtering projects and tasks with more precision than a
 single regex flag allows. A statement is made up of `field operator value` comparisons — `=`/`!=`
 for exact/negated matches (or `[a, b, c]` lists), and `~`/`!~` for glob-based matches — joined with
-`&&`/`AND` or `||`/`OR`, and grouped with parentheses. Fields relevant to tasks include `task`,
-`taskType`, `taskTag`/`taskTags`, and `taskToolchain`/`taskToolchains`, alongside the project-level
-fields such as `project`/`projectId`. See the [query language docs](../../advanced/query-lang.mdx) for
-the full field and operator reference.
+`&&`/`AND` or `||`/`OR`, and grouped with parentheses. The fields that apply to tasks are `task`,
+`taskType`, `taskTag`/`taskTags`, `taskToolchain`/`taskToolchains`, and `project`, which matches the
+ID or an alias of the task's owning project. Other project fields, like `projectId`, never match a
+task. See the [query language docs](../../advanced/query-lang.mdx) for the full field and operator
+reference.
 
 When no `[QUERY]` is given, the `--option` filters are applied instead, where every value is treated
 as a case-insensitive regular expression matched against the relevant task field.
