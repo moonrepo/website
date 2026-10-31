@@ -23,8 +23,10 @@ Compared to running tasks directly, `moon ci`:
   affects how the console renders output and how other moon features detect a CI environment.
 - Continues running remaining tasks after a failure, instead of bailing on the first one, so a
   single broken task doesn't hide the results of the others.
-- Includes direct downstream dependents of affected tasks by default (unless `--downstream` is
-  passed explicitly), to help catch regressions in tasks that depend on what changed.
+- Catches regressions in the tasks that depend on what changed. Affected state propagates from an
+  affected task to its dependents (up to `--affected-depth`), and as every task in the workspace is
+  a candidate when no targets are passed, those dependents run too. When passing explicit targets,
+  add `--dependents`, like `--dependents direct`, to also run the tasks that depend on them.
 - Prints a detailed summary of the pipeline by default (unless `--summary` is passed explicitly), so
   CI logs always contain a full breakdown of what ran.
 - Writes its [run report](../guides/ci.mdx#reporting-run-results) to `.moon/cache/ciReport.json`,
@@ -79,21 +81,23 @@ into common CI providers, including
   determining changed files. When running in a supported CI provider, this is automatically derived
   from the CI environment if not provided; otherwise defaults to the working tree. Can also be set
   via the `MOON_HEAD` environment variable.
-- `-g`, `--include-relations` - Include upstream and downstream graph relations when determining
-  affected status, instead of only changed files. Can also be set via the `MOON_INCLUDE_RELATIONS`
-  environment variable.
+- `-d`, `--affected-depth` <TypeLabel type="none | direct | deep | number" /> - How far affected
+  state propagates from an affected task to the tasks that depend on it, in hops. This only changes
+  which of the candidate tasks count as affected, and never adds tasks. Defaults to `deep`. Can also
+  be set via the `MOON_AFFECTED_DEPTH` environment variable. See
+  [tracking depth](../advanced/affected.mdx#tracking-depth) for more information.
 - `--status` <TypeLabel type="added | all | deleted | modified | staged | unstaged | untracked" /> -
   Filter changed files based on one or more changed statuses. Defaults to `all`.
 - `--stdin` - Accept a list of changed files from stdin, instead of querying the VCS for them.
 
 ### Graph
 
-- `--downstream` <TypeLabel type="none | direct | deep" /> - Control the depth of downstream
-  dependents to include in the action graph. Aliased as `--dependents`. Defaults to `direct` (unlike
-  [`moon run`](./run.mdx) and [`moon exec`](./exec.mdx), which default to `none`), so tasks that depend on
-  what changed are also verified.
-- `--upstream` <TypeLabel type="none | direct | deep" /> - Control the depth of upstream
-  dependencies to include in the action graph. Aliased as `--dependencies`. Defaults to `deep`.
+- `--dependents` <TypeLabel type="none | direct | deep | number" /> - Also run the tasks that
+  depend on the candidate targets, up to this many hops away. Added tasks are still filtered by
+  affected status and [`options.runInCI`](/moon/api/TaskOptionsConfig#runinci). Defaults to `none`.
+- `--no-dependencies` - Don't run dependency tasks that weren't selected themselves, except for
+  [cleanup dependencies](<../(fundamentals)/task.mdx#dependency-types>). The order between the
+  tasks that are run is still honored.
 
 ### Parallelism
 

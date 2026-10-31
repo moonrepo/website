@@ -14,9 +14,9 @@ graph in the browser. Alternatively, the graph can be printed to the terminal in
 as raw JSON for scripting and inspection.
 
 When an `[id]` argument is provided, the graph is trimmed down ("focused") to only that project
-and its upstream dependencies, which is useful for understanding why a large monorepo pulls in a
-particular dependency chain. Pass `--dependents` alongside the ID to also include projects that
-directly depend on the focused project.
+and its dependencies, which is useful for understanding why a large monorepo pulls in a
+particular dependency chain. Pass `--dependents` with a depth alongside the ID to also include the
+projects that depend on the focused project.
 
 ```shell
 # Run the interactive visualizer for the whole workspace
@@ -25,8 +25,8 @@ $ moon project-graph
 # Focus the graph around a specific project
 $ moon project-graph app
 
-# Also include direct dependents of the focused project
-$ moon project-graph app --dependents
+# Also include the projects that directly depend on the focused project
+$ moon project-graph app --dependents direct
 
 # Print the graph in DOT format
 $ moon project-graph --dot > graph.dot
@@ -42,8 +42,9 @@ $ moon project-graph --json
 
 ## Options
 
-- `--dependents` - Include direct dependents of the focused project. Only applies when `[ID]` is
-  provided.
+- `--dependents` <TypeLabel type="none | direct | deep | number" /> - Include the projects that
+  depend on the focused project, up to this many hops away. Defaults to `none`. Only applies when
+  `[ID]` is provided.
 - `--host` <TypeLabel type="string" /> - The host address to bind the visualizer web server to.
   Defaults to `127.0.0.1`. Can also be set with the `MOON_HOST` environment variable.
 - `--port` <TypeLabel type="number" /> - The port to bind the visualizer web server to. Defaults to

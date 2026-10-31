@@ -1,4 +1,323 @@
 ---
-title: Cache layout
+title: Cache engine
 icon: DatabaseArrowDown
 ---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+
+The cache engine is how moon avoids repeating work. Much of what moon does is expensive: running
+[tasks](<../(fundamentals)/task.mdx>), installing dependencies, setting up toolchain environments,
+building the [project graph](<../(fundamentals)/project-graph.mdx>), generating VCS hooks, and so on.
+Before doing any of it, moon describes what that work depends on, and hashes it. If work with the
+same hash has already been done, moon skips it, or restores its result from the cache.
+
+Cached items live in the workspace's `.moon/cache` directory, in 2 kinds of stores. Fingerprints,
+states, and other data that moon keeps for itself are stored in a key-value store. Archived task
+outputs are content-addressable instead, stored by the hash of their contents, so identical content
+is only stored once, and they can also be shared between machines with a
+[remote cache](../guides/remote-cache.mdx).
+
+## Concepts
+
+The following terms appear throughout moon's logs, commands, and the cache directory.
+
+### Blob
+
+A blob is an immutable piece of content that's stored and looked up by its [digest](#digest),
+never by name, so the same content is only ever stored once. The files that a task outputs, and its
+captured logs, are archived as blobs.
+
+### Digest
+
+A digest is the SHA-256 hash of some content (a 64 character hexadecimal string), along with its
+size in bytes. It's the address of a [blob](#blob), and a [hash](#hash) is the digest of a
+fingerprint. This is the same digest format used by the
+[Bazel Remote Execution API](https://github.com/bazelbuild/remote-apis), which is what allows moon
+to use any compatible service as a [remote cache](#remote).
+
+### Fingerprint
+
+A fingerprint is a JSON document that describes everything a piece of work depends on. If nothing in
+the fingerprint changed, the work would produce the same result, so it doesn't need to be done
+again. For example:
+
+| Work                                 | Fingerprint includes                                                                                         |
+| :----------------------------------- | :----------------------------------------------------------------------------------------------------------- |
+| Running a task                       | Its command, arguments, environment, input files and variables, the hashes of its dependencies, and outputs. |
+| Installing dependencies              | The hash of the lockfile, the dependencies in each manifest file, and the toolchain's configuration.         |
+| Setting up a toolchain's environment | The toolchain's configuration, and the commands and operations its plugin returns.                           |
+| Building the project graph           | The project list, the contents of configuration files, and the versions of toolchain and extension plugins.  |
+| Generating VCS hooks                 | The VCS client, and the commands of each hook.                                                               |
+| Generating code owners               | The ownership configuration of each project.                                                                 |
+
+See [inputs](<../(fundamentals)/task.mdx#inputs>) for what goes into a task's fingerprint.
+
+### Hash
+
+A hash is the result of a fingerprint, and identifies a single version of a piece of work. The same
+fingerprint always produces the same hash, on any machine, which is what lets moon recognize work
+it has already done, and lets cached task results be shared between machines.
+
+Hashes appear in debug logs and in the operations of each action in a
+[run report](<../(fundamentals)/action.mdx#reports>). To see what went into a hash, or what changed
+between 2 hashes, use [`moon hash`](../commands/hash.mdx), which prints the fingerprint of any hash
+that's stored on the current machine:
+
+```shell
+# Print the fingerprint of a hash
+$ moon hash 0b55b234
+
+# Diff the fingerprints of 2 hashes
+$ moon hash 0b55b234 2388552f
+```
+
+## Lifecycle
+
+Every piece of cached work goes through [fingerprinting](#fingerprinting) and [hashing](#hashing),
+which decide whether it runs. Tasks also go through [archiving](#archiving) and
+[hydrating](#hydrating), which store and restore their results.
+
+### Fingerprinting
+
+First, moon gathers everything the work depends on into a [fingerprint](#fingerprint): the relevant
+configuration, versions, environment variables, and the contents of files. Files are hashed by their
+contents, and a file's hash is reused while its size and modification time are unchanged, so files
+that many fingerprints depend on, like a lockfile, are only read once per process.
+
+Paths are relative to the workspace root, and the fingerprint is serialized in a stable order, so
+the same state produces the same fingerprint on every machine.
+
+For tasks, input files are resolved by querying VCS when possible, which is faster than globbing
+the file system, and uncommitted changes are always included, so local builds are hashed
+correctly. Files that are also outputs of the task are removed from its inputs.
+
+### Hashing
+
+The fingerprint is then serialized and hashed with SHA-256, producing the work's [hash](#hash), and
+moon checks whether a fingerprint with that hash has been stored before:
+
+- If it has, the work was already done with the exact same state, so it's skipped. For example,
+  dependencies aren't installed again until the lockfile or a manifest changes.
+- If it hasn't, the work is done, and its fingerprint is stored once it succeeds. Work that fails or
+  is interrupted leaves no fingerprint behind, so it's attempted again on the next run.
+
+While actions like installing dependencies run, they hold a lock for their hash in
+`.moon/cache/locks`, so that concurrent moon processes wait for each other, instead of doing the same
+work twice. Some work also runs again when its result is missing, even with an unchanged hash, like
+installing dependencies when the vendor directory (like `node_modules`) doesn't exist, or
+regenerating VCS hooks that were deleted.
+
+Tasks are the exception: a task's fingerprint is stored as soon as it's hashed, and whether the task
+runs is decided by its archived results instead (see [hydrating](#hydrating)). Fingerprints always
+stay on the machine that generated them, and are never uploaded on their own.
+
+### Archiving
+
+When a task's command succeeds, moon archives its results under the task's hash:
+
+1. Each of the task's [outputs](<../(fundamentals)/task.mdx#outputs>) is stored as a [blob](#blobs),
+   along with the captured stdout and stderr.
+2. A [manifest](#manifests) is created, recording each output file's path, digest, and permissions,
+   any symlinks, and the exit code.
+3. The blobs are written to every writable [storage backend](#storage-backends), and only then is
+   the manifest, so a manifest never references a blob that doesn't exist.
+
+Archiving happens in the background (or in the [daemon](../guides/daemon.mdx), when enabled), so it
+doesn't hold up the tasks that depend on it. Before exiting, moon waits for pending uploads to
+finish, for up to 5 minutes. Failed runs are never archived. For tasks with a `build`
+[type](<../(fundamentals)/task.mdx#types>), the run fails if any of its declared outputs weren't
+created.
+
+### Hydrating
+
+On the next run, before executing the command, moon checks whether the task's hash is already
+cached:
+
+1. If the task's previous run succeeded with the same hash, and its outputs still exist on disk,
+   they're reused as-is.
+2. Otherwise, moon looks up a manifest for the hash, in the local cache first, then the
+   [remote cache](#remote).
+3. When one is found, moon retrieves every blob it references, from the backend that had the
+   manifest, falling back to the other backends for any that are missing. Existing outputs are only
+   deleted once every blob has been retrieved, and are then replaced with the cached files.
+4. The cached stdout and stderr are replayed, and the action is marked as `Cached`, or
+   `CachedFromRemote` (see [statuses](<../(fundamentals)/action.mdx#statuses>)). After a remote hit,
+   the outputs are also stored in the local cache, so the next hit doesn't need the network.
+
+If any blob can't be retrieved, the hit is treated as a miss, and the command runs. A task also
+isn't hydrated when the cache isn't readable (see [modes](#modes)), when its previous run failed,
+when its [`options.cacheLifetime`](/moon/api/TaskOptionsConfig#cachelifetime) has elapsed since it
+last ran, or when another task depends on it with a `cleanup` or `wait`
+[dependency type](<../(fundamentals)/task.mdx#dependency-types>), as those require its command to
+run. Caching can be limited or disabled per task with the
+[`options.cache`](/moon/api/TaskOptionsConfig#cache) option, and is disabled entirely when the
+workspace isn't a VCS repository.
+
+## Folder structure
+
+The cache lives in the `.moon/cache` directory of the workspace, and should be ignored by version
+control. The parts that belong to the cache engine are:
+
+```text
+.moon/cache/
+├── objects/        # KV store of fingerprints, states, and cached data
+│   └── 0b/
+│       └── 55b234f1018581c45b00241d7340dc...
+├── blobs/          # CAS store of archived task outputs and logs, by digest
+├── manifests/      # KV store of archived task results, by task hash
+├── states/         # The last run of each task, and project snapshots
+│   └── <project>/
+│       ├── snapshot.json
+│       └── <task>/
+│           ├── lastRun.json
+│           ├── stderr.log
+│           └── stdout.log
+├── locks/          # Locks held by running processes
+├── temp/           # Temporary files
+└── CACHEDIR.TAG
+```
+
+The `objects`, `blobs`, and `manifests` stores are sharded by the first 2 characters of each key
+or digest, like Git's object store, so that no single directory grows too large. Writes are atomic (a
+temporary file is renamed into place), so a reader never sees partial content, and no locking is
+needed. The `CACHEDIR.TAG` file tells backup tools to skip the directory.
+
+The directory also contains files that aren't part of the cache engine, like the run reports
+(`runReport.json` and `ciReport.json`), the configuration JSON schemas written by
+[`moon sync config-schemas`](../commands/sync/config-schemas.mdx), and the
+[daemon's](../guides/daemon.mdx) logs.
+
+To remove stale items, run [`moon clean`](../commands/clean.mdx), which removes items older than a
+lifetime, or everything with `--all`.
+
+## Storage backends
+
+The cache engine is made up of 2 storages, each with its own backends:
+
+- The **objects storage** is a key-value store of [objects](#objects): fingerprints, states, and
+  cached data. It has a single [local](#local) backend, so objects never leave the machine.
+- The **actions storage** is a content-addressable store of archived task results:
+  [manifests](#manifests) and their [blobs](#blobs). It always has a [local](#local) backend, and a
+  [remote](#remote) backend when one is configured.
+
+When reading, backends are checked in order, local first, and the first hit wins. When writing,
+every writable backend is written to in parallel, and a failure in one doesn't stop the others.
+
+A cache problem never fails a run. A backend that fails to connect is disabled with a warning, a
+read waits at most 30 seconds for backends to connect before skipping them, and a read error is
+treated as a cache miss.
+
+### Modes
+
+Whether the cache is read from and written to is controlled with the global `--cache` option, or
+the `MOON_CACHE` environment variable (see [caching](../commands/overview.mdx#caching)). Modes apply
+to all cached work, not only tasks:
+
+- `read-write` (default) - Skip work that's already done, and store the results of new work.
+- `read` - Skip work that's already done, but never store anything new.
+- `write` - Store the results of new work, but never read from the cache, so all work is done
+  again. Passing `--force` to [`moon run`](../commands/run.mdx) uses this mode.
+- `off` - Don't use the cache at all.
+
+### Local
+
+The local backends store everything in `.moon/cache`: objects in `.moon/cache/objects`, and task
+results in `.moon/cache/blobs` and `.moon/cache/manifests`. Files are copied into and out of the
+cache with reflinks (copy-on-write clones) on file systems that support them, like APFS, Btrfs,
+and XFS, so storing and restoring large files is nearly instant and takes no extra disk space. On
+other file systems, files are copied.
+
+The local task results are configured with the [`cache`](/moon/api/WorkspaceConfig#cache) setting
+in [`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>):
+
+- [`cas.maxSize`](/moon/api/CacheCasConfig#maxsize) - The maximum size of the cached task results,
+  like `10gb`. Unlimited by default.
+- [`cas.verifyIntegrity`](/moon/api/CacheCasConfig#verifyintegrity) - Verify the digest of every
+  blob when it's read, which is slower, but detects corruption on disk.
+- [`sharedWorktreeCache`](/moon/api/CacheConfig#sharedworktreecache) - Share task results between
+  the Git worktrees of a repository, so switching worktrees doesn't rebuild everything. They're
+  stored in the main worktree's `.moon/cache` when it has one, or in `~/.moon/cache/shared`
+  otherwise. Objects and states always stay in each worktree's own cache.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    cache: {
+      cas: {
+        maxSize: "10gb",
+      },
+      sharedWorktreeCache: true,
+    },
+  }}
+/>
+
+Garbage collection removes objects once they're older than the cache lifetime. For task results,
+manifests are the roots: a manifest is removed once it's older than the lifetime, or when keeping it
+would exceed `cas.maxSize`, while a blob is removed once no remaining manifest references it. A
+cache hit refreshes a manifest's age, so the least recently used results are removed first. The
+lifetime is [`pipeline.cacheLifetime`](/moon/api/PipelineConfig#cachelifetime) (`7 days` by
+default) when cleaning after a run, and the `--lifetime` option of
+[`moon clean`](../commands/clean.mdx) otherwise.
+
+Garbage collection runs with [`moon clean`](../commands/clean.mdx), and after every pipeline run
+when [`pipeline.autoCleanCache`](/moon/api/PipelineConfig#autocleancache) is enabled (the
+default). Without the [daemon](../guides/daemon.mdx#background-processing), the cleanup after a run
+only removes stale locks and temporary files, so run `moon clean` periodically to collect the rest.
+
+### Remote
+
+A remote backend stores archived task results in a service that implements the
+[Bazel Remote Execution API](https://github.com/bazelbuild/remote-apis), over gRPC or HTTP, so that
+every developer and CI machine can reuse each other's results. Manifests are stored as action
+results in the service's action cache, and blobs in its content-addressable storage. Only task
+results are stored remotely, while objects always stay local.
+
+A remote backend is added by configuring [`remote.host`](/moon/api/RemoteConfig#host). With
+[`remote.cache.localReadOnly`](/moon/api/RemoteCacheConfig#localreadonly) enabled, only CI machines
+upload, while local machines only download, which keeps unverified local builds out of the shared
+cache. Remote services manage their own eviction, so `moon clean` never touches them.
+
+See the [remote caching guide](../guides/remote-cache.mdx) for hosting a service, authentication,
+and compression.
+
+## Stored types
+
+### Blobs
+
+Blobs hold the contents of task outputs, and the captured stdout and stderr of each run. They're
+stored by digest in the `blobs` store, and in the remote cache's content-addressable storage, so the
+same file is only stored once, no matter how many tasks or runs produce it. The fingerprint of an
+archived run is also stored as a blob alongside its outputs, which strict remote services require.
+
+### Manifests
+
+A manifest records the result of a single task run, and is what hydration restores from:
+
+- `files` - Each output file's workspace-relative path, digest, permissions (including whether it's
+  executable), and modification time.
+- `symlinks` - Each output symlink's path and target.
+- `exit_code` - The exit code of the command.
+- `stdout_digest` and `stderr_digest` - The digests of the captured logs.
+
+Unlike blobs, manifests are stored under the task's [hash](#hash), not the digest of their own
+contents, as they're looked up by the hash before anything else is known. A manifest maps directly
+to an action result of the Bazel Remote Execution API, which is how it's stored remotely.
+
+### Objects
+
+The `objects` store is a key-value store, that holds everything the cache engine keeps for moon
+itself, rather than for a task's outputs. Each object is stored under a key, and looked up by that
+key:
+
+- **Fingerprints** - The [fingerprint](#fingerprint) of every hash, keyed by that hash. A stored
+  fingerprint is what marks work as done.
+- **States** - Small documents that moon updates between runs, like the state of the VCS hooks, the
+  last version check, and which cached project graph is current. Each is keyed by a fixed name, and
+  replaced when it's updated.
+- **Cached data** - Larger results that are expensive to recompute, like the project and task
+  graphs, keyed separately and referenced from a state.
+
+Objects are always local, and stay in each checkout's own cache, even when
+[`cache.sharedWorktreeCache`](/moon/api/CacheConfig#sharedworktreecache) is enabled. As nothing
+references them the way manifests reference blobs, they're removed once older than the cache
+lifetime.

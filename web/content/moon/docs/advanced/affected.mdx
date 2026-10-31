@@ -2,3 +2,322 @@
 title: Affected tracking
 icon: FingerprintPattern
 ---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+
+Affected tracking is how moon decides which [projects](<../(fundamentals)/project.mdx>) and
+[tasks](<../(fundamentals)/task.mdx>) are impacted by a set of changes. Instead of running every
+task on every pull request, moon compares the changed files against each project's source directory
+and each task's [inputs](<../(fundamentals)/task.mdx#inputs>), then follows the dependency
+relationships between them, so that only the work whose result could be different runs.
+
+Tracking happens in 3 steps:
+
+1. Collect the changed files from
+   [version control](<../(fundamentals)/workspace.mdx#version-control-integration>).
+2. Mark every project and task that's directly affected by those files (or, for tasks, by
+   environment variables).
+3. Propagate affected state from each marked project and task to its dependents, up to the
+   [tracking depth](#tracking-depth).
+
+[`moon ci`](../commands/ci.mdx) always runs with affected tracking enabled, while
+[`moon run`](../commands/run.mdx), [`moon check`](../commands/check.mdx), and
+[`moon exec`](../commands/exec.mdx) enable it with `--affected`, or the `affected` block of an
+[execution plan](../guides/exec-plan.mdx#affected). To see what's affected without running anything,
+[`moon query affected`](../commands/query/affected.mdx) prints the affected projects and tasks,
+along with the reason each one was marked.
+
+```shell
+# Only run `test` tasks affected by local, uncommitted changes
+$ moon run :test --affected
+
+# Also include the changes committed since branching off `master`
+$ moon run :test --affected --base master
+
+# Inspect what's affected, and why
+$ moon query affected
+```
+
+When the VCS isn't available (there's no repository, or no binary on `PATH`), changed files can't be
+determined, so affected tracking is disabled and every selected task runs.
+
+## Tracking depth
+
+Affected state only flows downstream: from an affected project or task to the projects and tasks
+that depend on it (its dependents), never to the ones it depends on. The **tracking depth** controls
+how far it flows, measured in hops along the [project graph](<../(fundamentals)/project-graph.mdx>)
+and [task graph](<../(fundamentals)/task-graph.mdx>). It accepts the following values:
+
+- `none` - Only mark the projects and tasks that are directly affected.
+- `direct` - Also mark direct dependents, 1 hop away.
+- `deep` - Also mark every dependent, no matter how far away.
+- A number of hops, like `2`. `0` is the same as `none`, and `1` the same as `direct`.
+
+For example, take a chain of `build` tasks, where `client:build` depends on `ui:build`, which
+depends on `utils:build`. When a file in the `utils` project changes, the following tasks are
+affected:
+
+| Depth             | Affected tasks                            |
+| :---------------- | :---------------------------------------- |
+| `none`            | `utils:build`                             |
+| `direct` (or `1`) | `utils:build`, `ui:build`                 |
+| `deep` (or `2`)   | `utils:build`, `ui:build`, `client:build` |
+
+For [`moon run`](../commands/run.mdx), [`moon check`](../commands/check.mdx),
+[`moon exec`](../commands/exec.mdx), and [`moon ci`](../commands/ci.mdx), the depth is set with the
+`--affected-depth` option (`-d`, or the `MOON_AFFECTED_DEPTH` environment variable), or the
+`affected.depth` field of an [execution plan](../guides/exec-plan.mdx#affected). It defaults to
+`deep`, as a change to a dependency can change the result of everything built on top of it, even
+when the dependents' own files didn't change. Lower it when changes rarely ripple that far, or to
+trim the workload of large CI runs.
+
+```shell
+# Only run tasks that are directly affected by changed files
+$ moon ci --affected-depth none
+
+# Also run tasks up to 2 hops away from a directly affected task
+$ moon run :build --affected --affected-depth 2
+```
+
+For [`moon query affected`](../commands/query/affected.mdx),
+[`moon query projects`](../commands/query/projects.mdx), and
+[`moon query tasks`](../commands/query/tasks.mdx), the depth is set with the `--dependents` option
+instead, which defaults to `none`.
+
+The depth only decides which tasks count as affected, it never adds tasks to a run. With
+`moon run utils:build --affected`, both `ui:build` and `client:build` are affected, but don't run,
+as they weren't selected. To also run the dependents of the selected targets, pass `--dependents`,
+like `--dependents deep`, and they're filtered by affected state like any other target. In the other
+direction, the dependencies of a task are always run before it, whether they're affected or not,
+unless `--no-dependencies` is passed.
+
+When the depth isn't `none`, moon loads and checks every project and task in the workspace
+(including internal tasks), as a task can only be marked through a relation once the task it depends
+on has been marked. With `none`, only the selected tasks are checked, which is cheaper in very large
+workspaces.
+
+## Change types
+
+A project or task is marked affected by one of the following kinds of changes. Each mark records its
+reason, which both [`moon query affected`](../commands/query/affected.mdx) and the output of a run
+report (see [inspecting](#inspecting)).
+
+### Files
+
+Changed files are the primary signal. moon gathers them from VCS, as paths relative to the workspace
+root:
+
+- **Locally**, only uncommitted changes in the working tree are used: staged, unstaged, and untracked
+  files. To also include the commits on your branch, pass a base revision with `--base`.
+- **In CI**, the head revision is compared against the merge base of a base revision, like a pull
+  request's target branch, which defaults to
+  [`vcs.defaultBranch`](/moon/api/VcsConfig#defaultbranch). See
+  [comparing revisions](../guides/ci.mdx#comparing-revisions) for how the revisions are resolved.
+- In both cases, uncommitted changes are included, unless an explicit head revision is passed with
+  `--head`, as a comparison between 2 revisions doesn't involve the working tree.
+
+The `--affected` option also accepts `local` or `remote`, to choose between the first 2 modes
+regardless of the environment. The list can be filtered by status with `--status` (like
+`--status modified`), or replaced entirely with `--stdin`, which reads a newline-separated list of
+files, or the JSON output of [`moon query changed-files`](../commands/query/changed-files.mdx).
+
+A changed file affects a project when it's located within the project's source directory, and a task
+when it matches one of the task's inputs. See [for projects](#for-projects) and
+[for tasks](#for-tasks) for the specifics.
+
+<Callout type="warning">
+  Comparing revisions requires VCS history. In a shallow checkout, like the
+  default of GitHub's `actions/checkout`, moon can't determine changed files
+  unless a base revision is passed explicitly (and even then, the result may be
+  inaccurate). Commands that run tasks then disable affected tracking, so every
+  selected task runs. Fetch the full history (`fetch-depth: 0`) to keep affected
+  tracking working.
+</Callout>
+
+### Environment variables
+
+Tasks can list environment variables as [inputs](<../(fundamentals)/task.mdx#inputs>), with an
+explicit name, like `$API_URL`, or a wildcard, like `$APP_*`. A task is affected when any of those
+variables is set to a non-empty value, regardless of which files changed. An empty value is treated
+the same as an unset variable. Wildcards are matched against the variables set in the current
+environment.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "vite build",
+        inputs: ["src/**/*", "$API_URL"],
+      },
+    },
+  }}
+  comments={{
+    inputs: "Affected whenever `API_URL` is set",
+  }}
+/>
+
+Since the check is whether a variable is set, not whether its value changed, a variable that's always
+set in an environment (like a token injected into every CI job) makes the task affected on every run
+there. Prefer file inputs for anything that's set unconditionally. Projects are never affected by
+environment variables.
+
+### Graph relations
+
+Once the directly affected projects and tasks have been marked, affected state propagates through
+the dependency graphs, up to the [tracking depth](#tracking-depth):
+
+- **Projects** propagate through the [project graph](<../(fundamentals)/project-graph.mdx>). When a
+  project is affected, the projects that depend on it, through
+  [`dependsOn`](/moon/api/ProjectConfig#dependson) or dependencies inferred by a
+  [toolchain](<../(fundamentals)/toolchain.mdx>), are affected too.
+- **Tasks** propagate through the [task graph](<../(fundamentals)/task-graph.mdx>). When a task is
+  affected, the tasks that depend on it through [`deps`](/moon/api/TaskConfig#deps) are affected
+  too.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    dependsOn: ["utils"],
+    tasks: {
+      build: {
+        command: "vite build",
+        deps: ["^:build"],
+      },
+    },
+  }}
+  comments={{
+    dependsOn: "Affected when the `utils` project is affected",
+    deps: "Affected when the `utils:build` task is affected",
+  }}
+/>
+
+The 2 graphs propagate independently. A project that's affected through a dependency doesn't make
+its own tasks affected, as tasks only follow other tasks. If `client:build` should be affected by
+changes to `utils`, either depend on `utils:build`, or reference the `utils` project in the task's
+inputs (see [other projects](<../(fundamentals)/task.mdx#other-projects>)).
+
+Each dependent records the dependency it was reached through, and its **distance**, the number of
+hops from a directly affected project or task. When a dependent can be reached from multiple affected
+nodes, the shortest distance is used.
+
+## For projects
+
+A project is affected when any of the following is true:
+
+- A changed file is located within its source directory. This includes files in nested projects, so
+  a change to `packages/app/plugins/auth/index.ts` affects both the `packages/app/plugins/auth` and
+  `packages/app` projects.
+- It's a root-level project (its source is the workspace root), and any file changed, except for
+  hidden files and directories at the root, like `.github/workflows/ci.yml` or
+  `.vscode/settings.json`.
+- One of its tasks is directly affected (see [for tasks](#for-tasks)).
+- A project it depends on is affected, within the [tracking depth](#tracking-depth).
+
+An affected project doesn't make its tasks affected, as each task is checked against its own inputs.
+For example, editing a project's `README.md` affects the project, but not a `build` task whose inputs
+are `src/**/*`.
+
+When running tasks, a project's affected state decides whether it's synced: a project's sync action
+is only added to the [action graph](<../(fundamentals)/action-graph.mdx>) when the project is
+affected. The project that owns a directly affected task is affected too, so it's synced before the
+task runs.
+
+It's also what [`moon query projects --affected`](../commands/query/projects.mdx) filters on. As
+dependencies are never affected, include them with the `--dependencies` option when needed.
+
+```shell
+# List the projects affected by changed files, and their dependents
+$ moon query projects --affected --dependents deep
+```
+
+## For tasks
+
+A task is directly affected by the first of the following checks that applies:
+
+1. **Running in CI** - When running in CI, a task with an
+   [`options.runInCI`](/moon/api/TaskOptionsConfig#runinci) of `"always"` is always affected, even
+   when nothing changed, while `false` and `"skip"` tasks aren't affected. Outside of CI, `"only"`
+   tasks aren't affected. See [configuring tasks to run](../guides/ci.mdx#configuring-tasks-to-run).
+2. **No inputs** - A task with no inputs, like `inputs: []`, is never affected. In a monorepo, tasks
+   in a root-level project default to no inputs, so they must configure
+   [`inputs`](/moon/api/TaskConfig#inputs) explicitly to be affected by anything.
+3. **Environment variables** - Any of its environment variable inputs is set (see
+   [environment variables](#environment-variables)).
+4. **Files** - A changed file matches one of its input files or globs. Inputs from
+   [file groups](<../(fundamentals)/task.mdx#file-groups>),
+   [other projects](<../(fundamentals)/task.mdx#other-projects>), and tokens all resolve to files and
+   globs, so they're matched the same way.
+
+When a file input has a [`content`](/moon/api/FileInput#content) pattern, a change to the file isn't
+enough on its own: moon reads the file and only marks the task affected when its contents match the
+pattern. A deleted file has no contents, so it never matches.
+
+On top of these checks, a task is also affected when a task it depends on is affected, within the
+[tracking depth](#tracking-depth). Dependencies are never marked, so changing the `client` project
+doesn't affect `utils:build`. Every directly affected task also marks its owning project as
+affected, while tasks affected through a dependency don't.
+
+The changed files that match a task's inputs can be passed to its command with
+[`options.affectedFiles`](/moon/api/TaskOptionsConfig#affectedfiles), for example, to only lint the
+files that changed. Passing `--force` runs every selected task regardless of affected state, but
+tracking still happens, so affected files are still passed, and affected tasks are still reported.
+
+## Inspecting
+
+When running tasks with a detailed summary (`--summary detailed`, the default for
+[`moon ci`](../commands/ci.mdx)), the "Tracking affected tasks" step lists each affected task and
+why it was marked. Tasks that were affected through a dependency more than 1 hop away also include
+their distance.
+
+```text
+utils:build affected by file packages/utils/src/index.ts
+ui:build affected by dependency task utils:build
+client:build affected by dependency task ui:build (2 hops away)
+```
+
+For scripting, [`moon query affected`](../commands/query/affected.mdx) prints the affected state as
+JSON, with a `projects` map keyed by project ID, and a `tasks` map keyed by target. Each entry
+records why it was affected:
+
+- `files` - The changed files that affected it.
+- `env` - The environment variables that affected it (tasks only).
+- `tasks` - Its affected tasks (projects only).
+- `dependencies` - The affected dependencies it was reached through.
+- `distance` - How many hops away it is from a directly affected project or task. `0` when it was
+  directly affected.
+- `other` - Whether it was affected for another reason, like `runInCI: "always"`.
+
+For example, with the `client` project depending on `utils`, and `client:build` depending on
+`utils:build`, a change to `packages/utils/src/index.ts` results in the following (with
+`--dependents deep`):
+
+```json
+{
+  "projects": {
+    "client": {
+      "dependencies": ["utils"],
+      "distance": 1,
+      "other": false
+    },
+    "utils": {
+      "files": ["packages/utils/src/index.ts"],
+      "tasks": ["utils:build"],
+      "distance": 0,
+      "other": false
+    }
+  },
+  "tasks": {
+    "client:build": {
+      "dependencies": ["utils:build"],
+      "distance": 1,
+      "other": false
+    },
+    "utils:build": {
+      "files": ["packages/utils/src/index.ts"],
+      "distance": 0,
+      "other": false
+    }
+  }
+}
+```

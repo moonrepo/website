@@ -121,16 +121,15 @@ a recorded process ID is still alive.
 
 While a pipeline is running, the following work is handed off to the daemon:
 
-- **Task output archiving** - After a task runs, its outputs are stored in the remote cache (and in
-  the local cache when the
-  [`experiments.casOutputsCache`](/moon/api/ExperimentsConfig#casoutputscache) experiment is
-  enabled) by the daemon, in the background. The pipeline doesn't wait for uploads to finish before
+- **Task output archiving** - After a task runs, its outputs are stored in the local and remote
+  caches by the daemon, in the background (see [archiving](../advanced/cache.mdx#archiving)). The pipeline doesn't wait for uploads to finish before
   moving on, and the command can exit while they're still in progress.
 - **Task output hydration** - On a cache hit, outputs from those same caches are restored by the
   daemon.
 - **Cache cleanup** - When [`pipeline.autoCleanCache`](/moon/api/PipelineConfig#autocleancache) is
   enabled, stale cache entries are cleaned by the daemon after the pipeline completes, instead of at
-  the tail-end of the command.
+  the tail-end of the command. Unlike the cleanup without the daemon, this also removes stale states
+  and garbage collects task outputs, like [`moon clean`](../commands/clean.mdx).
 - **Webhooks** - [Webhook](./webhooks.mdx) requests are sent by the daemon, unless
   [`notifier.webhookAcknowledge`](/moon/api/NotifierConfig#webhookacknowledge) is enabled.
 

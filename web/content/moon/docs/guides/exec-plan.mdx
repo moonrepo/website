@@ -135,14 +135,17 @@ evenly across the jobs, the same as passing `--job` and `--job-total`.
 
 ### `graph`
 
-Controls which task relationships are included in the action graph.
+Controls which task relationships are included in the action graph. By default, every dependency
+of a target runs before it, and the tasks that depend on a target don't run.
 
-- `upstream` <TypeLabel type="none | direct | deep" /> - Depth of upstream dependencies to include.
-  With `deep`, every dependency of a target runs before it, `direct` only includes its immediate
-  dependencies, and `none` skips them. Defaults to `deep`. Same as `--upstream`.
-- `downstream` <TypeLabel type="none | direct | deep" /> - Depth of downstream dependents to
-  include, which helps catch regressions in the tasks that depend on a target. Defaults to `none`,
-  or `direct` for `moon ci`. Same as `--downstream`.
+- `dependents` <TypeLabel type="none | direct | deep | number" /> - Also run the tasks that depend
+  on the targets, up to this many hops away, which helps catch regressions in the tasks built on top
+  of them. Added tasks are still filtered by affected status. Defaults to `none`. Same as
+  `--dependents`.
+- `noDependencies` <TypeLabel type="boolean" /> - Don't run dependency tasks that weren't selected
+  themselves, except for [cleanup dependencies](<../(fundamentals)/task.mdx#dependency-types>). The
+  order between the tasks that are run is still honored. Defaults to `false`. Same as
+  `--no-dependencies`.
 
 ### `affected`
 
@@ -152,10 +155,12 @@ filtering is enabled, even without passing `--affected`. When omitted, all match
 
 - `base` <TypeLabel type="string" /> - Base branch, commit, or revision to compare against. Defaults
   to [`vcs.defaultBranch`](/moon/api/VcsConfig#defaultbranch). Same as `--base`.
+- `depth` <TypeLabel type="none | direct | deep | number" /> - How far affected state propagates
+  from an affected task to the tasks that depend on it, in hops. This only changes which targets
+  count as affected, and never adds tasks. Defaults to `deep`. Same as `--affected-depth`. See
+  [tracking depth](../advanced/affected.mdx#tracking-depth) for more information.
 - `head` <TypeLabel type="string" /> - Current branch, commit, or revision to compare with. Defaults
   to `HEAD`, including uncommitted changes. Same as `--head`.
-- `includeRelations` <TypeLabel type="boolean" /> - Include graph relations for affected checks,
-  instead of just changed files. Same as `--include-relations`.
 - `source` <TypeLabel type="local | remote" /> - Where changed files come from. With `local`, only
   uncommitted changes in the working tree are used (unless `base` or `head` is set), while `remote`
   compares the base and head revisions. Defaults to `remote` in CI, and `local` otherwise.
@@ -226,15 +231,15 @@ $ moon exec --plan plan.json --job 1
 $ moon exec --plan plan.json --job 2
 ```
 
-### Deep dependency graph
+### Including dependents
 
-Build a target along with all of its upstream dependencies and downstream dependents:
+Build a target along with every task that depends on it, no matter how far away. The target's own
+dependencies run first, as they always do:
 
 ```json title="plan.json"
 {
   "graph": {
-    "upstream": "deep",
-    "downstream": "deep"
+    "dependents": "deep"
   },
   "targets": ["core:build"]
 }
@@ -242,21 +247,20 @@ Build a target along with all of its upstream dependencies and downstream depend
 
 ### Full example
 
-Combine all blocks, to run affected tests in CI across partitioned jobs, while also verifying the
-direct dependents of each affected task:
+Combine all blocks, to run affected tests in CI across partitioned jobs, while also running the
+direct dependents of each target when they're affected:
 
 ```json title="plan.json"
 {
   "affected": {
     "base": "main",
+    "depth": "deep",
     "head": "HEAD",
-    "includeRelations": true,
     "source": "remote",
     "status": ["modified", "added"]
   },
   "graph": {
-    "upstream": "deep",
-    "downstream": "direct"
+    "dependents": "direct"
   },
   "pipeline": {
     "ci": true,
