@@ -15,9 +15,9 @@ as raw JSON for scripting and inspection. Before rendering or printing, moon for
 task in the graph so relationships are fully resolved.
 
 When a `[target]` argument is provided, the graph is trimmed down ("focused") to only that task
-and its upstream dependencies, which is useful for understanding why a task pulls in a particular
-dependency chain. Pass `--dependents` alongside the target to also include tasks that directly
-depend on the focused task.
+and its dependencies, which is useful for understanding why a task pulls in a particular
+dependency chain. Pass `--dependents` with a depth alongside the target to also include the tasks
+that depend on the focused task.
 
 ```shell
 # Run the interactive visualizer for the whole workspace
@@ -26,8 +26,8 @@ $ moon task-graph
 # Focus the graph around a specific task
 $ moon task-graph app:build
 
-# Also include direct dependents of the focused task
-$ moon task-graph app:build --dependents
+# Also include the tasks that directly depend on the focused task
+$ moon task-graph app:build --dependents direct
 
 # Print the graph in DOT format
 $ moon task-graph --dot > graph.dot
@@ -45,8 +45,9 @@ This command can also be ran as `moon tg` as a shorthand alias.
 
 ## Options
 
-- `--dependents` - Include direct dependents of the focused task. Only applies when `[TARGET]` is
-  provided.
+- `--dependents` <TypeLabel type="none | direct | deep | number" /> - Include the tasks that depend
+  on the focused task, up to this many hops away. Defaults to `none`. Only applies when `[TARGET]`
+  is provided.
 - `--host` <TypeLabel type="string" /> - The host address to bind the visualizer web server to.
   Defaults to `127.0.0.1`. Can also be set with the `MOON_HOST` environment variable.
 - `--port` <TypeLabel type="number" /> - The port to bind the visualizer web server to. Defaults to

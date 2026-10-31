@@ -19,9 +19,9 @@ be passed to print the graph in that format to the terminal instead, which is us
 piping into other tools or for debugging why a particular action exists (or doesn't).
 
 Without arguments, every task in the workspace is added to the graph. Passing one or more
-[targets](<../(fundamentals)/target.mdx>) focuses the graph to just those targets and their upstream
-dependencies. Add `--dependents` to also include downstream dependents of the focused
-targets, showing what would be affected if they changed.
+[targets](<../(fundamentals)/target.mdx>) focuses the graph to just those targets and their
+dependencies. Add `--dependents` with a depth to also include the tasks that depend on the focused
+targets, showing what would run after them if they changed.
 
 ```shell
 # Serve an interactive visualization of the entire action graph
@@ -30,8 +30,8 @@ $ moon action-graph
 # Focus the graph around a single target and its dependencies
 $ moon action-graph app:build
 
-# Also include dependents of the focused target
-$ moon action-graph app:build --dependents
+# Also include every task that depends on the focused target
+$ moon action-graph app:build --dependents deep
 
 # Export the whole graph to a DOT file for use with Graphviz
 $ moon action-graph --dot > graph.dot
@@ -48,8 +48,9 @@ $ moon action-graph --json
 
 ## Options
 
-- `--dependents` - Include downstream dependents of the focused target(s) in the graph, in
-  addition to their upstream dependencies. Has no effect when no targets are provided.
+- `--dependents` <TypeLabel type="none | direct | deep | number" /> - Include the tasks that depend
+  on the focused target(s) in the graph, up to this many hops away, in addition to their
+  dependencies. Defaults to `none`. Has no effect when no targets are provided.
 - `--host` <TypeLabel type="string" /> - The host address to bind the local visualizer
   server to. Defaults to `127.0.0.1`. Can also be set with the `MOON_HOST` environment
   variable.

@@ -113,8 +113,9 @@ $ moon exec app:start -- --port 8080
 
 ### Affected
 
-- `--affected` <TypeLabel type="boolean | string" /> - Only run tasks if affected by changed files
-  (or by upstream/downstream relations when `--include-relations` is passed). When passed without
+- `--affected` <TypeLabel type="boolean | string" /> - Only run tasks if
+  [affected](../advanced/affected.mdx) by changed files, or by an affected dependency task (see
+  `--affected-depth`). When passed without
   a value, changed files are detected from the local working tree; a string value further filters
   affected checks (for example `local` or `remote`). Can also be set via the `MOON_AFFECTED`
   environment variable.
@@ -123,9 +124,11 @@ $ moon exec app:start -- --port 8080
 - `--head` <TypeLabel type="string" /> - Current branch, commit, or revision to compare with when
   determining changed files. Defaults to the working tree. Can also be set via the `MOON_HEAD`
   environment variable.
-- `-g`, `--include-relations` - Include upstream and downstream graph relations when determining
-  affected status, instead of only changed files. Requires `--affected` to also be passed. Can
-  also be set via the `MOON_INCLUDE_RELATIONS` environment variable.
+- `-d`, `--affected-depth` <TypeLabel type="none | direct | deep | number" /> - How far affected
+  state propagates from an affected task to the tasks that depend on it, in hops. This only changes
+  which of the selected tasks count as affected, and never adds tasks. Requires `--affected` to also
+  be passed. Defaults to `deep`. Can also be set via the `MOON_AFFECTED_DEPTH` environment variable.
+  See [tracking depth](../advanced/affected.mdx#tracking-depth) for more information.
 - `--status` <TypeLabel type="added | all | deleted | modified | staged | unstaged | untracked" /> -
   Filter changed files based on one or more changed statuses. Requires `--affected` to also be
   passed. Defaults to `all`.
@@ -134,10 +137,12 @@ $ moon exec app:start -- --port 8080
 
 ### Graph
 
-- `--downstream` <TypeLabel type="none | direct | deep" /> - Control the depth of downstream
-  dependents to include in the action graph. Aliased as `--dependents`. Defaults to `none`.
-- `--upstream` <TypeLabel type="none | direct | deep" /> - Control the depth of upstream
-  dependencies to include in the action graph. Aliased as `--dependencies`. Defaults to `deep`.
+- `--dependents` <TypeLabel type="none | direct | deep | number" /> - Also run the tasks that
+  depend on the selected targets, up to this many hops away. Added tasks are still filtered by
+  `--affected` and `--query`. Defaults to `none`.
+- `--no-dependencies` - Don't run dependency tasks that weren't selected themselves, except for
+  [cleanup dependencies](<../(fundamentals)/task.mdx#dependency-types>). The order between the
+  tasks that are run is still honored.
 
 ### Parallelism
 

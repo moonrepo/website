@@ -12,8 +12,8 @@ JSON, like every other [`moon query`](../query.mdx) subcommand. This is the same
 Under the hood, this command first collects a list of changed files (from the local index, or a
 [comparison between 2 revisions](../../guides/ci.mdx#comparing-revisions), depending on the `[BY]`
 argument and your VCS state), then walks the
-project and task graphs to determine which nodes are affected by those files, optionally expanding
-the result to include upstream dependencies and downstream dependents. Each task's
+project and task graphs to determine which nodes are affected by those files, optionally
+propagating affected state to the projects and tasks that depend on them. Each task's
 [`options.runInCI`](/moon/api/TaskOptionsConfig#runinci) setting is respected, so when running in
 CI, tasks that [don't run in CI](../../guides/ci.mdx#configuring-tasks-to-run) are never affected, matching what [`moon ci`](../ci.mdx) would run.
 
@@ -25,8 +25,8 @@ querying the VCS directly, allowing the 2 commands to be composed together.
 # Determine affected projects and tasks based on local changes
 $ moon query affected
 
-# Also include downstream dependents and upstream dependencies
-$ moon query affected --downstream deep --upstream deep
+# Also include the projects and tasks that depend on affected ones
+$ moon query affected --dependents deep
 
 # Reuse the output of another query
 $ moon query changed-files --status added --status modified | moon query affected
@@ -34,8 +34,10 @@ $ moon query changed-files --status added --status modified | moon query affecte
 
 The output is a JSON object with a `projects` and `tasks` map, keyed by project ID and task target
 respectively. Each entry records why that project or task was marked affected: the changed files
-that triggered it, related tasks/projects, and whether it was affected through an
-`upstream`/`downstream` relationship.
+(or environment variables) that triggered it, its affected tasks (for projects), the affected
+`dependencies` it was reached through, and its `distance`, the number of hops from a directly
+affected project or task (`0` when directly affected). See
+[inspecting affected state](../../advanced/affected.mdx#inspecting) for an example.
 
 ## Arguments
 
@@ -49,7 +51,6 @@ that triggered it, related tasks/projects, and whether it was affected through a
 
 ## Options
 
-- `--downstream` <TypeLabel type="none | direct | deep" /> - Include downstream dependents of
-  affected projects/tasks. Defaults to `none`. Can also be passed as `--dependents`.
-- `--upstream` <TypeLabel type="none | direct | deep" /> - Include upstream dependencies of
-  affected projects/tasks. Defaults to `none`. Can also be passed as `--dependencies`.
+- `--dependents` <TypeLabel type="none | direct | deep | number" /> - Include the projects and
+  tasks that depend on affected ones, up to this many hops away, by propagating affected state to
+  them (see [tracking depth](../../advanced/affected.mdx#tracking-depth)). Defaults to `none`.

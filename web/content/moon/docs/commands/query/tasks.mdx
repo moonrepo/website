@@ -55,12 +55,13 @@ The output is a JSON object with a `tasks` map (project ID to a map of task ID t
   [`options.runInCI`](/moon/api/TaskOptionsConfig#runinci) setting is respected: in CI, tasks that
   don't run in CI are never affected, and tasks set to `always` are always affected, while outside
   of CI, tasks set to `only` are never affected.
-- `--downstream` <TypeLabel type="none | direct | deep" /> - Include downstream dependents of
-  the queried tasks. Defaults to `none`. Can also be passed as `--dependents`. Requires `--affected`
-  to also be passed.
-- `--upstream` <TypeLabel type="none | direct | deep" /> - Include upstream dependencies of
-  the queried tasks. Defaults to `none`. Can also be passed as `--dependencies`. Requires
+- `--dependents` <TypeLabel type="none | direct | deep | number" /> - Include the tasks that
+  depend on affected tasks, up to this many hops away, by propagating affected state to them (see
+  [tracking depth](../../advanced/affected.mdx#tracking-depth)). Defaults to `none`. Requires
   `--affected` to also be passed.
+- `--dependencies` <TypeLabel type="none | direct | deep | number" /> - Include the tasks that
+  affected tasks depend on, up to this many hops away. These are included in the results, but
+  aren't marked as affected. Defaults to `none`. Requires `--affected` to also be passed.
 
 ### Filters
 

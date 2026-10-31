@@ -8,11 +8,6 @@ const create = browser<typeof Config, import("fumadocs-mdx/runtime/types").Inter
   }
 }>();
 const browserCollections = {
-  blog: create.doc("blog", import.meta.glob(["./**/*.{mdx,md}"], {
-    "base": "./../content/blog",
-    "query": "?collection=blog",
-    "eager": false
-  })),
   moon: create.doc("moon", import.meta.glob(["./**/*.{mdx,md}"], {
     "base": "./../content/moon",
     "query": "?collection=moon",
@@ -31,6 +26,11 @@ const browserCollections = {
   wasm: create.doc("wasm", import.meta.glob(["./**/*.{mdx,md}"], {
     "base": "./../content/wasm",
     "query": "?collection=wasm",
+    "eager": false
+  })),
+  blog: create.doc("blog", import.meta.glob(["./**/*.{mdx,md}"], {
+    "base": "./../content/blog",
+    "query": "?collection=blog",
     "eager": false
   })),
 };

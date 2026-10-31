@@ -8,12 +8,6 @@ const create = server<typeof Config, import("fumadocs-mdx/runtime/types").Intern
   }
 }>();
 
-export const blog = await create.doc("blog", "content/blog", import.meta.glob(["./**/*.{mdx,md}"], {
-  "base": "./../content/blog",
-  "query": "?collection=blog",
-  "eager": true
-}));
-
 export const moon = await create.docs("moon", "content/moon", import.meta.glob(["./**/*.{json,yaml}"], {
   "base": "./../content/moon",
   "query": "?collection=moon",
@@ -55,5 +49,11 @@ export const wasm = await create.docs("wasm", "content/wasm", import.meta.glob([
 }), import.meta.glob(["./**/*.{mdx,md}"], {
   "base": "./../content/wasm",
   "query": "?collection=wasm",
+  "eager": true
+}));
+
+export const blog = await create.doc("blog", "content/blog", import.meta.glob(["./**/*.{mdx,md}"], {
+  "base": "./../content/blog",
+  "query": "?collection=blog",
   "eager": true
 }));
