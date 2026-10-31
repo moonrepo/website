@@ -4,31 +4,33 @@ title: moon clean
 
 import { TypeLabel } from "@/components/TypeLabel";
 
-Clean the workspace by deleting stale or invalid cached artifacts from `.moon/cache`.
-This is useful for reclaiming disk space, or for troubleshooting when cached state
-seems out of date or corrupted.
+Clean the workspace by deleting stale cached items from `.moon/cache`. This is useful for
+reclaiming disk space, or for troubleshooting when cached state seems out of date or corrupted. See
+the [cache engine](../advanced/cache.mdx) for how the cache is structured.
 
-By default, `moon clean` removes items from the following locations that are older
-than the `--lifetime` threshold:
+`moon clean` removes the following items that are older than the `--lifetime` threshold:
 
-- `.moon/cache/hashes` - Hash manifests generated from hashing inputs, as inspected by
-  [`moon hash`](./hash.mdx).
-- `.moon/cache/outputs` - Archived task output artifacts.
+- `.moon/cache/states` - The last run state and logs of each task, and project snapshots.
 - `.moon/cache/locks` - Stale file locks left behind by interrupted processes.
-
-It also runs garbage collection against any writable _local_ storage backends
-(the content-addressable blob store used for caching task outputs), removing blobs
-older than the same threshold. Remote storage backends, like a
-[remote cache](../guides/remote-cache.mdx), are always skipped, as they manage their own eviction
-server-side. If a particular backend fails to be cleaned,
-the error is logged and moon continues on to the next one, rather than aborting.
-
-Passing `--all` forces the lifetime down to a single second, so effectively every
-item is considered stale and removed, regardless of age. In this mode, moon also
-wipes out the following, which are otherwise preserved:
-
-- `.moon/cache/states` - Cached state for projects, tasks, and tools.
 - `.moon/cache/temp` - Temporary files used during runs.
+- `.moon/cache/objects` - Hash fingerprints, as inspected by [`moon hash`](./hash.mdx), and moon's
+  internal states, like the cached workspace graph.
+
+It also garbage collects the archived task outputs in the local cache (`.moon/cache/manifests` and
+`.moon/cache/blobs`, or the shared directory when
+[`cache.sharedWorktreeCache`](/moon/api/CacheConfig#sharedworktreecache) is enabled). A manifest is
+removed once it's older than the lifetime, or when keeping it would exceed
+[`cache.cas.maxSize`](/moon/api/CacheCasConfig#maxsize), and the blobs that only removed manifests
+referenced are removed with it. Blobs written within the last hour are always kept, as they may
+belong to a task that's still archiving. See
+[local storage](../advanced/cache.mdx#local) for how eviction works.
+
+Remote storage backends, like a [remote cache](../guides/remote-cache.mdx), are always skipped, as
+they manage their own eviction server-side. If a backend fails to be cleaned, the error is logged and
+moon continues on to the next one, rather than aborting.
+
+Passing `--all` lowers the lifetime to a single second, so effectively every item is considered
+stale and removed, regardless of age.
 
 Once cleaning has finished, moon prints how many files were deleted and how many
 bytes were reclaimed.
@@ -46,9 +48,8 @@ $ moon clean --all
 
 ## Options
 
-- `--all` - Clean all cached items and reset state, ignoring `--lifetime`. This also
-  clears cached project/task/tool state and temporary files, in addition to hashes,
-  outputs, locks, and local storage blobs. Can also be passed as `--reset`.
+- `--all` - Clean all cached items and reset state, ignoring `--lifetime`. Can also be passed as
+  `--reset`.
 - `--lifetime` <TypeLabel type="string" /> - The maximum age of cached artifacts to
   keep; anything older is deleted. Accepts a human-readable duration, such as
   `"7 days"`, `"24 hours"`, or `"30 minutes"`. Defaults to `"7 days"`. Ignored when

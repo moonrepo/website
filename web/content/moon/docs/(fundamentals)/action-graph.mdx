@@ -31,9 +31,10 @@ Every one of these steps is conditional. A toolchain that manages no versioned t
 `SetupToolchain` node; a task whose toolchains install nothing contributes no
 `InstallDependencies`. Commands can also disable whole categories of action — this is what
 [`moon run --no-actions`](../commands/run.mdx) does, reducing the graph to task execution alone.
-[`moon exec`](../commands/exec.mdx) also controls how deep dependencies and dependents are followed,
-with `--upstream` and `--downstream`, which can also be configured in the
-[`graph`](../guides/exec-plan.mdx#graph) block of an execution plan.
+[`moon exec`](../commands/exec.mdx) can also skip dependencies that weren't selected with
+`--no-dependencies`, or add the tasks that depend on the selected ones with `--dependents`, both of
+which can also be configured in the [`graph`](../guides/exec-plan.mdx#graph) block of an execution
+plan.
 
 ## Ordering
 
@@ -114,6 +115,6 @@ the most granular — a single task expands into several nodes here.
 # Visualize everything moon would do for a target
 $ moon action-graph app:build
 
-# Include the tasks that depend on it too
-$ moon action-graph app:build --dependents
+# Include every task that depends on it too
+$ moon action-graph app:build --dependents deep
 ```

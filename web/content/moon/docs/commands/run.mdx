@@ -4,7 +4,7 @@ title: moon run
 
 import { TypeLabel } from "@/components/TypeLabel";
 
-Run one or many [targets](<../(fundamentals)/target.mdx>) (and their upstream dependencies) through moon's action
+Run one or many [targets](<../(fundamentals)/target.mdx>) (and their dependencies) through moon's action
 pipeline, in topological order. This is the command you'll reach for most often: it resolves the
 tasks that match the given targets, builds an action graph from them (installing dependencies,
 syncing projects, running dependency tasks, and so on), and then executes that graph, caching each
@@ -81,31 +81,33 @@ $ moon run app:lint --affected --base master
 - `--no-actions` - Run the pipeline without any sync or setup related actions (toolchain
   installation, project syncing, etc), executing only the requested tasks. Can also be set via the
   `MOON_NO_ACTIONS` environment variable.
-- `--affected` <TypeLabel type="boolean | string" /> - Only run tasks that are affected by changed
-  files (or by upstream/downstream relations when `--include-relations` is set). Can also be set
-  via the `MOON_AFFECTED` environment variable. When no other affected filters are provided, moon
+- `--affected` <TypeLabel type="boolean | string" /> - Only run tasks that are
+  [affected](../advanced/affected.mdx) by changed files, or by an affected dependency task (see
+  `--affected-depth`). Can also be set via the `MOON_AFFECTED` environment variable. When no other affected filters are provided, moon
   compares against locally modified files; passing a string value (for example
   `--affected=remote`) customizes the comparison source. When a task isn't affected, it's skipped
   entirely (unless `--force` is also passed).
 - `--base` <TypeLabel type="string" /> - Base branch, commit, or revision to compare against when
-  determining changed files. Can also be set via the `MOON_BASE` environment variable. Requires
-  `--affected`.
+  determining changed files. Can also be set via the `MOON_BASE` environment variable.
 - `--head` <TypeLabel type="string" /> - Current branch, commit, or revision to compare with when
   determining changed files. Defaults to the working tree (`HEAD`). Can also be set via the
-  `MOON_HEAD` environment variable. Requires `--affected`.
-- `-g`, `--include-relations` - When checking affected status, also include upstream (dependency)
-  and downstream (dependent) task relations, instead of only changed files. Can also be set via
-  the `MOON_INCLUDE_RELATIONS` environment variable. Requires `--affected`.
+  `MOON_HEAD` environment variable.
+- `-d`, `--affected-depth` <TypeLabel type="none | direct | deep | number" /> - How far affected
+  state propagates from an affected task to the tasks that depend on it, in hops. This only changes
+  which of the selected tasks count as affected, and never adds tasks. Defaults to `deep`. Can also
+  be set via the `MOON_AFFECTED_DEPTH` environment variable. Requires `--affected`. See
+  [tracking depth](../advanced/affected.mdx#tracking-depth) for more information.
 - `--status` <TypeLabel type="added | all | deleted | modified | staged | unstaged | untracked" /> -
   Filter changed files used for affected checks down to a specific VCS status. Can be passed
   multiple times. Requires `--affected`.
 - `--stdin` - Read the list of changed files from `stdin`, instead of querying the VCS, for
   affected checks. Requires `--affected`.
-- `--downstream` <TypeLabel type="none | direct | deep" /> - Control how deeply downstream
-  dependent tasks are included in the action graph. Aliased as `--dependents`. Defaults to `none`.
-- `--upstream` <TypeLabel type="none | direct | deep" /> - Control how deeply upstream
-  dependency tasks are included in the action graph. Aliased as `--dependencies`. Defaults to
-  `deep`.
+- `--dependents` <TypeLabel type="none | direct | deep | number" /> - Also run the tasks that
+  depend on the selected targets, up to this many hops away. Added tasks are still filtered by
+  `--affected` and `--query`. Defaults to `none`.
+- `--no-dependencies` - Don't run dependency tasks that weren't selected themselves, except for
+  [cleanup dependencies](<../(fundamentals)/task.mdx#dependency-types>). The order between the
+  tasks that are run is still honored.
 - `--job` <TypeLabel type="number" /> - Zero-based index of the current job, used to partition
   resolved targets across multiple parallel invocations. Can also be set via the `MOON_JOB`
   environment variable. Must be paired with `--job-total`.

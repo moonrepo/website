@@ -32,8 +32,8 @@ $ moon query projects "projectId~app"
 $ moon query projects --tasks "lint|build"
 $ moon query projects "task=[lint,build]"
 
-# Find projects affected by changed files, including downstream dependents
-$ moon query projects --affected --downstream deep
+# Find projects affected by changed files, including the projects that depend on them
+$ moon query projects --affected --dependents deep
 ```
 
 The output is a JSON object with a `projects` array (full [project](<../../(fundamentals)/project.mdx>) configuration
@@ -53,12 +53,13 @@ objects, including their tasks) and the resolved `options` that were used to pro
   tree (or piped in via stdin, as produced by [`moon query changed-files`](./changed-files.mdx)); a
   string value further customizes the comparison, using the same syntax as the
   [`moon query affected`](./affected.mdx) `[BY]` argument.
-- `--downstream` <TypeLabel type="none | direct | deep" /> - Include downstream dependents of
-  the queried projects. Defaults to `none`. Can also be passed as `--dependents`. Requires
+- `--dependents` <TypeLabel type="none | direct | deep | number" /> - Include the projects that
+  depend on affected projects, up to this many hops away, by propagating affected state to them
+  (see [tracking depth](../../advanced/affected.mdx#tracking-depth)). Defaults to `none`. Requires
   `--affected` to also be passed.
-- `--upstream` <TypeLabel type="none | direct | deep" /> - Include upstream dependencies of
-  the queried projects. Defaults to `none`. Can also be passed as `--dependencies`. Requires
-  `--affected` to also be passed.
+- `--dependencies` <TypeLabel type="none | direct | deep | number" /> - Include the projects that
+  affected projects depend on, up to this many hops away. These are included in the results, but
+  aren't marked as affected. Defaults to `none`. Requires `--affected` to also be passed.
 
 ### Filters
 

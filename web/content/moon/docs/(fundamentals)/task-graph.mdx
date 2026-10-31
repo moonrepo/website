@@ -48,7 +48,7 @@ $ moon task-graph
 $ moon task-graph app:build
 
 # Also include tasks that depend on `app:build`
-$ moon task-graph app:build --dependents
+$ moon task-graph app:build --dependents deep
 ```
 
 Focusing on dependents is the quickest way to answer "what breaks if I change this task?", which

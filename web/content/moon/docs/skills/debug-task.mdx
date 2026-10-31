@@ -161,9 +161,9 @@ Let's copy the hash and move on to the next step.
 ## Inspect the hash manifest
 
 With the hash in hand, let's dig deeper into moon's internals, by inspecting the hash manifest with
-the [`moon hash`](../commands/hash.mdx) command. Manifests are stored as blobs in the local
-content-addressable cache (`.moon/cache/blobs`), so always read them through this command. A unique
-prefix of the hash works too.
+the [`moon hash`](../commands/hash.mdx) command. Manifests are stored in the local
+[objects store](../advanced/cache.mdx#objects) (`.moon/cache/objects`), so always read them through
+this command. A unique prefix of the hash works too.
 
 ```shell
 # Inspect a hash manifest

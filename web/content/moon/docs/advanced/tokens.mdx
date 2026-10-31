@@ -2,3 +2,280 @@
 title: Tokens
 icon: Variable
 ---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+
+Tokens are placeholders in [task](<../(fundamentals)/task.mdx>) settings that moon replaces with real
+values when it expands a task, after [inheritance](<../(fundamentals)/task-inheritance.mdx>) has been
+merged. They let a single task definition adapt to the project it runs in, like passing a project's
+source files to a command, or naming an artifact after the task that builds it.
+
+There are 2 kinds of tokens: [functions](#functions), like `@files(sources)`, which expand to a list
+of paths or values, and [variables](#variables), like `$projectRoot`, which expand to a single
+value.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    fileGroups: {
+      sources: ["src/**/*"],
+    },
+    tasks: {
+      lint: {
+        command: "eslint",
+        args: ["--cache-location", "$workspaceRoot/.eslintcache", "@files(sources)"],
+        inputs: ["@group(sources)"],
+      },
+    },
+  }}
+/>
+
+Tokens are supported in the following task settings:
+
+- [`command`](<../(fundamentals)/task.mdx#command>) and [`script`](<../(fundamentals)/task.mdx#script>)
+- [`args`](/moon/api/TaskConfig#args) and [`env`](/moon/api/TaskConfig#env)
+- The `args` and `env` of each [dependency](<../(fundamentals)/task.mdx#parameters>) in
+  [`deps`](/moon/api/TaskConfig#deps)
+- [`inputs`](<../(fundamentals)/task.mdx#inputs>) and [`outputs`](<../(fundamentals)/task.mdx#outputs>)
+- [`options.envFile`](/moon/api/TaskOptionsConfig#envfile), variables only
+
+To see what a task's tokens expanded to, inspect it with [`moon task`](../commands/task.mdx).
+
+## Syntax
+
+### Functions
+
+A function is written as `@name(arg)`, where the name is lowercase letters, and the argument is
+letters, numbers, `_`, and `-`, like a file group ID or an index. Each function is only allowed in
+certain settings (see [function types](#function-types)).
+
+A function must be the entire value of a setting, like a single item in `args` or `inputs`. The only
+exception is `script`, where functions can appear anywhere, and as many times as needed. How the
+result is inserted depends on the setting:
+
+- `args` - Each path becomes its own argument.
+- `script` - The function is replaced inline, with paths separated by spaces.
+- `env` - The paths are joined with commas into a single value.
+- `inputs` and `outputs` - Each path or glob is added to the list.
+- `command` - Only [`@meta`](#metadata) is supported, and its value replaces the function.
+
+In `args`, `script`, and `env`, paths are relative to the project root, as that's where tasks run
+from, or to the workspace root when
+[`options.runFromWorkspaceRoot`](/moon/api/TaskOptionsConfig#runfromworkspaceroot) is enabled.
+Paths outside of the project are relative too, like `../../shared/config.json`.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    fileGroups: {
+      tests: ["tests/**/*"],
+    },
+    tasks: {
+      test: {
+        script: "vitest run @files(tests) && echo @meta(owner)",
+      },
+    },
+  }}
+/>
+
+### Variables
+
+A variable is written as `$name`, where the name is one of the supported
+[variable types](#variable-types), in camel case. Unlike functions, variables can appear anywhere in
+a value, any number of times, including within file paths and globs:
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "vite build",
+        args: ["--outDir", "dist/$taskId"],
+        env: {
+          BUILD_TARGET: "$target",
+        },
+        outputs: ["dist/$taskId"],
+      },
+    },
+  }}
+/>
+
+Variables are case sensitive, and only the names listed below are tokens. Uppercase names, like
+`$HOME` or `$NODE_ENV`, are environment variables, and are left for the shell to substitute in
+`command`, `script`, and `args`. In `inputs`, an uppercase name is an
+[environment variable input](<../(fundamentals)/task.mdx#inputs>), while a token variable is a file
+path.
+
+## Function types
+
+| Function      | Expands to                                                       | Allowed in                                         |
+| :------------ | :--------------------------------------------------------------- | :------------------------------------------------- |
+| `@group(id)`  | The file group's paths and globs, as configured.                 | `script`, `args`, `env`, `inputs`, `outputs`       |
+| `@files(id)`  | The files that the group's paths and globs match.                | `script`, `args`, `env`, `inputs`, `outputs`       |
+| `@dirs(id)`   | The directories that the group's paths and globs match.          | `script`, `args`, `env`, `inputs`, `outputs`       |
+| `@globs(id)`  | Only the group's globs.                                          | `script`, `args`, `env`, `inputs`, `outputs`       |
+| `@root(id)`   | The lowest common directory of the group's directories.          | `script`, `args`, `env`, `inputs`, `outputs`       |
+| `@envs(id)`   | The group's environment variables.                               | `inputs`                                           |
+| `@in(index)`  | The task's input at an index.                                    | `script`, `args`                                   |
+| `@out(index)` | The task's output at an index.                                   | `script`, `args`                                   |
+| `@meta(key)`  | A field of the project's metadata.                               | `command`, `script`, `args`, `env`                 |
+
+### File groups
+
+The `@group`, `@files`, `@dirs`, `@globs`, `@root`, and `@envs` functions reference a
+[file group](<../(fundamentals)/project.mdx#file-groups>) by its ID, as defined in
+[`fileGroups`](/moon/api/ProjectConfig#filegroups) or inherited:
+
+- `@group` is the most common, as it passes the group along as configured, without touching the
+  file system. In `inputs`, it also includes the group's environment variables.
+- `@files` and `@dirs` walk the file system, and expand globs into the files or directories that
+  exist, which is useful for tools that don't accept globs.
+- `@globs` errors when the group doesn't contain any globs.
+- `@root` reduces the group to the lowest directory that all of its directories share, like `src`
+  for a group of `src/client` and `src/server`. When there's no common directory, the project root
+  (`.`) is used.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    fileGroups: {
+      sources: ["src/client", "src/server"],
+      configs: ["tsconfig.json", "$NODE_ENV"],
+    },
+    tasks: {
+      typecheck: {
+        command: "tsc",
+        args: ["--rootDir", "@root(sources)"],
+        inputs: ["@group(sources)", "@group(configs)"],
+      },
+    },
+  }}
+/>
+
+### Inputs and outputs
+
+The `@in` and `@out` functions reference an item of the task's own
+[`inputs`](<../(fundamentals)/task.mdx#inputs>) or [`outputs`](<../(fundamentals)/task.mdx#outputs>)
+by its index, starting at `0`, so a path only has to be written once:
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      bundle: {
+        command: "esbuild",
+        args: ["@in(0)", "--outfile", "@out(0)"],
+        inputs: ["src/index.ts"],
+        outputs: ["dist/index.js"],
+      },
+    },
+  }}
+/>
+
+The referenced item must be a file, a glob, a file group, or a function that resolves to them. An
+index that doesn't exist, or that references something else, like an environment variable input, is
+an error.
+
+### Metadata
+
+The `@meta` function returns a field of the project's [metadata](<../(fundamentals)/project.mdx#metadata>),
+as configured in the [`project`](/moon/api/ProjectConfig#project) setting:
+
+- `name` or `title` - The [`title`](/moon/api/ProjectMetadataConfig#title).
+- `description` - The [`description`](/moon/api/ProjectMetadataConfig#description).
+- `owner` - The [`owner`](/moon/api/ProjectMetadataConfig#owner).
+- `maintainers` - The [`maintainers`](/moon/api/ProjectMetadataConfig#maintainers), joined with
+  commas.
+- `channel` - The [`channel`](/moon/api/ProjectMetadataConfig#channel).
+- Any other key - The custom field of the same name in
+  [`metadata`](/moon/api/ProjectMetadataConfig#metadata), encoded as JSON.
+
+When the field isn't configured, the function is replaced with an empty value in `script` and
+`env`, and the argument is removed in `args`.
+
+## Variable types
+
+### Environment
+
+| Variable         | Value                                                         | Example           |
+| :--------------- | :------------------------------------------------------------ | :---------------- |
+| `$arch`          | The architecture of the host machine.                         | `aarch64`         |
+| `$os`            | The operating system of the host machine.                     | `macos`           |
+| `$osFamily`      | The operating system family of the host machine.              | `unix`            |
+| `$workingDir`    | The absolute path of the directory that moon was run from.    | `/home/user/repo` |
+| `$workspaceRoot` | The absolute path of the [workspace](<../(fundamentals)/workspace.mdx>) root. | `/home/user/repo` |
+
+### Project
+
+| Variable          | Value                                                                                 | Example                      |
+| :---------------- | :------------------------------------------------------------------------------------ | :--------------------------- |
+| `$project`        | The project's ID. Also available as `$projectId`.                                     | `app`                        |
+| `$projectAlias`   | The project's first [alias](<../(fundamentals)/project.mdx#aliases>), or empty.       | `@org/app`                   |
+| `$projectAliases` | All of the project's aliases, joined with commas.                                     | `@org/app`                   |
+| `$projectChannel` | The project's metadata [`channel`](/moon/api/ProjectMetadataConfig#channel).          | `#team-web`                  |
+| `$projectLayer`   | The project's [layer](<../(fundamentals)/project.mdx#layers>).                        | `application`                |
+| `$projectName`    | The project's metadata [`title`](/moon/api/ProjectMetadataConfig#title). Also available as `$projectTitle`. | `App` |
+| `$projectOwner`   | The project's metadata [`owner`](/moon/api/ProjectMetadataConfig#owner).              | `@org/web`                   |
+| `$projectRoot`    | The absolute path of the project's root directory.                                    | `/home/user/repo/apps/app`   |
+| `$projectSource`  | The path of the project's root directory, relative to the workspace root.             | `apps/app`                   |
+| `$projectStack`   | The project's [stack](<../(fundamentals)/project.mdx#stacks>).                        | `frontend`                   |
+| `$language`       | The project's [language](<../(fundamentals)/project.mdx#language>).                   | `typescript`                 |
+
+### Task
+
+| Variable          | Value                                                                       | Example              |
+| :---------------- | :-------------------------------------------------------------------------- | :------------------- |
+| `$target`         | The task's fully qualified [target](<../(fundamentals)/target.mdx>).        | `app:build`          |
+| `$task`           | The task's ID. Also available as `$taskId`.                                 | `build`              |
+| `$taskToolchain`  | The task's first [toolchain](<../(fundamentals)/task.mdx#toolchains>), or `unknown`. | `node`      |
+| `$taskToolchains` | All of the task's toolchains, joined with commas.                           | `javascript,node`    |
+| `$taskType`       | The task's [type](<../(fundamentals)/task.mdx#types>).                      | `build`              |
+
+### Date and time
+
+All dates and times are in UTC, at the moment the task is expanded.
+
+| Variable     | Value                                         | Example               |
+| :----------- | :-------------------------------------------- | :-------------------- |
+| `$date`      | The current date.                             | `2026-10-31`          |
+| `$datetime`  | The current date and time.                    | `2026-10-31_14:05:09` |
+| `$time`      | The current time.                             | `14:05:09`            |
+| `$timestamp` | The current Unix timestamp, in seconds.       | `1793455509`          |
+
+### VCS
+
+| Variable         | Value                                                                       | Example        |
+| :--------------- | :-------------------------------------------------------------------------- | :------------- |
+| `$vcsBranch`     | The current branch.                                                         | `feature/auth` |
+| `$vcsRepository` | The `owner/repository` slug of the repository's remote, or empty.           | `moonrepo/moon` |
+| `$vcsRevision`   | The commit hash of the current branch.                                      | `0b55b234f101` |
+
+When the workspace isn't a VCS repository, `$vcsBranch` is the configured
+[`vcs.defaultBranch`](/moon/api/VcsConfig#defaultbranch), and the other variables are empty.
+
+## Gotchas & caveats
+
+- **Functions must be the entire value.** Outside of `script`, a function mixed with other content,
+  like `--files=@files(sources)`, isn't expanded. moon logs a warning, and the value is passed through
+  as-is.
+- **Functions are scoped.** Using a function in a setting it doesn't support, like `@in` in `env`,
+  is an error, naming the token and the task.
+- **Variables are matched by prefix.** A variable followed by letters is still replaced, so
+  `$taskName` becomes the task ID followed by `Name`, like `buildName`. Separate the variable from
+  the text that follows it, like `$task-name`.
+- **Dynamic values invalidate the cache.** A task's expanded `command`, `script`, `args`, and `env`
+  are part of its [hash](./cache.mdx#hash), so a `$timestamp`, `$datetime`, or `$vcsRevision` there changes the
+  hash on every run (or commit), and the task never hits the cache.
+- **Custom metadata is JSON.** `@meta` returns custom fields encoded as JSON, so a string includes
+  its quotes, like `"web"`, and a list is returned as `["a","b"]`. Only the built-in fields return
+  plain values.
+- **File system functions only see what exists.** `@files` and `@dirs` only include paths that exist
+  when the task is expanded. In `outputs`, where the files don't exist yet, a path with an extension
+  is treated as a file, and one without as a directory.
+- **Paths can be inputs automatically.** With
+  [`options.inferInputs`](/moon/api/TaskOptionsConfig#inferinputs) enabled, the files and globs that
+  functions expand to in `script`, `args`, and `env` are also added to the task's inputs, as are the
+  environment variables referenced in `command`, `script`, and `args`.
+- **Windows paths follow the shell.** When a task runs in Bash on Windows (see
+  [`options.windowsShell`](/moon/api/TaskOptionsConfig#windowsshell)), absolute paths like
+  `$workspaceRoot` are formatted for it, like `/c/repo` instead of `C:\repo`.
