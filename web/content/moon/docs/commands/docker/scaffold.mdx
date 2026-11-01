@@ -10,8 +10,8 @@ the [project graph](<../../(fundamentals)/project-graph.mdx>) to determine which
 so every referenced project must be [configured in moon](<../../(fundamentals)/project.mdx>) or the
 scaffold will be incomplete.
 
-Running the command deletes any stale skeleton at `.moon/docker`, then recreates two independent
-skeletons within it:
+Running the command deletes any stale skeleton at `.moon/docker` (or `.config/moon/docker`, when the
+workspace is configured in `.config/moon`), then recreates two independent skeletons within it:
 
 - `configs/` - Mirrors the folder structure of the entire repository (every project in the
   graph, plus the workspace root), but only copies the files needed to install dependencies,
@@ -34,8 +34,8 @@ passed explicitly (`focusedProjects`) versus pulled in as dependencies (`unfocus
 This manifest is later read by [`moon docker setup`](./setup.mdx) and
 [`moon docker prune`](./prune.mdx) to know which projects to install dependencies for and prune.
 
-Before scaffolding, the command checks that `.moon/cache` is listed in the workspace's
-`.dockerignore`, and logs a warning when it isn't (see
+Before scaffolding, the command checks that `.moon/cache` (or `.config/moon/cache`) is listed in the
+workspace's `.dockerignore`, and logs a warning when it isn't (see
 [ignoring the cache](../../guides/docker.mdx#ignoring-the-cache)).
 
 ```shell

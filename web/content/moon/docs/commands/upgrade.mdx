@@ -2,6 +2,8 @@
 title: moon upgrade
 ---
 
+import { ConfigTabs } from "@/components/ConfigTabs";
+
 Checks for a newer version of moon and, if one is available, downloads and installs it in
 place of the currently running binary.
 
@@ -33,12 +35,43 @@ installed version.
 $ moon upgrade
 ```
 
+This command can also be run as `moon up`.
+
 To also pin the newly installed version as the workspace's required version, pass
 `--update-constraint`:
 
 ```shell
 $ moon upgrade --update-constraint
 ```
+
+## Hosting releases yourself
+
+By default, moon checks for new versions against moonrepo's version manifest, and downloads releases
+from GitHub. In a restricted network, or to control which version your team upgrades to, point both
+at your own servers with the [`moon`](/moon/api/ToolchainsConfig#moon) setting in
+[`.moon/toolchains.config`](<../(fundamentals)/toolchain.mdx>):
+
+- [`manifestUrl`](/moon/api/MoonConfig#manifesturl) - A secure (`https://`) URL that returns the
+  latest version as JSON, like `{ "current_version": "2.6.4" }`. It can also include a `message` and
+  a `url`, which are printed alongside the notice that moon shows when a new version is available.
+  Defaults to `https://launch.moonrepo.app/moon/check_version`.
+- [`downloadUrl`](/moon/api/MoonConfig#downloadurl) - A secure URL to download a release archive
+  from. `{file}` is replaced with the archive's file name, like `moon_cli-aarch64-apple-darwin.tar.xz`
+  (or `.zip` on Windows), and `{version}` with the version being installed. Defaults to
+  `https://github.com/moonrepo/moon/releases/latest/download/{file}`.
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    moon: {
+      manifestUrl: "https://moon.example.com/check_version.json",
+      downloadUrl: "https://moon.example.com/releases/v{version}/{file}",
+    },
+  }}
+/>
+
+The manifest is used by both `moon upgrade` and the new version notice, while `downloadUrl` is only
+used when moon replaces itself, not when it defers to proto.
 
 ## Options
 

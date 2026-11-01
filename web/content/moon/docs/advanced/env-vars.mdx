@@ -77,6 +77,22 @@ enabled (the default), moon inherits the terminal's color support into piped tas
 
 > `NO_COLOR` is removed from the task environment when colors are being forced.
 
+### Global options
+
+moon writes its [global options](../commands/overview.mdx#global-options) to its own environment,
+so tasks inherit them, along with any `moon` commands that tasks run. A nested `moon` command, like a
+task that runs `moon run`, uses the same cache mode, log level, and theme as the command that
+started it.
+
+| Variable                     | Description                                                                                       |
+| :--------------------------- | :------------------------------------------------------------------------------------------------ |
+| `MOON_CACHE`                 | The `--cache` mode, unless the variable is already set.                                           |
+| `MOON_COLOR`                 | The `--color` level, when it's passed.                                                            |
+| `MOON_LOG`                   | The `--log` level, unless the variable is already set.                                            |
+| `MOON_THEME`                 | The `--theme`, unless the variable is already set.                                                |
+| `PROTO_CACHE`                | Set to `off` when `--cache` is `off` or `write`, so proto doesn't read from its cache either.     |
+| `PROTO_PLUGINS_USE_URL_DIST` | Set to the value of `MOON_PLUGINS_USE_URL_DIST`, when it's set, so proto loads plugins the same way. |
+
 ### proto integration
 
 Set on task processes and any proto/toolchain child processes that moon spawns.
@@ -246,6 +262,8 @@ Read by the graph commands ([`project-graph`](../commands/project-graph.mdx),
 | :----------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------- |
 | `MOON_TOOLCHAIN_FORCE_GLOBALS` | Force toolchains to use globally installed tools instead of proto-managed versions. Set automatically within [Docker](../guides/docker.mdx). |
 | `MOON_PLUGINS_USE_URL_DIST`    | Load plugins from their URL distribution instead of a locally built artifact.                                                           |
+| `MOON_BUILTIN_REGISTRY_HOST`      | The OCI registry that built-in toolchain and extension plugins are downloaded from, like a mirror of `ghcr.io`. Defaults to `ghcr.io`. |
+| `MOON_BUILTIN_REGISTRY_NAMESPACE` | The namespace within that registry that built-in plugins are located in. Defaults to `moonrepo`.                                    |
 | `MOON_VCS_REPO_SLUG`           | Override the detected `owner/repository` slug (see [above](#internal)).                                                                 |
 | `MOON_TRACE_ID`                | A trace/correlation ID included in [webhook](../guides/webhooks.mdx) payloads.                                                               |
 

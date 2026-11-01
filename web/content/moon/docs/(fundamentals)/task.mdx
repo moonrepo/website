@@ -1233,6 +1233,92 @@ When using the URI or object formats, the following parameters are supported:
 </Tab>
 </Tabs>
 
+## Affected files
+
+Linters, formatters, and similar tools can be much faster when they only process the files that
+changed. The [`options.affectedFiles`](/moon/api/TaskOptionsConfig#affectedfiles) option passes a
+task's affected files to its command, when running with `--affected` (or with
+[`moon ci`](../commands/ci.mdx), which always tracks affected state). A task's affected files are
+the changed files that match its [inputs](#inputs), and are located within its project.
+
+The option accepts the following values:
+
+- `"args"` - Appends the files to the command as arguments, relative to the task's working
+  directory and prefixed with `./`, like `eslint ./src/index.ts ./src/utils.ts`.
+- `"env"` - Sets the `MOON_AFFECTED_FILES` [environment variable](../advanced/env-vars.mdx) to the
+  files, relative to the task's working directory, and joined by the operating system's path
+  delimiter (`:` on Unix, and `;` on Windows).
+- `true` - Passes the files as both arguments and an environment variable.
+- `false` - Doesn't pass any files. This is the default.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      lint: {
+        command: "eslint",
+        inputs: ["src/**/*"],
+        options: {
+          affectedFiles: "args",
+        },
+      },
+    },
+  }}
+/>
+
+When there are no affected files, like when running without `--affected`, or when none of the
+changed files match the task's inputs, moon passes `.` instead, so the tool processes the whole
+project rather than nothing. As an argument, `.` is only added when the task's arguments don't
+already include it.
+
+```shell
+# Runs `eslint ./src/index.ts`, when only `src/index.ts` has changed
+$ moon run app:lint --affected
+
+# Runs `eslint .`, as affected files are only tracked with `--affected`
+$ moon run app:lint
+```
+
+For more control, the option also accepts an object with the following settings:
+
+- [`pass`](/moon/api/TaskOptionAffectedFilesConfig#pass) <TypeLabel type="boolean | args | env" /> -
+  How to pass the files, using the values above.
+- [`filter`](/moon/api/TaskOptionAffectedFilesConfig#filter) <TypeLabel type="string[]" /> - Globs
+  that the files must match to be passed, like only TypeScript files. The globs are matched against
+  absolute paths, so start them with `**`, like `**/*.ts`.
+- [`ignoreProjectBoundary`](/moon/api/TaskOptionAffectedFilesConfig#ignoreprojectboundary)
+  <TypeLabel type="boolean" /> - Also pass affected files outside the project, like those matched by
+  [workspace-relative](./config.mdx#workspace-relative) inputs, or inputs from
+  [other projects](#other-projects). Defaults to `false`.
+- [`passInputsWhenNoMatch`](/moon/api/TaskOptionAffectedFilesConfig#passinputswhennomatch)
+  <TypeLabel type="boolean" /> - When there are no affected files, pass the task's input files
+  instead. Defaults to `false`.
+- [`passDotWhenNoResults`](/moon/api/TaskOptionAffectedFilesConfig#passdotwhennoresults)
+  <TypeLabel type="boolean" /> - When there are no files left to pass, after matching and
+  filtering, pass `.` as described above. When disabled, no arguments are added, and the
+  environment variable is empty. Defaults to `true`.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      lint: {
+        command: "eslint",
+        inputs: ["src/**/*", "tests/**/*"],
+        options: {
+          affectedFiles: {
+            pass: "args",
+            filter: ["**/*.ts", "**/*.tsx"],
+          },
+        },
+      },
+    },
+  }}
+  comments={{
+    filter: "Only pass TypeScript files to ESLint",
+  }}
+/>
+
 ## Checks
 
 Checks are shell scripts that run _before_ the

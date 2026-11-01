@@ -155,10 +155,11 @@ The following settings are available under the `rust` entry of
 - `addMsrvConstraint` <TypeLabel type="boolean" /> - When `version` is also defined, writes it as the minimum supported Rust
   version (MSRV) in the dependencies root's `Cargo.toml`. Defaults to `false`. See
   [minimum supported Rust version](#minimum-supported-rust-version).
-- `bins` <TypeLabel type="(string | { bin: string, force?: boolean, local?: boolean })[]" /> - A list of Cargo binaries to
+- `bins` <TypeLabel type="(string | { bin: string, args?: string[], force?: boolean, local?: boolean })[]" /> - A list of Cargo binaries to
   install globally with `cargo-binstall`, such as `cargo-nextest` or `cargo-insta`. An entry can be a crate name, optionally
   with a version (`cargo-nextest@0.9.100`), or an object with the following fields. Defaults to `[]`. See
   [Cargo binaries](#cargo-binaries).
+  - `args` <TypeLabel type="string[]" /> - Additional arguments to pass to `cargo binstall` for this binary. Defaults to `[]`.
   - `bin` <TypeLabel type="string" /> - The crate name, optionally with a version. Required.
   - `force` <TypeLabel type="boolean" /> - Always install the binary, even if it already exists. Defaults to `false`.
   - `local` <TypeLabel type="boolean" /> - Only install the binary locally, and skip it in CI. Defaults to `false`.
@@ -320,6 +321,8 @@ them. Enable it with the `bins` setting, and it runs when moon [sets up the envi
 - Binaries are then installed with `cargo binstall --no-confirm`.
 - Binaries that already exist in Cargo's bin directory are skipped, unless `force` is enabled. Binaries marked as `local`
   are skipped in CI.
+- Binaries with `args` are installed individually, with the arguments placed before the crate name, as they would
+  otherwise apply to every crate in the command.
 
 Installed `cargo-<name>` binaries can also be run as task commands without the `cargo-` prefix (see
 [extending tasks](#extending-tasks)).

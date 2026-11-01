@@ -380,6 +380,28 @@ but we also provide the following custom filters:
 {{ some_path | path_relative(to = other_path) }}
 ```
 
+### Functions
+
+In addition to Tera's [built-in functions](https://keats.github.io/tera/docs/#built-in-functions),
+the `variables` function builds a map from the keyword arguments it's given. This is useful for
+grouping values into an object, like when rendering it as JSON with Tera's `json_encode` filter.
+
+```twig
+{% set package = variables(name = name, private = private) %}
+{{ package | json_encode }}
+```
+
+### Escaping
+
+Tera escapes HTML characters in interpolated values, like `<` to `&lt;`, for template files named
+with an `.html`, `.htm`, or `.xml` extension. Files with a [`.tera` or `.twig`
+extension](#file-extensions), like `index.html.tera`, aren't escaped, as their name ends with that
+extension instead. To output a value as-is in an escaped file, use Tera's `safe` filter.
+
+```twig
+{{ html_snippet | safe }}
+```
+
 ### Built-in variables
 
 The following variables are always available within a template, in addition to those declared in

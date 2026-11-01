@@ -177,6 +177,9 @@ $ moon toolchain add my-toolchain https://example.com/releases/my_toolchain.wasm
 
 Plugins are downloaded and cached the first time they're needed. To warm the cache ahead of time,
 like in a CI job or Docker image, run [`moon toolchain download`](../commands/toolchain/download.mdx).
+Built-in plugins are downloaded from the `ghcr.io/moonrepo` container registry. To download them
+from a mirror instead, like in a restricted network, set the `MOON_BUILTIN_REGISTRY_HOST` and
+`MOON_BUILTIN_REGISTRY_NAMESPACE` [environment variables](../advanced/env-vars.mdx#advanced).
 
 ### Unstable toolchains
 
