@@ -13,6 +13,7 @@
     "@base-ui/react": "^1.8.0",
     "@fontsource-variable/saira": "^5.3.0",
     "@fumadocs/changelog": "^0.1.0",
+    "@modelcontextprotocol/server": "^2.4.0",
     "@moonrepo/types": "^2.0.4",
     "@moonrepo/ui": "workspace:*",
     "@tanstack/react-router": "^1.170.46",
