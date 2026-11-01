@@ -4,7 +4,7 @@ import { createJavaScriptRegexEngine } from 'shiki/engine/javascript';
 
 let highlighter: Promise<HighlighterCore> | undefined;
 
-// Only bundles the languages and themes used by `ConfigTabs`, instead of
+// Only bundles the languages and themes used by `CodeBlock`, instead of
 // every Shiki grammar that `DynamicCodeBlock` includes by default
 export function getHighlighter(): Promise<HighlighterCore> {
 	highlighter ??= createHighlighterCore({
@@ -13,6 +13,8 @@ export function getHighlighter(): Promise<HighlighterCore> {
 			import('shiki/langs/hcl.mjs'),
 			import('shiki/langs/json.mjs'),
 			import('shiki/langs/pkl.mjs'),
+			import('shiki/langs/rust.mjs'),
+			import('shiki/langs/shellscript.mjs'),
 			import('shiki/langs/toml.mjs'),
 			import('shiki/langs/yaml.mjs'),
 		],

@@ -1,12 +1,6 @@
 import { ButtonLink } from '@moonrepo/ui/components/Button';
 import { Divider, Hatch } from '@moonrepo/ui/layout/Frame';
-import {
-	accent,
-	codeBox,
-	dashed,
-	heading,
-	muted,
-} from '@moonrepo/ui/layout/styles';
+import { accent, dashed, heading, muted } from '@moonrepo/ui/layout/styles';
 import { cn } from '@moonrepo/ui/utils/cn';
 import {
 	ArrowRight,
@@ -18,9 +12,9 @@ import {
 	Sparkle,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { CodeBlock } from '@/components/CodeBlock';
 
 const code = 'font-mono text-olive dark:text-tangerine';
-const comment = 'text-taupe';
 const pill =
 	'flex min-h-[46px] items-center rounded-md border border-taupe/50 bg-paper-200 px-4 py-2 text-graphite-700 text-lg dark:border-white/5 dark:bg-graphite-surface dark:text-sand';
 const link = 'underline underline-offset-2';
@@ -42,38 +36,6 @@ function SchematicLogo() {
 			>
 				SCHEMATIC
 			</span>
-		</div>
-	);
-}
-
-function CodeLines({
-	className,
-	lines,
-}: {
-	className?: string;
-	lines: (string | { comment: string } | null)[];
-}) {
-	return (
-		<div className={cn(codeBox, 'overflow-x-auto px-6 text-sm', className)}>
-			{lines.map((line, i) =>
-				line === null ? (
-					// biome-ignore lint/suspicious/noArrayIndexKey: static spacer rows
-					<div className="h-3" key={i} />
-				) : (
-					<div
-						className={cn(
-							'whitespace-pre',
-							typeof line === 'string'
-								? 'text-graphite-700 dark:text-sand'
-								: comment,
-						)}
-						// biome-ignore lint/suspicious/noArrayIndexKey: static code lines
-						key={i}
-					>
-						{typeof line === 'string' ? line : `// ${line.comment}`}
-					</div>
-				),
-			)}
 		</div>
 	);
 }
@@ -114,22 +76,20 @@ function Hero() {
 			</div>
 
 			<div className="min-w-0 md:pt-12">
-				<CodeLines
-					className="py-4 text-[15px] leading-[25px]"
-					lines={[
-						'#[derive(Config)]',
-						'struct AppConfig {',
-						'    #[setting(default = 3000, env = "PORT")]',
-						'    pub port: usize,',
-						null,
-						'    #[setting(default = true)]',
-						'    pub secure: bool,',
-						'}',
-						null,
-						'let result = ConfigLoader::<AppConfig>::new()',
-						'    .file("config.yml")?',
-						'    .load()?;',
-					]}
+				<CodeBlock
+					code={`#[derive(Config)]
+struct AppConfig {
+    #[setting(default = 3000, env = "PORT")]
+    pub port: usize,
+
+    #[setting(default = true)]
+    pub secure: bool,
+}
+
+let result = ConfigLoader::<AppConfig>::new()
+    .file("config.yml")?
+    .load()?;`}
+					lang="rust"
 				/>
 			</div>
 		</section>
@@ -224,12 +184,10 @@ function TwoFeatures() {
 				]}
 				title="Configuration"
 			>
-				<CodeLines
-					className="py-4 leading-[25px]"
-					lines={[
-						'#[setting(merge = schematic::merge::append_vec)]',
-						'pub allowed_hosts: Vec<String>,',
-					]}
+				<CodeBlock
+					code={`#[setting(merge = schematic::merge::append_vec)]
+pub allowed_hosts: Vec<String>,`}
+					lang="rust"
 				/>
 			</Feature>
 
@@ -245,15 +203,13 @@ function TwoFeatures() {
 					]}
 					title="Schemas"
 				>
-					<CodeLines
-						className="py-4 leading-[25px]"
-						lines={[
-							'#[derive(Schematic)]',
-							'struct User {',
-							'    pub name: String,',
-							'    pub age: usize,',
-							'}',
-						]}
+					<CodeBlock
+						code={`#[derive(Schematic)]
+struct User {
+    pub name: String,
+    pub age: usize,
+}`}
+						lang="rust"
 					/>
 				</Feature>
 			</div>
@@ -269,7 +225,10 @@ function Benefits() {
 			items: [
 				'Files, secure URLs, and inline code',
 				'Each layer is a typed partial',
-				'Final config has no Option unwrapping',
+				<>
+					Final config has no <code className="font-mono">Option</code>{' '}
+					unwrapping
+				</>,
 			],
 		},
 		{
@@ -287,7 +246,9 @@ function Benefits() {
 			items: [
 				'Config structs double as schemas',
 				'No extra derive macros per output',
-				'Custom renderers via SchemaRenderer',
+				<>
+					Custom renderers via <code className="font-mono">SchemaRenderer</code>
+				</>,
 			],
 		},
 	];
@@ -306,8 +267,9 @@ function Benefits() {
 							muted,
 						)}
 					>
-						{benefit.items.map((item) => (
-							<li key={item}>{item}</li>
+						{benefit.items.map((item, i) => (
+							// biome-ignore lint/suspicious/noArrayIndexKey: static list
+							<li key={i}>{item}</li>
 						))}
 					</ul>
 				</div>
@@ -337,36 +299,29 @@ function GetStarted() {
 			<div className="mt-12 grid gap-12 lg:max-w-[1216px] lg:grid-cols-2 lg:gap-x-16">
 				<div className="min-w-0 space-y-12">
 					<Step title="Add the crate">
-						<CodeLines
-							className="flex h-[52px] flex-col justify-center"
-							lines={['cargo add schematic']}
-						/>
+						<CodeBlock code="cargo add schematic" lang="shell" />
 					</Step>
 					<Step title="Load your config">
-						<CodeLines
-							className="py-4 leading-[25px]"
-							lines={[
-								'let mut loader = ConfigLoader::<AppConfig>::new();',
-								'loader.file("path/to/config.yml")?;',
-								null,
-								'let result = loader.load()?;',
-								'result.config; // AppConfig',
-							]}
+						<CodeBlock
+							code={`let mut loader = ConfigLoader::<AppConfig>::new();
+loader.file("path/to/config.yml")?;
+
+let result = loader.load()?;
+result.config; // AppConfig`}
+							lang="rust"
 						/>
 					</Step>
 				</div>
 				<div className="min-w-0 space-y-12">
 					<Step title="Generate types">
-						<CodeLines
-							className="py-4 leading-[25px]"
-							lines={[
-								'let mut generator = SchemaGenerator::default();',
-								'generator.add::<AppConfig>();',
-								'generator.generate(',
-								'    PathBuf::from("types.ts"),',
-								'    TypeScriptRenderer::default(),',
-								')?;',
-							]}
+						<CodeBlock
+							code={`let mut generator = SchemaGenerator::default();
+generator.add::<AppConfig>();
+generator.generate(
+    PathBuf::from("types.ts"),
+    TypeScriptRenderer::default(),
+)?;`}
+							lang="rust"
 						/>
 					</Step>
 				</div>
