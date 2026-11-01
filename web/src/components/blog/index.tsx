@@ -3,6 +3,12 @@ import { Image } from 'fumadocs-core/framework';
 import Link from 'fumadocs-core/link';
 import type { TOCItemType } from 'fumadocs-core/toc';
 import {
+	TOCProvider,
+	TOCScrollArea,
+	useTOCItems,
+} from 'fumadocs-ui/components/toc';
+import { TOCItem, TOCItems } from 'fumadocs-ui/components/toc/default';
+import {
 	ChevronLeftIcon,
 	ChevronRightIcon,
 	CornerLeftUpIcon,
@@ -12,8 +18,6 @@ import {
 import type { ComponentProps, ReactNode } from 'react';
 import type { BlogAuthor, BlogPost, BlogTag } from '../../lib/blog';
 import { cn } from '../../lib/cn';
-import { TOCProvider, TOCScrollArea, useTOCItems } from '../toc';
-import { TOCItem, TOCItems } from '../toc/default';
 import { BlogPanel } from './panel';
 
 const dateFormat = new Intl.DateTimeFormat('en-US', {

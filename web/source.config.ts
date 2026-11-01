@@ -22,6 +22,7 @@ function defineProduct(product: string) {
 	return defineDocs({
 		dir: `content/${product}`,
 		docs: {
+			async: true,
 			postprocess: {
 				includeProcessedMarkdown: true,
 			},
@@ -40,6 +41,10 @@ export const wasm = defineProduct('wasm');
 export const blog = defineCollections({
 	type: 'doc',
 	dir: 'content/blog',
+	async: true,
+	postprocess: {
+		includeProcessedMarkdown: true,
+	},
 	schema: blogPageSchema,
 });
 

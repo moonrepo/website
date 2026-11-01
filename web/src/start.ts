@@ -3,7 +3,8 @@ import { createMiddleware, createStart } from '@tanstack/react-start';
 import { rewritePath } from 'fumadocs-core/negotiation';
 import { isProduct } from '@/lib/products';
 
-// For example, `/moon/docs/task.mdx` -> `/llms.mdx/moon/docs/task`
+// For example, `/moon/docs/task.mdx` -> `/llms.mdx/moon/docs/task`,
+// and `/blog/moon-v2.1.mdx` -> `/llms.mdx/blog/moon-v2.1`
 const { rewrite: rewriteLlm } = rewritePath(
 	'/:product{/*path}.mdx',
 	'/llms.mdx/:product{/*path}',
@@ -11,7 +12,9 @@ const { rewrite: rewriteLlm } = rewritePath(
 
 const llmMiddleware = createMiddleware().server(({ next, request }) => {
 	const { pathname } = new URL(request.url);
-	const path = isProduct(pathname.split('/')[1]) && rewriteLlm(pathname);
+	const section = pathname.split('/')[1];
+	const path =
+		(isProduct(section) || section === 'blog') && rewriteLlm(pathname);
 
 	if (path) {
 		throw redirect({ href: path });

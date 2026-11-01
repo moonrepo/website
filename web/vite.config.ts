@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 import mdx from 'fumadocs-mdx/vite';
 import { nitro } from 'nitro/vite';
 import { defineConfig } from 'vite';
+import { CHANGELOG_REPOS } from './src/lib/products.ts';
 
 const fumadocsDeps = ['fumadocs-core', 'fumadocs-ui', '@fumadocs/base-ui'];
 
@@ -32,6 +33,11 @@ export default defineConfig({
 		mdx(await import('./source.config.ts')),
 		tailwindCss(),
 		tanstackStart({
+			// Changelogs aren't linked from content, so the crawler needs a start,
+			// and follows their pagination from there
+			pages: Object.keys(CHANGELOG_REPOS).map((product) => ({
+				path: `/${product}/changelog`,
+			})),
 			prerender: {
 				enabled: true,
 				filter: isFirstPrerender,
