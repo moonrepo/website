@@ -66,8 +66,9 @@ $ moon exec app:start -- --port 8080
 
 - `[TARGETS...]` - List of task [targets](<../(fundamentals)/target.mdx>) to execute in the action pipeline. Can be
   omitted when `--plan` provides its own targets, in which case you're prompted interactively.
-- `-- [PASSTHROUGH...]` - Arguments to pass through to the underlying task command(s) being
-  executed.
+- `-- [PASSTHROUGH...]` - Arguments to pass through to the underlying task commands. They're
+  appended to the command of every task selected by the targets, but not to the tasks they depend
+  on. Tasks that run a [`script`](<../(fundamentals)/task.mdx#script>) don't receive them.
 
 ## Options
 
@@ -120,10 +121,10 @@ $ moon exec app:start -- --port 8080
   affected checks (for example `local` or `remote`). Can also be set via the `MOON_AFFECTED`
   environment variable.
 - `--base` <TypeLabel type="string" /> - Base branch, commit, or revision to compare against when
-  determining changed files. Can also be set via the `MOON_BASE` environment variable.
+  determining changed files. Can also be set via the `MOON_BASE` environment variable, which takes precedence over this option when it isn't empty.
 - `--head` <TypeLabel type="string" /> - Current branch, commit, or revision to compare with when
   determining changed files. Defaults to the working tree. Can also be set via the `MOON_HEAD`
-  environment variable.
+  environment variable, which takes precedence over this option when it isn't empty.
 - `-d`, `--affected-depth` <TypeLabel type="none | direct | deep | number" /> - How far affected
   state propagates from an affected task to the tasks that depend on it, in hops. This only changes
   which of the selected tasks count as affected, and never adds tasks. Requires `--affected` to also

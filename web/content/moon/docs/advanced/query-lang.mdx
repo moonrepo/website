@@ -29,7 +29,8 @@ $ moon run :build --query "projectStack=frontend"
 ```
 
 moon also uses queries internally, to resolve [glob targets](<../(fundamentals)/target.mdx#run-context>)
-like `"packages/*:test"`, and the projects of a `#tag` scope.
+like `"app-*:test"` (which matches project IDs and aliases with the `project` field), and the
+projects of a `#tag` scope.
 
 ## Syntax
 

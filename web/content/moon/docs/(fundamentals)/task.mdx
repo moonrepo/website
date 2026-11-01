@@ -743,7 +743,7 @@ Files are simply that, project-relative or workspace-relative files on the file 
 When using the URI or object formats, the following parameters are supported:
 
 - [`content`](/moon/api/FileInput#content) <TypeLabel type="string" /> - A [regex pattern](./config.mdx) to match the file's contents against when determining affected status. Otherwise, any change to the file will mark the task as affected.
-- [`optional`](/moon/api/FileInput#optional) <TypeLabel type="boolean" /> - Mark the file as optional and log a warning instead of failing with an error when hashing. Files are required by default.
+- [`optional`](/moon/api/FileInput#optional) <TypeLabel type="boolean" /> - What to do when the file doesn't exist while hashing. When `true`, the file is skipped silently. When `false`, the task fails with an error. When not set, the file is skipped with a warning, unless [`hasher.warnOnMissingInputs`](/moon/api/HasherConfig#warnonmissinginputs) is disabled, or the file matches [`hasher.ignoreMissingPatterns`](/moon/api/HasherConfig#ignoremissingpatterns).
 
 <Tabs items={['String', 'Object']}>
 <Tab>

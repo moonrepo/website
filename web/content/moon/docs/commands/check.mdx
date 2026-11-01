@@ -67,10 +67,10 @@ This command can also be run with the `moon c` alias.
   a value, changed files are detected from the local working tree; a string value further filters
   affected checks. Can also be set via the `MOON_AFFECTED` environment variable.
 - `--base` <TypeLabel type="string" /> - Base branch, commit, or revision to compare against when
-  determining changed files. Can also be set via the `MOON_BASE` environment variable.
+  determining changed files. Can also be set via the `MOON_BASE` environment variable, which takes precedence over this option when it isn't empty.
 - `--head` <TypeLabel type="string" /> - Current branch, commit, or revision to compare with when
   determining changed files. Defaults to the working tree. Can also be set via the `MOON_HEAD`
-  environment variable.
+  environment variable, which takes precedence over this option when it isn't empty.
 - `-d`, `--affected-depth` <TypeLabel type="none | direct | deep | number" /> - How far affected
   state propagates from an affected task to the tasks that depend on it, in hops. This only changes
   which of the selected tasks count as affected, and never adds tasks. Requires `--affected` to also
@@ -86,7 +86,7 @@ This command can also be run with the `moon c` alias.
 
 - `--dependents` <TypeLabel type="none | direct | deep | number" /> - Also run the tasks that
   depend on the selected targets, up to this many hops away. Added tasks are still filtered by
-  `--affected` and `--query`. Defaults to `none`.
+  `--affected`. Defaults to `none`.
 - `--no-dependencies` - Don't run dependency tasks that weren't selected themselves, except for
   [cleanup dependencies](<../(fundamentals)/task.mdx#dependency-types>). The order between the
   tasks that are run is still honored.

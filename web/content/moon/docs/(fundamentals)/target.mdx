@@ -262,13 +262,21 @@ First, a bare task ID selects that task from the default project:
 
 The default project is the project associated with the [`defaultProject`](/moon/api/WorkspaceConfig#defaultproject) setting. If you do not have a default project, use an explicit target like `app:build`.
 
-Second, run targets support glob-like matching:
+Second, run targets support glob-like matching. A target is treated as a glob when it contains any
+of `*`, `?`, `[`, `]`, `{`, `}`, `!`, or `...`:
 
 - `moon run :build-*` selects tasks with IDs matching `build-*` across all projects.
-- `moon run "packages/*:test"` selects matching projects and their `test` task.
-- `moon run "packages/...:build"` uses `...` as a shorthand for recursive project matching.
+- `moon run "app-*:test"` selects the `test` task in projects whose ID matches `app-*`.
 - `moon run ":#lint-*"` selects task tags matching `lint-*` across all projects.
 - `moon run "#frontend-*:build-*"` matches project tags and task IDs by pattern.
+
+The project part of a glob is matched against project IDs and
+[aliases](./project.mdx#aliases), like the [`project`](../advanced/query-lang.mdx#project) query
+field, not against source paths. So a glob like `"packages/*:test"` only matches projects whose ID
+or alias starts with `packages/`, like when
+[`projects.globFormat`](/moon/api/WorkspaceProjectsConfig#globformat) is set to `source-path`. Within
+the project part, `...` is shorthand for `**/*`, and a project part of `*`, `**`, `**/*`, or `...`
+selects every project, like `:task`.
 
 Quote glob targets in your shell so the shell does not expand them before moon sees them.
 

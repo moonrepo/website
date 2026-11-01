@@ -58,8 +58,9 @@ between teammates and CI, set up [remote caching](../guides/remote-cache.mdx).
 
 ## Passing arguments
 
-Arguments after `--` are passed through to the task's command, after its configured arguments. This
-only applies when running a single target:
+Arguments after `--` are passed through to the task's command, after its configured arguments. When
+running multiple tasks, they're passed to each of the tasks you selected, but not to the tasks they
+depend on:
 
 ```shell
 $ moon run client:build -- --mode staging

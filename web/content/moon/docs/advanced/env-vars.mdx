@@ -150,10 +150,10 @@ Most map to a command line option.
 | `MOON_JOB`            | `--job`            | Zero-based index of the current job (for [CI job sharding](../guides/ci.mdx#parallelizing-tasks)).                                        |
 | `MOON_JOB_TOTAL`      | `--job-total`      | Total amount of jobs to run.                                                                                     |
 | `MOON_AFFECTED`       | `--affected`       | Only run tasks affected by changed files.                                                                        |
-| `MOON_BASE`           | `--base`           | Base branch, commit, or revision to compare [affected](./affected.mdx) against.                             |
-| `MOON_HEAD`           | `--head`           | Current branch, commit, or revision to compare with.                                                             |
+| `MOON_BASE`           | `--base`           | Base branch, commit, or revision to compare [affected](./affected.mdx) against. Takes precedence over `--base` when it isn't empty.                             |
+| `MOON_HEAD`           | `--head`           | Current branch, commit, or revision to compare with. Takes precedence over `--head` when it isn't empty.                                                             |
 | `MOON_AFFECTED_DEPTH` | `--affected-depth` | How far affected state propagates to dependent tasks (none, direct, deep, or a number of hops).                  |
-| `MOON_ON_FAILURE`     | `--on-failure`     | When a task fails, either bail the pipeline or continue executing.                                               |
+| `MOON_ON_FAILURE`     | `--on-failure`     | When a task fails, either bail the pipeline or continue executing. Only read by [`moon exec`](../commands/exec.mdx), as `moon run` and `moon check` always bail, and `moon ci` always continues.                                               |
 | `MOON_OUTPUT_STYLE`   | —                  | The [`options.outputStyle`](/moon/api/TaskOptionsConfig#outputstyle) task option in which output is printed.                |
 | `MOON_RETRY_COUNT`    | —                  | The [`options.retryCount`](/moon/api/TaskOptionsConfig#retrycount) task option — number of times a failing task is retried. |
 
@@ -167,7 +167,7 @@ match.
 | :---------------------------- | :---------------------------------------------------------- |
 | `MOON_SKIP_SYNC_WORKSPACE`    | Skip the `SyncWorkspace` action.                            |
 | `MOON_SKIP_SYNC_PROJECT`      | Skip `SyncProject` actions (matches project IDs).           |
-| `MOON_SKIP_SETUP_TOOLCHAIN`   | Skip `SetupToolchain` actions (matches toolchain IDs).      |
+| `MOON_SKIP_SETUP_TOOLCHAIN`   | Skip `SetupToolchain` actions (matches toolchain IDs, optionally with a version, like `node:24.12.0`, `node:*`, or `*:24.12.0`). |
 | `MOON_SKIP_SETUP_ENVIRONMENT` | Skip `SetupEnvironment` actions (matches toolchain IDs).    |
 | `MOON_SKIP_INSTALL_DEPS`      | Skip `InstallDependencies` actions (matches toolchain IDs). |
 
@@ -230,7 +230,7 @@ Declare any of these (to a truthy value) to reveal additional diagnostic output.
 
 | Variable                   | Description                                                                                                                           |
 | :------------------------- | :------------------------------------------------------------------------------------------------------------------------------------ |
-| `MOON_DEBUG_PROCESS_ENV`   | Reveal the full environment passed to processes. By default moon hides everything except `MOON_*` variables to avoid leaking secrets. |
+| `MOON_DEBUG_PROCESS_ENV`   | Reveal the full environment passed to processes. By default moon hides everything except `MOON_*` and `PROTO_*` variables to avoid leaking secrets. |
 | `MOON_DEBUG_PROCESS_INPUT` | Reveal the full stdin passed to processes, instead of truncating it.                                                                  |
 | `MOON_DEBUG_REMOTE`        | Extra logging for remote caching, including internal connection errors.                                                               |
 | `MOON_DEBUG_WASM`          | Extra logging for [WASM plugins](../../../wasm/docs/index.mdx), and optionally dumps memory/core profiles.                                   |
@@ -254,14 +254,14 @@ Read by the graph commands ([`project-graph`](../commands/project-graph.mdx),
 | Variable           | Description                                                                                                    |
 | :----------------- | :------------------------------------------------------------------------------------------------------------- |
 | `MOON_HOME`        | Override moon's store directory. Defaults to `~/.moon` (or `$XDG_DATA_HOME/moon` when `XDG_DATA_HOME` is set). |
-| `MOON_INSTALL_DIR` | Directory that [`moon upgrade`](../commands/upgrade.mdx) installs the binary into. Defaults to `~/.moon/bin`.       |
+| `MOON_INSTALL_DIR` | Directory that [`moon upgrade`](../commands/upgrade.mdx) installs the binary into. Defaults to the `bin` directory of moon's store, `$MOON_HOME/bin` (`~/.moon/bin` by default). |
 
 ### Advanced
 
 | Variable                       | Description                                                                                                                             |
 | :----------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------- |
-| `MOON_TOOLCHAIN_FORCE_GLOBALS` | Force toolchains to use globally installed tools instead of proto-managed versions. Set automatically within [Docker](../guides/docker.mdx). |
-| `MOON_PLUGINS_USE_URL_DIST`    | Load plugins from their URL distribution instead of a locally built artifact.                                                           |
+| `MOON_TOOLCHAIN_FORCE_GLOBALS` | Force toolchains to use the tools on `PATH` instead of installing them with proto. Set to `true` for every toolchain, or a comma-separated list of toolchain IDs. The `Dockerfile` generated by [`moon docker file`](../commands/docker/file.mdx) sets it (see [using system binaries](../guides/docker.mdx#using-system-binaries)). |
+| `MOON_PLUGINS_USE_URL_DIST`    | Download built-in plugins from their GitHub release URLs, instead of the OCI registry. Also passed to proto as `PROTO_PLUGINS_USE_URL_DIST`. |
 | `MOON_BUILTIN_REGISTRY_HOST`      | The OCI registry that built-in toolchain and extension plugins are downloaded from, like a mirror of `ghcr.io`. Defaults to `ghcr.io`. |
 | `MOON_BUILTIN_REGISTRY_NAMESPACE` | The namespace within that registry that built-in plugins are located in. Defaults to `moonrepo`.                                    |
 | `MOON_VCS_REPO_SLUG`           | Override the detected `owner/repository` slug (see [above](#internal)).                                                                 |

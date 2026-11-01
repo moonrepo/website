@@ -76,11 +76,11 @@ into common CI providers, including
 - `--base` <TypeLabel type="string" /> - Base branch, commit, or revision to compare against when
   determining changed files. When running in a supported CI provider, this is automatically derived
   from the CI environment (for example, the pull request's base branch) if not provided. Can also be
-  set via the `MOON_BASE` environment variable.
+  set via the `MOON_BASE` environment variable, which takes precedence over this option when it isn't empty.
 - `--head` <TypeLabel type="string" /> - Current branch, commit, or revision to compare with when
   determining changed files. When running in a supported CI provider, this is automatically derived
   from the CI environment if not provided; otherwise defaults to the working tree. Can also be set
-  via the `MOON_HEAD` environment variable.
+  via the `MOON_HEAD` environment variable, which takes precedence over this option when it isn't empty.
 - `-d`, `--affected-depth` <TypeLabel type="none | direct | deep | number" /> - How far affected
   state propagates from an affected task to the tasks that depend on it, in hops. This only changes
   which of the candidate tasks count as affected, and never adds tasks. Defaults to `deep`. Can also

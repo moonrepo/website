@@ -53,8 +53,10 @@ This command can also be run as `moon r`, so `moon r app:lint` is the same as `m
 
 - `[TARGETS...]` - List of explicit [task targets](<../(fundamentals)/target.mdx>) to run. When omitted, moon prompts
   interactively for a selection of tasks.
-- `-- [ARGS...]` - Additional arguments to pass through to the underlying task command. Only
-  applies to explicit targets, and is ignored when multiple tasks are being run.
+- `-- [ARGS...]` - Additional arguments to pass through to the underlying task command. They're
+  appended to the command of every task selected by the targets, like both tasks in
+  `moon run client:build server:build -- --minify`, but not to the tasks they depend on. Tasks that
+  run a [`script`](<../(fundamentals)/task.mdx#script>) don't receive them.
 
 ## Options
 
@@ -90,10 +92,10 @@ This command can also be run as `moon r`, so `moon r app:lint` is the same as `m
   `--affected=remote`) customizes the comparison source. When a task isn't affected, it's skipped
   entirely (unless `--force` is also passed).
 - `--base` <TypeLabel type="string" /> - Base branch, commit, or revision to compare against when
-  determining changed files. Can also be set via the `MOON_BASE` environment variable.
+  determining changed files. Can also be set via the `MOON_BASE` environment variable, which takes precedence over this option when it isn't empty.
 - `--head` <TypeLabel type="string" /> - Current branch, commit, or revision to compare with when
   determining changed files. Defaults to the working tree (`HEAD`). Can also be set via the
-  `MOON_HEAD` environment variable.
+  `MOON_HEAD` environment variable, which takes precedence over this option when it isn't empty.
 - `-d`, `--affected-depth` <TypeLabel type="none | direct | deep | number" /> - How far affected
   state propagates from an affected task to the tasks that depend on it, in hops. This only changes
   which of the selected tasks count as affected, and never adds tasks. Defaults to `deep`. Can also
