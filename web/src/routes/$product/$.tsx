@@ -92,9 +92,15 @@ function renderContent(
 ) {
 	return (
 		<DocsPage toc={toc}>
-			<DocsTitle>{frontmatter.title}</DocsTitle>
-			<DocsDescription>{frontmatter.description}</DocsDescription>
-			<PageActions className="border-b pb-6" file={file} url={url} />
+			<div className="border-b pb-6">
+				<div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+					<DocsTitle>{frontmatter.title}</DocsTitle>
+					<PageActions className="shrink-0" file={file} url={url} />
+				</div>
+				<DocsDescription className="mt-4 mb-0">
+					{frontmatter.description}
+				</DocsDescription>
+			</div>
 			<DocsBody>
 				<MDX components={getMdxComponents()} />
 			</DocsBody>
