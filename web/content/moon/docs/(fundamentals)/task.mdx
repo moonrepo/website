@@ -1287,16 +1287,17 @@ For more control, the option also accepts an object with the following settings:
   that the files must match to be passed, like only TypeScript files. The globs are matched against
   absolute paths, so start them with `**`, like `**/*.ts`.
 - [`ignoreProjectBoundary`](/moon/api/TaskOptionAffectedFilesConfig#ignoreprojectboundary)
-  <TypeLabel type="boolean" /> - Also pass affected files outside the project, like those matched by
-  [workspace-relative](./config.mdx#workspace-relative) inputs, or inputs from
-  [other projects](#other-projects). Defaults to `false`.
+  <TypeLabel type="boolean" /> - Also pass affected files outside the project,
+  like those matched by [workspace-relative](./config.mdx#workspace-relative)
+  inputs, or inputs from [other projects](#other-projects). Defaults to `false`.
 - [`passInputsWhenNoMatch`](/moon/api/TaskOptionAffectedFilesConfig#passinputswhennomatch)
-  <TypeLabel type="boolean" /> - When there are no affected files, pass the task's input files
-  instead. Defaults to `false`.
+  <TypeLabel type="boolean" /> - When there are no affected files, pass the
+  task's input files instead. Defaults to `false`.
 - [`passDotWhenNoResults`](/moon/api/TaskOptionAffectedFilesConfig#passdotwhennoresults)
-  <TypeLabel type="boolean" /> - When there are no files left to pass, after matching and
-  filtering, pass `.` as described above. When disabled, no arguments are added, and the
-  environment variable is empty. Defaults to `true`.
+  <TypeLabel type="boolean" /> - When there are no files left to pass, after
+  matching and filtering, pass `.` as described above. When disabled, no
+  arguments are added, and the environment variable is empty. Defaults to
+  `true`.
 
 <ConfigTabs
   file="moon"

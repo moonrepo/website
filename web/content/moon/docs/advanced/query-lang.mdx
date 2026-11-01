@@ -54,12 +54,12 @@ Some fields only apply to projects, and some apply to both projects and tasks (s
 
 A comparison is written as `field operator value`, using one of the following operators:
 
-| Operator | Description                          | Value          |
-| :------- | :----------------------------------- | :------------- |
-| `=`      | Equals the value, or any in a list.  | Value or list  |
+| Operator | Description                                | Value         |
+| :------- | :----------------------------------------- | :------------ |
+| `=`      | Equals the value, or any in a list.        | Value or list |
 | `!=`     | Doesn't equal the value, or any in a list. | Value or list |
-| `~`      | Matches the glob.                    | Glob           |
-| `!~`     | Doesn't match the glob.              | Glob           |
+| `~`      | Matches the glob.                          | Glob          |
+| `!~`     | Doesn't match the glob.                    | Glob          |
 
 A value can contain letters, numbers, `-`, `_`, `/`, `.`, and `@`, and isn't quoted. A list is
 written as `[a, b, c]`, and matches if any of its values do (or, with `!=`, if none do).
@@ -119,18 +119,18 @@ The following fields are supported, along with what they can be used for:
 
 | Field                             | Projects | Tasks | Globs |
 | :-------------------------------- | :------: | :---: | :---: |
-| [`language`](#language)           | Yes      |       |       |
-| [`project`](#project)             | Yes      | Yes   | Yes   |
-| [`projectAlias`](#projectalias)   | Yes      |       | Yes   |
-| [`projectId`](#projectid)         | Yes      |       | Yes   |
-| [`projectLayer`](#projectlayer)   | Yes      |       |       |
-| [`projectSource`](#projectsource) | Yes      |       | Yes   |
-| [`projectStack`](#projectstack)   | Yes      |       |       |
-| [`projectTag`](#projecttag)       | Yes      |       | Yes   |
-| [`task`](#task)                   | Yes      | Yes   | Yes   |
-| [`taskTag`](#tasktag)             | Yes      | Yes   | Yes   |
-| [`taskToolchain`](#tasktoolchain) | Yes      | Yes   | Yes   |
-| [`taskType`](#tasktype)           | Yes      | Yes   |       |
+| [`language`](#language)           |   Yes    |       |       |
+| [`project`](#project)             |   Yes    |  Yes  |  Yes  |
+| [`projectAlias`](#projectalias)   |   Yes    |       |  Yes  |
+| [`projectId`](#projectid)         |   Yes    |       |  Yes  |
+| [`projectLayer`](#projectlayer)   |   Yes    |       |       |
+| [`projectSource`](#projectsource) |   Yes    |       |  Yes  |
+| [`projectStack`](#projectstack)   |   Yes    |       |       |
+| [`projectTag`](#projecttag)       |   Yes    |       |  Yes  |
+| [`task`](#task)                   |   Yes    |  Yes  |  Yes  |
+| [`taskTag`](#tasktag)             |   Yes    |  Yes  |  Yes  |
+| [`taskToolchain`](#tasktoolchain) |   Yes    |  Yes  |  Yes  |
+| [`taskType`](#tasktype)           |   Yes    |  Yes  |       |
 
 When querying tasks, the fields that only apply to projects never match, not even with `!=`. To
 filter tasks by their project, use the [`project`](#project) field.

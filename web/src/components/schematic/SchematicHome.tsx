@@ -44,7 +44,7 @@ function Hero() {
 	return (
 		<section className="grid gap-12 px-6 pt-16 pb-16 md:grid-cols-2 md:px-12 md:pt-[96px] lg:min-h-[546px]">
 			<div className="min-w-0">
-				<SchematicLogo />
+				{/* <SchematicLogo /> */}
 				<h1
 					className={cn(
 						'mt-6 text-4xl leading-[1.2] md:text-[40px] xl:text-[44px]',
@@ -77,8 +77,13 @@ function Hero() {
 
 			<div className="min-w-0 md:pt-12">
 				<CodeBlock
-					code={`#[derive(Config)]
+					code={`use schematic::Config;
+
+#[derive(Config)]
 struct AppConfig {
+    #[setting(default = "0.0.0.0", env = "HOST")]
+    pub host: String,
+
     #[setting(default = 3000, env = "PORT")]
     pub port: usize,
 
@@ -185,8 +190,14 @@ function TwoFeatures() {
 				title="Configuration"
 			>
 				<CodeBlock
-					code={`#[setting(merge = schematic::merge::append_vec)]
-pub allowed_hosts: Vec<String>,`}
+					code={`#[derive(Config)]
+struct NavConfig {
+    #[setting(validate = schematic::validate::url)]
+    pub url: String,
+
+    #[setting(merge = schematic::merge::append_vec)]
+    pub links: Vec<String>,
+}`}
 					lang="rust"
 				/>
 			</Feature>

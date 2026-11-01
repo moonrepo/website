@@ -23,7 +23,11 @@ value.
     tasks: {
       lint: {
         command: "eslint",
-        args: ["--cache-location", "$workspaceRoot/.eslintcache", "@files(sources)"],
+        args: [
+          "--cache-location",
+          "$workspaceRoot/.eslintcache",
+          "@files(sources)",
+        ],
         inputs: ["@group(sources)"],
       },
     },
@@ -108,17 +112,17 @@ path.
 
 ## Function types
 
-| Function      | Expands to                                                       | Allowed in                                         |
-| :------------ | :--------------------------------------------------------------- | :------------------------------------------------- |
-| `@group(id)`  | The file group's paths and globs, as configured.                 | `script`, `args`, `env`, `inputs`, `outputs`       |
-| `@files(id)`  | The files that the group's paths and globs match.                | `script`, `args`, `env`, `inputs`, `outputs`       |
-| `@dirs(id)`   | The directories that the group's paths and globs match.          | `script`, `args`, `env`, `inputs`, `outputs`       |
-| `@globs(id)`  | Only the group's globs.                                          | `script`, `args`, `env`, `inputs`, `outputs`       |
-| `@root(id)`   | The lowest common directory of the group's directories.          | `script`, `args`, `env`, `inputs`, `outputs`       |
-| `@envs(id)`   | The group's environment variables.                               | `inputs`                                           |
-| `@in(index)`  | The task's input at an index.                                    | `script`, `args`                                   |
-| `@out(index)` | The task's output at an index.                                   | `script`, `args`                                   |
-| `@meta(key)`  | A field of the project's metadata.                               | `command`, `script`, `args`, `env`                 |
+| Function      | Expands to                                              | Allowed in                                   |
+| :------------ | :------------------------------------------------------ | :------------------------------------------- |
+| `@group(id)`  | The file group's paths and globs, as configured.        | `script`, `args`, `env`, `inputs`, `outputs` |
+| `@files(id)`  | The files that the group's paths and globs match.       | `script`, `args`, `env`, `inputs`, `outputs` |
+| `@dirs(id)`   | The directories that the group's paths and globs match. | `script`, `args`, `env`, `inputs`, `outputs` |
+| `@globs(id)`  | Only the group's globs.                                 | `script`, `args`, `env`, `inputs`, `outputs` |
+| `@root(id)`   | The lowest common directory of the group's directories. | `script`, `args`, `env`, `inputs`, `outputs` |
+| `@envs(id)`   | The group's environment variables.                      | `inputs`                                     |
+| `@in(index)`  | The task's input at an index.                           | `script`, `args`                             |
+| `@out(index)` | The task's output at an index.                          | `script`, `args`                             |
+| `@meta(key)`  | A field of the project's metadata.                      | `command`, `script`, `args`, `env`           |
 
 ### File groups
 
@@ -197,58 +201,58 @@ When the field isn't configured, the function is replaced with an empty value in
 
 ### Environment
 
-| Variable         | Value                                                         | Example           |
-| :--------------- | :------------------------------------------------------------ | :---------------- |
-| `$arch`          | The architecture of the host machine.                         | `aarch64`         |
-| `$os`            | The operating system of the host machine.                     | `macos`           |
-| `$osFamily`      | The operating system family of the host machine.              | `unix`            |
-| `$workingDir`    | The absolute path of the directory that moon was run from.    | `/home/user/repo` |
+| Variable         | Value                                                                         | Example           |
+| :--------------- | :---------------------------------------------------------------------------- | :---------------- |
+| `$arch`          | The architecture of the host machine.                                         | `aarch64`         |
+| `$os`            | The operating system of the host machine.                                     | `macos`           |
+| `$osFamily`      | The operating system family of the host machine.                              | `unix`            |
+| `$workingDir`    | The absolute path of the directory that moon was run from.                    | `/home/user/repo` |
 | `$workspaceRoot` | The absolute path of the [workspace](<../(fundamentals)/workspace.mdx>) root. | `/home/user/repo` |
 
 ### Project
 
-| Variable          | Value                                                                                 | Example                      |
-| :---------------- | :------------------------------------------------------------------------------------ | :--------------------------- |
-| `$project`        | The project's ID. Also available as `$projectId`.                                     | `app`                        |
-| `$projectAlias`   | The project's first [alias](<../(fundamentals)/project.mdx#aliases>), or empty.       | `@org/app`                   |
-| `$projectAliases` | All of the project's aliases, joined with commas.                                     | `@org/app`                   |
-| `$projectChannel` | The project's metadata [`channel`](/moon/api/ProjectMetadataConfig#channel).          | `#team-web`                  |
-| `$projectLayer`   | The project's [layer](<../(fundamentals)/project.mdx#layers>).                        | `application`                |
-| `$projectName`    | The project's metadata [`title`](/moon/api/ProjectMetadataConfig#title). Also available as `$projectTitle`. | `App` |
-| `$projectOwner`   | The project's metadata [`owner`](/moon/api/ProjectMetadataConfig#owner).              | `@org/web`                   |
-| `$projectRoot`    | The absolute path of the project's root directory.                                    | `/home/user/repo/apps/app`   |
-| `$projectSource`  | The path of the project's root directory, relative to the workspace root.             | `apps/app`                   |
-| `$projectStack`   | The project's [stack](<../(fundamentals)/project.mdx#stacks>).                        | `frontend`                   |
-| `$language`       | The project's [language](<../(fundamentals)/project.mdx#language>).                   | `typescript`                 |
+| Variable          | Value                                                                                                       | Example                    |
+| :---------------- | :---------------------------------------------------------------------------------------------------------- | :------------------------- |
+| `$project`        | The project's ID. Also available as `$projectId`.                                                           | `app`                      |
+| `$projectAlias`   | The project's first [alias](<../(fundamentals)/project.mdx#aliases>), or empty.                             | `@org/app`                 |
+| `$projectAliases` | All of the project's aliases, joined with commas.                                                           | `@org/app`                 |
+| `$projectChannel` | The project's metadata [`channel`](/moon/api/ProjectMetadataConfig#channel).                                | `#team-web`                |
+| `$projectLayer`   | The project's [layer](<../(fundamentals)/project.mdx#layers>).                                              | `application`              |
+| `$projectName`    | The project's metadata [`title`](/moon/api/ProjectMetadataConfig#title). Also available as `$projectTitle`. | `App`                      |
+| `$projectOwner`   | The project's metadata [`owner`](/moon/api/ProjectMetadataConfig#owner).                                    | `@org/web`                 |
+| `$projectRoot`    | The absolute path of the project's root directory.                                                          | `/home/user/repo/apps/app` |
+| `$projectSource`  | The path of the project's root directory, relative to the workspace root.                                   | `apps/app`                 |
+| `$projectStack`   | The project's [stack](<../(fundamentals)/project.mdx#stacks>).                                              | `frontend`                 |
+| `$language`       | The project's [language](<../(fundamentals)/project.mdx#language>).                                         | `typescript`               |
 
 ### Task
 
-| Variable          | Value                                                                       | Example              |
-| :---------------- | :-------------------------------------------------------------------------- | :------------------- |
-| `$target`         | The task's fully qualified [target](<../(fundamentals)/target.mdx>).        | `app:build`          |
-| `$task`           | The task's ID. Also available as `$taskId`.                                 | `build`              |
-| `$taskToolchain`  | The task's first [toolchain](<../(fundamentals)/task.mdx#toolchains>), or `unknown`. | `node`      |
-| `$taskToolchains` | All of the task's toolchains, joined with commas.                           | `javascript,node`    |
-| `$taskType`       | The task's [type](<../(fundamentals)/task.mdx#types>).                      | `build`              |
+| Variable          | Value                                                                                | Example           |
+| :---------------- | :----------------------------------------------------------------------------------- | :---------------- |
+| `$target`         | The task's fully qualified [target](<../(fundamentals)/target.mdx>).                 | `app:build`       |
+| `$task`           | The task's ID. Also available as `$taskId`.                                          | `build`           |
+| `$taskToolchain`  | The task's first [toolchain](<../(fundamentals)/task.mdx#toolchains>), or `unknown`. | `node`            |
+| `$taskToolchains` | All of the task's toolchains, joined with commas.                                    | `javascript,node` |
+| `$taskType`       | The task's [type](<../(fundamentals)/task.mdx#types>).                               | `build`           |
 
 ### Date and time
 
 All dates and times are in UTC, at the moment the task is expanded.
 
-| Variable     | Value                                         | Example               |
-| :----------- | :-------------------------------------------- | :-------------------- |
-| `$date`      | The current date.                             | `2026-10-31`          |
-| `$datetime`  | The current date and time.                    | `2026-10-31_14:05:09` |
-| `$time`      | The current time.                             | `14:05:09`            |
-| `$timestamp` | The current Unix timestamp, in seconds.       | `1793455509`          |
+| Variable     | Value                                   | Example               |
+| :----------- | :-------------------------------------- | :-------------------- |
+| `$date`      | The current date.                       | `2026-10-31`          |
+| `$datetime`  | The current date and time.              | `2026-10-31_14:05:09` |
+| `$time`      | The current time.                       | `14:05:09`            |
+| `$timestamp` | The current Unix timestamp, in seconds. | `1793455509`          |
 
 ### VCS
 
-| Variable         | Value                                                                       | Example        |
-| :--------------- | :-------------------------------------------------------------------------- | :------------- |
-| `$vcsBranch`     | The current branch.                                                         | `feature/auth` |
-| `$vcsRepository` | The `owner/repository` slug of the repository's remote, or empty.           | `moonrepo/moon` |
-| `$vcsRevision`   | The commit hash of the current branch.                                      | `0b55b234f101` |
+| Variable         | Value                                                             | Example         |
+| :--------------- | :---------------------------------------------------------------- | :-------------- |
+| `$vcsBranch`     | The current branch.                                               | `feature/auth`  |
+| `$vcsRepository` | The `owner/repository` slug of the repository's remote, or empty. | `moonrepo/moon` |
+| `$vcsRevision`   | The commit hash of the current branch.                            | `0b55b234f101`  |
 
 When the workspace isn't a VCS repository, `$vcsBranch` is the configured
 [`vcs.defaultBranch`](/moon/api/VcsConfig#defaultbranch), and the other variables are empty.
