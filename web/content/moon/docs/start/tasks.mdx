@@ -1,0 +1,237 @@
+---
+title: Create tasks
+icon: CirclePlus
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+
+A [task](<../(fundamentals)/task.mdx>) is a command that runs in the context of a project, like
+building, testing, or linting it. Tasks are the heart of moon: once they're defined, moon can run
+them in the right order, in parallel, and skip them entirely when nothing has changed.
+
+Tasks are defined per project in [`moon.config`](<../(fundamentals)/project.mdx>), or shared by many
+projects through [task inheritance](<../(fundamentals)/task-inheritance.mdx>). This step covers
+both.
+
+## Defining a task
+
+Let's start with a `build` task for the client app. In `apps/client/moon.config`, add an entry to
+[`tasks`](/moon/api/ProjectConfig#tasks), where the key is the task's ID, and
+[`command`](/moon/api/TaskConfig#command) is what to run:
+
+<ConfigTabs
+  file="moon"
+  config={{
+    dependsOn: ["utils"],
+    tasks: {
+      build: {
+        command: "vite build",
+      },
+    },
+  }}
+/>
+
+That's a complete task! Its [target](<../(fundamentals)/target.mdx>) is `client:build`, and you can
+already run it:
+
+```shell
+$ moon run client:build
+```
+
+Tasks run from the project's root directory, so `vite build` builds `apps/client`. Arguments can be
+written inline, like `vite build --mode production`, or listed separately with the
+[`args`](/moon/api/TaskConfig#args) setting (see [command](<../(fundamentals)/task.mdx#command>)).
+
+<Callout>
+  With the [JavaScript toolchain](../toolchains/javascript/index.mdx) enabled,
+  `node_modules/.bin` is on `PATH` when tasks run, so binaries like `vite` don't
+  need a wrapper like `npx`. It can also turn your existing `package.json`
+  scripts into tasks, with
+  [`inferTasksFromScripts`](../toolchains/javascript/index.mdx#inferring-tasks-from-scripts).
+</Callout>
+
+### Inputs
+
+Before running a task, moon hashes its inputs, and when the hash matches a previous run, it skips
+the task and replays the previous result. By default, every file in the project is an input, so a
+change to any file, even a `README.md`, causes the task to run again.
+
+To make caching more effective, narrow [`inputs`](/moon/api/TaskConfig#inputs) down to the files
+that actually affect the result:
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "vite build",
+        inputs: [
+          "src/**/*",
+          "index.html",
+          "vite.config.ts",
+          "/tsconfig.base.json",
+        ],
+      },
+    },
+  }}
+/>
+
+Inputs are file paths and globs relative to the project root, while paths starting with `/` are
+relative to the workspace root, like the shared `tsconfig.base.json` above. Inputs can also be
+environment variables, and files from other projects (see [inputs](<../(fundamentals)/task.mdx#inputs>)).
+
+### Outputs
+
+[`outputs`](/moon/api/TaskConfig#outputs) are the files a task creates, like build artifacts. When
+outputs are defined, moon stores them in its cache after the task runs, and on a cache hit,
+restores them instead of running the task. Without outputs, a cache hit can only replay the task's terminal output.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "vite build",
+        inputs: [
+          "src/**/*",
+          "index.html",
+          "vite.config.ts",
+          "/tsconfig.base.json",
+        ],
+        outputs: ["dist"],
+      },
+    },
+  }}
+/>
+
+Only declare outputs that other tasks or deployments need, not logs or tool caches. A task with
+outputs is also considered a build task, which is what [`moon check`](../commands/check.mdx) uses
+to find tasks to run (alongside test tasks).
+
+### Depending on others
+
+The client imports `utils`, so `utils` must be built before the client. First, add a `build` task to
+`packages/utils/moon.config`:
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      build: {
+        command: "tsc --build",
+        inputs: ["src/**/*", "tsconfig.json", "/tsconfig.base.json"],
+        outputs: ["lib"],
+      },
+    },
+  }}
+/>
+
+Then, have the client's `build` depend on it with [`deps`](/moon/api/TaskConfig#deps), which accepts
+a list of targets that run before the task:
+
+<ConfigTabs
+  file="moon"
+  config={{
+    dependsOn: ["utils"],
+    tasks: {
+      build: {
+        command: "vite build",
+        inputs: [
+          "src/**/*",
+          "index.html",
+          "vite.config.ts",
+          "/tsconfig.base.json",
+        ],
+        outputs: ["dist"],
+        deps: ["^:build"],
+      },
+    },
+  }}
+  comments={{
+    deps: "Run `build` in every project this project depends on",
+  }}
+/>
+
+The `^` scope means "every project this project depends on", based on the
+[dependencies you declared](./projects.mdx#declaring-dependencies). So `^:build` expands to
+`utils:build` today, and automatically includes new dependencies as you add them. A specific target
+works too, like `utils:build`. Add the same `deps` to the server's `build` task, and both apps will
+always build `utils` first.
+
+A dependency's hash is also part of its dependent's hash, so when `utils` changes, the client is
+rebuilt too. See [dependencies](<../(fundamentals)/task.mdx#dependencies>) for running tasks after
+or alongside one another.
+
+## Long-running tasks
+
+Not every task finishes. Development servers and watchers run until you stop them, and shouldn't be
+cached. Configure these with the `server` [preset](<../(fundamentals)/task.mdx#presets>):
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      dev: {
+        command: "vite dev",
+        preset: "server",
+      },
+    },
+  }}
+/>
+
+The preset disables caching, streams the task's output, and skips the task in CI. It also marks the
+task as [persistent](<../(fundamentals)/task.mdx#persistent>), so moon starts it once its
+dependencies have completed, but never waits for it to finish, which lets you run a frontend and
+backend server side by side.
+
+## Sharing tasks across projects
+
+Some tasks are the same in every project, like linting and testing. Instead of copying them into
+each `moon.config`, define them once in a file under `.moon/tasks`, like
+[`.moon/tasks/all.config`](<../(fundamentals)/task-inheritance.mdx>), and every project inherits
+them:
+
+<ConfigTabs
+  file=".moon/tasks/all"
+  config={{
+    tasks: {
+      lint: {
+        command: "eslint .",
+      },
+      test: {
+        command: "vitest run",
+      },
+    },
+  }}
+/>
+
+Now `client:lint`, `server:lint`, and `utils:lint` all exist, and each runs in its own project.
+Files can be named and organized however you like, and the
+[`inheritedBy`](/moon/api/InheritedTasksConfig#inheritedby) setting limits which projects inherit a
+file, based on their toolchains, language, layer, tags, and more. A project can also override or
+extend an inherited task by defining a task with the same ID. See
+[task inheritance](<../(fundamentals)/task-inheritance.mdx>) for the details.
+
+## Inspecting tasks
+
+As tasks come from multiple places, it's handy to see the final result. List every task in the
+workspace with [`moon tasks`](../commands/tasks.mdx), or inspect a single task, after inheritance
+and defaults are applied, with [`moon task`](../commands/task.mdx):
+
+```shell
+# List every task in the workspace
+$ moon tasks
+
+# Show the resolved command, inputs, outputs, and dependencies of a task
+$ moon task client:build
+```
+
+## Next steps
+
+<Cards>
+  <Card
+    title="Run tasks"
+    description="Run tasks and their dependencies, and see the cache in action."
+    href="./run.mdx"
+  />
+</Cards>

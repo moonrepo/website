@@ -1,0 +1,155 @@
+---
+title: Add projects
+icon: SquarePlus
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+
+A [project](<../(fundamentals)/project.mdx>) is a directory in the workspace that moon manages, like
+an application, library, or tool. Each project has its own tasks and configuration, and can depend
+on other projects. A new workspace doesn't have any, so the next step is to tell moon where to find
+them.
+
+## Locating projects
+
+Projects are located with the [`projects`](/moon/api/WorkspaceConfig#projects) setting in
+[`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>). Replace the example glob from
+`moon init` with globs that match your project directories. For the
+[example repository](./index.mdx#the-example-repository):
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    projects: ["apps/*", "packages/*"],
+    vcs: {
+      defaultBranch: "main",
+      provider: "github",
+    },
+  }}
+/>
+
+Every matching directory becomes a project, and its ID is inferred from the directory name, so this
+workspace has three projects: `client`, `server`, and `utils`. IDs are how you refer to projects
+everywhere in moon, like in commands, configuration, and task targets.
+
+If you'd prefer explicit control, or IDs that don't match directory names, map each ID to its path
+instead:
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    projects: {
+      client: "apps/client",
+      server: "apps/server",
+      utils: "packages/utils",
+    },
+  }}
+/>
+
+Globs and paths can also be combined, and globs can match files like `package.json` to only find
+directories that contain them. See [project discovery](<../(fundamentals)/project.mdx#discovery>)
+for every option.
+
+## Listing projects
+
+Confirm moon found what you expected with [`moon projects`](../commands/projects.mdx), which prints
+a table of every project and its source path, and inspect a single project with
+[`moon project`](../commands/project.mdx):
+
+```shell
+# List every project in the workspace
+$ moon projects
+
+# Show details about a project, like its dependencies and tasks
+$ moon project client
+```
+
+If a project is missing, double-check your globs. Hidden directories (those starting with `.`), and
+directories ignored by Git, are never matched.
+
+## Configuring a project
+
+Each project can be configured with a [`moon.config`](<../(fundamentals)/project.mdx>) file at its
+root. It's optional, as a project without one is still a project, but it's where you'll define
+tasks, dependencies, and metadata. For example, describe the client app by creating
+`apps/client/moon.config` (in your format of choice, like `moon.yml`):
+
+<ConfigTabs
+  file="moon"
+  config={{
+    language: "typescript",
+    layer: "application",
+    tags: ["frontend"],
+    project: {
+      title: "Client",
+      description: "The customer-facing web app.",
+      owner: "@acme/frontend",
+    },
+  }}
+/>
+
+None of these settings are required, but they become more useful as a repository grows:
+
+- [`language`](/moon/api/ProjectConfig#language) - The primary programming language of the project.
+- [`layer`](/moon/api/ProjectConfig#layer) - The role of the project, like `application`,
+  `library`, or `tool`. moon can use layers to stop a library from depending on an application (see
+  [project constraints](<../(fundamentals)/workspace.mdx#project-constraints>)).
+- [`tags`](/moon/api/ProjectConfig#tags) - Labels for grouping projects, which can be used to run a
+  task in every project with a tag, like `moon run '#frontend:lint'`.
+- [`project`](/moon/api/ProjectConfig#project) - Metadata about the project and its owners, which is
+  displayed by `moon project`.
+
+Settings like `language`, `layer`, and `tags` can also decide which shared tasks a project
+[inherits](./tasks.mdx#sharing-tasks-across-projects), which you'll see later. See
+[categorization](<../(fundamentals)/project.mdx#categorization>) and
+[ownership](<../(fundamentals)/project.mdx#ownership>) for more.
+
+## Declaring dependencies
+
+In the example repository, both apps import code from `utils`, so `utils` needs to be built before
+either app. Tell moon about this relationship with the
+[`dependsOn`](/moon/api/ProjectConfig#dependson) setting, in both `apps/client/moon.config` and
+`apps/server/moon.config`:
+
+<ConfigTabs
+  file="moon"
+  config={{
+    dependsOn: ["utils"],
+  }}
+/>
+
+Dependencies form the edges of the [project graph](<../(fundamentals)/project-graph.mdx>), which
+moon uses in a few important ways:
+
+- **Ordering** - A task can depend on the same task in every project it depends on, so `utils` is
+  built before the apps. You'll set this up when [creating tasks](./tasks.mdx#depending-on-others).
+- **Affected tracking** - When files in `utils` change, the apps are
+  [affected](../advanced/affected.mdx#for-projects) too, which answers "what does this change
+  impact?", like with [`moon query projects --affected`](../commands/query/projects.mdx).
+- **Boundaries** - [Constraints](<../(fundamentals)/workspace.mdx#project-constraints>) are checked
+  against these relationships.
+
+<Callout>
+  Some toolchains infer dependencies from your existing manifests, so you don't
+  have to repeat them in `dependsOn`. For example, with the [JavaScript
+  toolchain](../toolchains/javascript/index.mdx) enabled, a `"@acme/utils":
+  "workspace:*"` dependency in `package.json` connects the projects
+  automatically. You'll enable toolchains in the [next step](./toolchains.mdx).
+</Callout>
+
+To see the graph, run [`moon project-graph`](../commands/project-graph.mdx), which opens an
+interactive visualization in your browser.
+
+```shell
+$ moon project-graph
+```
+
+## Next steps
+
+<Cards>
+  <Card
+    title="Set up toolchains"
+    description="Optionally, integrate your languages and pin their versions."
+    href="./toolchains.mdx"
+  />
+</Cards>

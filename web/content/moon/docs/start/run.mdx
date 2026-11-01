@@ -1,0 +1,175 @@
+---
+title: Run tasks
+icon: ArrowBigRightDash
+---
+
+With tasks defined, it's time to run them. Tasks are run with [`moon run`](../commands/run.mdx) (or the low-level [`moon exec`](../commands/exec.mdx)), by
+passing one or more [targets](<../(fundamentals)/target.mdx>):
+
+```shell
+$ moon run client:build
+```
+
+moon doesn't just run that one command. It first builds an
+[action graph](<../(fundamentals)/action-graph.mdx>) of everything the task needs, then runs it in
+dependency order, in parallel where possible:
+
+1. **Provision the environment** - Set up any [toolchains](./toolchains.mdx) the tasks use, install their
+   dependencies, and sync the projects, when needed.
+2. **Run dependencies** - Run the task's `deps` first, like `utils:build`, as the client needs its
+   outputs.
+3. **Run the task** - Hash the task's inputs, and either restore its previous result from the cache,
+   or run its command and cache the result.
+
+Each task's output is prefixed with its target, so it's clear which task printed what, and moon
+prints a summary once everything has finished. If a task fails, moon stops the remaining tasks and
+exits with a non-zero code.
+
+## The cache in action
+
+Run the same command again:
+
+```shell
+$ moon run client:build
+```
+
+This time, both tasks finish almost instantly and are reported as cached. None of their inputs
+changed, so instead of running them, moon replayed their terminal output, and kept their outputs
+(`packages/utils/lib` and `apps/client/dist`) from the last run. Had those outputs been deleted,
+moon would have restored them from the cache. Now, try changing some files:
+
+- **Edit a file in `packages/utils/src`** - Both tasks run again. The file is an input of
+  `utils:build`, and since a task's hash includes the hashes of its dependencies, `client:build`
+  runs too.
+- **Edit `apps/client/README.md`** - Both tasks are still cached, as the README isn't one of
+  `client:build`'s [inputs](./tasks.mdx#inputs).
+
+This is why accurate inputs and outputs matter: they decide when work can be skipped. To run a task
+regardless of the cache, pass `--force` (or `-f`). And when a task runs or caches unexpectedly, the
+[debugging guide](../skills/debug-task.mdx) shows how to inspect what went into its hash.
+
+```shell
+# Run the task, bypassing the cache
+$ moon run client:build --force
+```
+
+The cache lives in `.moon/cache`, so by default it only helps your machine. To share results
+between teammates and CI, set up [remote caching](../guides/remote-cache.mdx).
+
+## Passing arguments
+
+Arguments after `--` are passed through to the task's command, after its configured arguments. This
+only applies when running a single target:
+
+```shell
+$ moon run client:build -- --mode staging
+```
+
+## Running many tasks
+
+Pass multiple targets to run them together, or use a
+[scope](<../(fundamentals)/target.mdx#project-scopes>) in place of the project ID to run a task in
+many projects at once:
+
+```shell
+# Run multiple tasks
+$ moon run client:build server:build
+
+# Run `build` in every project that has it
+$ moon run :build
+
+# Run `test` in every project tagged `frontend`
+$ moon run '#frontend:test'
+
+# Run `lint` in the closest project to the current directory
+$ moon run '~:lint'
+```
+
+Running `moon run` without any targets prompts you to select tasks from a list. And for a little
+less typing, the `moonx` binary is a shorthand for [`moon exec`](../commands/exec.mdx), which
+`moon run` is built on, so `moonx client:build` runs the same task.
+
+## Running affected tasks
+
+When working on a branch, you usually only care about the tasks your changes impact. Pass
+`--affected` to skip every task whose inputs haven't changed, based on the files changed in your
+working tree, or since a base revision with `--base`:
+
+```shell
+# Only run `test` tasks affected by local, uncommitted changes
+$ moon run :test --affected
+
+# Also include changes committed since branching off `main`
+$ moon run :test --affected --base main
+```
+
+Tasks that depend on an affected task, like `client:build` depending on `utils:build`, are affected
+too. See [affected tracking](../advanced/affected.mdx) for how changes are detected and how far
+they propagate.
+
+## Checking projects
+
+To verify that a project is in a good state, without remembering every task it has, use
+[`moon check`](../commands/check.mdx). It runs every build and test task of the given projects,
+where build tasks are those with outputs, and most other tasks, like `lint` and `test`, are test
+tasks:
+
+```shell
+# Check the client project
+$ moon check client
+
+# Check every project in the workspace
+$ moon check --all
+```
+
+## Running in CI
+
+In continuous integration, use [`moon ci`](../commands/ci.mdx) instead. It only runs tasks affected
+by the changes in the current branch or pull request, detecting the revisions to compare from your
+CI provider, and keeps running the remaining tasks when one fails, so a single run reports every
+failure:
+
+```shell
+$ moon ci
+```
+
+The [CI guide](../guides/ci.mdx) covers setting up moon in popular CI providers, choosing which tasks
+run in CI, and splitting work across parallel jobs.
+
+## Next steps
+
+That's it! You've set up a workspace, added projects, created tasks, and run them with caching.
+From here, dive deeper into the areas that matter most to your repository:
+
+<Cards>
+  <Card
+    title="Tasks"
+    description="Learn about every task setting, from environment variables to presets."
+    href="../(fundamentals)/task.mdx"
+  />
+  <Card
+    title="Task inheritance"
+    description="Share tasks across projects, and scope them to the projects that need them."
+    href="../(fundamentals)/task-inheritance.mdx"
+  />
+  <Card
+    title="Code generation"
+    description="Scaffold new projects and files from templates."
+    href="../guides/codegen.mdx"
+  />
+  <Card
+    title="Docker"
+    description="Build lean, cacheable Docker images for your projects."
+    href="../guides/docker.mdx"
+  />
+  <Card
+    title="Continuous integration"
+    description="Run only affected tasks in CI, and parallelize them across jobs."
+    href="../guides/ci.mdx"
+  />
+  <Card
+    title="Remote caching"
+    description="Share task results between teammates and CI machines."
+    href="../guides/remote-cache.mdx"
+  />
+</Cards>

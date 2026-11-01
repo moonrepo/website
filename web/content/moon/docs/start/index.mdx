@@ -1,0 +1,106 @@
+---
+title: Getting started
+---
+
+import { File, Files, Folder } from "fumadocs-ui/components/files";
+
+This guide walks through adopting moon in a repository, from creating a workspace to running your
+first cached tasks. Each step builds on the previous one and only takes a few minutes, and by the
+end, you'll have a working setup that you can grow into the rest of your repository.
+
+## Before you begin
+
+- **Install moon** - Follow the [installation instructions](../index.mdx), and confirm it works with
+  `moon --version`.
+- **Use a Git repository** - moon works best in a Git repository, as Git powers change detection,
+  fast file hashing, and [affected](../advanced/affected.mdx) runs. moon still runs without one, but
+  can't tell which files have changed.
+- **Keep your existing tools** - moon runs the same commands you run today, so your project's tools
+  (like Node.js or Cargo) should work on your machine. Later, you can let moon
+  [manage them for you](./toolchains.mdx).
+
+## The example repository
+
+To keep things concrete, this guide uses a small repository with two applications and a library that
+they share. It's written in TypeScript, but every step works the same for any language: swap the
+commands for the ones your projects use.
+
+<Files>
+  <Folder name="apps" defaultOpen>
+    <Folder name="client">
+      <Folder name="src" />
+      <File name="index.html" />
+      <File name="package.json" />
+      <File name="vite.config.ts" />
+    </Folder>
+    <Folder name="server">
+      <Folder name="src" />
+      <File name="package.json" />
+    </Folder>
+  </Folder>
+  <Folder name="packages" defaultOpen>
+    <Folder name="utils">
+      <Folder name="src" />
+      <File name="package.json" />
+      <File name="tsconfig.json" />
+    </Folder>
+  </Folder>
+  <File name="package.json" />
+  <File name="tsconfig.base.json" />
+</Files>
+
+- `apps/client` - A web app, built with Vite.
+- `apps/server` - An API server.
+- `packages/utils` - A library of shared code, used by both apps.
+
+Your repository doesn't need to look like this. moon has no required directory structure, and
+works just as well with a single project as with a monorepo of hundreds.
+
+## How moon fits together
+
+You'll meet a handful of concepts along the way. Here's how they relate:
+
+- **[Workspace](<../(fundamentals)/workspace.mdx>)** - The root of the repository, marked by a
+  `.moon` directory. It holds configuration that applies everywhere, and contains every project.
+- **[Projects](<../(fundamentals)/project.mdx>)** - Directories in the workspace, like
+  applications, libraries, and tools. Projects can depend on each other, which forms the
+  [project graph](<../(fundamentals)/project-graph.mdx>).
+- **[Toolchains](<../(fundamentals)/toolchain.mdx>)** - Optional plugins that teach moon about a
+  language, like how to install its dependencies, and which version of it to use.
+- **[Tasks](<../(fundamentals)/task.mdx>)** - Commands that run in the context of a project, like
+  `build` or `test`. moon caches their results, and skips them when nothing has changed.
+- **[Targets](<../(fundamentals)/target.mdx>)** - How a task is identified, in the format
+  `project:task`, like `client:build`.
+
+## Steps
+
+<Cards>
+  <Card
+    title="1. Set up a workspace"
+    description="Initialize moon in your repository with moon init."
+    href="./workspace.mdx"
+  />
+  <Card
+    title="2. Add projects"
+    description="Tell moon where your projects live, and how they depend on each other."
+    href="./projects.mdx"
+  />
+  <Card
+    title="3. Set up toolchains"
+    description="Optionally, integrate your languages and pin their versions."
+    href="./toolchains.mdx"
+  />
+  <Card
+    title="4. Create tasks"
+    description="Define the commands your projects run, with inputs and outputs for caching."
+    href="./tasks.mdx"
+  />
+  <Card
+    title="5. Run tasks"
+    description="Run tasks and their dependencies, and see the cache in action."
+    href="./run.mdx"
+  />
+</Cards>
+
+Prefer to learn the concepts first? Start with the [workspace](<../(fundamentals)/workspace.mdx>),
+and follow the fundamentals from there.
