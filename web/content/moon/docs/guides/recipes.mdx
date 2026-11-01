@@ -1,0 +1,840 @@
+---
+title: Recipes
+icon: CookingPot
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+
+Short, copy-and-paste solutions to common problems. Each recipe links to the documentation that
+explains it in depth, so start here when you know _what_ you want to do, but not _how_.
+
+## Running tasks
+
+Learn more about [`moon run`](../commands/run.mdx), [tasks](<../(fundamentals)/task.mdx>), and
+[targets](<../(fundamentals)/target.mdx>).
+
+### Run a task in a project
+
+```shell
+$ moon run app:build
+```
+
+### Run multiple tasks
+
+```shell
+# In specific projects
+$ moon run app:build server:build
+
+# In every project
+$ moon run :lint :test
+```
+
+### Run a task in every project
+
+```shell
+$ moon run :build
+```
+
+### Run a task in projects with a tag
+
+```shell
+$ moon run '#frontend:lint'
+# Or
+$ moon run \#frontend:lint
+# Or
+$ moon run :lint --query "projectTag=frontend"
+```
+
+The `#` must be quoted or escaped, as most shells treat it as the start of a comment.
+
+### Run a task in the closest project
+
+Runs the task in the project that contains the current working directory, which is handy when
+you're working inside a project.
+
+```shell
+$ moon run '~:test'
+```
+
+### Run tasks matching a pattern
+
+[Run targets](<../(fundamentals)/target.mdx#run-context>) support globs for project IDs and task
+IDs.
+
+```shell
+# Every task whose ID starts with `build-`, in every project
+$ moon run ':build-*'
+
+# The `build` task, in every project whose ID starts with `app-`
+$ moon run 'app-*:build'
+```
+
+### Run all build and test tasks
+
+[`moon check`](../commands/check.mdx) runs every build and test task, without listing them.
+
+```shell
+# In every project
+$ moon check --all
+
+# In a project
+$ moon check app
+```
+
+### Run a task without the cache
+
+```shell
+$ moon run app:build --force
+```
+
+### Pass arguments to a task
+
+Arguments after `--` are appended to the task's command.
+
+```shell
+$ moon run app:test -- --watch
+```
+
+### Keep running tasks after a failure
+
+[`moon run`](../commands/run.mdx) stops at the first failure, while
+[`moon exec`](../commands/exec.mdx) can continue with the remaining tasks.
+
+```shell
+$ moon exec :test --on-failure continue
+```
+
+### Skip dependencies
+
+Only runs the selected tasks, and not the tasks they depend on. This can produce incorrect results
+if a dependency's outputs are stale.
+
+```shell
+$ moon run app:build --no-dependencies
+```
+
+### Also run dependent tasks
+
+Runs the tasks that depend on the selected task, like rebuilding every app after changing a shared
+library.
+
+```shell
+# Only tasks that depend on it directly
+$ moon run utils:build --dependents direct
+
+# Every task that depends on it, at any depth
+$ moon run utils:build --dependents deep
+```
+
+## Filtering projects
+
+`--query` narrows the projects that a task runs in, using the
+[query language](../advanced/query-lang.mdx).
+
+### Run a task in applications, libraries, or tools
+
+```shell
+$ moon run :build --query "projectLayer=application"
+```
+
+### Run a task in projects of a specific language
+
+```shell
+$ moon run :lint --query "language=typescript"
+```
+
+### Run a task in projects matching a keyword
+
+```shell
+$ moon run :test --query "project~react-*"
+```
+
+### Run a task in projects based on file path
+
+```shell
+$ moon run :test --query "projectSource~packages/*"
+```
+
+### Run a task in every project except some
+
+```shell
+$ moon run :build --query "project!=[docs, website]"
+```
+
+### Combine multiple conditions
+
+```shell
+$ moon run :build --query "projectStack=frontend && (projectLayer=application || projectLayer=library)"
+```
+
+## Affected tasks and CI
+
+Learn more about [affected tracking](../advanced/affected.mdx) and
+[continuous integration](../guides/ci.mdx).
+
+### Only run tasks affected by changes
+
+```shell
+# Affected by local, uncommitted changes
+$ moon run :test --affected
+
+# Also include changes committed since branching off `main`
+$ moon run :test --affected --base main
+```
+
+### See what's affected, and why
+
+```shell
+$ moon query affected
+```
+
+### List changed files
+
+```shell
+# Locally changed files
+$ moon query changed-files --local
+
+# Files changed between two revisions
+$ moon query changed-files --base main --head HEAD
+```
+
+### Run affected tasks in CI
+
+[`moon ci`](../commands/ci.mdx) only runs affected tasks, detecting the revisions to compare from
+your CI provider.
+
+```shell
+$ moon ci
+```
+
+### Split CI across parallel jobs
+
+Partitions the tasks across jobs, so each job runs a share of them (see
+[parallelizing tasks](../guides/ci.mdx#parallelizing-tasks)).
+
+```shell
+# In the first of two jobs
+$ moon ci --job 0 --job-total 2
+
+# In the second of two jobs
+$ moon ci --job 1 --job-total 2
+```
+
+## Inspecting and debugging
+
+Learn more about [debugging a task](../skills/debug-task.mdx).
+
+### Inspect a task's configuration
+
+Shows the task after inheritance and defaults are applied, including its command, inputs, outputs,
+and dependencies.
+
+```shell
+$ moon task app:build
+
+# As JSON
+$ moon task app:build --json
+```
+
+### Find out why a task re-ran
+
+Every run prints its hash. Compare the manifests of two hashes to see what changed between them.
+
+```shell
+$ moon hash 0b55b234 2388552f
+```
+
+### Visualize the graphs
+
+```shell
+# How projects depend on each other
+$ moon project-graph
+
+# How tasks depend on each other
+$ moon task-graph app:build
+
+# Everything that runs for a target
+$ moon action-graph app:build
+```
+
+### Show debug logs
+
+```shell
+$ moon run app:build --log debug
+```
+
+### Print the path to a tool
+
+Prints the binary that tasks run with, as installed by the [toolchain](<../(fundamentals)/toolchain.mdx>).
+
+```shell
+$ moon bin node
+```
+
+## Caching
+
+Learn more about [inputs](<../(fundamentals)/task.mdx#inputs>),
+[outputs](<../(fundamentals)/task.mdx#outputs>), and the [cache](../advanced/cache.mdx).
+
+### Disable caching
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        options: {
+          cache: false,
+        },
+      },
+    },
+  }}
+/>
+
+### Only cache locally
+
+Keeps the task's outputs out of the [remote cache](../guides/remote-cache.mdx), like for outputs
+that differ between machines.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        options: {
+          cache: "local",
+        },
+      },
+    },
+  }}
+/>
+
+### Invalidate the cache
+
+Changing [`cacheKey`](/moon/api/TaskOptionsConfig#cachekey) changes the task's hash, which
+invalidates both the local and remote cache.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        options: {
+          cacheKey: "v2",
+        },
+      },
+    },
+  }}
+/>
+
+### Expire cached results
+
+Re-runs the task once its cached result is older than
+[`cacheLifetime`](/moon/api/TaskOptionsConfig#cachelifetime), even when its inputs haven't
+changed.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        options: {
+          cacheLifetime: "1h",
+        },
+      },
+    },
+  }}
+/>
+
+### Re-run a task when an environment variable changes
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        inputs: ["src/**/*", "$NODE_ENV"],
+      },
+    },
+  }}
+/>
+
+### Re-run a task when another project changes
+
+Includes another project's files in the task's inputs, optionally limited to a
+[file group](../advanced/file-groups.mdx).
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        inputs: ["src/**/*", { project: "utils", group: "sources" }],
+      },
+    },
+  }}
+/>
+
+## Dependencies
+
+Learn more about [task dependencies](<../(fundamentals)/task.mdx#dependencies>).
+
+### Depend on tasks from the project's dependencies
+
+<ConfigTabs
+  file="moon"
+  config={{
+    dependsOn: ["project-a", "project-b"],
+    tasks: {
+      example: {
+        deps: ["^:build"],
+      },
+    },
+  }}
+  comments={{
+    dependsOn: "Can also be inferred by toolchains",
+    deps: "Runs `build` in `project-a` and `project-b`",
+  }}
+/>
+
+### Depend on tasks from arbitrary projects
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        deps: ["other-project:task"],
+      },
+    },
+  }}
+/>
+
+### Depend on a task in the same project
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        deps: ["codegen"],
+      },
+    },
+  }}
+/>
+
+### Run dependencies serially
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        deps: ["first", "second", "third"],
+        options: {
+          runDepsInParallel: false,
+        },
+      },
+    },
+  }}
+/>
+
+### Run multiple watchers or servers in parallel
+
+A task without a command does nothing itself, so it can group other tasks. The watchers and servers
+must be [persistent](<../(fundamentals)/task.mdx#persistent>), like with the `server`
+[preset](<../(fundamentals)/task.mdx#presets>), so moon doesn't wait for them to finish. And as only
+persistent tasks can depend on persistent tasks, the grouping task must be persistent too.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      dev: {
+        deps: ["app:watch", "backend:start", "tailwind:watch"],
+        preset: "server",
+      },
+    },
+  }}
+/>
+
+### Run a task alongside a server
+
+The task only waits for the server to _start_, not to complete, and the cleanup dependency stops it
+afterwards (see [dependency types](<../(fundamentals)/task.mdx#dependency-types>)).
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        deps: [
+          { target: "app:serve", type: "wait" },
+          { target: "app:stop", type: "cleanup" },
+        ],
+        options: {
+          cache: false,
+        },
+      },
+    },
+  }}
+/>
+
+Servers don't run in CI by default, so if this task runs in CI, also enable
+[`runInCI`](/moon/api/TaskOptionsConfig#runinci) for `app:serve`.
+
+### Clean up after a task, even when it fails
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        deps: ["db:start", { target: "db:stop", type: "cleanup" }],
+      },
+    },
+  }}
+/>
+
+## Execution
+
+Learn more about [task options](<../(fundamentals)/task.mdx#options>).
+
+### Re-run flaky tasks
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        options: {
+          retryCount: 3,
+        },
+      },
+    },
+  }}
+/>
+
+### Allow a task to fail
+
+The task can fail without failing the rest of the pipeline.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        options: {
+          onFailure: "allow",
+        },
+      },
+    },
+  }}
+/>
+
+### Time out long-running tasks
+
+Cancels the task after the given number of seconds.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        options: {
+          timeout: 300,
+        },
+      },
+    },
+  }}
+/>
+
+### Only run a task on certain operating systems
+
+On other operating systems, the task does nothing.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        options: {
+          os: ["linux", "macos"],
+        },
+      },
+    },
+  }}
+/>
+
+### Prevent tasks from running at the same time
+
+Tasks that share a [`mutex`](/moon/api/TaskOptionsConfig#mutex) never run concurrently, like tests
+that use the same database.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        options: {
+          mutex: "database",
+        },
+      },
+    },
+  }}
+/>
+
+### Run a task from the workspace root
+
+Tasks run from their project's root by default.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        options: {
+          runFromWorkspaceRoot: true,
+        },
+      },
+    },
+  }}
+/>
+
+### Use pipes, redirects, or multiple commands
+
+A [`script`](<../(fundamentals)/task.mdx#script>) runs in a shell, so shell syntax is supported.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        script: "rm -rf dist && vite build | tee build.log",
+      },
+    },
+  }}
+/>
+
+### Load environment variables from a `.env` file
+
+`true` loads the `.env` file in the project root, while a path (or list of paths) loads specific
+files (see [`.env` files](<../(fundamentals)/task.mdx#env-files>)).
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        options: {
+          envFile: true,
+        },
+      },
+    },
+  }}
+/>
+
+### Pass only changed files to a task
+
+When running with `--affected`, the changed files that match the task's inputs are passed as
+arguments, like `eslint ./src/index.ts`. Otherwise, `.` is passed instead.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      lint: {
+        command: "eslint",
+        options: {
+          affectedFiles: "args",
+        },
+      },
+    },
+  }}
+/>
+
+```shell
+$ moon run :lint --affected
+```
+
+### Skip a task in CI
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        options: {
+          runInCI: false,
+        },
+      },
+    },
+  }}
+/>
+
+### Hide a task from the command line
+
+An internal task can't be run directly, but other tasks can still depend on it.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        options: {
+          internal: true,
+        },
+      },
+    },
+  }}
+/>
+
+## Inheritance
+
+Learn more about [task inheritance](<../(fundamentals)/task-inheritance.mdx>).
+
+### Share a task with every project
+
+<ConfigTabs
+  file=".moon/tasks/all"
+  config={{
+    tasks: {
+      lint: {
+        command: "eslint .",
+      },
+    },
+  }}
+/>
+
+### Share a task with some projects
+
+<ConfigTabs
+  file=".moon/tasks/frontend"
+  config={{
+    inheritedBy: {
+      tags: ["frontend"],
+    },
+    tasks: {
+      lint: {
+        command: "eslint .",
+      },
+    },
+  }}
+/>
+
+See [scoping inheritance](<../(fundamentals)/task-inheritance.mdx#scoping-inheritance>) for every
+condition.
+
+### Don't inherit a task in a project
+
+<ConfigTabs
+  file="moon"
+  config={{
+    workspace: {
+      inheritedTasks: {
+        exclude: ["lint"],
+      },
+    },
+  }}
+/>
+
+### Add arguments to an inherited task
+
+A task with the same ID as an inherited task is merged into it, and its arguments are added after
+the inherited ones. To change this, set [`mergeArgs`](/moon/api/TaskOptionsConfig#mergeargs) to
+`prepend` or `replace` (see
+[merge strategies](<../(fundamentals)/task-inheritance.mdx#merge-strategies>)).
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      lint: {
+        args: ["--max-warnings", "0"],
+      },
+    },
+  }}
+/>
+
+## Toolchains
+
+Learn more about [toolchains](<../(fundamentals)/toolchain.mdx>).
+
+### Run system binaries available on `PATH`
+
+Tasks that don't use any toolchain run through the `system` toolchain, with the binaries on your
+`PATH`. To opt a task out of its project's toolchains, set it explicitly.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        command: "printenv",
+        toolchains: ["system"],
+      },
+    },
+  }}
+/>
+
+### Run tools that moon doesn't have a toolchain for
+
+No toolchain is required to run a tool, as long as it's on your `PATH`. Set the project's
+[`language`](/moon/api/ProjectConfig#language) to categorize it.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    language: "php",
+    tasks: {
+      lint: {
+        command: "phpstan analyse",
+      },
+    },
+  }}
+/>
+
+### Run npm binaries (Node.js)
+
+Tasks that use the [JavaScript toolchain](../toolchains/javascript/index.mdx) have
+`node_modules/.bin` on `PATH`. When the toolchain is enabled, it's detected for projects with a
+`package.json`, and their tasks use it automatically, but it can also be set explicitly.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      example: {
+        command: "eslint",
+        toolchains: ["javascript"],
+      },
+    },
+  }}
+/>
+
+### Use a different tool version in a project
+
+<ConfigTabs
+  file="moon"
+  config={{
+    toolchains: {
+      node: {
+        version: "22.12.0",
+      },
+    },
+  }}
+/>
+
+### Disable a toolchain in a project
+
+Disables the toolchain even when it's detected (see
+[overrides](<../(fundamentals)/project.mdx#overrides>)).
+
+<ConfigTabs
+  file="moon"
+  config={{
+    toolchains: {
+      node: false,
+    },
+  }}
+/>

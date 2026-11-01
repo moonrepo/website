@@ -1,0 +1,295 @@
+---
+title: Set up toolchains
+icon: Grid2x2Plus
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
+
+At this point, moon knows about your projects, but not which languages they're written in. Every
+task runs through the `system` toolchain, which runs commands with the binaries on your `PATH`.
+That works, but leaves a lot on the table. Enabling a [toolchain](<../(fundamentals)/toolchain.mdx>)
+for a language teaches moon about its ecosystem, so it can:
+
+- **Detect usage** - Recognize which projects and tasks use the language, from files like
+  `package.json` or `Cargo.toml`, and commands like `node` or `cargo`.
+- **Install dependencies** - Install dependencies before tasks run, like `pnpm install`, but only
+  when the lockfile, manifests, or settings change.
+- **Infer relationships** - Turn dependencies between packages in your manifests into project
+  dependencies, so they don't need to be repeated in `dependsOn`.
+- **Hash precisely** - Include the locked versions of a project's dependencies in its task hashes,
+  so upgrading a dependency only re-runs the tasks that use it.
+- **Pin versions** - Download and install a specific version of the language, so every machine runs
+  the same one.
+
+Toolchains are optional, and can be enabled at any time. If you'd rather keep running your own
+tools from `PATH` for now, skip ahead to [creating tasks](./tasks.mdx).
+
+## Enabling a toolchain
+
+Toolchains are enabled in [`.moon/toolchains.config`](<../(fundamentals)/toolchain.mdx>), where each
+top-level key is a toolchain ID. The easiest way to add one is with
+[`moon toolchain add`](../commands/toolchain/add.mdx), which detects a version from your
+repository, prompts for the toolchain's settings, and writes the entry for you (creating the file
+if needed).
+
+Choose your ecosystem below. Most languages need a single toolchain, while ecosystems like
+JavaScript and Python combine a language toolchain with one for the runtime or package manager.
+
+<Tabs
+  groupId="toolchain"
+  persist
+  items={["Node.js", "Bun", "Deno", "Go", "Python", "Ruby", "Rust", "Custom toolchain"]}
+>
+<Tab>
+
+The [JavaScript toolchain](../toolchains/javascript/index.mdx) integrates with `package.json`
+files and installs dependencies, while the [Node.js](../toolchains/javascript/node.mdx) toolchain
+manages the runtime, and a package manager toolchain, like [pnpm](../toolchains/javascript/pnpm.mdx),
+manages the package manager.
+
+```shell
+$ moon toolchain add javascript
+$ moon toolchain add node
+$ moon toolchain add pnpm
+```
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    javascript: {
+      packageManager: "pnpm",
+    },
+    node: {
+      version: "24.12.0",
+    },
+    pnpm: {
+      version: "10.24.0",
+    },
+  }}
+/>
+
+Using npm or Yarn? Add the `npm` or `yarn` toolchain instead of `pnpm`, and set `packageManager` to
+match. For TypeScript projects, also consider the [TypeScript](../toolchains/typescript.mdx)
+toolchain, which keeps `tsconfig.json` project references in sync with project dependencies.
+
+</Tab>
+<Tab>
+
+The [JavaScript toolchain](../toolchains/javascript/index.mdx) integrates with `package.json`
+files and installs dependencies, while the [Bun](../toolchains/javascript/bun.mdx) toolchain
+manages Bun itself, as both the runtime and package manager.
+
+```shell
+$ moon toolchain add javascript
+$ moon toolchain add bun
+```
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    javascript: {
+      packageManager: "bun",
+    },
+    bun: {
+      version: "1.3.5",
+    },
+  }}
+/>
+
+</Tab>
+<Tab>
+
+The [Deno toolchain](../toolchains/javascript/deno.mdx) detects projects from `deno.json` files and
+manages Deno itself, while the [JavaScript toolchain](../toolchains/javascript/index.mdx) uses Deno
+as its package manager to install dependencies.
+
+```shell
+$ moon toolchain add javascript
+$ moon toolchain add deno
+```
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    javascript: {
+      packageManager: "deno",
+    },
+    deno: {
+      version: "2.9.0",
+    },
+  }}
+/>
+
+</Tab>
+<Tab>
+
+The [Go toolchain](../toolchains/go.mdx) integrates with `go.mod` files, and can infer
+relationships between projects from their imports.
+
+```shell
+$ moon toolchain add go
+```
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    go: {
+      version: "1.24.2",
+    },
+  }}
+/>
+
+</Tab>
+<Tab>
+
+The [Python toolchain](../toolchains/python/index.mdx) manages virtual environments and the Python
+version, while a package manager toolchain, like [uv](../toolchains/python/uv.mdx), installs
+dependencies. Python support is still being developed, so its toolchain IDs are prefixed with
+`unstable_`.
+
+```shell
+$ moon toolchain add unstable_python
+$ moon toolchain add unstable_uv
+```
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    unstable_python: {
+      version: "3.13.1",
+      packageManager: "uv",
+    },
+    unstable_uv: {
+      version: "0.8.0",
+    },
+  }}
+/>
+
+</Tab>
+<Tab>
+
+The [Ruby toolchain](../toolchains/ruby.mdx) integrates with `Gemfile` files, installs gems with
+Bundler, and can infer relationships between projects from `path:` gems. Ruby support is still being
+developed, so its toolchain ID is prefixed with `unstable_`.
+
+```shell
+$ moon toolchain add unstable_ruby
+```
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    unstable_ruby: {
+      version: "3.4.7",
+    },
+  }}
+/>
+
+</Tab>
+<Tab>
+
+The [Rust toolchain](../toolchains/rust.mdx) integrates with `Cargo.toml` files, and installs Rust
+with rustup.
+
+```shell
+$ moon toolchain add rust
+```
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    rust: {
+      version: "1.90.0",
+    },
+  }}
+/>
+
+</Tab>
+<Tab>
+
+Using a language or tool that moon doesn't support out of the box? Toolchains are WASM plugins, so
+you can enable a third-party toolchain, or
+[create your own](<../(fundamentals)/toolchain.mdx#creating-a-toolchain>). Unlike built-in
+toolchains, moon doesn't know where to download these plugins from, so they require a
+[`plugin`](/moon/api/ToolchainPluginConfig#plugin) locator that points to the plugin's `.wasm` file.
+Pass it as the second argument to `moon toolchain add`:
+
+```shell
+# Add a toolchain from a GitHub release
+$ moon toolchain add example github://acme/example-toolchain@v1.0.0
+
+# Add a toolchain that you're developing locally
+$ moon toolchain add example file://../plugins/example_toolchain.wasm
+```
+
+<ConfigTabs
+  file=".moon/toolchains"
+  config={{
+    example: {
+      plugin: "github://acme/example-toolchain@v1.0.0",
+      version: "1.2.0",
+      someSetting: true,
+    },
+  }}
+  comments={{
+    version: "Only applies if the plugin supports tool management",
+    someSetting: "A setting of the plugin's own",
+  }}
+/>
+
+The ID (`example` above) is up to you, and is how projects, tasks, and environment variables refer to
+the toolchain. Locators support the `file://`, `https://`, `github://`, and `registry://` protocols
+(see [plugin locators](../../../wasm/docs/plugin-locators.mdx)), and relative `file://` paths are
+resolved from the `.moon` directory. Any setting that isn't one of moon's own, like `someSetting`, is
+passed to the plugin as its configuration.
+
+</Tab>
+</Tabs>
+
+Run [`moon projects`](../commands/projects.mdx) again, and the toolchains column now lists the
+toolchains detected for each project. See [built-in toolchains](<../(fundamentals)/toolchain.mdx#built-in-toolchains>)
+for every toolchain that moon supports out of the box.
+
+## Pinning tool versions
+
+The `version` setting is what makes moon manage the tool for you. When a task needs a toolchain
+with a version, moon downloads and installs that version through [proto](../../../proto/docs/index.mdx)
+(installing proto itself first, if needed), and runs the task with it on `PATH`. Every developer and
+CI machine gets the exact same version, without installing anything themselves.
+
+Without a `version`, moon uses the tool's binary on your `PATH` instead, which must already be
+installed.
+
+If your repository already pins versions in a `.prototools` file, you can leave `version` out of
+`.moon/toolchains.config`, as moon inherits versions from `.prototools` by default:
+
+```toml title=".prototools"
+node = "24.12.0"
+pnpm = "10.24.0"
+```
+
+Tools are installed the first time they're needed, like when running a task. To install them ahead
+of time, or to check that installation works, run [`moon setup`](../commands/setup.mdx). And to find
+the binary that tasks will use, run [`moon bin`](../commands/bin.mdx).
+
+```shell
+# Install every configured tool
+$ moon setup
+
+# Print the path to the Node.js binary that tasks run with
+$ moon bin node
+```
+
+See [tool management](<../(fundamentals)/toolchain.mdx#tier-3-tool-management>) for where versions
+are resolved from, and how to override them.
+
+## Next steps
+
+<Cards>
+  <Card
+    title="Create tasks"
+    description="Define the commands your projects run, with inputs and outputs for caching."
+    href="./tasks.mdx"
+  />
+</Cards>

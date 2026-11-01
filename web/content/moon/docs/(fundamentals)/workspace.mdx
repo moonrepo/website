@@ -229,8 +229,10 @@ the hash matches a previous run, moon restores the cached outputs instead of run
   hash dependency versions from lockfiles. With `performance`, the version ranges from manifests are
   hashed instead, which is faster but misses upgrades within the same range (see
   [parsing manifest and lock files](./toolchain.mdx#parsing-manifest-and-lock-files)).
-- [`ignorePatterns`](/moon/api/HasherConfig#ignorepatterns) - Workspace-relative globs for files to
-  leave out of every hash, like generated files that change on every run. Prefix them with `**/`.
+- [`ignorePatterns`](/moon/api/HasherConfig#ignorepatterns) - Globs for files to leave out of every
+  hash, like generated files that change on every run. They're matched against workspace-relative
+  paths, so `docs/**` matches the `docs` directory at the workspace root, while `**/*.snap` matches
+  files in any directory.
 - [`warnOnMissingInputs`](/moon/api/HasherConfig#warnonmissinginputs) - Logs a warning when an
   input file doesn't exist (enabled by default). Files matching
   [`ignoreMissingPatterns`](/moon/api/HasherConfig#ignoremissingpatterns), which defaults to `.env`

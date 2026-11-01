@@ -54,12 +54,13 @@ produce a reliable comparison.
 ## Options
 
 - `--base` <TypeLabel type="string" /> - Base branch, commit, or revision to compare against. Can
-  also be set via the `MOON_BASE` environment variable.
+  also be set via the `MOON_BASE` environment variable, which takes precedence over
+  this option when it isn't empty.
 - `--default-branch` <TypeLabel type="boolean" /> - When on the default branch, compare against the
   previous revision (`HEAD~1`) instead of diffing 2 branches. Passing the flag alone enables it.
   Defaults to whether moon detects it's running in CI.
 - `--head` <TypeLabel type="string" /> - Current branch, commit, or revision to compare with.
-  Defaults to `HEAD`. Can also be set via the `MOON_HEAD` environment variable.
+  Defaults to `HEAD`. Can also be set via the `MOON_HEAD` environment variable, which takes precedence over this option when it isn't empty.
 - `--local` - Gather files from your local working tree (`git status`) instead of the remote.
   Mutually exclusive with `--remote`.
 - `--remote` - Gather files from a remote comparison instead of your local working tree. Mutually

@@ -132,11 +132,11 @@ While building the graph, moon records diagnostics for placements that may be un
 shown by [`moon layout-graph --info`](../commands/layout-graph.mdx), and are only complete for a
 full graph:
 
-| Diagnostic | Level   | Description |
-| :--------- | :------ | :---------- |
-| Outside    | Info    | The project located a root, but isn't a member of it, so the root doesn't install the project's dependencies. |
+| Diagnostic | Level   | Description                                                                                                                                                                          |
+| :--------- | :------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Outside    | Info    | The project located a root, but isn't a member of it, so the root doesn't install the project's dependencies.                                                                        |
 | Shadowed   | Warning | The project is in a root, while an enclosing root of the same toolchain also matches it with its member globs, so the enclosing root may install the project's dependencies as well. |
-| Divergent  | Info    | The project's version differs from its root's version, so its tasks run with a different version than its dependencies were installed with. |
+| Divergent  | Info    | The project's version differs from its root's version, so its tasks run with a different version than its dependencies were installed with.                                          |
 
 A shadowed project is usually a sign of a nested workspace that should be excluded from the
 enclosing workspace's member globs.

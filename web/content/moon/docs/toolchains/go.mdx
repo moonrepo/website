@@ -144,10 +144,12 @@ Configure a [`version`](/moon/api/ToolchainPluginConfig#version) to have moon in
 The following settings are available under the `go` entry of
 [`.moon/toolchains.config`](<../(fundamentals)/toolchain.mdx>).
 
-- `bins` <TypeLabel type="(string | { bin: string, force?: boolean, local?: boolean })[]" /> - A
+- `bins` <TypeLabel type="(string | { bin: string, args?: string[], force?: boolean, local?: boolean })[]" /> - A
   list of binaries to install with `go install`. Each entry is a package path with an optional
   `@version` (for example, `golang.org/x/tools/gopls@latest`), or an object with the following
   fields. Defaults to `[]`. See [installing binaries](#installing-binaries).
+  - `args` <TypeLabel type="string[]" /> - Additional arguments to pass to `go install`, like build
+    flags. Defaults to `[]`.
   - `bin` <TypeLabel type="string" /> - The package path, with an optional `@version`. Required.
   - `force` <TypeLabel type="boolean" /> - Always install the binary, even if it already exists.
     Defaults to `false`.
@@ -321,6 +323,8 @@ each group is installed with a single `go install -v` command in the dependencie
   like a version bump.
 - Binaries with `force` enabled are always installed, and binaries with `local` enabled are skipped
   in CI.
+- Arguments from `args` are passed to `go install` before the package paths. As they apply to every
+  package in the command, binaries with different arguments are installed separately.
 
 Go's global binaries directory is located by proto, and is the first of `$GOBIN`, `$GOROOT/bin`,
 `$GOPATH/bin`, and `~/go/bin` that contains files, falling back to `~/go/bin`. When a `version` is

@@ -134,6 +134,9 @@ The following settings are available under the `deno` entry of
   `deno install --global --allow-net --allow-read`. Each entry is a module specifier or URL (like
   `jsr:@std/http/file-server`), or an object with the following fields. This setting currently has
   no effect (see [setting up the environment](#setting-up-the-environment)). Defaults to `[]`.
+  - `args` <TypeLabel type="string[]" /> - Additional arguments to pass to `deno install`, like more
+    permission flags (`--allow-env`). They're placed before the module, so they apply to the install
+    rather than becoming arguments of the installed script. Defaults to `[]`.
   - `bin` <TypeLabel type="string" /> - The module specifier or URL to install. Required.
   - `force` <TypeLabel type="boolean" /> - Overwrite an existing binary, by passing `--force`.
     Defaults to `false`.

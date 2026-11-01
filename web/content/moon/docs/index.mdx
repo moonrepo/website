@@ -1,5 +1,281 @@
 ---
-title: moon
+title: Install moon
 ---
 
-TODO
+import { ConfigTabs } from "@/components/ConfigTabs";
+
+moon is a repository *m*anagement, *o*rganization, *o*rchestration, and *n*otification tool, written in
+Rust. It runs the [tasks](<./(fundamentals)/task.mdx>) of every
+[project](<./(fundamentals)/project.mdx>) in your repository through a single, cached pipeline,
+and manages the tools those tasks need, so builds are fast and behave the same on every machine. It
+works for a repository with a single project or a monorepo with hundreds of them, in any language.
+
+This page covers what moon does, how to install it, and how to keep it up to date. Already
+installed? Jump to [getting started](./start/index.mdx).
+
+## Supported platforms
+
+moon provides 2 self-contained binaries, `moon` and `moonx`. It's built
+for the following targets:
+
+| Operating system | Architecture          | Target                       |
+| ---------------- | --------------------- | ---------------------------- |
+| macOS            | Apple Silicon (ARM64) | `aarch64-apple-darwin`       |
+| macOS            | Intel (x64)           | `x86_64-apple-darwin`        |
+| Linux            | ARM64 (GNU)           | `aarch64-unknown-linux-gnu`  |
+| Linux            | ARM64 (musl)          | `aarch64-unknown-linux-musl` |
+| Linux            | x64 (GNU)             | `x86_64-unknown-linux-gnu`   |
+| Linux            | x64 (musl)            | `x86_64-unknown-linux-musl`  |
+| Windows          | x64                   | `x86_64-pc-windows-msvc`     |
+
+## Installing
+
+Choose one of the following methods. If you're unsure, use proto, as it can install multiple versions
+of moon side by side, and switch between them per repository.
+
+### proto
+
+[proto](../../proto/docs/index.mdx) is moonrepo's version manager for languages and tools, and moon
+is one of the tools it supports out of the box. Once proto is installed, install moon with:
+
+```shell
+# Install the latest version
+$ proto install moon
+
+# Install the latest version, and pin it in the closest .prototools
+$ proto install moon --pin
+```
+
+proto installs moon into its own store (`~/.proto/tools/moon`), and makes `moon` and `moonx`
+available through its shims, so the version that runs is resolved from the closest `.prototools`
+file. This is the easiest way to pin moon per repository (see
+[pinning a version](#pinning-a-version)).
+
+```toml title=".prototools"
+moon = "2.6.4"
+```
+
+### macOS, Linux, and WSL
+
+In a terminal that supports Bash, run the install script:
+
+```shell
+$ curl -fsSL https://moonrepo.dev/install/moon.sh | bash
+```
+
+The script detects your operating system and architecture (including GNU or musl on Linux),
+downloads the matching release from GitHub, and installs `moon` and `moonx` into `~/.moon/bin`.
+
+To install a specific version instead of the latest, pass it as an argument:
+
+```shell
+$ curl -fsSL https://moonrepo.dev/install/moon.sh | bash -s -- 2.6.4
+```
+
+### Windows
+
+In PowerShell or Windows Terminal, run the install script:
+
+```shell
+$ irm https://moonrepo.dev/install/moon.ps1 | iex
+```
+
+The script installs `moon.exe` and `moonx.exe` into `~\.moon\bin`, and adds that directory to the
+`Path` environment variable of your user account. Open a new terminal for the change to take
+effect.
+
+<Callout>
+  If you use Git Bash on Windows, you can run the [Bash
+  script](#macos-linux-and-wsl) instead.
+</Callout>
+
+### npm
+
+moon is also published to npm as the
+[`@moonrepo/cli`](https://www.npmjs.com/package/@moonrepo/cli) package, which pulls in the binary
+for your platform as an optional dependency. This is a natural
+fit for JavaScript repositories, as the version is pinned in `package.json` and the lockfile, and
+installed alongside your other dependencies. Install it as a development dependency at the root of
+the repository:
+
+```shell
+# npm
+$ npm install --save-dev @moonrepo/cli
+
+# pnpm
+$ pnpm add --save-dev @moonrepo/cli
+
+# Yarn
+$ yarn add --dev @moonrepo/cli
+
+# Bun
+$ bun add --dev @moonrepo/cli
+```
+
+Then run moon through your package manager, like `npx moon run app:build` or `pnpm moon run
+app:build`.
+
+<Callout>
+  If a global `moon` binary is run inside a repository that also has
+  `@moonrepo/cli` installed, the global binary hands off to the repository's
+  binary, so the version pinned in `package.json` is always the one that runs.
+  This applies to binaries installed with proto, the install scripts, or a
+  global package manager install.
+</Callout>
+
+### Nix
+
+moon's repository provides a Nix flake for Linux (x64 and ARM64) and macOS on Apple Silicon. Run moon
+from the flake without installing it:
+
+```shell
+$ nix run github:moonrepo/moon -- --version
+```
+
+Or, for a flake-based NixOS or home-manager configuration, add moon as an input, and use its
+`default` package:
+
+```nix title="flake.nix"
+{
+  inputs.moon.url = "github:moonrepo/moon";
+
+  outputs = { nixpkgs, moon, ... }: {
+    # Somewhere in your configuration
+    environment.systemPackages = [ moon.packages.x86_64-linux.default ];
+  };
+}
+```
+
+moon is also available in [nixpkgs](https://search.nixos.org/packages?query=moon), but that
+package is maintained separately and may lag behind the latest release.
+
+### Manual download
+
+Every release is published to
+[GitHub releases](https://github.com/moonrepo/moon/releases), as an archive per target. Download the archive for your
+platform, extract it, and move `moon` and `moonx` into a directory on your `PATH`.
+
+## Upgrading
+
+moon can upgrade itself with [`moon upgrade`](./commands/upgrade.mdx), which checks for a newer
+version, and installs it based on how moon was installed:
+
+- **proto** - Defers to proto, by running `proto install moon latest --pin local`, which also pins
+  the new version in the `.prototools` of the current directory.
+- **Install scripts** - Downloads the new release, and replaces `moon` and `moonx` in place, keeping
+  the previous binaries as `.backup` files. Pass `--update-constraint` to also update
+  [`versionConstraint`](/moon/api/WorkspaceConfig#versionconstraint) to the new version.
+- **Anything else** - When moon is installed outside of its home directory (`~/.moon`) and proto's
+  store, like with npm, Nix, or a manual download, it can't safely replace itself, and fails with an
+  error. Upgrade with the tool that installed it instead, like bumping the `@moonrepo/cli` version
+  in `package.json`.
+
+```shell
+# Upgrade to the latest version
+$ moon upgrade
+
+# Upgrade, and update the version constraint in .moon/workspace.config
+$ moon upgrade --update-constraint
+```
+
+Re-running an install script also installs the latest version, overwriting the previous one. And
+with proto, you can upgrade (and pin) directly:
+
+```shell
+$ proto install moon --pin
+```
+
+To check for and download new versions from your own servers instead of moonrepo's, see
+[hosting releases yourself](./commands/upgrade.mdx#hosting-releases-yourself).
+
+## Uninstalling
+
+Uninstall moon with the tool that installed it:
+
+- **proto** - Run `proto uninstall moon`.
+- **Install scripts** - Delete the `moon` and `moonx` executables from the
+  [install location](#install-location), and remove any references from your shell profiles. To also remove moon's global data, like downloaded plugins, delete `~/.moon`
+  entirely.
+- **npm** - Remove `@moonrepo/cli` from `package.json`.
+
+Each repository's `.moon/cache` directory can be deleted at any time, as moon recreates it as
+needed.
+
+## How to
+
+### Verify the installation
+
+Once installed, confirm moon is on your `PATH` by printing its version:
+
+```shell
+$ moon --version
+```
+
+You can also enable tab-completion for commands and options in your shell, with
+[`moon completions`](./commands/completions.mdx).
+
+### Pin a version
+
+Different moon versions can behave differently, so everyone working in a repository, including CI,
+should run the same version. There are a few ways to pin it:
+
+- **`.prototools`** - When installed with [proto](#proto), the version in `.prototools` is the one
+  that runs in that repository.
+- **`package.json`** - When installed with [npm](#npm), the version in `package.json` and the
+  lockfile is the one that runs, even when a global binary is invoked.
+- **`versionConstraint`** - Regardless of how moon is installed, the
+  [`versionConstraint`](/moon/api/WorkspaceConfig#versionconstraint) setting in
+  [`.moon/workspace.config`](<./(fundamentals)/workspace.mdx#version-constraint>) requires the
+  running binary to match a version range, and moon fails with an error when it doesn't. It
+  doesn't install anything, but catches mismatched versions early.
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    versionConstraint: "^2.6.0",
+  }}
+/>
+
+### Customize install location
+
+Both install scripts install into the first of the following directories whose environment
+variable is set, and otherwise into `~/.moon/bin`:
+
+1. `$MOON_INSTALL_DIR`
+2. `$MOON_HOME/bin`
+3. `$XDG_DATA_HOME/moon/bin`
+
+`MOON_HOME` (or `XDG_DATA_HOME`) also controls moon's home directory, where it stores global data
+like downloaded plugins and templates, which defaults to `~/.moon`.
+[`moon upgrade`](./commands/upgrade.mdx) can only replace binaries inside this home directory, so if
+`MOON_INSTALL_DIR` points elsewhere, upgrade by re-running the script instead.
+
+To install without modifying your shell profiles or `Path`, like in a Docker image or a CI job where
+you manage `PATH` yourself, set the `MOON_CLI_NO_MODIFY_PATH` environment variable to `1`.
+
+```shell
+$ curl -fsSL https://moonrepo.dev/install/moon.sh | MOON_CLI_NO_MODIFY_PATH=1 bash
+```
+
+### Setup continuous integration
+
+CI machines need moon too. On GitHub Actions, the
+[`moonrepo/setup-toolchain`](https://github.com/moonrepo/setup-toolchain) action installs proto and
+moon, honoring the version pinned in `.prototools`. With other providers, use any of the methods
+above, like the install script or the npm package. See the [CI guide](./guides/ci.mdx) for complete
+workflows.
+
+## Next steps
+
+<Cards>
+  <Card
+    title="Getting started"
+    description="Set up a workspace, add projects and tasks, and run them."
+    href="./start/index.mdx"
+  />
+  <Card
+    title="Workspace"
+    description="Learn how moon finds and configures your repository."
+    href="./(fundamentals)/workspace.mdx"
+  />
+</Cards>

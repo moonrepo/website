@@ -71,12 +71,12 @@ When an action fails, the pipeline either **bails**, aborting all remaining work
 **continues**, running everything that doesn't depend on the failed action. Each command uses a
 fixed mode, except for [`moon exec`](../commands/exec.mdx), which is configurable:
 
-| Command                              | Mode                                                                  |
-| :----------------------------------- | :-------------------------------------------------------------------- |
-| [`moon run`](../commands/run.mdx)    | Bail                                                                  |
-| [`moon check`](../commands/check.mdx) | Bail                                                                 |
-| [`moon ci`](../commands/ci.mdx)      | Continue                                                              |
-| [`moon exec`](../commands/exec.mdx)  | Bail, unless `--on-failure continue` (or `MOON_ON_FAILURE`) is passed |
+| Command                               | Mode                                                                  |
+| :------------------------------------ | :-------------------------------------------------------------------- |
+| [`moon run`](../commands/run.mdx)     | Bail                                                                  |
+| [`moon check`](../commands/check.mdx) | Bail                                                                  |
+| [`moon ci`](../commands/ci.mdx)       | Continue                                                              |
+| [`moon exec`](../commands/exec.mdx)   | Bail, unless `--on-failure continue` (or `MOON_ON_FAILURE`) is passed |
 
 When continuing, the tasks that depend on a failed task are skipped, and their dependents in turn,
 while unrelated tasks keep running. This is why [`moon ci`](../commands/ci.mdx) continues: a

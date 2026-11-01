@@ -7,7 +7,7 @@ icon: Settings
   Requires the `config` Cargo feature, which is enabled by default.
 </Callout>
 
-The primary feature of Schematic is a layered serde-driven configuration solution, and is powered
+The primary feature of schematic is a layered serde-driven configuration solution, and is powered
 through the [`Config`](./struct/index.mdx) and [`ConfigEnum`](./enum/index.mdx) traits, and their
 associated derive macro. These macros help to generate and automate the following (when applicable):
 
@@ -132,7 +132,7 @@ struct AppConfig {}
 
 ## Supported source formats
 
-Schematic is powered entirely by [serde](https://serde.rs), and supports the following formats:
+schematic is powered entirely by [serde](https://serde.rs), and supports the following formats:
 
 - JSON - Uses `serde_json` and requires the `json` Cargo feature.
 - Pkl - Uses `rpkl` and requires the `pkl` Cargo feature.

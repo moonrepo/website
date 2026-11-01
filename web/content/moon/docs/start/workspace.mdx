@@ -1,0 +1,109 @@
+---
+title: Set up a workspace
+icon: LayersPlus
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+
+The [workspace](<../(fundamentals)/workspace.mdx>) is the root of a moon-managed repository. It's
+where shared configuration lives, and the boundary for everything moon does: discovering projects,
+running tasks, and caching their results. A workspace is marked by a `.moon` directory, so the first
+step is to create one.
+
+## Initializing moon
+
+From the root of your repository, run [`moon init`](../commands/init.mdx), and confirm the
+destination when prompted:
+
+```shell
+$ moon init
+```
+
+This scaffolds the minimum moon needs to run:
+
+- **Creates `.moon/workspace.yml`** - The [`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>)
+  file, written in YAML. moon also supports
+  [other formats](<../(fundamentals)/config.mdx#supported-formats>), like JSON, TOML, HCL, and Pkl,
+  if you'd rather convert it.
+- **Detects your Git settings** - The current branch is written as the default branch, and the
+  provider that hosts your repository is detected from its files: a `.gitlab` directory means
+  GitLab, a `bitbucket-pipelines.yml` file means Bitbucket, and anything else falls back to GitHub.
+- **Updates `.gitignore`** - Appends `.moon/cache` and `.moon/docker`, which hold files generated
+  on each machine that shouldn't be committed.
+
+If moon has already been initialized, it asks before overwriting the existing configuration. Pass
+`--yes` to skip the prompts, or `--force` to overwrite without asking.
+
+<Callout>
+  The workspace doesn't have to be the repository root. To have moon manage only
+  part of a larger repository, initialize it in a subdirectory instead, like
+  `moon init ./frontend`.
+</Callout>
+
+## Reviewing the configuration
+
+Open the generated file. For a repository on the `main` branch that's hosted on GitHub, it looks
+like the following (without the comments that describe each setting):
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    projects: ["packages/*"],
+    vcs: {
+      defaultBranch: "main",
+      provider: "github",
+    },
+  }}
+/>
+
+- [`projects`](/moon/api/WorkspaceConfig#projects) - Where moon looks for projects. It starts with a
+  `packages/*` glob as an example, which you'll replace in the [next step](./projects.mdx).
+- [`vcs.defaultBranch`](/moon/api/VcsConfig#defaultbranch) - The branch your changes are compared
+  against, to determine which files have changed. moon writes the branch you were on when running
+  `moon init`, so if that was a feature branch, change it to your default branch, like `main`.
+- [`vcs.provider`](/moon/api/VcsConfig#provider) - Where your repository is hosted, which
+  determines the format of generated files like [code owners](../guides/codeowners.mdx).
+
+Every other setting is optional, and covered on the [workspace](<../(fundamentals)/workspace.mdx>)
+page. For autocompletion and validation while editing configuration, see
+[schema validation](<../(fundamentals)/config.mdx#schema-validation>).
+
+## Committing the workspace
+
+Configuration in `.moon` should be committed, so everyone working in the repository, including CI,
+shares the same setup. The generated `cache` and `docker` directories are already ignored.
+
+```shell
+# Commit the workspace configuration
+$ git add .moon .gitignore
+$ git commit -m "Initialize moon"
+```
+
+## Migrating from another tool
+
+Coming from [Nx](https://nx.dev) or [Turborepo](https://turborepo.com)? After running `moon init`,
+the [`migrate-nx`](../extensions/migrate-nx.mdx) and
+[`migrate-turborepo`](../extensions/migrate-turborepo.mdx) extensions convert your existing
+configuration into moon projects and tasks, which gives you a working starting point instead of
+rewriting everything by hand.
+
+```shell
+# Migrate an Nx repository
+$ moon ext migrate-nx
+
+# Migrate a Turborepo repository
+$ moon ext migrate-turborepo
+```
+
+The conversion isn't 1:1, so review the generated configuration, and continue with the following
+steps to understand what it produced.
+
+## Next steps
+
+<Cards>
+  <Card
+    title="Add projects"
+    description="Tell moon where your projects live, and how they depend on each other."
+    href="./projects.mdx"
+  />
+</Cards>

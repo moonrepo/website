@@ -445,6 +445,8 @@ These tools only read from the workspace graph, so they're safe to call repeated
   changes are returned when running locally. Set `remote` to `true` to compare the `base` revision
   (defaults to [`vcs.defaultBranch`](/moon/api/VcsConfig#defaultbranch)) against the `head`
   revision (defaults to `HEAD`) instead, which is the default in CI and other remote environments.
+  When neither `base` nor `head` is set, and the current branch is the default branch, the previous
+  revision is compared instead, as comparing the branch against itself would return nothing.
 
 ### Changing the workspace
 
@@ -458,7 +460,13 @@ These tools write files, so your client may ask for confirmation before running 
   projects aren't synced. Returns the actions that ran.
 - `generate` - Generate code from a `template` into the `to` destination, by running
   [`moon generate`](../commands/generate.mdx). Pass template `variables` as an object, and set
-  `dry_run` or `force` as needed. Returns whether it succeeded, and the error if it didn't.
+  `dry_run` or `force` as needed (`dry_run` takes precedence). Returns whether it succeeded, and the
+  error if it didn't. Variables are passed to `moon generate` as
+  [arguments](./codegen.mdx#passing-variables-as-arguments):
+  - `true` becomes `--<name>`, and `false` becomes `--no-<name>`.
+  - Strings and numbers become `--<name> <value>`.
+  - Arrays pass `--<name> <item>` for each item.
+  - `null` and object values are ignored.
 
 <Callout>
   The [response
