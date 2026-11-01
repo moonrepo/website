@@ -14,6 +14,7 @@ import {
 	BlogTags,
 } from '@/components/blog';
 import { BlogLayout } from '@/components/blog/layout';
+import { PageActions } from '@/components/PageActions';
 import browserCollections from '@/generated/browser';
 import { type BlogPost, findPost } from '@/lib/blog';
 import { loadBlogPosts } from '@/lib/blogPosts';
@@ -53,6 +54,8 @@ const serverLoader = createServerFn({
 	});
 
 interface PostProps {
+	/** path of the content file, relative to `web/content/blog` */
+	path: string;
 	newer?: BlogPost;
 	older?: BlogPost;
 	post: BlogPost;
@@ -60,13 +63,14 @@ interface PostProps {
 
 const clientLoader = browserCollections.blog.createClientLoader({
 	id: 'blog',
-	component({ toc, default: MDX }, { newer, older, post }: PostProps) {
+	component({ toc, default: MDX }, { newer, older, path, post }: PostProps) {
 		return (
 			<BlogPage toc={toc}>
 				<BlogHeader>
 					<BlogDescription>{post.description}</BlogDescription>
 					<BlogAuthors authors={post.authors} />
 					<BlogTags tags={post.tags} />
+					<PageActions file={`blog/${path}`} url={post.url} />
 				</BlogHeader>
 				<BlogBody>
 					<MDX components={getMdxComponents()} />
@@ -92,7 +96,7 @@ function Page() {
 			title={post.title}
 		>
 			<Suspense>
-				{clientLoader.useContent(path, { newer, older, post })}
+				{clientLoader.useContent(path, { newer, older, path, post })}
 			</Suspense>
 		</BlogLayout>
 	);

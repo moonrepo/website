@@ -15,6 +15,7 @@ import { Route as LlmsFullDottxtRouteImport } from './routes/llms-full[.]txt'
 import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as ProductIndexRouteImport } from './routes/$product/index'
 import { Route as ProductSplatRouteImport } from './routes/$product/$'
+import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as ApiSearchRouteImport } from './routes/api/search'
 import { Route as BlogIndexRouteImport } from './routes/blog/index'
 import { Route as BlogSplatRouteImport } from './routes/blog/$'
@@ -22,6 +23,7 @@ import { Route as ProductChangelogChar123PageChar125RouteImport } from './routes
 import { Route as BlogTagsIndexRouteImport } from './routes/blog/tags/index'
 import { Route as BlogTagsTagRouteImport } from './routes/blog/tags/$tag'
 import { Route as LlmsDotmdxProductSplatRouteImport } from './routes/llms[.]mdx.$product.$'
+import { Route as LlmsDotmdxBlogSplatRouteImport } from './routes/llms[.]mdx.blog.$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -52,6 +54,11 @@ const ProductSplatRoute = ProductSplatRouteImport.update({
   id: '/$',
   path: '/$',
   getParentRoute: () => ProductRoute,
+} as any)
+const ApiMcpRoute = ApiMcpRouteImport.update({
+  id: '/api/mcp',
+  path: '/api/mcp',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSearchRoute = ApiSearchRouteImport.update({
   id: '/api/search',
@@ -89,6 +96,11 @@ const LlmsDotmdxProductSplatRoute = LlmsDotmdxProductSplatRouteImport.update({
   path: '/llms.mdx/$product/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LlmsDotmdxBlogSplatRoute = LlmsDotmdxBlogSplatRouteImport.update({
+  id: '/llms.mdx/blog/$',
+  path: '/llms.mdx/blog/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -96,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/$product/$': typeof ProductSplatRoute
+  '/api/mcp': typeof ApiMcpRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
   '/$product/': typeof ProductIndexRoute
@@ -103,6 +116,7 @@ export interface FileRoutesByFullPath {
   '/$product/changelog/{-$page}': typeof ProductChangelogChar123PageChar125Route
   '/blog/tags/$tag': typeof BlogTagsTagRoute
   '/llms.mdx/$product/$': typeof LlmsDotmdxProductSplatRoute
+  '/llms.mdx/blog/$': typeof LlmsDotmdxBlogSplatRoute
   '/blog/tags/': typeof BlogTagsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -110,6 +124,7 @@ export interface FileRoutesByTo {
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/$product/$': typeof ProductSplatRoute
+  '/api/mcp': typeof ApiMcpRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
   '/$product': typeof ProductIndexRoute
@@ -117,6 +132,7 @@ export interface FileRoutesByTo {
   '/$product/changelog/{-$page}': typeof ProductChangelogChar123PageChar125Route
   '/blog/tags/$tag': typeof BlogTagsTagRoute
   '/llms.mdx/$product/$': typeof LlmsDotmdxProductSplatRoute
+  '/llms.mdx/blog/$': typeof LlmsDotmdxBlogSplatRoute
   '/blog/tags': typeof BlogTagsIndexRoute
 }
 export interface FileRoutesById {
@@ -126,6 +142,7 @@ export interface FileRoutesById {
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/$product/$': typeof ProductSplatRoute
+  '/api/mcp': typeof ApiMcpRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
   '/$product/': typeof ProductIndexRoute
@@ -133,6 +150,7 @@ export interface FileRoutesById {
   '/$product/changelog/{-$page}': typeof ProductChangelogChar123PageChar125Route
   '/blog/tags/$tag': typeof BlogTagsTagRoute
   '/llms.mdx/$product/$': typeof LlmsDotmdxProductSplatRoute
+  '/llms.mdx/blog/$': typeof LlmsDotmdxBlogSplatRoute
   '/blog/tags/': typeof BlogTagsIndexRoute
 }
 export interface FileRouteTypes {
@@ -143,6 +161,7 @@ export interface FileRouteTypes {
     | '/llms-full.txt'
     | '/llms.txt'
     | '/$product/$'
+    | '/api/mcp'
     | '/api/search'
     | '/blog/$'
     | '/$product/'
@@ -150,6 +169,7 @@ export interface FileRouteTypes {
     | '/$product/changelog/{-$page}'
     | '/blog/tags/$tag'
     | '/llms.mdx/$product/$'
+    | '/llms.mdx/blog/$'
     | '/blog/tags/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -157,6 +177,7 @@ export interface FileRouteTypes {
     | '/llms-full.txt'
     | '/llms.txt'
     | '/$product/$'
+    | '/api/mcp'
     | '/api/search'
     | '/blog/$'
     | '/$product'
@@ -164,6 +185,7 @@ export interface FileRouteTypes {
     | '/$product/changelog/{-$page}'
     | '/blog/tags/$tag'
     | '/llms.mdx/$product/$'
+    | '/llms.mdx/blog/$'
     | '/blog/tags'
   id:
     | '__root__'
@@ -172,6 +194,7 @@ export interface FileRouteTypes {
     | '/llms-full.txt'
     | '/llms.txt'
     | '/$product/$'
+    | '/api/mcp'
     | '/api/search'
     | '/blog/$'
     | '/$product/'
@@ -179,6 +202,7 @@ export interface FileRouteTypes {
     | '/$product/changelog/{-$page}'
     | '/blog/tags/$tag'
     | '/llms.mdx/$product/$'
+    | '/llms.mdx/blog/$'
     | '/blog/tags/'
   fileRoutesById: FileRoutesById
 }
@@ -187,11 +211,13 @@ export interface RootRouteChildren {
   ProductRoute: typeof ProductRouteWithChildren
   LlmsFullDottxtRoute: typeof LlmsFullDottxtRoute
   LlmsDottxtRoute: typeof LlmsDottxtRoute
+  ApiMcpRoute: typeof ApiMcpRoute
   ApiSearchRoute: typeof ApiSearchRoute
   BlogSplatRoute: typeof BlogSplatRoute
   BlogIndexRoute: typeof BlogIndexRoute
   BlogTagsTagRoute: typeof BlogTagsTagRoute
   LlmsDotmdxProductSplatRoute: typeof LlmsDotmdxProductSplatRoute
+  LlmsDotmdxBlogSplatRoute: typeof LlmsDotmdxBlogSplatRoute
   BlogTagsIndexRoute: typeof BlogTagsIndexRoute
 }
 
@@ -238,6 +264,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/$product/$'
       preLoaderRoute: typeof ProductSplatRouteImport
       parentRoute: typeof ProductRoute
+    }
+    '/api/mcp': {
+      id: '/api/mcp'
+      path: '/api/mcp'
+      fullPath: '/api/mcp'
+      preLoaderRoute: typeof ApiMcpRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/search': {
       id: '/api/search'
@@ -288,6 +321,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LlmsDotmdxProductSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/llms.mdx/blog/$': {
+      id: '/llms.mdx/blog/$'
+      path: '/llms.mdx/blog/$'
+      fullPath: '/llms.mdx/blog/$'
+      preLoaderRoute: typeof LlmsDotmdxBlogSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -312,11 +352,13 @@ const rootRouteChildren: RootRouteChildren = {
   ProductRoute: ProductRouteWithChildren,
   LlmsFullDottxtRoute: LlmsFullDottxtRoute,
   LlmsDottxtRoute: LlmsDottxtRoute,
+  ApiMcpRoute: ApiMcpRoute,
   ApiSearchRoute: ApiSearchRoute,
   BlogSplatRoute: BlogSplatRoute,
   BlogIndexRoute: BlogIndexRoute,
   BlogTagsTagRoute: BlogTagsTagRoute,
   LlmsDotmdxProductSplatRoute: LlmsDotmdxProductSplatRoute,
+  LlmsDotmdxBlogSplatRoute: LlmsDotmdxBlogSplatRoute,
   BlogTagsIndexRoute: BlogTagsIndexRoute,
 }
 export const routeTree = rootRouteImport

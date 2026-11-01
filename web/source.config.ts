@@ -42,6 +42,9 @@ export const blog = defineCollections({
 	type: 'doc',
 	dir: 'content/blog',
 	async: true,
+	postprocess: {
+		includeProcessedMarkdown: true,
+	},
 	schema: blogPageSchema,
 });
 

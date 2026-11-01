@@ -14,6 +14,7 @@ import {
 } from 'fumadocs-ui/page';
 import { Suspense } from 'react';
 import { DocsSidebarTabs } from '@/components/DocsSidebarTabs';
+import { PageActions } from '@/components/PageActions';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
 import browserCollections from '@/generated/browser';
@@ -70,19 +71,30 @@ const serverLoader = createServerFn({
 		return {
 			product,
 			path: page.path,
+			url: page.url,
 			pageTree: await source.serializePageTree(source.getPageTree()),
 		};
 	});
 
-function renderContent({
-	toc,
-	frontmatter,
-	default: MDX,
-}: CompiledMDXProperties<{ title: string; description?: string }>) {
+interface ContentProps {
+	/** path of the content file, relative to `web/content` */
+	file: string;
+	url: string;
+}
+
+function renderContent(
+	{
+		toc,
+		frontmatter,
+		default: MDX,
+	}: CompiledMDXProperties<{ title: string; description?: string }>,
+	{ file, url }: ContentProps,
+) {
 	return (
 		<DocsPage toc={toc}>
 			<DocsTitle>{frontmatter.title}</DocsTitle>
 			<DocsDescription>{frontmatter.description}</DocsDescription>
+			<PageActions className="border-b pb-6" file={file} url={url} />
 			<DocsBody>
 				<MDX components={getMdxComponents()} />
 			</DocsBody>
@@ -91,26 +103,28 @@ function renderContent({
 }
 
 const clientLoaders = {
-	moon: browserCollections.moon.createClientLoader({
+	moon: browserCollections.moon.createClientLoader<ContentProps>({
 		id: 'moon',
 		component: renderContent,
 	}),
-	proto: browserCollections.proto.createClientLoader({
+	proto: browserCollections.proto.createClientLoader<ContentProps>({
 		id: 'proto',
 		component: renderContent,
 	}),
-	schematic: browserCollections.schematic.createClientLoader({
+	schematic: browserCollections.schematic.createClientLoader<ContentProps>({
 		id: 'schematic',
 		component: renderContent,
 	}),
-	wasm: browserCollections.wasm.createClientLoader({
+	wasm: browserCollections.wasm.createClientLoader<ContentProps>({
 		id: 'wasm',
 		component: renderContent,
 	}),
 } satisfies Record<Product, unknown>;
 
 function Page() {
-	const { product, path, pageTree } = useFumadocsLoader(Route.useLoaderData());
+	const { product, path, pageTree, url } = useFumadocsLoader(
+		Route.useLoaderData(),
+	);
 	const themeClass = useProductTheme(PRODUCT_THEMES[product]);
 	const base = baseOptions();
 
@@ -138,7 +152,12 @@ function Page() {
 				themeSwitch={{ enabled: false }}
 				tree={pageTree}
 			>
-				<Suspense>{clientLoaders[product].useContent(path)}</Suspense>
+				<Suspense>
+					{clientLoaders[product].useContent(path, {
+						file: `${product}/${path}`,
+						url,
+					})}
+				</Suspense>
 			</DocsLayout>
 			<SiteFooter />
 		</div>
