@@ -39,16 +39,20 @@ try {
 		preset: 'tanstack-start',
 		populate: {
 			'[product]': products.map(([product]) => ({ value: { product } })),
-			'[product]/[[..._splat]]': products.flatMap(([product, source]) =>
-				source.getPages().map((page) => ({
-					value: { product, _splat: page.slugs },
-					hashes: getHeadings(page),
+			'[product]/[[..._splat]]': await Promise.all(
+				products.flatMap(([product, source]) =>
+					source.getPages().map(async (page) => ({
+						value: { product, _splat: page.slugs },
+						hashes: await getHeadings(page),
+					})),
+				),
+			),
+			'blog/[[..._splat]]': await Promise.all(
+				blogSource.getPages().map(async (page) => ({
+					value: { _splat: page.slugs },
+					hashes: await getHeadings(page),
 				})),
 			),
-			'blog/[[..._splat]]': blogSource.getPages().map((page) => ({
-				value: { _splat: page.slugs },
-				hashes: getHeadings(page),
-			})),
 		},
 	});
 
@@ -80,8 +84,10 @@ try {
 	await server.close();
 }
 
-function getHeadings(page: AnyPage): string[] {
-	return page.data.toc.map((item) => item.url.slice(1));
+async function getHeadings(page: AnyPage): Promise<string[]> {
+	const { toc } = await page.data.load();
+
+	return toc.map((item) => item.url.slice(1));
 }
 
 async function getFile(page: AnyPage): Promise<FileObject> {
