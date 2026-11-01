@@ -59,11 +59,11 @@ function Hero() {
 					variables, then generate types from the same structs.
 				</p>
 				<p className={cn('mt-2 text-[15px]', muted, 'dark:text-taupe')}>
-					Powered by serde. Supports JSON, Pkl, RON, TOML, and YAML.
+					Powered by serde. Supports JSON, TOML, YAML, and more.
 				</p>
 				<div className="mt-6 flex flex-wrap gap-6">
 					<ButtonLink href="/schematic/docs">
-						Get started
+						Learn more
 						<ArrowRight className="ml-3 size-5" />
 					</ButtonLink>
 					<ButtonLink
@@ -174,7 +174,7 @@ function TwoFeatures() {
 	return (
 		<Columns>
 			<Feature
-				description="Derive Config on a struct and let Schematic handle the layering."
+				description="Derive Config on a struct and let schematic handle the layering."
 				href="/schematic/docs/config"
 				items={[
 					'Partial layers merged in order',
@@ -351,9 +351,9 @@ function Formats() {
 						href="/schematic/docs/config#cargo-features"
 					>
 						Cargo feature
-					</a>
+					</a>.
 				</p>
-				<div className="mt-8 flex flex-wrap gap-4">
+				<div className="mt-4 flex flex-wrap gap-4">
 					<div className={pill}>
 						<span>
 							Powers{' '}

@@ -3,7 +3,7 @@ title: Default values
 icon: CircleDot
 ---
 
-In Schematic, there are 2 forms of default values:
+In schematic, there are 2 forms of default values:
 
 - The first is applied through the [partial configuration](../partial.mdx), is defined with the
   `#[setting]` attribute, and is the first layer to be merged.
@@ -42,7 +42,7 @@ struct AppConfig {
 
 A bare path is ambiguous — `LevelFilter::Debug` names a value, while `find_unused_port` names a
 [handler function](#handler-function) to call. Nothing at compile time can tell them apart, so
-Schematic goes by Rust's naming conventions:
+schematic goes by Rust's naming conventions:
 
 | Last segment of the path | Treated as         | Example              |
 | ------------------------ | ------------------ | -------------------- |
