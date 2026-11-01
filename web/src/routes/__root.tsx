@@ -3,10 +3,13 @@ import {
 	HeadContent,
 	Outlet,
 	Scripts,
+	useRouterState,
 } from '@tanstack/react-router';
 import { RootProvider } from 'fumadocs-ui/provider/tanstack';
 import { lazy } from 'react';
 import { ColorSchemeBridge } from '@/components/ColorSchemeBridge';
+import { cn } from '@/lib/cn';
+import { isProduct, PRODUCT_THEMES } from '@/lib/products';
 import appCss from '@/styles/app.css?url';
 
 // The search dialog bundles a markdown renderer for results, so keep it out
@@ -40,13 +43,28 @@ function RootComponent() {
 	);
 }
 
+// Theme `<body>` during SSR, so the page background doesn't flash the
+// base palette before the product theme is applied on the client
+function useProductThemeClass() {
+	const product = useRouterState({
+		select: (state) =>
+			(state.matches.at(-1)?.params as { product?: string } | undefined)
+				?.product,
+	});
+	const theme = product && isProduct(product) ? PRODUCT_THEMES[product] : null;
+
+	return theme ? `theme-${theme}` : undefined;
+}
+
 function RootDocument({ children }: { children: React.ReactNode }) {
+	const themeClass = useProductThemeClass();
+
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<head>
 				<HeadContent />
 			</head>
-			<body className="flex flex-col min-h-screen">
+			<body className={cn('flex flex-col min-h-screen', themeClass)}>
 				<RootProvider search={{ SearchDialog }}>
 					<ColorSchemeBridge>{children}</ColorSchemeBridge>
 				</RootProvider>
