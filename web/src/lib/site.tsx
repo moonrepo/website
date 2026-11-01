@@ -44,7 +44,7 @@ export const footerProps: FooterProps = {
 		{
 			title: 'Ecosystem',
 			links: [
-				{ label: 'Releases', href: `${GITHUB_URL}/moon/releases` },
+				{ label: 'Releases', href: '/moon/changelog' },
 				{ label: 'Shared configs', href: `${GITHUB_URL}/moon-configs` },
 				{ label: 'Developer tools', href: `${GITHUB_URL}/dev` },
 				{ label: 'Examples repository', href: `${GITHUB_URL}/examples` },

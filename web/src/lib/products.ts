@@ -38,3 +38,11 @@ export const PRODUCT_THEMES: Partial<Record<Product, ProductTheme>> = {
 	moon: 'moon',
 	proto: 'proto',
 };
+
+// Products with a changelog, and the GitHub repository of their releases
+export const CHANGELOG_REPOS: Partial<
+	Record<Product, { owner: string; repo: string }>
+> = {
+	moon: { owner: 'moonrepo', repo: 'moon' },
+	proto: { owner: 'moonrepo', repo: 'proto' },
+};
