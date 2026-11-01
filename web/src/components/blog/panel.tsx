@@ -1,10 +1,10 @@
 'use client';
+import { TOCScrollArea, useTOCItems } from 'fumadocs-ui/components/toc';
+import { TOCItem, TOCItems } from 'fumadocs-ui/components/toc/default';
 import { useCopyButton } from 'fumadocs-ui/utils/use-copy-button';
 import { ChevronDown, ShareIcon } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '../../lib/cn';
-import { TOCScrollArea, useTOCItems } from '../toc';
-import { TOCItem, TOCItems } from '../toc/default';
 import {
 	Collapsible,
 	CollapsibleContent,
