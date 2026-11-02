@@ -1,9 +1,10 @@
 import { PanelLeft } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Drawer } from '../components/Drawer';
+import { Heading } from '../components/Heading';
 import { cn } from '../utils/cn';
 import { BlueprintGrid, Divider, Hatch, PageFrame } from './Frame';
-import { dashed, heading, title as pageTitle } from './styles';
+import { dashed } from './styles';
 
 export interface SidebarLayoutProps {
 	beforeTitle?: ReactNode;
@@ -71,7 +72,7 @@ export function SidebarLayout({
 								beforeTitle ? 'mt-5' : undefined,
 							)}
 						>
-							<h1 className={cn(pageTitle, heading)}>{title}</h1>
+							<Heading level={1}>{title}</Heading>
 							{titleActions}
 						</div>
 					</div>

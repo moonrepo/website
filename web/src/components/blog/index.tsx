@@ -1,3 +1,5 @@
+import { Heading } from '@moonrepo/ui/components/Heading';
+import { Text } from '@moonrepo/ui/components/Text';
 import {
 	accent,
 	caps,
@@ -5,9 +7,7 @@ import {
 	dashed,
 	heading,
 	muted,
-	subtitle,
 	tech,
-	title,
 } from '@moonrepo/ui/layout/styles';
 import { Image } from 'fumadocs-core/framework';
 import Link from 'fumadocs-core/link';
@@ -56,12 +56,12 @@ export function BlogCard({ post }: { post: BlogPost }) {
 	return (
 		<article>
 			<BlogMeta post={post} />
-			<h2 className={cn('mt-1.5', subtitle, heading)}>
+			<Heading className="mt-1.5" level={2} size="subtitle">
 				<Link className="hover:underline" href={post.url}>
 					{post.title}
 				</Link>
-			</h2>
-			<p className="mt-3 text-body text-graphite-700 dark:text-sand">
+			</Heading>
+			<Text className="mt-3 text-graphite-700 dark:text-sand">
 				{post.description}{' '}
 				<Link
 					className={cn('underline underline-offset-2', accent)}
@@ -69,7 +69,7 @@ export function BlogCard({ post }: { post: BlogPost }) {
 				>
 					Read more
 				</Link>
-			</p>
+			</Text>
 			<BlogTags className="mt-4" tags={post.tags} />
 		</article>
 	);
@@ -251,15 +251,16 @@ export function BlogBackLink({
 }
 
 export function BlogTitle(props: ComponentProps<'h1'>) {
-	return <h1 {...props} className={cn(title, heading, props.className)} />;
+	return <Heading level={1} {...props} />;
 }
 
 export function BlogDescription(props: ComponentProps<'p'>) {
 	return (
-		<p
+		<Text
+			variant="lead"
 			{...props}
 			className={cn(
-				'text-body-lg text-graphite-700 empty:hidden dark:text-sand',
+				'text-graphite-700 empty:hidden dark:text-sand',
 				props.className,
 			)}
 		/>

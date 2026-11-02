@@ -1,4 +1,6 @@
 import { ButtonLink } from '@moonrepo/ui/components/Button';
+import { Heading } from '@moonrepo/ui/components/Heading';
+import { Text } from '@moonrepo/ui/components/Text';
 import {
 	BlueprintGrid,
 	Divider,
@@ -10,8 +12,6 @@ import {
 	dashed,
 	heading,
 	muted,
-	subtitle,
-	title,
 	wordmark,
 } from '@moonrepo/ui/layout/styles';
 import { cn } from '@moonrepo/ui/utils/cn';
@@ -56,17 +56,17 @@ function Hero() {
 			<BlueprintGrid />
 			<div className="relative min-w-0">
 				{/* <SchematicLogo /> */}
-				<h1 className={cn('mt-6', title, heading)}>
+				<Heading className="mt-6" level={1}>
 					Layered configuration and schemas for{' '}
 					<span className={code}>Rust</span>.
-				</h1>
-				<p className="mt-6 text-graphite-800 text-body-lg dark:text-paper-50">
+				</Heading>
+				<Text className="mt-6" variant="lead">
 					Load, merge, and validate config from files, URLs, and environment
 					variables, then generate types from the same structs.
-				</p>
-				<p className={cn('mt-2 text-body-sm', muted, 'dark:text-taupe')}>
+				</Text>
+				<Text className="mt-2 dark:text-taupe" tone="muted" variant="small">
 					Powered by serde. Supports JSON, TOML, YAML, and more.
-				</p>
+				</Text>
 				<div className="mt-6 flex flex-wrap gap-6">
 					<ButtonLink href="/schematic/docs">
 						Learn more
@@ -113,9 +113,9 @@ let result = ConfigLoader::<AppConfig>::new()
 function SectionTitle({ children }: { children: ReactNode }) {
 	return (
 		<>
-			<h2 className={cn('py-[52px] text-center', title, heading)}>
+			<Heading className="py-[52px] text-center" level={2}>
 				{children}
-			</h2>
+			</Heading>
 			<Divider />
 		</>
 	);
@@ -158,8 +158,10 @@ function Feature({
 }) {
 	return (
 		<div className="min-w-0 px-6 pt-12 pb-16 md:px-12">
-			<h3 className={cn(subtitle, heading)}>{title}</h3>
-			<p className={cn('mt-4 text-body', muted)}>{description}</p>
+			<Heading level={3}>{title}</Heading>
+			<Text className="mt-4" tone="muted">
+				{description}
+			</Text>
 			<ul className="mt-8 space-y-5">
 				{items.map((item) => (
 					<li
@@ -275,10 +277,10 @@ function Benefits() {
 		<section className="grid gap-12 px-6 pt-[60px] pb-16 md:grid-cols-3 md:gap-8 md:px-12">
 			{benefits.map((benefit) => (
 				<div key={benefit.title}>
-					<h3 className={cn('flex items-center gap-4', subtitle, heading)}>
+					<Heading className="flex items-center gap-4" level={3}>
 						<span className={cn(accent, '[&_svg]:size-6')}>{benefit.icon}</span>
 						{benefit.title}
-					</h3>
+					</Heading>
 					<ul
 						className={cn(
 							'mt-5 ml-6 list-disc text-body-sm marker:text-xs',
@@ -299,7 +301,7 @@ function Benefits() {
 function Step({ children, title }: { children: ReactNode; title: string }) {
 	return (
 		<div className="min-w-0">
-			<h3 className={cn(subtitle, heading)}>{title}</h3>
+			<Heading level={3}>{title}</Heading>
 			<div className="mt-6">{children}</div>
 		</div>
 	);
@@ -308,11 +310,11 @@ function Step({ children, title }: { children: ReactNode; title: string }) {
 function GetStarted() {
 	return (
 		<section className="px-6 pt-[60px] pb-16 md:px-12">
-			<h2 className={cn(title, heading)}>Get started</h2>
-			<p className={cn('mt-3 text-body', muted)}>
+			<Heading level={2}>Get started</Heading>
+			<Text className="mt-3" tone="muted">
 				Configuration is enabled by default. Schemas require the{' '}
 				<code className="font-mono">schema</code> Cargo feature.
-			</p>
+			</Text>
 
 			<div className="mt-12 grid gap-12 lg:max-w-[1216px] lg:grid-cols-2 lg:gap-x-16">
 				<div className="min-w-0 space-y-12">
@@ -359,8 +361,8 @@ function Formats() {
 	return (
 		<section className="flex flex-col gap-12 px-6 py-16 md:px-12 lg:h-[309px] lg:flex-row lg:items-center lg:justify-between lg:py-0">
 			<div>
-				<h2 className={cn(title, heading)}>Format support</h2>
-				<p className={cn('mt-3 text-body', muted)}>
+				<Heading level={2}>Format support</Heading>
+				<Text className="mt-3" tone="muted">
 					Each format is an opt-in{' '}
 					<a
 						className={cn(link, 'dark:text-tangerine')}
@@ -369,7 +371,7 @@ function Formats() {
 						Cargo feature
 					</a>
 					.
-				</p>
+				</Text>
 				<div className="mt-4 flex flex-wrap gap-4">
 					<div className={pill}>
 						<span>

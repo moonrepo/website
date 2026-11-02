@@ -1,4 +1,6 @@
 import { ButtonLink } from '@moonrepo/ui/components/Button';
+import { Heading } from '@moonrepo/ui/components/Heading';
+import { Text } from '@moonrepo/ui/components/Text';
 import {
 	BlueprintGrid,
 	Divider,
@@ -10,8 +12,6 @@ import {
 	dashed,
 	heading,
 	muted,
-	subtitle,
-	title,
 	wordmark,
 } from '@moonrepo/ui/layout/styles';
 import { cn } from '@moonrepo/ui/utils/cn';
@@ -86,18 +86,18 @@ function Hero() {
 			<BlueprintGrid />
 			<div className="relative min-w-0">
 				<ProtoLogo />
-				<h1 className={cn('mt-6', title, heading)}>
+				<Heading className="mt-6" level={1}>
 					Stop juggling <span className={code}>nvm</span>,{' '}
 					<span className={code}>pyenv</span>,{' '}
 					<span className={code}>rbenv</span>, and{' '}
 					<span className={code}>gvm</span>.
-				</h1>
-				<p className="mt-6 text-graphite-800 text-body-lg dark:text-paper-50">
+				</Heading>
+				<Text className="mt-6" variant="lead">
 					Proto handles every language version from a single command.
-				</p>
-				<p className={cn('mt-2 text-body-sm', muted, 'dark:text-taupe')}>
+				</Text>
+				<Text className="mt-2 dark:text-taupe" tone="muted" variant="small">
 					Supports Bun, Deno, Node, Python, Rust, Go, and 800+ more.
-				</p>
+				</Text>
 				<div className="mt-6 flex gap-6">
 					<ButtonLink href="/proto/docs">
 						Get started
@@ -134,9 +134,9 @@ function Hero() {
 function SectionTitle({ children }: { children: ReactNode }) {
 	return (
 		<>
-			<h2 className={cn('py-[52px] text-center', title, heading)}>
+			<Heading className="py-[52px] text-center" level={2}>
 				{children}
-			</h2>
+			</Heading>
 			<Divider />
 		</>
 	);
@@ -160,9 +160,7 @@ function Simplify() {
 	return (
 		<Columns>
 			<div className="px-6 pt-12 pb-16 md:px-12">
-				<h3 className={cn(subtitle, heading)}>
-					Every language has its own version manager:
-				</h3>
+				<Heading level={3}>Every language has its own version manager:</Heading>
 				<div className="mt-8 grid grid-cols-2 gap-6">
 					<div className={cn(pill, 'col-span-2')}>nvm for Node.js</div>
 					<div className={pill}>rbenv for Ruby</div>
@@ -170,18 +168,20 @@ function Simplify() {
 					<div className={pill}>rustup for Rust</div>
 					<div className={pill}>...etc.</div>
 				</div>
-				<p className="mt-14 text-graphite-800 text-body dark:text-paper-50">
+				<Text className="mt-14">
 					...each with different commands, config files, and quirks.
-				</p>
+				</Text>
 			</div>
 
 			<div className="min-w-0 border-dashed border-olive border-t px-6 pt-12 pb-16 md:border-t-0 md:px-12">
-				<h3 className={cn(subtitle, heading)}>Instead of remembering:</h3>
+				<Heading level={3}>Instead of remembering:</Heading>
 				<CodeLines
 					className="mt-8 py-[7px] leading-[37px]"
 					lines={['nvm use 18.16.0', 'pyenv local 3.11.2', 'rbenv local 3.2.0']}
 				/>
-				<h3 className={cn('mt-14', subtitle, heading)}>Just use:</h3>
+				<Heading className="mt-14" level={3}>
+					Just use:
+				</Heading>
 				<CodeLines
 					className="mt-8 flex h-[52px] flex-col justify-center"
 					lines={['proto use']}
@@ -211,16 +211,16 @@ function ManageThemAll() {
 		<Columns>
 			<div>
 				<div className="px-6 pt-[60px] pb-16 md:px-12">
-					<h3 className={cn(subtitle, heading)}>
+					<Heading level={3}>
 						How many version managers are installed on your machine?
-					</h3>
-					<p className={cn('mt-6 text-body', muted)}>
+					</Heading>
+					<Text className="mt-6" tone="muted">
 						If the answer is more than one, proto can help.
-					</p>
+					</Text>
 				</div>
 				<Divider />
 				<div className="px-6 pt-12 pb-16 md:px-12">
-					<h3 className={cn(subtitle, heading)}>proto is perfect for:</h3>
+					<Heading level={3}>proto is perfect for:</Heading>
 					<ul className="mt-12 space-y-[30px]">
 						{audiences.map((item) => (
 							<li
@@ -236,7 +236,7 @@ function ManageThemAll() {
 			</div>
 
 			<div className="border-dashed border-olive border-t px-6 pt-[68px] pb-16 md:border-t-0 md:px-12">
-				<h3 className={cn(subtitle, heading)}>Built for the real world</h3>
+				<Heading level={3}>Built for the real world</Heading>
 				<div className="mt-10 space-y-6">
 					<div className={pill}>
 						<span>
@@ -251,9 +251,9 @@ function ManageThemAll() {
 					<div className={pill}>Designed for team consistency</div>
 				</div>
 
-				<h3 className={cn('mt-[72px]', subtitle, heading)}>
+				<Heading className="mt-[72px]" level={3}>
 					Switching is painless
-				</h3>
+				</Heading>
 				<div className="mt-8 space-y-6">
 					<div className={pill}>
 						<span>
@@ -310,10 +310,10 @@ function Benefits() {
 		<section className="grid gap-12 px-6 pt-[60px] pb-16 md:grid-cols-3 md:gap-8 md:px-12">
 			{benefits.map((benefit) => (
 				<div key={benefit.title}>
-					<h3 className={cn('flex items-center gap-4', subtitle, heading)}>
+					<Heading className="flex items-center gap-4" level={3}>
 						<span className="text-proto [&_svg]:size-6">{benefit.icon}</span>
 						{benefit.title}
-					</h3>
+					</Heading>
 					<ul
 						className={cn(
 							'mt-5 ml-6 list-disc text-body-sm marker:text-xs',
@@ -334,7 +334,7 @@ function Benefits() {
 function Step({ children, title }: { children: ReactNode; title: string }) {
 	return (
 		<div className="min-w-0">
-			<h3 className={cn(subtitle, heading)}>{title}</h3>
+			<Heading level={3}>{title}</Heading>
 			<div className="mt-6">{children}</div>
 		</div>
 	);
@@ -345,11 +345,11 @@ function GetStarted() {
 
 	return (
 		<section className="px-6 pt-[60px] pb-16 md:px-12">
-			<h2 className={cn(title, heading)}>Get started</h2>
-			<p className={cn('mt-3 text-body', muted)}>
+			<Heading level={2}>Get started</Heading>
+			<Text className="mt-3" tone="muted">
 				proto works on your existing projects immediately, no configuration
 				required.
-			</p>
+			</Text>
 
 			<div className="mt-12 grid gap-12 lg:max-w-[1216px] lg:grid-cols-2 lg:gap-x-16">
 				<div className="min-w-0 space-y-12">
@@ -441,13 +441,13 @@ function LanguageSupport() {
 	return (
 		<section className="flex flex-col gap-12 px-6 py-16 md:px-12 lg:h-[309px] lg:flex-row lg:items-center lg:justify-between lg:py-0">
 			<div>
-				<h2 className={cn(title, heading)}>Language support</h2>
-				<p className={cn('mt-3 text-body', muted)}>
+				<Heading level={2}>Language support</Heading>
+				<Text className="mt-3" tone="muted">
 					Plus 800+ more via{' '}
 					<a className={cn(link, 'dark:text-proto')} href="/proto/docs">
 						plugins
 					</a>
-				</p>
+				</Text>
 				<ButtonLink className="mt-8" href="/proto/docs" variant="secondary">
 					See all supported languages
 				</ButtonLink>

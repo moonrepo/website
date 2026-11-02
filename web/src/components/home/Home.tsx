@@ -1,15 +1,12 @@
 import { ButtonLink, buttonClassName } from '@moonrepo/ui/components/Button';
+import { Heading } from '@moonrepo/ui/components/Heading';
+import { Text } from '@moonrepo/ui/components/Text';
 import { BlueprintGrid, Divider, Hatch } from '@moonrepo/ui/layout/Frame';
 import {
 	accent,
 	caps,
-	cardTitle,
 	dashed,
 	heading,
-	heroTitle,
-	muted,
-	subtitle,
-	title,
 	wordmark,
 } from '@moonrepo/ui/layout/styles';
 import { cn } from '@moonrepo/ui/utils/cn';
@@ -74,7 +71,7 @@ function Feature({
 }) {
 	return (
 		<div>
-			<h3 className={cn('flex items-center gap-3', cardTitle, heading)}>
+			<Heading className="flex items-center gap-3" level={3} size="card">
 				<span
 					className={cn(
 						'flex size-6 items-center justify-center [&_svg]:size-5',
@@ -84,8 +81,10 @@ function Feature({
 					{icon}
 				</span>
 				{title}
-			</h3>
-			<p className={cn('mt-3 pl-9 text-body-sm', muted)}>{children}</p>
+			</Heading>
+			<Text className="mt-3 pl-9" tone="muted" variant="small">
+				{children}
+			</Text>
 		</div>
 	);
 }
@@ -126,14 +125,18 @@ function Hero() {
 			</div>
 
 			<div className="relative flex flex-col items-center px-6 pt-[120px] text-center">
-				<h1 className={cn('max-w-[680px]', heroTitle, heading)}>
+				<Heading className="max-w-[680px]" level={1} size="hero">
 					A new era of productivity tooling
-				</h1>
-				<p className={cn('mt-6 max-w-[660px] text-body-lg', muted)}>
+				</Heading>
+				<Text className="mt-6 max-w-[660px]" tone="muted" variant="lead">
 					The Rust-powered build system that makes monorepos manageable, no
 					matter what language you’re building in
-				</p>
-				<p className={cn('mt-3 flex items-center gap-2 text-body-sm', muted)}>
+				</Text>
+				<Text
+					className="mt-3 flex items-center gap-2"
+					tone="muted"
+					variant="small"
+				>
 					Backed by
 					<span className="flex items-center gap-1.5 font-medium text-yc">
 						<span className="flex size-[22px] items-center justify-center bg-yc text-sm text-white">
@@ -141,7 +144,7 @@ function Hero() {
 						</span>
 						Combinator
 					</span>
-				</p>
+				</Text>
 			</div>
 		</section>
 	);
@@ -153,7 +156,9 @@ function ProblemSolution() {
 			<div className="hidden md:absolute md:inset-y-0 md:left-1/2 md:block md:border-l md:border-dashed md:border-olive" />
 
 			<div className="px-6 pt-[88px] pb-12 md:px-12 md:pb-24">
-				<h2 className={cn(subtitle, heading)}>If you're dealing with...</h2>
+				<Heading level={2} size="subtitle">
+					If you're dealing with...
+				</Heading>
 				<ListCard
 					className="mt-12"
 					items={[
@@ -174,7 +179,9 @@ function ProblemSolution() {
 			</div>
 
 			<div className="px-6 pt-12 pb-[88px] md:px-12 md:pt-[88px]">
-				<h2 className={cn(subtitle, heading)}>moonrepo solves this by...</h2>
+				<Heading level={2} size="subtitle">
+					moonrepo solves this by...
+				</Heading>
 				<ListCard
 					className="mt-12"
 					items={[
@@ -200,11 +207,11 @@ function WhatsIn() {
 
 	return (
 		<section className="px-6 pt-14 pb-24 text-center md:px-12">
-			<h2 className={cn(title, heading)}>What’s in moonrepo?</h2>
-			<p className={cn('mx-auto mt-4 max-w-[640px] text-body', muted)}>
+			<Heading level={2}>What’s in moonrepo?</Heading>
+			<Text className="mx-auto mt-4 max-w-[640px]" tone="muted">
 				moonrepo is made up of two tools: moon and proto. Think of them as your
 				development workflow helpers.
-			</p>
+			</Text>
 
 			<div className="mt-16 flex flex-col items-center gap-4 md:flex-row md:gap-8">
 				{steps.map((step, i) => (
@@ -254,10 +261,12 @@ function ToolIntro({
 			</div>
 			<div className="px-6 pt-[70px] pb-16 md:px-12">
 				<p className={cn(caps, accent)}>{eyebrow}</p>
-				<h2 className={cn('mt-2', subtitle, heading)}>{title}</h2>
-				<p className="mt-6 max-w-[575px] text-graphite-700 text-body dark:text-sand">
+				<Heading className="mt-2" level={2} size="subtitle">
+					{title}
+				</Heading>
+				<Text className="mt-6 max-w-[575px] text-graphite-700 dark:text-sand">
 					{children}
-				</p>
+				</Text>
 				<ButtonLink className="mt-6" href={href}>
 					{cta}
 				</ButtonLink>
@@ -394,7 +403,7 @@ function SimpleVersion() {
 	return (
 		<section className="grid items-center gap-12 bg-paper-200 px-6 py-24 md:grid-cols-2 md:px-12 dark:bg-graphite-900">
 			<div>
-				<h2 className={cn(title, heading)}>The simple version</h2>
+				<Heading level={2}>The simple version</Heading>
 				<ul className="mt-10 divide-y divide-olive overflow-hidden rounded-[14px] border border-olive bg-paper-300 dark:bg-graphite-800">
 					<li className="flex min-h-[72px] items-center gap-3 px-6 py-3 text-graphite-700 text-body dark:text-paper-50">
 						<span className={tile}>
@@ -437,12 +446,12 @@ function Languages() {
 
 	return (
 		<section className="px-6 pt-24 pb-32 text-center md:px-12">
-			<h2 className={cn('mx-auto max-w-[640px]', title, heading)}>
+			<Heading className="mx-auto max-w-[640px]" level={2}>
 				Supporting your favorite languages and frameworks
-			</h2>
-			<p className={cn('mt-6 text-body', muted)}>
+			</Heading>
+			<Text className="mt-6" tone="muted">
 				moonrepo is designed to work with your existing tools:
-			</p>
+			</Text>
 
 			<div className="mt-16 grid grid-cols-2 overflow-hidden rounded-xl border border-dashed border-olive bg-paper-200 md:grid-cols-4 dark:bg-graphite-surface">
 				{langs.map((lang, i) => (
@@ -463,7 +472,9 @@ function Languages() {
 				))}
 			</div>
 
-			<p className={cn('mt-10 text-body', muted)}>...and 800+ more.</p>
+			<Text className="mt-10" tone="muted">
+				...and 800+ more.
+			</Text>
 
 			<div className="mt-16 flex justify-center gap-6">
 				<ButtonLink href="/moon/docs/toolchain" variant="secondary">

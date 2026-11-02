@@ -1,4 +1,6 @@
 import { ButtonLink } from '@moonrepo/ui/components/Button';
+import { Heading } from '@moonrepo/ui/components/Heading';
+import { Text } from '@moonrepo/ui/components/Text';
 import {
 	BlueprintGrid,
 	Divider,
@@ -6,13 +8,10 @@ import {
 	Hatch,
 } from '@moonrepo/ui/layout/Frame';
 import {
-	cardTitle,
 	codeBox,
 	dashed,
 	heading,
 	muted,
-	subtitle,
-	title,
 	wordmark,
 } from '@moonrepo/ui/layout/styles';
 import { cn } from '@moonrepo/ui/utils/cn';
@@ -108,10 +107,10 @@ function Hero() {
 			<BlueprintGrid />
 			<div className="relative">
 				<MoonLogo />
-				<h1 className={cn('mt-6', title, heading)}>
+				<Heading className="mt-6" level={1}>
 					The build system that makes large codebases fast again
-				</h1>
-				<p className={cn('mt-4 text-body-sm', muted)}>
+				</Heading>
+				<Text className="mt-4" tone="muted" variant="small">
 					Supports JavaScript, TypeScript, Rust, Go, Ruby,{' '}
 					<a
 						className="underline underline-offset-2"
@@ -120,7 +119,7 @@ function Hero() {
 						and more
 					</a>
 					.
-				</p>
+				</Text>
 				<div className="mt-8 flex gap-6">
 					<ButtonLink href="/moon/docs">
 						Get started
@@ -139,7 +138,11 @@ function Hero() {
 				<Figure caption="moon run :build">
 					<Terminal />
 				</Figure>
-				<p className={cn('mt-4 flex items-center gap-2 text-body-sm', muted)}>
+				<Text
+					className="mt-4 flex items-center gap-2"
+					tone="muted"
+					variant="small"
+				>
 					Backed by
 					<span className="flex items-center gap-1.5 font-medium text-yc">
 						<span className="flex size-[22px] items-center justify-center bg-yc text-sm text-white">
@@ -147,7 +150,7 @@ function Hero() {
 						</span>
 						Combinator
 					</span>
-				</p>
+				</Text>
 			</div>
 		</section>
 	);
@@ -209,13 +212,13 @@ function PainAndSolution() {
 
 			<div>
 				<div className="px-6 pt-12 pb-12 md:px-12">
-					<h2 className={cn(title, heading)}>
+					<Heading level={2}>
 						Working with monorepos shouldn't be painful
-					</h2>
+					</Heading>
 				</div>
 				<Divider />
 				<div className="px-6 pt-12 pb-16 md:px-12">
-					<h3 className={cn(subtitle, heading)}>Common pain points:</h3>
+					<Heading level={3}>Common pain points:</Heading>
 					<ol className="mt-10 space-y-[22px]">
 						{pains.map((pain, i) => (
 							<li
@@ -231,16 +234,22 @@ function PainAndSolution() {
 			</div>
 
 			<div className="border-dashed border-olive border-t px-6 pt-12 pb-12 md:border-t-0 md:px-12">
-				<h2 className={cn(subtitle, heading)}>Use moon instead</h2>
+				<Heading level={2} size="subtitle">
+					Use moon instead
+				</Heading>
 				<div className="mt-8 space-y-6">
 					{solutions.map((solution) => (
 						<div key={solution.title}>
-							<h3 className={cn('flex items-center gap-3', cardTitle, heading)}>
+							<Heading
+								className="flex items-center gap-3"
+								level={3}
+								size="card"
+							>
 								<span className={cn('[&_svg]:size-5', icon)}>
 									{solution.icon}
 								</span>
 								{solution.title}
-							</h3>
+							</Heading>
 							<ul
 								className={cn(
 									'mt-3 ml-6 list-disc text-body-sm marker:text-xs',
@@ -285,12 +294,12 @@ function Comparison() {
 			/>
 			{columns.map((col) => (
 				<div className="min-w-0 px-6 py-12 md:px-12" key={col.title}>
-					<h3 className={cn('flex items-center gap-5', subtitle, heading)}>
+					<Heading className="flex items-center gap-5" level={3}>
 						<span className="flex size-[26px] items-center justify-center rounded-[3px] bg-moon text-paper-50 dark:bg-moon-400 dark:text-graphite-800 [&_svg]:size-4 [&_svg]:stroke-3">
 							{col.glyph}
 						</span>
 						{col.title}
-					</h3>
+					</Heading>
 					<div
 						className={cn(
 							codeBox,
@@ -369,10 +378,12 @@ function Stack() {
 	return (
 		<section className="flex flex-col gap-12 px-6 py-16 md:px-12 lg:h-[362px] lg:flex-row lg:items-center lg:justify-between lg:py-0">
 			<div>
-				<h2 className={cn('max-w-[400px]', title, heading)}>
+				<Heading className="max-w-[400px]" level={2}>
 					Works with your existing stack
-				</h2>
-				<p className={cn('mt-3 text-body', muted)}>No migration required</p>
+				</Heading>
+				<Text className="mt-3" tone="muted">
+					No migration required
+				</Text>
 				<ButtonLink
 					className="mt-10"
 					href="/moon/docs/toolchain"
@@ -454,9 +465,9 @@ function AdvancedFeatures() {
 
 	return (
 		<section>
-			<h2 className={cn('py-[52px] text-center', title, heading)}>
+			<Heading className="py-[52px] text-center" level={2}>
 				Advanced features
-			</h2>
+			</Heading>
 			<Divider />
 			<div className="grid bg-paper-200/40 md:grid-cols-2 lg:grid-cols-3 dark:bg-graphite-surface/80">
 				{features.map((feature, i) => (
@@ -473,11 +484,13 @@ function AdvancedFeatures() {
 						)}
 						key={feature.title}
 					>
-						<h3 className={cn('flex items-center gap-4', subtitle, heading)}>
+						<Heading className="flex items-center gap-4" level={3}>
 							<span className={cn('[&_svg]:size-6', icon)}>{feature.icon}</span>
 							{feature.title}
-						</h3>
-						<p className={cn('mt-5 text-body-sm', muted)}>{feature.body}</p>
+						</Heading>
+						<Text className="mt-5" tone="muted" variant="small">
+							{feature.body}
+						</Text>
 					</div>
 				))}
 			</div>
@@ -494,10 +507,10 @@ function QuickStart() {
 
 	return (
 		<section className="flex flex-col items-center px-6 pt-[60px] pb-[52px] text-center md:px-12">
-			<h2 className={cn(title, heading)}>Quick start</h2>
-			<h3 className={cn('mt-10', subtitle, heading)}>
+			<Heading level={2}>Quick start</Heading>
+			<Heading className="mt-10" level={3}>
 				Get running in 3 commands:
-			</h3>
+			</Heading>
 			<div
 				className={cn(
 					codeBox,

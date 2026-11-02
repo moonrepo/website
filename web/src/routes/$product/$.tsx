@@ -1,5 +1,6 @@
+import { Heading } from '@moonrepo/ui/components/Heading';
 import { BlueprintGrid, BlueprintScope } from '@moonrepo/ui/layout/Frame';
-import { heading, tech, title } from '@moonrepo/ui/layout/styles';
+import { tech } from '@moonrepo/ui/layout/styles';
 import { useProductTheme } from '@moonrepo/ui/theme';
 import { cn } from '@moonrepo/ui/utils/cn';
 import { createFileRoute, notFound, redirect } from '@tanstack/react-router';
@@ -131,7 +132,7 @@ function renderContent(
 					</span>
 				</div>
 				<div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-					<h1 className={cn(title, heading)}>{frontmatter.title}</h1>
+					<Heading level={1}>{frontmatter.title}</Heading>
 					<PageActions className="shrink-0" file={file} url={url} />
 				</div>
 				<DocsDescription className="mb-0">
