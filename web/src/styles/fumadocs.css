@@ -154,3 +154,58 @@
 		linear-gradient(var(--c), var(--c)) bottom right / var(--l) 1px no-repeat,
 		linear-gradient(var(--c), var(--c)) bottom right / 1px var(--l) no-repeat;
 }
+
+/*
+ * Callouts: a tinted card with a solid left bar, colored per type. The hues
+ * are fixed (not remapped by product themes) so types read the same everywhere.
+ */
+.callout {
+	--callout-color: #53c0e5;
+	--callout-ink: var(--color-graphite-800);
+	color: var(--callout-ink);
+	background: color-mix(
+		in oklab,
+		var(--callout-color) 12%,
+		var(--color-fd-background)
+	);
+	border-color: color-mix(in oklab, var(--callout-color) 40%, transparent);
+	border-left-color: var(--callout-color);
+	@apply my-6 flex flex-col gap-3 rounded-md border border-l-[3px] px-5 py-4;
+}
+
+.dark .callout {
+	--callout-ink: var(--color-paper-50);
+}
+
+.callout[data-type="idea"] {
+	--callout-color: #b753e5;
+}
+
+.callout[data-type="success"] {
+	--callout-color: #53e57c;
+}
+
+.callout[data-type="warning"] {
+	--callout-color: #f2a13e;
+}
+
+.callout[data-type="error"] {
+	--callout-color: #e55a53;
+}
+
+/* Darker hues on light backgrounds, for contrast. */
+html:not(.dark) .callout {
+	border-left-color: color-mix(in oklab, var(--callout-color) 80%, black);
+}
+
+html:not(.dark) .callout-header svg {
+	color: color-mix(in oklab, var(--callout-color) 65%, black);
+}
+
+.callout-header {
+	@apply flex items-center gap-2.5;
+}
+
+.callout-body {
+	@apply text-body-sm;
+}
