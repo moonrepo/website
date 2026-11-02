@@ -18,6 +18,8 @@ export interface SidebarLayoutProps {
 	sidebar: ReactNode;
 	sidebarClassName?: string;
 	title: string;
+	/** Shown at the end of the title row, like docs page actions. */
+	titleActions?: ReactNode;
 }
 
 export function SidebarLayout({
@@ -31,6 +33,7 @@ export function SidebarLayout({
 	sidebar,
 	sidebarClassName,
 	title,
+	titleActions,
 }: SidebarLayoutProps) {
 	return (
 		<PageFrame blueprint={blueprint} full>
@@ -62,15 +65,15 @@ export function SidebarLayout({
 							{sidebar}
 						</Drawer>
 						{beforeTitle}
-						<h1
+						<div
 							className={cn(
-								pageTitle,
+								'flex flex-col gap-4 md:flex-row md:items-center md:justify-between',
 								beforeTitle ? 'mt-5' : undefined,
-								heading,
 							)}
 						>
-							{title}
-						</h1>
+							<h1 className={cn(pageTitle, heading)}>{title}</h1>
+							{titleActions}
+						</div>
 					</div>
 					<Divider />
 					{children}

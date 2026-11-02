@@ -79,11 +79,31 @@ export function BlogCard({ post }: { post: BlogPost }) {
 export function BlogMeta({
 	post,
 	className,
+	spread,
 }: {
 	post: BlogPost;
 	className?: string;
+	/** date on the left and reading time on the right, like docs pages */
+	spread?: boolean;
 }) {
 	if (!post.date && !post.minutes) return;
+
+	if (spread) {
+		return (
+			<div
+				className={cn(
+					tech,
+					'flex flex-row items-center gap-4 text-graphite-700 dark:text-paper-100',
+					className,
+				)}
+			>
+				{post.date && <BlogDate date={post.date} />}
+				{post.minutes ? (
+					<span className="ml-auto shrink-0">{post.minutes} min read</span>
+				) : null}
+			</div>
+		);
+	}
 
 	return (
 		<p className={cn(tech, 'text-graphite-700 dark:text-paper-100', className)}>
@@ -122,7 +142,15 @@ export function BlogRecentPosts({
 							)}
 							href={post.url}
 						>
-							<FileTextIcon className="mt-[3px] size-[18px] shrink-0" />
+							{post.icon ? (
+								<span
+									className="mt-[3px] size-[18px] shrink-0 [&>svg]:size-full"
+									// biome-ignore lint/security/noDangerouslySetInnerHtml: Lucide SVG rendered on the server
+									dangerouslySetInnerHTML={{ __html: post.icon }}
+								/>
+							) : (
+								<FileTextIcon className="mt-[3px] size-[18px] shrink-0" />
+							)}
 							{post.title}
 						</Link>
 					</li>
