@@ -6,6 +6,7 @@ import { nitro } from 'nitro/vite';
 import { defineConfig } from 'vite';
 import { SITE_URL } from './src/lib/meta.ts';
 import { CHANGELOG_REPOS } from './src/lib/products.ts';
+import { REDIRECTS } from './src/lib/redirects.ts';
 import { BLOG_FEED_PATH } from './src/lib/rss.ts';
 
 const fumadocsDeps = ['fumadocs-core', 'fumadocs-ui', '@fumadocs/base-ui'];
@@ -81,6 +82,12 @@ export default defineConfig({
 			},
 		}),
 		nitro({
+			routeRules: Object.fromEntries(
+				Object.entries(REDIRECTS).map(([from, to]) => [
+					from,
+					{ redirect: { to, status: 301 } },
+				]),
+			),
 			// Nitro's `unwasm` export condition resolves `shiki/wasm` to a raw
 			// `.wasm` file, which the Vite SSR build can't load.
 			wasm: false,
