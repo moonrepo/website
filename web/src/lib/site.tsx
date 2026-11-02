@@ -6,7 +6,7 @@ import { BLOG_FEED_PATH } from '@/lib/rss';
 
 const DISCORD_URL = 'https://discord.gg/qCh9MEynv2';
 const GITHUB_URL = 'https://github.com/moonrepo';
-const TWITTER_URL = 'https://twitter.com/tothemoonrepo';
+const X_URL = 'https://x.com/tothemoonrepo';
 
 export const headerProps: Omit<HeaderProps, 'onSearch'> = {
 	logoHref: '/',
@@ -53,7 +53,7 @@ export const footerProps: FooterProps = {
 		},
 		{
 			label: 'X',
-			href: TWITTER_URL,
+			href: X_URL,
 			icon: <BrandIcon className="size-5" icon={siX} />,
 		},
 		{
