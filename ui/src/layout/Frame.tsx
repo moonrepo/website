@@ -5,9 +5,12 @@ import { dashed } from './styles';
 
 export function PageFrame({
 	children,
+	full,
 	theme,
 }: {
 	children: ReactNode;
+	/** span the full viewport, instead of a centered, bordered column */
+	full?: boolean;
 	theme?: ProductTheme;
 }) {
 	const themeClass = useProductTheme(theme);
@@ -23,8 +26,11 @@ export function PageFrame({
 
 			<div
 				className={cn(
-					'relative mx-auto max-w-[1344px] border-x md:mx-12 xl:mx-auto',
-					dashed,
+					'relative',
+					!full && [
+						'mx-auto max-w-[1344px] border-x md:mx-12 xl:mx-auto',
+						dashed,
+					],
 				)}
 			>
 				{children}

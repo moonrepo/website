@@ -27,7 +27,7 @@ export function SidebarLayout({
 	title,
 }: SidebarLayoutProps) {
 	return (
-		<PageFrame>
+		<PageFrame full>
 			{header}
 			<div className="flex">
 				<aside

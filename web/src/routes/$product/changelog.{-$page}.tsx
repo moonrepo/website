@@ -4,6 +4,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { ChangelogPagination, ChangelogTimeline } from '@/components/changelog';
 import { SiteLayout } from '@/components/SiteLayout';
 import { loadChangelog } from '@/lib/changelog';
+import { seo } from '@/lib/meta';
 import { isProduct, PRODUCT_THEMES, PRODUCTS } from '@/lib/products';
 
 // Releases of a product, paginated, like `/moon/changelog/2`.
@@ -20,6 +21,18 @@ export const Route = createFileRoute('/$product/changelog/{-$page}')({
 			page,
 			...(await serverLoader({ data: { page, product: params.product } })),
 		};
+	},
+	head: ({ params: { page: pageParam, product } }) => {
+		const title = isProduct(product) ? PRODUCTS[product].title : product;
+		const page = Number(pageParam ?? 1);
+
+		return seo({
+			title:
+				page > 1 ? `${title} changelog - Page ${page}` : `${title} changelog`,
+			description: `Release notes for every version of ${title}.`,
+			path:
+				page > 1 ? `/${product}/changelog/${page}` : `/${product}/changelog`,
+		});
 	},
 });
 

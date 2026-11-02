@@ -5,6 +5,7 @@ import mdx from 'fumadocs-mdx/vite';
 import { nitro } from 'nitro/vite';
 import { defineConfig } from 'vite';
 import { CHANGELOG_REPOS } from './src/lib/products.ts';
+import { BLOG_FEED_PATH } from './src/lib/rss.ts';
 
 const fumadocsDeps = ['fumadocs-core', 'fumadocs-ui', '@fumadocs/base-ui'];
 
@@ -33,11 +34,14 @@ export default defineConfig({
 		mdx(await import('./source.config.ts')),
 		tailwindCss(),
 		tanstackStart({
-			// Changelogs aren't linked from content, so the crawler needs a start,
-			// and follows their pagination from there
-			pages: Object.keys(CHANGELOG_REPOS).map((product) => ({
-				path: `/${product}/changelog`,
-			})),
+			// Changelogs and the blog feed aren't linked from content, so the
+			// crawler needs a start, and follows changelog pagination from there
+			pages: [
+				...Object.keys(CHANGELOG_REPOS).map((product) => ({
+					path: `/${product}/changelog`,
+				})),
+				{ path: BLOG_FEED_PATH },
+			],
 			prerender: {
 				enabled: true,
 				filter: isFirstPrerender,
