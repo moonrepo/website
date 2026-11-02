@@ -2,6 +2,7 @@ import type { FooterProps } from '@moonrepo/ui/layout/Footer';
 import type { HeaderProps } from '@moonrepo/ui/layout/Header';
 import { siDiscord, siGithub, siRss, siX } from 'simple-icons';
 import { BrandIcon } from '@/components/BrandIcon';
+import { PRODUCTS } from '@/lib/products';
 import { BLOG_FEED_PATH } from '@/lib/rss';
 
 const DISCORD_URL = 'https://discord.gg/qCh9MEynv2';
@@ -12,21 +13,13 @@ export const headerProps: Omit<HeaderProps, 'onSearch'> = {
 	logoHref: '/',
 	nav: [
 		{
-			label: 'Products',
-			items: [
-				{ description: 'Smart build system', href: '/moon', label: 'moon' },
-				{ description: 'Toolchain manager', href: '/proto', label: 'proto' },
-			],
+			label: 'Projects',
+			items: Object.entries(PRODUCTS).map(([id, product]) => ({
+				description: product.description,
+				href: `/${id}`,
+				label: product.title,
+			})),
 		},
-		{
-			label: 'Docs',
-			items: [
-				{ href: '/moon/docs', label: 'moon' },
-				{ href: '/proto/docs', label: 'proto' },
-				{ href: '/moon/api', label: 'Config reference' },
-			],
-		},
-		{ href: '/moon/docs/guides', label: 'Guides' },
 		{ href: '/blog', label: 'Blog' },
 		{ href: GITHUB_URL, label: 'GitHub' },
 	],
