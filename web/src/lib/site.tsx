@@ -1,6 +1,7 @@
 import type { FooterProps } from '@moonrepo/ui/layout/Footer';
 import type { HeaderProps } from '@moonrepo/ui/layout/Header';
-import { AtSign, MessageCircle, Rss } from 'lucide-react';
+import { siDiscord, siGithub, siRss, siX } from 'simple-icons';
+import { BrandIcon } from '@/components/BrandIcon';
 import { BLOG_FEED_PATH } from '@/lib/rss';
 
 const DISCORD_URL = 'https://discord.gg/qCh9MEynv2';
@@ -32,60 +33,33 @@ export const headerProps: Omit<HeaderProps, 'onSearch'> = {
 };
 
 export const footerProps: FooterProps = {
-	logoHref: '/',
-	columns: [
-		{
-			title: 'Learn',
-			links: [
-				{ label: 'Docs', href: '/moon/docs' },
-				{ label: 'Guides', href: '/moon/docs/guides' },
-				{ label: 'Blogs', href: '/blog' },
-			],
-		},
-		{
-			title: 'Ecosystem',
-			links: [
-				{ label: 'Releases', href: '/moon/changelog' },
-				{ label: 'Shared configs', href: `${GITHUB_URL}/moon-configs` },
-				{ label: 'Developer tools', href: `${GITHUB_URL}/dev` },
-				{ label: 'Examples repository', href: `${GITHUB_URL}/examples` },
-			],
-		},
-		{
-			title: 'Support',
-			links: [
-				{ label: 'GitHub', href: GITHUB_URL },
-				{ label: 'Discord', href: DISCORD_URL },
-				{ label: 'Twitter', href: TWITTER_URL },
-			],
-		},
-	],
-	contact: {
-		title: 'Contact',
-		description: 'Want to learn more about moonrepo? Have questions?',
-		submitLabel: 'Next',
-		topics: [
-			{ label: 'Sales', value: 'sales' },
-			{ label: 'Support', value: 'support' },
-			{ label: 'Partnerships', value: 'partnerships' },
-		],
-	},
-	copyright: 'Copyright © 2025, moonrepo, inc.',
+	copyright: `Copyright © ${new Date().getFullYear()}, moonrepo, inc.`,
 	socials: [
+		{
+			label: 'GitHub',
+			href: GITHUB_URL,
+			icon: <BrandIcon className="size-5" icon={siGithub} />,
+		},
 		{
 			label: 'Discord',
 			href: DISCORD_URL,
-			icon: <MessageCircle className="size-6" />,
+			icon: (
+				<BrandIcon
+					className="h-5 w-auto"
+					icon={siDiscord}
+					viewBox="0 2.85 24 18.3"
+				/>
+			),
 		},
 		{
-			label: 'Twitter',
+			label: 'X',
 			href: TWITTER_URL,
-			icon: <AtSign className="size-6" />,
+			icon: <BrandIcon className="size-5" icon={siX} />,
 		},
 		{
 			label: 'RSS feed',
 			href: BLOG_FEED_PATH,
-			icon: <Rss className="size-6" />,
+			icon: <BrandIcon className="size-5" icon={siRss} />,
 		},
 	],
 };

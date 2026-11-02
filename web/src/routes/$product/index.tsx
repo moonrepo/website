@@ -42,7 +42,6 @@ function Page() {
 
 	return (
 		<SiteLayout
-			footerClassName={Landing && 'bg-transparent dark:bg-transparent'}
 			theme={isProduct(product) ? PRODUCT_THEMES[product] : undefined}
 		>
 			{Landing && <Landing />}
