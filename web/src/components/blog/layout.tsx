@@ -17,7 +17,7 @@ export function BlogLayout(
 			drawerTitle="Blog"
 			footer={<Footer {...footerProps} />}
 			header={<SiteHeader />}
-			sidebarClassName="w-[356px] pt-[56px]"
+			sidebarClassName="w-[268px] px-6 pt-[56px]"
 			{...props}
 		/>
 	);

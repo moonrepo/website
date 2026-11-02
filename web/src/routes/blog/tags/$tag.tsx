@@ -4,10 +4,17 @@ import { BlogBackLink, BlogCards, BlogRecentPosts } from '@/components/blog';
 import { BlogLayout } from '@/components/blog/layout';
 import { getTagPosts } from '@/lib/blog';
 import { loadBlogPosts } from '@/lib/blogPosts';
+import { seo } from '@/lib/meta';
 
 export const Route = createFileRoute('/blog/tags/$tag')({
 	component: Page,
 	loader: ({ params }) => serverLoader({ data: params.tag }),
+	head: ({ loaderData, params }) =>
+		seo({
+			title: `Posts tagged “${loaderData?.tag.name ?? params.tag}”`,
+			description: `moonrepo blog posts tagged “${loaderData?.tag.name ?? params.tag}”.`,
+			path: loaderData?.tag.url ?? `/blog/tags/${params.tag}`,
+		}),
 });
 
 const serverLoader = createServerFn({

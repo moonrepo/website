@@ -19,6 +19,7 @@ import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as ApiSearchRouteImport } from './routes/api/search'
 import { Route as BlogIndexRouteImport } from './routes/blog/index'
 import { Route as BlogSplatRouteImport } from './routes/blog/$'
+import { Route as BlogRssDotxmlRouteImport } from './routes/blog/rss[.]xml'
 import { Route as ProductChangelogChar123PageChar125RouteImport } from './routes/$product/changelog.{-$page}'
 import { Route as BlogTagsIndexRouteImport } from './routes/blog/tags/index'
 import { Route as BlogTagsTagRouteImport } from './routes/blog/tags/$tag'
@@ -75,6 +76,11 @@ const BlogSplatRoute = BlogSplatRouteImport.update({
   path: '/blog/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BlogRssDotxmlRoute = BlogRssDotxmlRouteImport.update({
+  id: '/blog/rss.xml',
+  path: '/blog/rss.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProductChangelogChar123PageChar125Route =
   ProductChangelogChar123PageChar125RouteImport.update({
     id: '/changelog/{-$page}',
@@ -111,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/api/mcp': typeof ApiMcpRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
+  '/blog/rss.xml': typeof BlogRssDotxmlRoute
   '/$product/': typeof ProductIndexRoute
   '/blog/': typeof BlogIndexRoute
   '/$product/changelog/{-$page}': typeof ProductChangelogChar123PageChar125Route
@@ -127,6 +134,7 @@ export interface FileRoutesByTo {
   '/api/mcp': typeof ApiMcpRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
+  '/blog/rss.xml': typeof BlogRssDotxmlRoute
   '/$product': typeof ProductIndexRoute
   '/blog': typeof BlogIndexRoute
   '/$product/changelog/{-$page}': typeof ProductChangelogChar123PageChar125Route
@@ -145,6 +153,7 @@ export interface FileRoutesById {
   '/api/mcp': typeof ApiMcpRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
+  '/blog/rss.xml': typeof BlogRssDotxmlRoute
   '/$product/': typeof ProductIndexRoute
   '/blog/': typeof BlogIndexRoute
   '/$product/changelog/{-$page}': typeof ProductChangelogChar123PageChar125Route
@@ -164,6 +173,7 @@ export interface FileRouteTypes {
     | '/api/mcp'
     | '/api/search'
     | '/blog/$'
+    | '/blog/rss.xml'
     | '/$product/'
     | '/blog/'
     | '/$product/changelog/{-$page}'
@@ -180,6 +190,7 @@ export interface FileRouteTypes {
     | '/api/mcp'
     | '/api/search'
     | '/blog/$'
+    | '/blog/rss.xml'
     | '/$product'
     | '/blog'
     | '/$product/changelog/{-$page}'
@@ -197,6 +208,7 @@ export interface FileRouteTypes {
     | '/api/mcp'
     | '/api/search'
     | '/blog/$'
+    | '/blog/rss.xml'
     | '/$product/'
     | '/blog/'
     | '/$product/changelog/{-$page}'
@@ -214,6 +226,7 @@ export interface RootRouteChildren {
   ApiMcpRoute: typeof ApiMcpRoute
   ApiSearchRoute: typeof ApiSearchRoute
   BlogSplatRoute: typeof BlogSplatRoute
+  BlogRssDotxmlRoute: typeof BlogRssDotxmlRoute
   BlogIndexRoute: typeof BlogIndexRoute
   BlogTagsTagRoute: typeof BlogTagsTagRoute
   LlmsDotmdxProductSplatRoute: typeof LlmsDotmdxProductSplatRoute
@@ -293,6 +306,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/blog/rss.xml': {
+      id: '/blog/rss.xml'
+      path: '/blog/rss.xml'
+      fullPath: '/blog/rss.xml'
+      preLoaderRoute: typeof BlogRssDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/$product/changelog/{-$page}': {
       id: '/$product/changelog/{-$page}'
       path: '/changelog/{-$page}'
@@ -355,6 +375,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMcpRoute: ApiMcpRoute,
   ApiSearchRoute: ApiSearchRoute,
   BlogSplatRoute: BlogSplatRoute,
+  BlogRssDotxmlRoute: BlogRssDotxmlRoute,
   BlogIndexRoute: BlogIndexRoute,
   BlogTagsTagRoute: BlogTagsTagRoute,
   LlmsDotmdxProductSplatRoute: LlmsDotmdxProductSplatRoute,

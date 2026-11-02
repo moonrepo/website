@@ -18,6 +18,7 @@ import { PageActions } from '@/components/PageActions';
 import browserCollections from '@/generated/browser';
 import { type BlogPost, findPost } from '@/lib/blog';
 import { loadBlogPosts } from '@/lib/blogPosts';
+import { seo } from '@/lib/meta';
 import { blogSource } from '@/lib/source';
 import { getMdxComponents } from '@/mdxComponents';
 
@@ -30,6 +31,23 @@ export const Route = createFileRoute('/blog/$')({
 		await clientLoader.preload(data.path);
 
 		return data;
+	},
+	head: ({ loaderData }) => {
+		if (!loaderData) return {};
+
+		const { post } = loaderData;
+
+		return seo({
+			title: post.title,
+			description: post.description,
+			path: post.url,
+			image: post.image,
+			type: 'article',
+			properties: {
+				'article:published_time':
+					post.date && new Date(post.date).toISOString(),
+			},
+		});
 	},
 });
 

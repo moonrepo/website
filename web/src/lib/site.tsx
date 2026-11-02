@@ -1,6 +1,7 @@
 import type { FooterProps } from '@moonrepo/ui/layout/Footer';
 import type { HeaderProps } from '@moonrepo/ui/layout/Header';
 import { AtSign, MessageCircle, Rss } from 'lucide-react';
+import { BLOG_FEED_PATH } from '@/lib/rss';
 
 const DISCORD_URL = 'https://discord.gg/qCh9MEynv2';
 const GITHUB_URL = 'https://github.com/moonrepo';
@@ -81,6 +82,10 @@ export const footerProps: FooterProps = {
 			href: TWITTER_URL,
 			icon: <AtSign className="size-6" />,
 		},
-		{ label: 'Blog', href: '/blog', icon: <Rss className="size-6" /> },
+		{
+			label: 'RSS feed',
+			href: BLOG_FEED_PATH,
+			icon: <Rss className="size-6" />,
+		},
 	],
 };

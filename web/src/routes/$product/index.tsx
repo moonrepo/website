@@ -4,7 +4,13 @@ import { MoonHome } from '@/components/moon/MoonHome';
 import { ProtoHome } from '@/components/proto/ProtoHome';
 import { SiteLayout } from '@/components/SiteLayout';
 import { SchematicHome } from '@/components/schematic/SchematicHome';
-import { isProduct, PRODUCT_THEMES, type Product } from '@/lib/products';
+import { seo } from '@/lib/meta';
+import {
+	isProduct,
+	PRODUCT_THEMES,
+	PRODUCTS,
+	type Product,
+} from '@/lib/products';
 
 export const Route = createFileRoute('/$product/')({
 	// Products without a landing page go straight to their docs
@@ -14,6 +20,14 @@ export const Route = createFileRoute('/$product/')({
 		}
 	},
 	component: Page,
+	head: ({ params: { product } }) =>
+		isProduct(product)
+			? seo({
+					title: `${PRODUCTS[product].title} - ${PRODUCTS[product].description}`,
+					description: PRODUCTS[product].description,
+					path: `/${product}`,
+				})
+			: {},
 });
 
 const LANDING_PAGES: Partial<Record<Product, ComponentType>> = {

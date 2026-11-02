@@ -4,9 +4,17 @@ import { createServerFn } from '@tanstack/react-start';
 import { BlogCards, BlogRecentPosts } from '@/components/blog';
 import { BlogLayout } from '@/components/blog/layout';
 import { loadBlogPosts } from '@/lib/blogPosts';
+import { seo } from '@/lib/meta';
 
 export const Route = createFileRoute('/blog/')({
 	component: Page,
+	head: () =>
+		seo({
+			title: 'Blog',
+			description:
+				'Release announcements, guides, and news from the moonrepo team.',
+			path: '/blog',
+		}),
 	loader: () => serverLoader(),
 });
 
