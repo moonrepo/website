@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { Drawer } from '../components/Drawer';
 import { cn } from '../utils/cn';
 import { BlueprintGrid, Divider, Hatch, PageFrame } from './Frame';
-import { dashed, heading } from './styles';
+import { dashed, heading, title as pageTitle } from './styles';
 
 export interface SidebarLayoutProps {
 	beforeTitle?: ReactNode;
@@ -64,7 +64,7 @@ export function SidebarLayout({
 						{beforeTitle}
 						<h1
 							className={cn(
-								'text-4xl md:text-[44px]',
+								pageTitle,
 								beforeTitle ? 'mt-5' : undefined,
 								heading,
 							)}

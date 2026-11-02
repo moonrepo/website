@@ -5,7 +5,16 @@ import {
 	Figure,
 	Hatch,
 } from '@moonrepo/ui/layout/Frame';
-import { codeBox, dashed, heading, muted } from '@moonrepo/ui/layout/styles';
+import {
+	cardTitle,
+	codeBox,
+	dashed,
+	heading,
+	muted,
+	subtitle,
+	title,
+	wordmark,
+} from '@moonrepo/ui/layout/styles';
 import { cn } from '@moonrepo/ui/utils/cn';
 import {
 	ArrowRight,
@@ -40,14 +49,7 @@ function MoonLogo() {
 				<span className="absolute top-[14px] left-[30px] size-6 rounded-full bg-moon-800/60" />
 				<span className="absolute top-0 right-0 size-7 rounded-full bg-[#c7b3f7] dark:bg-paper-100" />
 			</span>
-			<span
-				className={cn(
-					heading,
-					'font-semibold font-stretch-125% text-[44px] tracking-[0.04em]',
-				)}
-			>
-				MOON
-			</span>
+			<span className={cn(heading, wordmark, 'text-display-1')}>MOON</span>
 		</div>
 	);
 }
@@ -72,7 +74,7 @@ function Terminal() {
 	];
 
 	return (
-		<div className={cn(codeBox, 'px-6 py-2 text-sm leading-[23px]')}>
+		<div className={cn(codeBox, 'px-6 py-2 text-code')}>
 			{tasks.map((task) => (
 				<div className="flex items-center gap-2.5" key={task.id}>
 					<span className="flex gap-[3px]">
@@ -106,15 +108,10 @@ function Hero() {
 			<BlueprintGrid />
 			<div className="relative">
 				<MoonLogo />
-				<h1
-					className={cn(
-						'mt-6 text-4xl leading-[1.2] md:text-[38px] xl:text-[42px]',
-						heading,
-					)}
-				>
+				<h1 className={cn('mt-6', title, heading)}>
 					The build system that makes large codebases fast again
 				</h1>
-				<p className={cn('mt-4 text-[15px]', muted)}>
+				<p className={cn('mt-4 text-body-sm', muted)}>
 					Supports JavaScript, TypeScript, Rust, Go, Ruby,{' '}
 					<a
 						className="underline underline-offset-2"
@@ -142,7 +139,7 @@ function Hero() {
 				<Figure caption="moon run :build">
 					<Terminal />
 				</Figure>
-				<p className={cn('mt-4 flex items-center gap-2 text-base', muted)}>
+				<p className={cn('mt-4 flex items-center gap-2 text-body-sm', muted)}>
 					Backed by
 					<span className="flex items-center gap-1.5 font-medium text-yc">
 						<span className="flex size-[22px] items-center justify-center bg-yc text-sm text-white">
@@ -212,17 +209,17 @@ function PainAndSolution() {
 
 			<div>
 				<div className="px-6 pt-12 pb-12 md:px-12">
-					<h2 className={cn('text-4xl leading-[1.2] md:text-[44px]', heading)}>
+					<h2 className={cn(title, heading)}>
 						Working with monorepos shouldn't be painful
 					</h2>
 				</div>
 				<Divider />
 				<div className="px-6 pt-12 pb-16 md:px-12">
-					<h3 className={cn('text-[32px]', heading)}>Common pain points:</h3>
+					<h3 className={cn(subtitle, heading)}>Common pain points:</h3>
 					<ol className="mt-10 space-y-[22px]">
 						{pains.map((pain, i) => (
 							<li
-								className="flex items-center gap-4 text-graphite-800 text-lg dark:text-paper-50"
+								className="flex items-center gap-4 text-graphite-800 text-body dark:text-paper-50"
 								key={pain}
 							>
 								<NumberBadge>{i + 1}</NumberBadge>
@@ -234,13 +231,11 @@ function PainAndSolution() {
 			</div>
 
 			<div className="border-dashed border-olive border-t px-6 pt-12 pb-12 md:border-t-0 md:px-12">
-				<h2 className={cn('text-[32px]', heading)}>Use moon instead</h2>
+				<h2 className={cn(subtitle, heading)}>Use moon instead</h2>
 				<div className="mt-8 space-y-6">
 					{solutions.map((solution) => (
 						<div key={solution.title}>
-							<h3
-								className={cn('flex items-center gap-3 text-[22px]', heading)}
-							>
+							<h3 className={cn('flex items-center gap-3', cardTitle, heading)}>
 								<span className={cn('[&_svg]:size-5', icon)}>
 									{solution.icon}
 								</span>
@@ -248,7 +243,7 @@ function PainAndSolution() {
 							</h3>
 							<ul
 								className={cn(
-									'mt-3 ml-6 list-disc text-[15px] leading-6 marker:text-xs',
+									'mt-3 ml-6 list-disc text-body-sm marker:text-xs',
 									muted,
 								)}
 							>
@@ -290,7 +285,7 @@ function Comparison() {
 			/>
 			{columns.map((col) => (
 				<div className="min-w-0 px-6 py-12 md:px-12" key={col.title}>
-					<h3 className={cn('flex items-center gap-5 text-[36px]', heading)}>
+					<h3 className={cn('flex items-center gap-5', subtitle, heading)}>
 						<span className="flex size-[26px] items-center justify-center rounded-[3px] bg-moon text-paper-50 dark:bg-moon-400 dark:text-graphite-800 [&_svg]:size-4 [&_svg]:stroke-3">
 							{col.glyph}
 						</span>
@@ -318,7 +313,7 @@ function Comparison() {
 
 function Stack() {
 	const logoTile =
-		'flex items-center justify-center bg-graphite-800 font-bold font-display text-[40px] text-paper-50 leading-none dark:bg-paper-100 dark:text-graphite-800';
+		'flex items-center justify-center bg-graphite-800 font-black font-display text-[40px] text-paper-50 leading-none dark:bg-paper-100 dark:text-graphite-800';
 	const logos = [
 		{
 			label: 'JavaScript',
@@ -374,15 +369,10 @@ function Stack() {
 	return (
 		<section className="flex flex-col gap-12 px-6 py-16 md:px-12 lg:h-[362px] lg:flex-row lg:items-center lg:justify-between lg:py-0">
 			<div>
-				<h2
-					className={cn(
-						'max-w-[400px] text-4xl leading-[1.2] md:text-[44px]',
-						heading,
-					)}
-				>
+				<h2 className={cn('max-w-[400px]', title, heading)}>
 					Works with your existing stack
 				</h2>
-				<p className={cn('mt-3 text-lg', muted)}>No migration required</p>
+				<p className={cn('mt-3 text-body', muted)}>No migration required</p>
 				<ButtonLink
 					className="mt-10"
 					href="/moon/docs/toolchain"
@@ -464,9 +454,7 @@ function AdvancedFeatures() {
 
 	return (
 		<section>
-			<h2
-				className={cn('py-[52px] text-center text-4xl md:text-[44px]', heading)}
-			>
+			<h2 className={cn('py-[52px] text-center', title, heading)}>
 				Advanced features
 			</h2>
 			<Divider />
@@ -485,13 +473,11 @@ function AdvancedFeatures() {
 						)}
 						key={feature.title}
 					>
-						<h3 className={cn('flex items-center gap-4 text-[28px]', heading)}>
+						<h3 className={cn('flex items-center gap-4', subtitle, heading)}>
 							<span className={cn('[&_svg]:size-6', icon)}>{feature.icon}</span>
 							{feature.title}
 						</h3>
-						<p className={cn('mt-5 text-[15px] leading-6', muted)}>
-							{feature.body}
-						</p>
+						<p className={cn('mt-5 text-body-sm', muted)}>{feature.body}</p>
 					</div>
 				))}
 			</div>
@@ -508,8 +494,8 @@ function QuickStart() {
 
 	return (
 		<section className="flex flex-col items-center px-6 pt-[60px] pb-[52px] text-center md:px-12">
-			<h2 className={cn('text-4xl md:text-[44px]', heading)}>Quick start</h2>
-			<h3 className={cn('mt-10 text-[32px]', heading)}>
+			<h2 className={cn(title, heading)}>Quick start</h2>
+			<h3 className={cn('mt-10', subtitle, heading)}>
 				Get running in 3 commands:
 			</h3>
 			<div

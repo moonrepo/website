@@ -10,8 +10,8 @@ const variants = {
 };
 
 const sizes = {
-	md: 'h-14 rounded-md border-b-4 px-6 text-sm',
-	sm: 'h-12 rounded-[4px] border-b-[3px] px-4 text-base',
+	md: 'h-14 rounded-md border-b-4 px-6 text-caps',
+	sm: 'h-12 rounded-[4px] border-b-[3px] px-4 text-caps',
 };
 
 interface ButtonStyleProps {

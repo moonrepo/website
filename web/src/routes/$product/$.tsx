@@ -1,5 +1,7 @@
 import { BlueprintGrid, BlueprintScope } from '@moonrepo/ui/layout/Frame';
+import { heading, tech, title } from '@moonrepo/ui/layout/styles';
 import { useProductTheme } from '@moonrepo/ui/theme';
+import { cn } from '@moonrepo/ui/utils/cn';
 import { createFileRoute, notFound, redirect } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import { flattenTree } from 'fumadocs-core/page-tree';
@@ -8,12 +10,7 @@ import type { CompiledMDXProperties } from 'fumadocs-mdx';
 import { DocsLayout } from 'fumadocs-ui/layouts/docs';
 import { Breadcrumb } from 'fumadocs-ui/layouts/docs/page/slots/breadcrumb';
 import { SearchTrigger } from 'fumadocs-ui/layouts/shared/slots/search-trigger';
-import {
-	DocsBody,
-	DocsDescription,
-	DocsPage,
-	DocsTitle,
-} from 'fumadocs-ui/page';
+import { DocsBody, DocsDescription, DocsPage } from 'fumadocs-ui/page';
 import { Suspense } from 'react';
 import { DocsSidebarTabs } from '@/components/DocsSidebarTabs';
 import { PageActions } from '@/components/PageActions';
@@ -127,12 +124,14 @@ function renderContent(
 				<BlueprintGrid className="-inset-x-8 -top-14 -z-10" />
 				<div className="flex flex-row items-center gap-4">
 					<Breadcrumb />
-					<span className="ml-auto shrink-0 font-mono text-[11px] text-fd-muted-foreground uppercase tracking-[0.2em]">
+					<span
+						className={cn(tech, 'ml-auto shrink-0 text-fd-muted-foreground')}
+					>
 						{minutes} min read
 					</span>
 				</div>
 				<div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-					<DocsTitle>{frontmatter.title}</DocsTitle>
+					<h1 className={cn(title, heading)}>{frontmatter.title}</h1>
 					<PageActions className="shrink-0" file={file} url={url} />
 				</div>
 				<DocsDescription className="mb-0">

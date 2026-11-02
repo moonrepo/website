@@ -37,7 +37,7 @@ export interface FooterProps {
 }
 
 const columnTitle =
-	'font-display font-bold text-label text-sm uppercase dark:text-tangerine';
+	'font-display font-bold text-caps text-label uppercase dark:text-tangerine';
 
 export function Footer({
 	className,

@@ -1,3 +1,5 @@
+import { heading, heroTitle } from '@moonrepo/ui/layout/styles';
+import { cn } from '@moonrepo/ui/utils/cn';
 import { Link } from '@tanstack/react-router';
 import { SiteLayout } from './SiteLayout';
 
@@ -5,8 +7,10 @@ export function NotFound() {
 	return (
 		<SiteLayout>
 			<div className="flex flex-col items-center gap-4 px-6 py-32 text-center">
-				<h1 className="font-bold text-6xl text-fd-muted-foreground">404</h1>
-				<h2 className="font-semibold text-2xl">Page Not Found</h2>
+				<h1 className={cn(heroTitle, heading, 'text-fd-muted-foreground')}>
+					404
+				</h1>
+				<h2 className={cn('text-display-3', heading)}>Page Not Found</h2>
 				<p className="max-w-md text-fd-muted-foreground">
 					The page you are looking for might have been removed, had its name
 					changed, or is temporarily unavailable.

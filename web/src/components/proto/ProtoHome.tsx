@@ -5,7 +5,15 @@ import {
 	Figure,
 	Hatch,
 } from '@moonrepo/ui/layout/Frame';
-import { codeBox, dashed, heading, muted } from '@moonrepo/ui/layout/styles';
+import {
+	codeBox,
+	dashed,
+	heading,
+	muted,
+	subtitle,
+	title,
+	wordmark,
+} from '@moonrepo/ui/layout/styles';
 import { cn } from '@moonrepo/ui/utils/cn';
 import {
 	ArrowRight,
@@ -24,7 +32,7 @@ import type { ReactNode } from 'react';
 const code = 'font-mono text-olive dark:text-sand';
 const comment = 'text-taupe';
 const pill =
-	'flex min-h-[46px] items-center rounded-md border border-taupe/50 bg-paper-200 px-4 py-2 text-graphite-700 text-lg dark:border-white/5 dark:bg-graphite-surface dark:text-sand';
+	'flex min-h-[46px] items-center rounded-md border border-taupe/50 bg-paper-200 px-4 py-2 text-graphite-700 text-body dark:border-white/5 dark:bg-graphite-surface dark:text-sand';
 const link = 'underline underline-offset-2';
 
 function ProtoLogo() {
@@ -35,14 +43,7 @@ function ProtoLogo() {
 				<span className="absolute top-[22px] left-[24px] h-8 w-3 rotate-[30deg] rounded-full bg-proto-800/70" />
 				<Sparkle className="absolute -top-1 -right-1 size-8 fill-proto-300 text-proto-300 dark:fill-paper-100 dark:text-paper-100" />
 			</span>
-			<span
-				className={cn(
-					heading,
-					'font-semibold font-stretch-125% text-[44px] tracking-[0.04em]',
-				)}
-			>
-				PROTO
-			</span>
+			<span className={cn(heading, wordmark, 'text-display-1')}>PROTO</span>
 		</div>
 	);
 }
@@ -55,7 +56,7 @@ function CodeLines({
 	lines: (string | { comment: string } | null)[];
 }) {
 	return (
-		<div className={cn(codeBox, 'overflow-x-auto px-6 text-sm', className)}>
+		<div className={cn(codeBox, 'overflow-x-auto px-6 text-code', className)}>
 			{lines.map((line, i) =>
 				line === null ? (
 					// biome-ignore lint/suspicious/noArrayIndexKey: static spacer rows
@@ -85,21 +86,16 @@ function Hero() {
 			<BlueprintGrid />
 			<div className="relative min-w-0">
 				<ProtoLogo />
-				<h1
-					className={cn(
-						'mt-6 text-4xl leading-[1.2] md:text-[40px] xl:text-[44px]',
-						heading,
-					)}
-				>
+				<h1 className={cn('mt-6', title, heading)}>
 					Stop juggling <span className={code}>nvm</span>,{' '}
 					<span className={code}>pyenv</span>,{' '}
 					<span className={code}>rbenv</span>, and{' '}
 					<span className={code}>gvm</span>.
 				</h1>
-				<p className="mt-6 text-graphite-800 text-xl dark:text-paper-50">
+				<p className="mt-6 text-graphite-800 text-body-lg dark:text-paper-50">
 					Proto handles every language version from a single command.
 				</p>
-				<p className={cn('mt-2 text-[15px]', muted, 'dark:text-taupe')}>
+				<p className={cn('mt-2 text-body-sm', muted, 'dark:text-taupe')}>
 					Supports Bun, Deno, Node, Python, Rust, Go, and 800+ more.
 				</p>
 				<div className="mt-6 flex gap-6">
@@ -118,7 +114,7 @@ function Hero() {
 
 			<Figure caption="Install and run" className="relative min-w-0 lg:pt-12">
 				<CodeLines
-					className="py-4 text-[15px] leading-[25px] lg:h-[260px]"
+					className="py-4 text-code lg:h-[260px]"
 					lines={[
 						{ comment: 'Install proto' },
 						'bash <(curl -fsSL https://moonrepo.dev/install/proto.sh)',
@@ -138,9 +134,7 @@ function Hero() {
 function SectionTitle({ children }: { children: ReactNode }) {
 	return (
 		<>
-			<h2
-				className={cn('py-[52px] text-center text-4xl md:text-[44px]', heading)}
-			>
+			<h2 className={cn('py-[52px] text-center', title, heading)}>
 				{children}
 			</h2>
 			<Divider />
@@ -166,7 +160,7 @@ function Simplify() {
 	return (
 		<Columns>
 			<div className="px-6 pt-12 pb-16 md:px-12">
-				<h3 className={cn('text-[32px] leading-[1.35]', heading)}>
+				<h3 className={cn(subtitle, heading)}>
 					Every language has its own version manager:
 				</h3>
 				<div className="mt-8 grid grid-cols-2 gap-6">
@@ -176,18 +170,18 @@ function Simplify() {
 					<div className={pill}>rustup for Rust</div>
 					<div className={pill}>...etc.</div>
 				</div>
-				<p className="mt-14 text-graphite-800 text-lg dark:text-paper-50">
+				<p className="mt-14 text-graphite-800 text-body dark:text-paper-50">
 					...each with different commands, config files, and quirks.
 				</p>
 			</div>
 
 			<div className="min-w-0 border-dashed border-olive border-t px-6 pt-12 pb-16 md:border-t-0 md:px-12">
-				<h3 className={cn('text-[32px]', heading)}>Instead of remembering:</h3>
+				<h3 className={cn(subtitle, heading)}>Instead of remembering:</h3>
 				<CodeLines
 					className="mt-8 py-[7px] leading-[37px]"
 					lines={['nvm use 18.16.0', 'pyenv local 3.11.2', 'rbenv local 3.2.0']}
 				/>
-				<h3 className={cn('mt-14 text-[32px]', heading)}>Just use:</h3>
+				<h3 className={cn('mt-14', subtitle, heading)}>Just use:</h3>
 				<CodeLines
 					className="mt-8 flex h-[52px] flex-col justify-center"
 					lines={['proto use']}
@@ -217,20 +211,20 @@ function ManageThemAll() {
 		<Columns>
 			<div>
 				<div className="px-6 pt-[60px] pb-16 md:px-12">
-					<h3 className={cn('text-[28px] leading-[1.35]', heading)}>
+					<h3 className={cn(subtitle, heading)}>
 						How many version managers are installed on your machine?
 					</h3>
-					<p className={cn('mt-6 text-lg', muted)}>
+					<p className={cn('mt-6 text-body', muted)}>
 						If the answer is more than one, proto can help.
 					</p>
 				</div>
 				<Divider />
 				<div className="px-6 pt-12 pb-16 md:px-12">
-					<h3 className={cn('text-[28px]', heading)}>proto is perfect for:</h3>
+					<h3 className={cn(subtitle, heading)}>proto is perfect for:</h3>
 					<ul className="mt-12 space-y-[30px]">
 						{audiences.map((item) => (
 							<li
-								className="flex items-center gap-3 text-graphite-800 text-lg dark:text-paper-50"
+								className="flex items-center gap-3 text-graphite-800 text-body dark:text-paper-50"
 								key={item}
 							>
 								<CheckBadge />
@@ -242,7 +236,7 @@ function ManageThemAll() {
 			</div>
 
 			<div className="border-dashed border-olive border-t px-6 pt-[68px] pb-16 md:border-t-0 md:px-12">
-				<h3 className={cn('text-[28px]', heading)}>Built for the real world</h3>
+				<h3 className={cn(subtitle, heading)}>Built for the real world</h3>
 				<div className="mt-10 space-y-6">
 					<div className={pill}>
 						<span>
@@ -257,7 +251,7 @@ function ManageThemAll() {
 					<div className={pill}>Designed for team consistency</div>
 				</div>
 
-				<h3 className={cn('mt-[72px] text-[28px]', heading)}>
+				<h3 className={cn('mt-[72px]', subtitle, heading)}>
 					Switching is painless
 				</h3>
 				<div className="mt-8 space-y-6">
@@ -316,13 +310,13 @@ function Benefits() {
 		<section className="grid gap-12 px-6 pt-[60px] pb-16 md:grid-cols-3 md:gap-8 md:px-12">
 			{benefits.map((benefit) => (
 				<div key={benefit.title}>
-					<h3 className={cn('flex items-center gap-4 text-[32px]', heading)}>
+					<h3 className={cn('flex items-center gap-4', subtitle, heading)}>
 						<span className="text-proto [&_svg]:size-6">{benefit.icon}</span>
 						{benefit.title}
 					</h3>
 					<ul
 						className={cn(
-							'mt-5 ml-6 list-disc text-[15px] leading-6 marker:text-xs',
+							'mt-5 ml-6 list-disc text-body-sm marker:text-xs',
 							muted,
 						)}
 					>
@@ -340,7 +334,7 @@ function Benefits() {
 function Step({ children, title }: { children: ReactNode; title: string }) {
 	return (
 		<div className="min-w-0">
-			<h3 className={cn('text-[32px]', heading)}>{title}</h3>
+			<h3 className={cn(subtitle, heading)}>{title}</h3>
 			<div className="mt-6">{children}</div>
 		</div>
 	);
@@ -351,8 +345,8 @@ function GetStarted() {
 
 	return (
 		<section className="px-6 pt-[60px] pb-16 md:px-12">
-			<h2 className={cn('text-4xl md:text-[44px]', heading)}>Get started</h2>
-			<p className={cn('mt-3 text-lg', muted)}>
+			<h2 className={cn(title, heading)}>Get started</h2>
+			<p className={cn('mt-3 text-body', muted)}>
 				proto works on your existing projects immediately, no configuration
 				required.
 			</p>
@@ -375,7 +369,7 @@ function GetStarted() {
 						<a
 							className={cn(
 								link,
-								'mt-3 inline-block text-[15px] text-olive dark:text-proto',
+								'mt-3 inline-block text-body-sm text-olive dark:text-proto',
 							)}
 							href="/proto/docs"
 						>
@@ -447,10 +441,8 @@ function LanguageSupport() {
 	return (
 		<section className="flex flex-col gap-12 px-6 py-16 md:px-12 lg:h-[309px] lg:flex-row lg:items-center lg:justify-between lg:py-0">
 			<div>
-				<h2 className={cn('text-4xl leading-[1.2] md:text-[44px]', heading)}>
-					Language support
-				</h2>
-				<p className={cn('mt-3 text-lg', muted)}>
+				<h2 className={cn(title, heading)}>Language support</h2>
+				<p className={cn('mt-3 text-body', muted)}>
 					Plus 800+ more via{' '}
 					<a className={cn(link, 'dark:text-proto')} href="/proto/docs">
 						plugins

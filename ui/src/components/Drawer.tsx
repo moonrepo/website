@@ -35,7 +35,7 @@ export function Drawer({
 						)}
 					>
 						<div className="mb-8 flex items-center justify-between">
-							<BaseDrawer.Title className="font-bold font-display text-graphite-800 text-sm uppercase dark:text-paper-50">
+							<BaseDrawer.Title className="font-bold font-display text-caps text-graphite-800 uppercase dark:text-paper-50">
 								{title}
 							</BaseDrawer.Title>
 							<BaseDrawer.Close

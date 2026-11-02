@@ -5,7 +5,15 @@ import {
 	Figure,
 	Hatch,
 } from '@moonrepo/ui/layout/Frame';
-import { accent, dashed, heading, muted } from '@moonrepo/ui/layout/styles';
+import {
+	accent,
+	dashed,
+	heading,
+	muted,
+	subtitle,
+	title,
+	wordmark,
+} from '@moonrepo/ui/layout/styles';
 import { cn } from '@moonrepo/ui/utils/cn';
 import {
 	ArrowRight,
@@ -21,7 +29,7 @@ import { CodeBlock } from '@/components/CodeBlock';
 
 const code = 'font-mono text-olive dark:text-tangerine';
 const pill =
-	'flex min-h-[46px] items-center rounded-md border border-taupe/50 bg-paper-200 px-4 py-2 text-graphite-700 text-lg dark:border-white/5 dark:bg-graphite-surface dark:text-sand';
+	'flex min-h-[46px] items-center rounded-md border border-taupe/50 bg-paper-200 px-4 py-2 text-graphite-700 text-body dark:border-white/5 dark:bg-graphite-surface dark:text-sand';
 const link = 'underline underline-offset-2';
 
 function SchematicLogo() {
@@ -34,10 +42,7 @@ function SchematicLogo() {
 				<Sparkle className="absolute -top-1 -right-1 size-8 fill-tangerine text-tangerine dark:fill-paper-100 dark:text-paper-100" />
 			</span>
 			<span
-				className={cn(
-					heading,
-					'font-semibold font-stretch-125% text-[30px] tracking-[0.04em] md:text-[44px]',
-				)}
+				className={cn(heading, wordmark, 'text-display-2 md:text-display-1')}
 			>
 				SCHEMATIC
 			</span>
@@ -51,20 +56,15 @@ function Hero() {
 			<BlueprintGrid />
 			<div className="relative min-w-0">
 				{/* <SchematicLogo /> */}
-				<h1
-					className={cn(
-						'mt-6 text-4xl leading-[1.2] md:text-[40px] xl:text-[44px]',
-						heading,
-					)}
-				>
+				<h1 className={cn('mt-6', title, heading)}>
 					Layered configuration and schemas for{' '}
 					<span className={code}>Rust</span>.
 				</h1>
-				<p className="mt-6 text-graphite-800 text-xl dark:text-paper-50">
+				<p className="mt-6 text-graphite-800 text-body-lg dark:text-paper-50">
 					Load, merge, and validate config from files, URLs, and environment
 					variables, then generate types from the same structs.
 				</p>
-				<p className={cn('mt-2 text-[15px]', muted, 'dark:text-taupe')}>
+				<p className={cn('mt-2 text-body-sm', muted, 'dark:text-taupe')}>
 					Powered by serde. Supports JSON, TOML, YAML, and more.
 				</p>
 				<div className="mt-6 flex flex-wrap gap-6">
@@ -113,9 +113,7 @@ let result = ConfigLoader::<AppConfig>::new()
 function SectionTitle({ children }: { children: ReactNode }) {
 	return (
 		<>
-			<h2
-				className={cn('py-[52px] text-center text-4xl md:text-[44px]', heading)}
-			>
+			<h2 className={cn('py-[52px] text-center', title, heading)}>
 				{children}
 			</h2>
 			<Divider />
@@ -160,12 +158,12 @@ function Feature({
 }) {
 	return (
 		<div className="min-w-0 px-6 pt-12 pb-16 md:px-12">
-			<h3 className={cn('text-[32px] leading-[1.35]', heading)}>{title}</h3>
-			<p className={cn('mt-4 text-lg', muted)}>{description}</p>
+			<h3 className={cn(subtitle, heading)}>{title}</h3>
+			<p className={cn('mt-4 text-body', muted)}>{description}</p>
 			<ul className="mt-8 space-y-5">
 				{items.map((item) => (
 					<li
-						className="flex items-center gap-3 text-graphite-800 text-lg dark:text-paper-50"
+						className="flex items-center gap-3 text-graphite-800 text-body dark:text-paper-50"
 						key={item}
 					>
 						<CheckBadge />
@@ -175,7 +173,7 @@ function Feature({
 			</ul>
 			<div className="mt-10">{children}</div>
 			<a
-				className={cn(link, 'mt-6 inline-block text-[15px]', accent)}
+				className={cn(link, 'mt-6 inline-block text-body-sm', accent)}
 				href={href}
 			>
 				Read the {title.toLowerCase()} docs
@@ -277,13 +275,13 @@ function Benefits() {
 		<section className="grid gap-12 px-6 pt-[60px] pb-16 md:grid-cols-3 md:gap-8 md:px-12">
 			{benefits.map((benefit) => (
 				<div key={benefit.title}>
-					<h3 className={cn('flex items-center gap-4 text-[32px]', heading)}>
+					<h3 className={cn('flex items-center gap-4', subtitle, heading)}>
 						<span className={cn(accent, '[&_svg]:size-6')}>{benefit.icon}</span>
 						{benefit.title}
 					</h3>
 					<ul
 						className={cn(
-							'mt-5 ml-6 list-disc text-[15px] leading-6 marker:text-xs',
+							'mt-5 ml-6 list-disc text-body-sm marker:text-xs',
 							muted,
 						)}
 					>
@@ -301,7 +299,7 @@ function Benefits() {
 function Step({ children, title }: { children: ReactNode; title: string }) {
 	return (
 		<div className="min-w-0">
-			<h3 className={cn('text-[32px]', heading)}>{title}</h3>
+			<h3 className={cn(subtitle, heading)}>{title}</h3>
 			<div className="mt-6">{children}</div>
 		</div>
 	);
@@ -310,8 +308,8 @@ function Step({ children, title }: { children: ReactNode; title: string }) {
 function GetStarted() {
 	return (
 		<section className="px-6 pt-[60px] pb-16 md:px-12">
-			<h2 className={cn('text-4xl md:text-[44px]', heading)}>Get started</h2>
-			<p className={cn('mt-3 text-lg', muted)}>
+			<h2 className={cn(title, heading)}>Get started</h2>
+			<p className={cn('mt-3 text-body', muted)}>
 				Configuration is enabled by default. Schemas require the{' '}
 				<code className="font-mono">schema</code> Cargo feature.
 			</p>
@@ -361,10 +359,8 @@ function Formats() {
 	return (
 		<section className="flex flex-col gap-12 px-6 py-16 md:px-12 lg:h-[309px] lg:flex-row lg:items-center lg:justify-between lg:py-0">
 			<div>
-				<h2 className={cn('text-4xl leading-[1.2] md:text-[44px]', heading)}>
-					Format support
-				</h2>
-				<p className={cn('mt-3 text-lg', muted)}>
+				<h2 className={cn(title, heading)}>Format support</h2>
+				<p className={cn('mt-3 text-body', muted)}>
 					Each format is an opt-in{' '}
 					<a
 						className={cn(link, 'dark:text-tangerine')}

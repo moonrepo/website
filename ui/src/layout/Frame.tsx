@@ -6,7 +6,7 @@ import { dashed } from './styles';
 /** Shown only inside a `PageFrame` with `blueprint` enabled. */
 const blueprintOnly = 'hidden group-data-[blueprint]/frame:flex';
 const blueprintLabel =
-	'font-mono text-[11px] text-olive uppercase tracking-[0.2em] dark:text-tangerine';
+	'font-mono text-olive text-tech uppercase dark:text-tangerine';
 
 function Ruler({ side }: { side: 'left' | 'right' }) {
 	return (

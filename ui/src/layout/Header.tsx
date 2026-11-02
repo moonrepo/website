@@ -52,7 +52,7 @@ export function Header({ className, logoHref, nav, onSearch }: HeaderProps) {
 					type="button"
 				>
 					<Search className="size-5" />
-					<span className="flex-1 text-left text-lg text-graphite-700 dark:text-graphite-500">
+					<span className="flex-1 text-body-sm text-left text-graphite-700 dark:text-graphite-500">
 						Search
 					</span>
 					<span className="flex gap-0.5">

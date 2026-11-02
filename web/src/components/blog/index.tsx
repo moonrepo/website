@@ -1,4 +1,14 @@
-import { accent, dashed, heading, muted } from '@moonrepo/ui/layout/styles';
+import {
+	accent,
+	caps,
+	cardTitle,
+	dashed,
+	heading,
+	muted,
+	subtitle,
+	tech,
+	title,
+} from '@moonrepo/ui/layout/styles';
 import { Image } from 'fumadocs-core/framework';
 import Link from 'fumadocs-core/link';
 import type { TOCItemType } from 'fumadocs-core/toc';
@@ -25,10 +35,8 @@ const dateFormat = new Intl.DateTimeFormat('en-US', {
 	timeZone: 'UTC',
 });
 
-const label = 'font-bold font-display text-sm uppercase';
-
 const chip =
-	'flex h-6 items-center gap-1.5 rounded-[3px] border border-graphite-700/70 px-[7px] font-display font-semibold text-graphite-800 text-xs uppercase transition-colors hover:border-olive hover:text-olive dark:border-paper-100 dark:text-paper-50 dark:hover:border-tangerine dark:hover:text-tangerine';
+	'flex h-6 items-center gap-1.5 rounded-[3px] border border-graphite-700/70 px-[7px] font-display font-semibold text-caps-sm text-graphite-800 uppercase transition-colors hover:border-olive hover:text-olive dark:border-paper-100 dark:text-paper-50 dark:hover:border-tangerine dark:hover:text-tangerine';
 
 export function BlogCards({
 	posts,
@@ -48,17 +56,12 @@ export function BlogCard({ post }: { post: BlogPost }) {
 	return (
 		<article>
 			<BlogMeta post={post} />
-			<h2
-				className={cn(
-					'mt-1.5 text-[28px] leading-tight md:text-[32px]',
-					heading,
-				)}
-			>
+			<h2 className={cn('mt-1.5', subtitle, heading)}>
 				<Link className="hover:underline" href={post.url}>
 					{post.title}
 				</Link>
 			</h2>
-			<p className="mt-3 text-graphite-700 text-lg leading-[30px] dark:text-sand">
+			<p className="mt-3 text-body text-graphite-700 dark:text-sand">
 				{post.description}{' '}
 				<Link
 					className={cn('underline underline-offset-2', accent)}
@@ -83,9 +86,7 @@ export function BlogMeta({
 	if (!post.date && !post.minutes) return;
 
 	return (
-		<p
-			className={cn(label, 'text-graphite-700 dark:text-paper-100', className)}
-		>
+		<p className={cn(tech, 'text-graphite-700 dark:text-paper-100', className)}>
 			{post.date && <BlogDate date={post.date} />}
 			{post.date && post.minutes ? ' · ' : null}
 			{post.minutes ? `${post.minutes} min read` : null}
@@ -106,7 +107,7 @@ export function BlogRecentPosts({
 }) {
 	return (
 		<>
-			<h2 className={cn(label, 'text-graphite-800 dark:text-paper-50')}>
+			<h2 className={cn(caps, 'text-graphite-800 dark:text-paper-50')}>
 				Recent posts
 			</h2>
 			<ul className="mt-5 space-y-3">
@@ -114,7 +115,7 @@ export function BlogRecentPosts({
 					<li key={post.url}>
 						<Link
 							className={cn(
-								'flex gap-3 text-[15px] leading-6',
+								'flex gap-3 text-body-sm',
 								post.url === current
 									? accent
 									: 'text-graphite-700 hover:text-graphite-800 dark:text-paper-100 dark:hover:text-tangerine',
@@ -210,7 +211,7 @@ export function BlogBackLink({
 		<Link
 			{...props}
 			className={cn(
-				label,
+				caps,
 				'inline-flex items-center gap-1.5 text-graphite-500 transition-colors hover:text-olive dark:text-sand dark:hover:text-tangerine',
 				props.className,
 			)}
@@ -222,12 +223,7 @@ export function BlogBackLink({
 }
 
 export function BlogTitle(props: ComponentProps<'h1'>) {
-	return (
-		<h1
-			{...props}
-			className={cn('text-4xl md:text-[44px]', heading, props.className)}
-		/>
-	);
+	return <h1 {...props} className={cn(title, heading, props.className)} />;
 }
 
 export function BlogDescription(props: ComponentProps<'p'>) {
@@ -235,7 +231,7 @@ export function BlogDescription(props: ComponentProps<'p'>) {
 		<p
 			{...props}
 			className={cn(
-				'text-graphite-700 text-xl leading-8 empty:hidden dark:text-sand',
+				'text-body-lg text-graphite-700 empty:hidden dark:text-sand',
 				props.className,
 			)}
 		/>
@@ -387,12 +383,10 @@ function PostLink({
 			className={cn('group flex flex-col gap-1.5', className)}
 			href={post.url}
 		>
-			<span className={cn(label, accent, 'inline-flex items-center gap-1')}>
+			<span className={cn(caps, accent, 'inline-flex items-center gap-1')}>
 				{children}
 			</span>
-			<span
-				className={cn('text-lg leading-snug group-hover:underline', heading)}
-			>
+			<span className={cn(cardTitle, 'group-hover:underline', heading)}>
 				{post.title}
 			</span>
 		</Link>

@@ -443,6 +443,20 @@ export default {
 	theme: {
 		extend: {
 			colors: toVarRefs(palette),
+			fontSize: {
+				'display-hero': ['64px', { lineHeight: '1.1' }],
+				'display-1': ['44px', { lineHeight: '1.2' }],
+				'display-2': ['32px', { lineHeight: '1.3' }],
+				'display-3': ['24px', { lineHeight: '1.35' }],
+				'display-4': ['20px', { lineHeight: '1.4' }],
+				'body-lg': ['20px', { lineHeight: '1.5' }],
+				body: ['18px', { lineHeight: '1.6' }],
+				'body-sm': ['15px', { lineHeight: '1.6' }],
+				caps: ['14px', { lineHeight: '1.4' }],
+				'caps-sm': ['12px', { lineHeight: '1.35' }],
+				tech: ['11px', { lineHeight: '1.5', letterSpacing: '0.2em' }],
+				code: ['14px', { lineHeight: '1.6' }],
+			},
 			fontFamily: {
 				display: [
 					'Eurostile',

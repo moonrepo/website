@@ -1,4 +1,4 @@
-import { heading, muted } from '@moonrepo/ui/layout/styles';
+import { heading, muted, title as pageTitle } from '@moonrepo/ui/layout/styles';
 import { createFileRoute, notFound } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import { ChangelogPagination, ChangelogTimeline } from '@/components/changelog';
@@ -65,7 +65,7 @@ function Page() {
 		>
 			<div className="mx-auto flex w-full max-w-[900px] flex-col gap-10 px-6 py-14 md:px-12">
 				<header>
-					<h1 className={`${heading} text-4xl`}>{title} changelog</h1>
+					<h1 className={`${heading} ${pageTitle}`}>{title} changelog</h1>
 					<p className={`${muted} mt-3`}>
 						Release notes for every version of {title}.
 					</p>
