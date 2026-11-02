@@ -1,8 +1,17 @@
+import { buttonClassName } from '@moonrepo/ui/components/Button';
 import {
 	MarkdownCopyButton,
 	ViewOptionsPopover,
 } from 'fumadocs-ui/layouts/docs/page';
 import { cn } from '@/lib/cn';
+
+// Fumadocs' secondary buttons, restyled as our `xs` secondary button
+const actionClassName = buttonClassName({
+	className:
+		'hover:bg-paper-50 data-[popup-open]:bg-paper-200 data-[popup-open]:text-graphite-800 [&_svg]:text-current',
+	size: 'xs',
+	variant: 'secondary',
+});
 
 const CONTENT_URL =
 	'https://github.com/moonrepo/website/blob/master/web/content';
@@ -22,8 +31,12 @@ export function PageActions({ className, file, url }: PageActionsProps) {
 
 	return (
 		<div className={cn('flex flex-row items-center gap-2', className)}>
-			<MarkdownCopyButton markdownUrl={markdownUrl} />
+			<MarkdownCopyButton
+				className={actionClassName}
+				markdownUrl={markdownUrl}
+			/>
 			<ViewOptionsPopover
+				className={actionClassName}
 				githubUrl={`${CONTENT_URL}/${file}`}
 				markdownUrl={markdownUrl}
 			/>

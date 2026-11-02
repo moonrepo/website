@@ -1,4 +1,5 @@
 import { Search } from 'lucide-react';
+import { Kbd } from '../components/Kbd';
 import { NavMenu, type NavMenuItem, navLinkClass } from '../components/NavMenu';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { cn } from '../utils/cn';
@@ -57,12 +58,7 @@ export function Header({ className, logoHref, nav, onSearch }: HeaderProps) {
 					</span>
 					<span className="flex gap-0.5">
 						{['⌘', 'K'].map((key) => (
-							<kbd
-								className="flex size-5 items-center justify-center rounded-[4px] border border-taupe/50 bg-paper-300 text-[10px] text-graphite-700 dark:bg-paper-100"
-								key={key}
-							>
-								{key}
-							</kbd>
+							<Kbd key={key}>{key}</Kbd>
 						))}
 					</span>
 				</button>

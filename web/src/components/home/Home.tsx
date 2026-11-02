@@ -1,4 +1,4 @@
-import { ButtonLink } from '@moonrepo/ui/components/Button';
+import { ButtonLink, buttonClassName } from '@moonrepo/ui/components/Button';
 import { BlueprintGrid, Divider, Hatch } from '@moonrepo/ui/layout/Frame';
 import {
 	accent,
@@ -385,8 +385,11 @@ function Planet() {
 }
 
 function SimpleVersion() {
-	const tile =
-		'flex size-9 items-center justify-center rounded-[4px] border border-taupe border-b-[3px] bg-sand';
+	const tile = buttonClassName({
+		className: 'pointer-events-none shrink-0 border-olive',
+		size: 'icon',
+		variant: 'secondary',
+	});
 
 	return (
 		<section className="grid items-center gap-12 bg-paper-200 px-6 py-24 md:grid-cols-2 md:px-12 dark:bg-graphite-900">
