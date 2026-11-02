@@ -2,14 +2,18 @@ import { PanelLeft } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Drawer } from '../components/Drawer';
 import { cn } from '../utils/cn';
-import { Divider, Hatch, PageFrame } from './Frame';
+import { BlueprintGrid, Divider, Hatch, PageFrame } from './Frame';
 import { dashed, heading } from './styles';
 
 export interface SidebarLayoutProps {
 	beforeTitle?: ReactNode;
+	/** Decorate the page like a technical drawing, see `PageFrame`. */
+	blueprint?: boolean;
 	children: ReactNode;
 	drawerTitle: string;
 	footer: ReactNode;
+	/** Label in the hatched band above the footer. */
+	hatchLabel?: string;
 	header: ReactNode;
 	sidebar: ReactNode;
 	sidebarClassName?: string;
@@ -18,16 +22,18 @@ export interface SidebarLayoutProps {
 
 export function SidebarLayout({
 	beforeTitle,
+	blueprint,
 	children,
 	drawerTitle,
 	footer,
+	hatchLabel,
 	header,
 	sidebar,
 	sidebarClassName,
 	title,
 }: SidebarLayoutProps) {
 	return (
-		<PageFrame full>
+		<PageFrame blueprint={blueprint} full>
 			{header}
 			<div className="flex">
 				<aside
@@ -41,7 +47,8 @@ export function SidebarLayout({
 					{sidebar}
 				</aside>
 				<main className="min-w-0 flex-1">
-					<div className="px-6 pt-9 pb-9 md:px-12">
+					<div className="relative isolate px-6 pt-9 pb-9 md:px-12">
+						{blueprint && <BlueprintGrid className="-z-10" />}
 						<Drawer
 							title={drawerTitle}
 							trigger={
@@ -69,7 +76,7 @@ export function SidebarLayout({
 					{children}
 				</main>
 			</div>
-			<Hatch />
+			<Hatch label={hatchLabel} />
 			{footer}
 		</PageFrame>
 	);

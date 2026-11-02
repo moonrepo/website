@@ -6,7 +6,7 @@ import { footerProps } from '@/lib/site';
 export function SiteFooter() {
 	return (
 		<div className="overflow-x-clip font-sans">
-			<Hatch />
+			<Hatch label="End of sheet" />
 			<Footer {...footerProps} />
 		</div>
 	);

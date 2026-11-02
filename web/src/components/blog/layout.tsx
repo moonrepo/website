@@ -14,8 +14,10 @@ export function BlogLayout(
 ) {
 	return (
 		<SidebarLayout
+			blueprint
 			drawerTitle="Blog"
 			footer={<Footer {...footerProps} />}
+			hatchLabel="End of sheet"
 			header={<SiteHeader />}
 			sidebarClassName="w-[268px] px-6 pt-[56px]"
 			{...props}

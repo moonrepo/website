@@ -1,5 +1,10 @@
 import { ButtonLink } from '@moonrepo/ui/components/Button';
-import { Divider, Hatch } from '@moonrepo/ui/layout/Frame';
+import {
+	BlueprintGrid,
+	Divider,
+	Figure,
+	Hatch,
+} from '@moonrepo/ui/layout/Frame';
 import { codeBox, dashed, heading, muted } from '@moonrepo/ui/layout/styles';
 import { cn } from '@moonrepo/ui/utils/cn';
 import {
@@ -76,8 +81,9 @@ function CodeLines({
 
 function Hero() {
 	return (
-		<section className="grid gap-12 px-6 pt-16 pb-16 md:h-[546px] md:grid-cols-2 md:px-12 md:pt-[96px]">
-			<div className="min-w-0">
+		<section className="relative grid gap-12 px-6 pt-16 pb-16 md:px-12 md:pt-[96px] lg:min-h-[546px] lg:grid-cols-2">
+			<BlueprintGrid />
+			<div className="relative min-w-0">
 				<ProtoLogo />
 				<h1
 					className={cn(
@@ -110,9 +116,9 @@ function Hero() {
 				</div>
 			</div>
 
-			<div className="min-w-0 md:pt-12">
+			<Figure caption="Install and run" className="relative min-w-0 lg:pt-12">
 				<CodeLines
-					className="py-4 text-[15px] leading-[25px] md:h-[260px]"
+					className="py-4 text-[15px] leading-[25px] lg:h-[260px]"
 					lines={[
 						{ comment: 'Install proto' },
 						'bash <(curl -fsSL https://moonrepo.dev/install/proto.sh)',
@@ -124,7 +130,7 @@ function Hero() {
 						'cargo build',
 					]}
 				/>
-			</div>
+			</Figure>
 		</section>
 	);
 }

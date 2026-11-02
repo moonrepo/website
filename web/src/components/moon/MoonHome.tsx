@@ -1,5 +1,10 @@
 import { ButtonLink } from '@moonrepo/ui/components/Button';
-import { Divider, Hatch } from '@moonrepo/ui/layout/Frame';
+import {
+	BlueprintGrid,
+	Divider,
+	Figure,
+	Hatch,
+} from '@moonrepo/ui/layout/Frame';
 import { codeBox, dashed, heading, muted } from '@moonrepo/ui/layout/styles';
 import { cn } from '@moonrepo/ui/utils/cn';
 import {
@@ -97,8 +102,9 @@ function Terminal() {
 
 function Hero() {
 	return (
-		<section className="grid gap-12 px-6 pt-16 pb-16 md:h-[504px] md:grid-cols-2 md:px-12 md:pt-[96px]">
-			<div>
+		<section className="relative grid gap-12 px-6 pt-16 pb-16 md:px-12 md:pt-[96px] lg:min-h-[504px] lg:grid-cols-2">
+			<BlueprintGrid />
+			<div className="relative">
 				<MoonLogo />
 				<h1
 					className={cn(
@@ -132,8 +138,10 @@ function Hero() {
 				</div>
 			</div>
 
-			<div className="md:pt-[10px]">
-				<Terminal />
+			<div className="relative lg:pt-[10px]">
+				<Figure caption="moon run :build">
+					<Terminal />
+				</Figure>
 				<p className={cn('mt-4 flex items-center gap-2 text-base', muted)}>
 					Backed by
 					<span className="flex items-center gap-1.5 font-medium text-yc">

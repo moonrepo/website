@@ -1,5 +1,5 @@
 import { ButtonLink } from '@moonrepo/ui/components/Button';
-import { Divider, Hatch } from '@moonrepo/ui/layout/Frame';
+import { BlueprintGrid, Divider, Hatch } from '@moonrepo/ui/layout/Frame';
 import { accent, dashed, heading, muted } from '@moonrepo/ui/layout/styles';
 import { cn } from '@moonrepo/ui/utils/cn';
 import {
@@ -92,6 +92,7 @@ function Hero() {
 
 	return (
 		<section className="relative h-[880px] overflow-hidden md:h-[700px]">
+			<BlueprintGrid className="bottom-auto h-[560px]" />
 			<div className="absolute inset-x-0 top-[180px] bottom-0 md:top-0">
 				{/* Planet surface */}
 				<div className="absolute top-[420px] left-[43%] size-[2380px] -translate-x-1/2 rounded-full border-2 border-olive bg-paper-100 dark:border-graphite-500 dark:bg-graphite-800" />

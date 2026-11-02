@@ -1,5 +1,10 @@
 import { ButtonLink } from '@moonrepo/ui/components/Button';
-import { Divider, Hatch } from '@moonrepo/ui/layout/Frame';
+import {
+	BlueprintGrid,
+	Divider,
+	Figure,
+	Hatch,
+} from '@moonrepo/ui/layout/Frame';
 import { accent, dashed, heading, muted } from '@moonrepo/ui/layout/styles';
 import { cn } from '@moonrepo/ui/utils/cn';
 import {
@@ -42,8 +47,9 @@ function SchematicLogo() {
 
 function Hero() {
 	return (
-		<section className="grid gap-12 px-6 pt-16 pb-16 md:grid-cols-2 md:px-12 md:pt-[96px] lg:min-h-[546px]">
-			<div className="min-w-0">
+		<section className="relative grid gap-12 px-6 pt-16 pb-16 md:px-12 md:pt-[96px] lg:min-h-[546px] lg:grid-cols-2">
+			<BlueprintGrid />
+			<div className="relative min-w-0">
 				{/* <SchematicLogo /> */}
 				<h1
 					className={cn(
@@ -75,7 +81,10 @@ function Hero() {
 				</div>
 			</div>
 
-			<div className="min-w-0 md:pt-12">
+			<Figure
+				caption="Load layered config"
+				className="relative min-w-0 lg:pt-12"
+			>
 				<CodeBlock
 					code={`use schematic::Config;
 
@@ -96,7 +105,7 @@ let result = ConfigLoader::<AppConfig>::new()
     .load()?;`}
 					lang="rust"
 				/>
-			</div>
+			</Figure>
 		</section>
 	);
 }
@@ -362,7 +371,8 @@ function Formats() {
 						href="/schematic/docs/config#cargo-features"
 					>
 						Cargo feature
-					</a>.
+					</a>
+					.
 				</p>
 				<div className="mt-4 flex flex-wrap gap-4">
 					<div className={pill}>

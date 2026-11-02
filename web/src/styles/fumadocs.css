@@ -91,3 +91,65 @@
 #nd-toc h3 {
 	@apply font-display font-medium;
 }
+
+/*
+ * Technical-drawing touches for docs and blog content, enabled by
+ * `BlueprintScope` / `PageFrame blueprint` (which also reset the counters).
+ */
+.blueprint {
+	--blueprint-ink: var(--color-olive);
+	--blueprint-mark: var(--color-olive-300);
+}
+
+.dark .blueprint {
+	--blueprint-ink: var(--color-tangerine);
+	--blueprint-mark: var(--color-tangerine-600);
+}
+
+.blueprint .prose {
+	counter-reset: blueprint-heading;
+}
+
+/* Numbered section plates before each top-level heading. */
+.blueprint .prose > h2::before {
+	color: var(--blueprint-ink);
+	content: counter(blueprint-heading, decimal-leading-zero);
+	counter-increment: blueprint-heading;
+	@apply mr-2 rounded-[2px] border border-current px-1.5 py-0.5 font-mono font-normal text-[11px] tracking-[0.2em];
+}
+
+.blueprint #toc-title {
+	color: var(--blueprint-ink);
+	@apply font-mono font-normal text-[11px] uppercase tracking-[0.2em];
+}
+
+/* Tighter corners on code blocks, matching the landing pages' code panels. */
+.blueprint
+	.prose
+	:is(figure.shiki, div:has(> [role="tablist"]), [role="tabpanel"]) {
+	@apply rounded-md;
+}
+
+/* Crop marks around top-level code blocks and tab groups. */
+.blueprint .prose > :is(figure.shiki, div:has(> [role="tablist"])) {
+	position: relative;
+	overflow: visible;
+}
+
+.blueprint .prose > :is(figure.shiki, div:has(> [role="tablist"]))::after {
+	--c: var(--blueprint-mark);
+	--l: 12px;
+	position: absolute;
+	inset: -7px;
+	pointer-events: none;
+	content: "";
+	background:
+		linear-gradient(var(--c), var(--c)) top left / var(--l) 1px no-repeat,
+		linear-gradient(var(--c), var(--c)) top left / 1px var(--l) no-repeat,
+		linear-gradient(var(--c), var(--c)) top right / var(--l) 1px no-repeat,
+		linear-gradient(var(--c), var(--c)) top right / 1px var(--l) no-repeat,
+		linear-gradient(var(--c), var(--c)) bottom left / var(--l) 1px no-repeat,
+		linear-gradient(var(--c), var(--c)) bottom left / 1px var(--l) no-repeat,
+		linear-gradient(var(--c), var(--c)) bottom right / var(--l) 1px no-repeat,
+		linear-gradient(var(--c), var(--c)) bottom right / 1px var(--l) no-repeat;
+}

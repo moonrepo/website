@@ -16,7 +16,7 @@ export function SiteLayout({
 	theme?: ProductTheme;
 }) {
 	return (
-		<PageFrame theme={theme}>
+		<PageFrame blueprint theme={theme}>
 			<SiteHeader />
 			{/* Keep the footer below the fold on short pages */}
 			<main className="min-h-[calc(100dvh-var(--site-header-height))]">

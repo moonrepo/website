@@ -408,13 +408,28 @@ const protoDarkTheme: Palette = {
 	},
 };
 
-const brand = plugin(({ addBase, addUtilities }) => {
+const brand = plugin(({ addBase, addComponents, addUtilities }) => {
 	addBase({
 		':root': toCssVars(palette),
 		'.theme-moon': toCssVars(moonTheme),
 		'.dark .theme-moon': toCssVars(moonDarkTheme),
 		'.theme-proto': toCssVars(protoTheme),
 		'.dark .theme-proto': toCssVars(protoDarkTheme),
+	});
+
+	// Auto-numbered labels for technical drawing decorations (see layout/Frame)
+	addComponents({
+		'.blueprint': {
+			'counter-reset': 'blueprint-section blueprint-figure',
+		},
+		'.blueprint-section::before': {
+			'counter-increment': 'blueprint-section',
+			content: '"SEC " counter(blueprint-section, decimal-leading-zero)',
+		},
+		'.blueprint-figure::before': {
+			'counter-increment': 'blueprint-figure',
+			content: '"FIG. " counter(blueprint-figure, decimal-leading-zero)',
+		},
 	});
 
 	addUtilities({
