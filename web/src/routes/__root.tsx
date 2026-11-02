@@ -11,6 +11,7 @@ import { ColorSchemeBridge } from '@/components/ColorSchemeBridge';
 import { cn } from '@/lib/cn';
 import { seo } from '@/lib/meta';
 import { isProduct, PRODUCT_THEMES } from '@/lib/products';
+import { BLOG_FEED_PATH, BLOG_FEED_TITLE } from '@/lib/rss';
 import appCss from '@/styles/app.css?url';
 
 // The search dialog bundles a markdown renderer for results, so keep it out
@@ -30,7 +31,15 @@ export const Route = createRootRoute({
 			// Defaults for routes without their own `head()`, like 404s
 			...seo({ path: '/' }).meta,
 		],
-		links: [{ rel: 'stylesheet', href: appCss }],
+		links: [
+			{ rel: 'stylesheet', href: appCss },
+			{
+				rel: 'alternate',
+				type: 'application/rss+xml',
+				title: BLOG_FEED_TITLE,
+				href: BLOG_FEED_PATH,
+			},
+		],
 	}),
 	component: RootComponent,
 });
