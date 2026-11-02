@@ -4,18 +4,32 @@ import react from '@vitejs/plugin-react';
 import mdx from 'fumadocs-mdx/vite';
 import { nitro } from 'nitro/vite';
 import { defineConfig } from 'vite';
+import { SITE_URL } from './src/lib/meta.ts';
 import { CHANGELOG_REPOS } from './src/lib/products.ts';
 import { BLOG_FEED_PATH } from './src/lib/rss.ts';
 
 const fumadocsDeps = ['fumadocs-core', 'fumadocs-ui', '@fumadocs/base-ui'];
+
+interface PrerenderPage {
+	path: string;
+	sitemap?: { exclude?: boolean };
+}
+
+function normalizePath(path: string): string {
+	return path.replace(/[?#].*$/, '').replace(/(.)\/$/, '$1');
+}
 
 // The prerender crawler dedupes pages by their exact path, so variants like
 // `/page`, `/page/`, and `/page#heading` are rendered concurrently into the
 // same `page/index.html`, which can leave it empty. Only render the first.
 const prerenderedPaths = new Set<string>();
 
-function isFirstPrerender({ path }: { path: string }): boolean {
-	const outputPath = path.replace(/[?#].*$/, '').replace(/(.)\/$/, '$1');
+function isFirstPrerender(page: PrerenderPage): boolean {
+	// Every crawled link (variants, failed fetches, non-HTML files) lands in
+	// the sitemap, so exclude by default and opt in on successful HTML renders
+	page.sitemap = { exclude: true };
+
+	const outputPath = normalizePath(page.path);
 
 	if (prerenderedPaths.has(outputPath)) {
 		return false;
@@ -24,6 +38,20 @@ function isFirstPrerender({ path }: { path: string }): boolean {
 	prerenderedPaths.add(outputPath);
 
 	return true;
+}
+
+function includeInSitemap({
+	page,
+	html,
+}: {
+	page: PrerenderPage;
+	html: string;
+}) {
+	if (!/^<!doctype html/i.test(html)) {
+		return undefined;
+	}
+
+	return { path: normalizePath(page.path), sitemap: { exclude: false } };
 }
 
 export default defineConfig({
@@ -45,6 +73,11 @@ export default defineConfig({
 			prerender: {
 				enabled: true,
 				filter: isFirstPrerender,
+				onSuccess: includeInSitemap,
+			},
+			sitemap: {
+				enabled: true,
+				host: SITE_URL,
 			},
 		}),
 		nitro({
