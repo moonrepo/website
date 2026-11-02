@@ -170,7 +170,7 @@ the file is generated:
 - [`orderBy`](/moon/api/CodeownersConfig#orderby) - Order project rules by `file-source` (the
   default) or `project-id`.
 - [`requiredApprovals`](/moon/api/CodeownersConfig#requiredapprovals) - The number of approvals
-  required for every path (GitLab and Bitbucket legacy only).
+  required for every path (GitLab only).
 - [`sync`](/moon/api/CodeownersConfig#sync) - Generate the file automatically during workspace
   syncing.
 
@@ -196,7 +196,7 @@ and where the file is written for each provider.
 ### Code generation
 
 [`moon generate`](../commands/generate.mdx) scaffolds files from templates, like a new library or
-application. The [`generator.templates`](/moon/api/GeneratorConfig#templates) setting lists where
+application. The [`codegen.templates`](/moon/api/CodegenConfig#templates) setting lists where
 templates are located, and defaults to the `./templates` directory. Locations can be file paths or
 globs relative to the workspace root, Git repositories, npm packages, or URLs to an archive (see
 [configuring template locations](../guides/codegen.mdx#configuring-template-locations)), so
@@ -205,7 +205,7 @@ templates can be [shared across repositories](../guides/codegen.mdx#sharing-temp
 <ConfigTabs
   file=".moon/workspace"
   config={{
-    generator: {
+    codegen: {
       templates: ["./templates", "git://github.com/acme/templates#main"],
     },
   }}
@@ -394,7 +394,7 @@ setting is optional, but most workspaces configure at least [`projects`](#projec
     vcs: {
       defaultBranch: "main",
     },
-    versionConstraint: ">=2.6.0",
+    versionConstraint: ">=3.0.0",
   }}
 />
 
@@ -402,14 +402,14 @@ Settings not covered above:
 
 - [`daemon`](/moon/api/WorkspaceConfig#daemon) <TypeLabel type="boolean" /> - Run a long-lived
   background process that takes heavy work, like uploading task outputs and sending webhooks, off
-  the critical path, and rebuilds the graphs when configuration changes. This setting is unstable,
-  and is configured as `unstable_daemon`. See the [daemon guide](../guides/daemon.mdx).
+  the critical path, and rebuilds the graphs when configuration changes. Defaults to `true`, and can
+  be disabled with `MOON_DAEMON=false`. See the [daemon guide](../guides/daemon.mdx).
 - [`docker`](/moon/api/WorkspaceConfig#docker) - Defaults for moon's Docker integration, like the
   base image of [generated `Dockerfile`s](../guides/docker.mdx#configuring-generation), and what's
   [scaffolded](../guides/docker.mdx#customizing-the-scaffold) and
   [pruned](../guides/docker.mdx#customizing-pruning).
 - [`experiments`](/moon/api/WorkspaceConfig#experiments) - Opt in to, or out of, features that are
-  still being developed.
+  still being developed. There are currently no experiments available.
 - [`telemetry`](/moon/api/WorkspaceConfig#telemetry) <TypeLabel type="boolean" /> - Collect
   anonymous usage information, and check for new moon versions. Defaults to `true`, and can be
   disabled with `MOON_TELEMETRY=false`.
@@ -444,7 +444,7 @@ unable to proceed" when it doesn't.
 <ConfigTabs
   file=".moon/workspace"
   config={{
-    versionConstraint: "^2.6.0",
+    versionConstraint: "^3.0.0",
   }}
 />
 

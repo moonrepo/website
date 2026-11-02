@@ -52,7 +52,7 @@ file. This is the easiest way to pin moon per repository (see
 [pinning a version](#pinning-a-version)).
 
 ```toml title=".prototools"
-moon = "2.6.4"
+moon = "3.0.0"
 ```
 
 ### macOS, Linux, and WSL
@@ -69,7 +69,7 @@ downloads the matching release from GitHub, and installs `moon` and `moonx` into
 To install a specific version instead of the latest, pass it as an argument:
 
 ```shell
-$ curl -fsSL https://moonrepo.dev/install/moon.sh | bash -s -- 2.6.4
+$ curl -fsSL https://moonrepo.dev/install/moon.sh | bash -s -- 3.0.0
 ```
 
 ### Windows
@@ -188,6 +188,9 @@ $ proto install moon --pin
 To check for and download new versions from your own servers instead of moonrepo's, see
 [hosting releases yourself](./commands/upgrade.mdx#hosting-releases-yourself).
 
+Upgrading across a major version may require changes to your configuration. When upgrading from v2,
+read the [v3 migration guide](./guides/migrate/3.0.mdx) first.
+
 ## Uninstalling
 
 Uninstall moon with the tool that installed it:
@@ -232,7 +235,7 @@ should run the same version. There are a few ways to pin it:
 <ConfigTabs
   file=".moon/workspace"
   config={{
-    versionConstraint: "^2.6.0",
+    versionConstraint: "^3.0.0",
   }}
 />
 

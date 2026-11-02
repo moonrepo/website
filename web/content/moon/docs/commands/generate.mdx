@@ -7,7 +7,7 @@ import { TypeLabel } from "@/components/TypeLabel";
 The `moon generate` (or `moon g`) command scaffolds files and folders into your workspace from a
 pre-defined [template](../guides/codegen.mdx), using an interactive series of prompts. Templates are
 loaded from every [location](../guides/codegen.mdx#configuring-template-locations) configured in the
-[`generator.templates`](/moon/api/GeneratorConfig#templates) setting in [`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>), which can be file paths or
+[`codegen.templates`](/moon/api/CodegenConfig#templates) setting in [`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>), which can be file paths or
 globs on the local file system, Git repositories, npm packages, or archive URLs.
 
 When run, moon will:
@@ -66,7 +66,7 @@ $ moon generate react-app --template
 ## Arguments
 
 - `[ID]` - ID of the template to generate. When omitted, you'll be prompted to select one from
-  the templates available in [`generator.templates`](/moon/api/GeneratorConfig#templates) (see [`moon templates`](./templates.mdx) to list
+  the templates available in [`codegen.templates`](/moon/api/CodegenConfig#templates) (see [`moon templates`](./templates.mdx) to list
   them, or [`moon template`](./template.mdx) to inspect one).
 - `-- [VARS...]` - Additional arguments, in `--name value` form, to define as template variable
   values, bypassing their interactive prompts.
@@ -77,10 +77,10 @@ $ moon generate react-app --template
   workspace root (when prefixed with `/`) or the current working directory. When not defined,
   falls back to the template's configured [`destination`](/moon/api/TemplateConfig#destination), or prompts for a path.
 - `--defaults` - Use the default value of every variable instead of prompting for each one.
-- `--dry-run` - Run the entire generator process, including prompts, without writing any files to
+- `--dry-run` - Run the entire code generation process, including prompts, without writing any files to
   the destination.
 - `--force` - Force overwrite any existing files at the destination, instead of prompting to merge
   or replace them.
 - `--template` - Create a new template with the provided `id`, instead of generating from an
   existing one. The template is scaffolded into the first file-based location configured in
-  `generator.templates`.
+  `codegen.templates`.

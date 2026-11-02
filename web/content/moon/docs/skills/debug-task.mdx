@@ -26,7 +26,7 @@ in the rest of this page:
 
 1. Inspect the resolved task configuration (after inheritance merging).
 2. Run with maximum verbosity to see exactly what moon is doing.
-3. Inspect cache state and hash manifests.
+3. Inspect cache state and hash fingerprints.
 4. Match symptoms to root causes using a built-in decision table.
 5. Validate that the fix actually resolves the issue.
 
@@ -90,8 +90,9 @@ If the configuration from the previous step looks correct, you can skip this ste
 verify that the inherited configuration is also correct. The human-readable output of
 [`moon task`](../commands/task.mdx) lists which configuration layers the task's settings came from.
 For more detail, inspect the root `inherited` object of
-[`moon project <id> --json`](../commands/project.mdx) (or the project's `snapshot.json`), which is
-structured as follows:
+[`moon project <id> --json`](../commands/project.mdx), which is structured as follows (other output,
+like the project's `snapshot.json`, only includes the paths of these configs in an `inheritedFrom`
+field):
 
 - `configs` - A mapping of [`.moon/tasks/*.config`](<../(fundamentals)/task-inheritance.mdx>) files
   that were inherited by the project, in order. Each config represents a partial object (not
@@ -133,10 +134,8 @@ the task's inputs are gathered and hashed. This breaks down as follows:
    command can also be ran locally to verify the output. Projects at the workspace root, and the
    `glob` [`hasher.walkStrategy`](/moon/api/HasherConfig#walkstrategy), walk the file system
    instead.
-3. Lastly, the contents of all matching input files are hashed. By default, moon hashes files
-   natively, but when [`experiments.nativeFileHashing`](/moon/api/ExperimentsConfig#nativefilehashing)
-   is disabled, the `git hash-object --stdin-paths` command is used instead, and
-   `MOON_DEBUG_PROCESS_INPUT` displays the list of every file being hashed.
+3. Lastly, the contents of all matching input files are hashed natively by moon (not through Git),
+   so no command is logged for this step.
 
 If all went well, you should see a log entry that looks like this:
 
@@ -158,19 +157,19 @@ to skip re-running a task.
 
 Let's copy the hash and move on to the next step.
 
-## Inspect the hash manifest
+## Inspect the hash fingerprint
 
-With the hash in hand, let's dig deeper into moon's internals, by inspecting the hash manifest with
-the [`moon hash`](../commands/hash.mdx) command. Manifests are stored in the local
+With the hash in hand, let's dig deeper into moon's internals, by inspecting the hash fingerprint with
+the [`moon hash`](../commands/hash.mdx) command. Fingerprints are stored in the local
 [objects store](../advanced/cache.mdx#objects) (`.moon/cache/objects`), so always read them through
 this command. A unique prefix of the hash works too.
 
 ```shell
-# Inspect a hash manifest
+# Inspect a hash fingerprint
 $ moon hash <hash>
 ```
 
-The manifest is JSON and its contents are all the information used to generate its unique hash.
+The fingerprint is JSON and its contents are all the information used to generate its unique hash.
 This information is an array, and breaks down as follows:
 
 - The first item in the array is the task itself. The important fields to diagnose here are `deps`
@@ -196,7 +195,7 @@ Some issues to look out for:
 - Are dependency versions/hashes correctly parsed from the appropriate lockfile?
 
 <Callout>
-  If `moon hash` can't find the manifest, it may have been removed when the
+  If `moon hash` can't find the fingerprint, it may have been removed when the
   cache was cleaned. Run the task again with `--force` to regenerate it.
 </Callout>
 
@@ -212,7 +211,7 @@ This will produce a `git diff` styled output, allowing for simple line-by-line c
 debugging.
 
 ```shell
-# Diff two hash manifests
+# Diff two hash fingerprints
 $ moon hash <hash-left> <hash-right>
 ```
 
@@ -233,7 +232,7 @@ Right: 2388552fee5a02062d0ef402bdc7232f0a447458b058c80ce9c3d0d4d7cfe171
 ```
 
 This is extremely useful in diagnosing why a task is running differently than before, and is much
-easier than inspecting the hash manifests manually!
+easier than inspecting the hash fingerprints manually!
 
 ## Ask for help
 

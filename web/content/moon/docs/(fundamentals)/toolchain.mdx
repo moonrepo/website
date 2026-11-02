@@ -503,9 +503,10 @@ The install is skipped when:
 - [`installDependencies`](/moon/api/ToolchainPluginConfig#installdependencies) is disabled for the
   toolchain, or [`pipeline.installDependencies`](/moon/api/PipelineConfig#installdependencies) is
   disabled (or is a list that doesn't include the toolchain) in
-  [`.moon/workspace.config`](./workspace.mdx). This also
-  skips [setting up the tool](#setup-and-teardown) and the
-  [environment](#setting-up-the-environment) before tasks.
+  [`.moon/workspace.config`](./workspace.mdx). This also skips
+  [setting up the environment](#setting-up-the-environment), but the tool itself is still
+  [set up](#setup-and-teardown) before tasks, so its configured version is installed and available
+  on `PATH`.
 
 ```shell
 # Run a task without installing dependencies
@@ -530,8 +531,10 @@ Some toolchains prepare an environment before dependencies are installed, like c
 environment, installing binaries, or writing the configured version into a configuration file.
 This runs in a `SetupEnvironment` action, once per [dependencies root](#locating-dependencies-root),
 after the toolchain and the toolchains it requires are set up, and before installing dependencies.
-[`moon setup`](../commands/setup.mdx) also runs it, when the dependencies root is the workspace
-root.
+The environments of the toolchains it [requires](#requiring-other-toolchains), like Node.js for the
+JavaScript toolchain, are set up beforehand in the same root, as they typically don't locate a root
+of their own. [`moon setup`](../commands/setup.mdx) also runs it, when the dependencies root is the
+workspace root.
 
 Commands are only re-run when they, or the toolchain's settings, change. moon doesn't check what
 they created on disk, so deleting a generated directory doesn't trigger a re-run.
@@ -577,6 +580,12 @@ Tools are installed into proto's store, and versions that are already installed 
 across workspaces. If proto itself isn't installed yet, moon installs it first, at the version set
 by [`proto.version`](/moon/api/ProtoConfig#version) in `.moon/toolchains.config`.
 
+proto only applies the security-sensitive settings of a local `.prototools` file, like `[env]`,
+`[plugins]`, and `[tools.*]`, once the file is trusted. As moon already runs the workspace's tasks,
+every `.prototools` file within the workspace is trusted automatically, while other local files,
+like one in a parent directory of the workspace, must be trusted with `proto trust` first. In CI,
+every file is trusted.
+
 For tasks that use the toolchain, moon prepends the tool's executable directories (and its global
 packages directory) to `PATH`, and sets the `PROTO_<ID>_VERSION` environment variable (using the
 stable ID), so the task always runs the configured version. Commands that toolchains run, like
@@ -619,9 +628,7 @@ moon installs a tool in a `SetupToolchain` action, which runs:
 
 The action is skipped when no version is configured, when `MOON_TOOLCHAIN_FORCE_GLOBALS` applies to
 the toolchain, or when the `MOON_SKIP_SETUP_TOOLCHAIN` environment variable is set to `true`, `*`,
-or a comma-separated list of toolchain IDs (optionally with a version, like `node:24.12.0`). Before
-tasks, it's also skipped when installs are disabled with `installDependencies` (see
-[installing and deduping dependencies](#installing-and-deduping-dependencies)).
+or a comma-separated list of toolchain IDs (optionally with a version, like `node:24.12.0`).
 
 Running [`moon teardown`](../commands/teardown.mdx) uninstalls the configured version of each
 toolchain. Both `moon setup` and `moon teardown` use the workspace `version`, and ignore project

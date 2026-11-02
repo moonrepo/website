@@ -6,7 +6,7 @@ import { TypeLabel } from "@/components/TypeLabel";
 
 List all templates that are available for [code generation](../guides/codegen.mdx), sourced from
 every [location](../guides/codegen.mdx#configuring-template-locations) configured in
-[`generator.templates`](/moon/api/GeneratorConfig#templates).
+[`codegen.templates`](/moon/api/CodegenConfig#templates).
 
 For each template, moon renders a table with the following columns:
 
@@ -19,7 +19,7 @@ For each template, moon renders a table with the following columns:
 - **Description** - The template's description. This column is hidden on narrower terminals.
 
 If no templates have been configured or located, a notice is printed instead, prompting you to
-configure the `generator.templates` setting in [`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>).
+configure the `codegen.templates` setting in [`.moon/workspace.config`](<../(fundamentals)/workspace.mdx>).
 
 ```shell
 $ moon templates

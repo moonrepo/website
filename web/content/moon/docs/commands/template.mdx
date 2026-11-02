@@ -3,7 +3,7 @@ title: moon template
 ---
 
 Display detailed information about a single [template](../guides/codegen.mdx), sourced from
-whichever location is configured in [`generator.templates`](/moon/api/GeneratorConfig#templates). This is useful for inspecting a
+whichever location is configured in [`codegen.templates`](/moon/api/CodegenConfig#templates). This is useful for inspecting a
 template's variables, files, and configuration before running [`moon generate`](./generate.mdx)
 against it, without having to open and read the [`template.config`](../guides/codegen.mdx) file by hand.
 
@@ -38,7 +38,7 @@ $ moon template npm-package --json
 ## Arguments
 
 - `[ID]` - ID of the template to inspect. When omitted, you'll be prompted to select one from the
-  templates available in `generator.templates`.
+  templates available in `codegen.templates`.
 
 ## Options
 
