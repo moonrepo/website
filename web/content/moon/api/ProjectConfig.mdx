@@ -11,17 +11,17 @@ Docs: https://moonrepo.dev/docs/config/project
 | --- | --- | --- |
 | [`$schema`](#schema) | `string` |  |
 | [`dependsOn`](#dependson) | `ProjectDependsOn[]` | Other projects that this project depends on. |
-| [`docker`](#docker) | [`ProjectDockerConfig`](./ProjectDockerConfig.mdx) | Configures Docker integration for this project. @since 1.27.0 |
+| [`docker`](#docker) | [`ProjectDockerConfig`](./ProjectDockerConfig.mdx) | Configures Docker integration for this project. |
 | [`env`](#env) | `Record<string, string \| null>` | A map of environment variables that will be inherited by all tasks within the project. |
 | [`fileGroups`](#filegroups) | `Record<Id, Input[]>` | A map of group identifiers to a list of file paths, globs, and environment variables, that can be referenced from tasks. |
-| [`id`](#id) | [`Id`](./Id.mdx) | Overrides the identifier within the project graph, as defined in the workspace `projects` setting. @since 1.18.0 |
+| [`id`](#id) | [`Id`](./Id.mdx) | Overrides the identifier within the project graph, as defined in the workspace `projects` setting. |
 | [`language`](#language) | [`LanguageType`](./LanguageType.mdx) | The primary programming language of the project. |
 | [`layer`](#layer) | [`LayerType`](./LayerType.mdx) | The layer within the technology stack, for categorizing. |
-| [`owners`](#owners) | [`OwnersConfig`](./OwnersConfig.mdx) | Defines ownership of source code within the current project, by mapping file paths and globs to owners. An owner is either a user, team, or group. @since 1.8.0 |
+| [`owners`](#owners) | [`OwnersConfig`](./OwnersConfig.mdx) | Defines ownership of source code within the current project, by mapping file paths and globs to owners. An owner is either a user, team, or group. |
 | [`project`](#project) | [`ProjectMetadataConfig`](./ProjectMetadataConfig.mdx) | Expanded information about the project. |
-| [`stack`](#stack) | [`StackType`](./StackType.mdx) | The technology stack of the project, for categorizing. @since 1.22.0 |
+| [`stack`](#stack) | [`StackType`](./StackType.mdx) | The technology stack of the project, for categorizing. |
 | [`tags`](#tags) | `Id[]` | A list of tags that this project belongs to, for categorizing, boundary enforcement, and task inheritance. |
-| [`taskOptions`](#taskoptions) | [`TaskOptionsConfig`](./TaskOptionsConfig.mdx) | Shared task options for all tasks. Can be overriden per task. @since 2.4.0 |
+| [`taskOptions`](#taskoptions) | [`TaskOptionsConfig`](./TaskOptionsConfig.mdx) | Shared task options for all tasks. Can be overriden per task. |
 | [`tasks`](#tasks) | `Record<Id, TaskConfig>` | A map of identifiers to task objects. Tasks represent the work-unit of a project, and can be ran in the action pipeline. |
 | [`toolchains`](#toolchains) | [`ProjectToolchainsConfig`](./ProjectToolchainsConfig.mdx) | Overrides top-level toolchain settings, scoped to this project. |
 | [`workspace`](#workspace) | [`ProjectWorkspaceConfig`](./ProjectWorkspaceConfig.mdx) | Overrides top-level workspace settings, scoped to this project. |
@@ -38,7 +38,7 @@ Docs: https://moonrepo.dev/docs/config/project
 
 ### `dependsOn`
 
-> **Optional**
+> **Required**
 
 Other projects that this project depends on.
 
@@ -50,10 +50,9 @@ Other projects that this project depends on.
 
 ### `docker`
 
-> **Required**
+> **Required** · **Since** (1.27.0)
 
 Configures Docker integration for this project.
-@since 1.27.0
 
 | Attribute | Value |
 | --- | --- |
@@ -61,7 +60,7 @@ Configures Docker integration for this project.
 
 ### `env`
 
-> **Optional**
+> **Required**
 
 A map of environment variables that will be inherited by
 all tasks within the project.
@@ -72,7 +71,7 @@ all tasks within the project.
 
 ### `fileGroups`
 
-> **Optional**
+> **Required**
 
 A map of group identifiers to a list of file paths, globs, and
 environment variables, that can be referenced from tasks.
@@ -84,11 +83,10 @@ environment variables, that can be referenced from tasks.
 
 ### `id`
 
-> **Optional** · **Nullable**
+> **Optional** · **Nullable** · **Since** (1.18.0)
 
 Overrides the identifier within the project graph, as defined in
 the workspace `projects` setting.
-@since 1.18.0
 
 | Attribute | Value |
 | --- | --- |
@@ -120,11 +118,10 @@ The layer within the technology stack, for categorizing.
 
 ### `owners`
 
-> **Required**
+> **Required** · **Since** (1.8.0)
 
 Defines ownership of source code within the current project, by mapping
 file paths and globs to owners. An owner is either a user, team, or group.
-@since 1.8.0
 
 | Attribute | Value |
 | --- | --- |
@@ -142,10 +139,9 @@ Expanded information about the project.
 
 ### `stack`
 
-> **Required**
+> **Required** · **Since** (1.22.0)
 
 The technology stack of the project, for categorizing.
-@since 1.22.0
 
 | Attribute | Value |
 | --- | --- |
@@ -155,7 +151,7 @@ The technology stack of the project, for categorizing.
 
 ### `tags`
 
-> **Optional**
+> **Required**
 
 A list of tags that this project belongs to, for categorizing,
 boundary enforcement, and task inheritance.
@@ -167,10 +163,9 @@ boundary enforcement, and task inheritance.
 
 ### `taskOptions`
 
-> **Nullable**
+> **Optional** · **Nullable** · **Since** (2.4.0)
 
 Shared task options for all tasks. Can be overriden per task.
-@since 2.4.0
 
 | Attribute | Value |
 | --- | --- |
@@ -178,7 +173,7 @@ Shared task options for all tasks. Can be overriden per task.
 
 ### `tasks`
 
-> **Optional**
+> **Required**
 
 A map of identifiers to task objects. Tasks represent the work-unit
 of a project, and can be ran in the action pipeline.

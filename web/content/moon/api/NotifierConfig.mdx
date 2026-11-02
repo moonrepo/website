@@ -8,18 +8,17 @@ Configures how and where notifications are sent.
 
 | Property | Type | Description |
 | --- | --- | --- |
-| [`terminalNotifications`](#terminalnotifications) | [`NotifierEventType`](./NotifierEventType.mdx) | Display an OS notification for certain action pipeline events. @since 1.38.0 |
-| [`webhookAcknowledge`](#webhookacknowledge) | `boolean` | Whether webhook requests require acknowledgment (2xx response). When enabled, will bypass the daemon and send webhooks in the main process. @since 1.38.0 |
+| [`terminalNotifications`](#terminalnotifications) | [`NotifierEventType`](./NotifierEventType.mdx) | Display an OS notification for certain action pipeline events. |
+| [`webhookAcknowledge`](#webhookacknowledge) | `boolean` | Whether webhook requests require acknowledgment (2xx response). When enabled, will bypass the daemon and send webhooks in the main process. |
 | [`webhookUrl`](#webhookurl) | `string` | A secure URL in which to send webhooks to. |
 
 ## Properties
 
 ### `terminalNotifications`
 
-> **Optional** · **Nullable**
+> **Optional** · **Nullable** · **Since** (1.38.0)
 
 Display an OS notification for certain action pipeline events.
-@since 1.38.0
 
 | Attribute | Value |
 | --- | --- |
@@ -29,12 +28,11 @@ Display an OS notification for certain action pipeline events.
 
 ### `webhookAcknowledge`
 
-> **Optional**
+> **Required** · **Since** (1.38.0)
 
 Whether webhook requests require acknowledgment (2xx response).
 When enabled, will bypass the daemon and send webhooks in the
 main process.
-@since 1.38.0
 
 | Attribute | Value |
 | --- | --- |

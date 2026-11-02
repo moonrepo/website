@@ -1,0 +1,60 @@
+---
+title: TaskOptionRunInCI
+---
+
+The pattern in which to run the task automatically in CI.
+
+## Index
+
+| Variant | Type | Description |
+| --- | --- | --- |
+| [`always`](#always) | `"always"` | Always run, regardless of affected status. |
+| [`affected`](#affected) | `"affected"` | Only run if affected by changed files. |
+| [`only`](#only) | `"only"` | Only run in CI and not locally if affected by changed files. |
+| [`skip`](#skip) | `"skip"` | Skip running in CI but run locally and allow task relationships to be valid. |
+| [`enabled`](#enabled) | `boolean` | Either affected, or don't run at all. |
+
+## Variants
+
+### `always`
+
+Always run, regardless of affected status.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `"always"` |
+
+### `affected`
+
+Only run if affected by changed files.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `"affected"` |
+
+### `only`
+
+Only run in CI and not locally if affected by changed files.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `"only"` |
+
+### `skip`
+
+Skip running in CI but run locally and allow task relationships to be valid.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `"skip"` |
+
+### `enabled`
+
+> **Default**
+
+Either affected, or don't run at all.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+| Default | `true` |

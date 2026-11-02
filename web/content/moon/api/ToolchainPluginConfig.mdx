@@ -9,8 +9,8 @@ Configures an individual toolchain.
 | Property | Type | Description |
 | --- | --- | --- |
 | [`config`](#config) | `Record<string, unknown>` | Arbitrary configuration that'll be passed to the WASM plugin. |
-| [`inheritAliases`](#inheritaliases) | `boolean` | Inherit aliases (name derived from a manifest) for all projects associated with this toolchain. @since 2.1.0 |
-| [`installDependencies`](#installdependencies) | `boolean` | Run the `InstallDependencies` actions for each running task when changes to lockfiles and manifests are detected. @since 2.1.0 |
+| [`inheritAliases`](#inheritaliases) | `boolean` | Inherit aliases (name derived from a manifest) for all projects associated with this toolchain. |
+| [`installDependencies`](#installdependencies) | `boolean` | Run the `InstallDependencies` actions for each running task when changes to lockfiles and manifests are detected. |
 | [`plugin`](#plugin) | [`PluginLocator`](./PluginLocator.mdx) | Location of the WASM plugin to use. |
 | [`version`](#version) | [`UnresolvedVersionSpec`](./UnresolvedVersionSpec.mdx) | The version of the toolchain to download and install. |
 | [`versionFromPrototools`](#versionfromprototools) | [`ToolchainPluginVersionFrom`](./ToolchainPluginVersionFrom.mdx) | Inherit the version from the root `.prototools`. When true, matches using the same identifier, otherwise a string can be provided for a custom identifier. |
@@ -29,11 +29,10 @@ Arbitrary configuration that'll be passed to the WASM plugin.
 
 ### `inheritAliases`
 
-> **Optional**
+> **Optional** · **Since** (2.1.0)
 
 Inherit aliases (name derived from a manifest) for all
 projects associated with this toolchain.
-@since 2.1.0
 
 | Attribute | Value |
 | --- | --- |
@@ -42,11 +41,10 @@ projects associated with this toolchain.
 
 ### `installDependencies`
 
-> **Optional**
+> **Optional** · **Since** (2.1.0)
 
 Run the `InstallDependencies` actions for each running task
 when changes to lockfiles and manifests are detected.
-@since 2.1.0
 
 | Attribute | Value |
 | --- | --- |

@@ -10,7 +10,7 @@ Expanded information about affected files handling.
 | --- | --- | --- |
 | [`filter`](#filter) | `string[]` | A list of glob patterns to filter the affected files list before passing to the task as arguments or environment variables. Globs must start with `**` to match against absolute paths. |
 | [`ignoreProjectBoundary`](#ignoreprojectboundary) | `boolean` | When matching affected files, ignore the project boundary and include workspace relative files. Otherwise, only files within the project are matched. |
-| [`pass`](#pass) | `boolean \| string` | The pattern in which affected files will be passed to the affected task. |
+| [`pass`](#pass) | [`TaskOptionAffectedFilesPattern`](./TaskOptionAffectedFilesPattern.mdx) | The pattern in which affected files will be passed to the affected task. |
 | [`passDotWhenNoResults`](#passdotwhennoresults) | `boolean` | When there are no affected files after matching and filtering, use `.` instead of an empty value. |
 | [`passInputsWhenNoMatch`](#passinputswhennomatch) | `boolean` | When there are no affected files after matching, use the task's inputs instead. |
 
@@ -18,7 +18,7 @@ Expanded information about affected files handling.
 
 ### `filter`
 
-> **Optional**
+> **Required**
 
 A list of glob patterns to filter the affected files list before
 passing to the task as arguments or environment variables. Globs
@@ -47,7 +47,8 @@ The pattern in which affected files will be passed to the affected task.
 
 | Attribute | Value |
 | --- | --- |
-| Type | `boolean \| string` |
+| Type | [`TaskOptionAffectedFilesPattern`](./TaskOptionAffectedFilesPattern.mdx) |
+| Default | `true` |
 
 ### `passDotWhenNoResults`
 
@@ -71,3 +72,7 @@ task's inputs instead.
 | Attribute | Value |
 | --- | --- |
 | Type | `boolean` |
+
+## References
+
+- [`TaskOptionAffectedFilesPattern`](./TaskOptionAffectedFilesPattern.mdx)

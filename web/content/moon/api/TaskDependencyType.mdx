@@ -1,0 +1,14 @@
+---
+title: TaskDependencyType
+---
+
+The task-to-task relationship of the dependency.
+
+## Variants
+
+| Variant | Value | Tags | Description |
+| --- | --- | --- | --- |
+| `cleanup` | `"cleanup"` | **Since** (2.6.0) | The dependency runs *after* the task has ran its command, even when the task fails. It does not run when the task did not run its command, as it was skipped, or hydrated from the cache. |
+| `required` | `"required"` | **Default** | The dependency runs *before* the task, and must complete successfully, otherwise the task will not run. |
+| `wait` | `"wait"` | **Since** (2.6.0) | The dependency runs *before* the task, but the task only waits for the dependency to have *started running*, and not to have completed. |
+| `optional` | `"optional"` |  | Internal only. Marks the relationship between a task and a dependency that was inherited from the top-level, and was marked as optional. Not accepted by the `type` setting. |

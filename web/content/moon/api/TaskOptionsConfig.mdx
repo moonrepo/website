@@ -9,37 +9,38 @@ Options to control task inheritance, execution, and more.
 | Property | Type | Description |
 | --- | --- | --- |
 | [`affectedFiles`](#affectedfiles) | [`TaskOptionAffectedFilesEntry`](./TaskOptionAffectedFilesEntry.mdx) | The pattern in which affected files will be passed to the task. |
-| [`allowFailure`](#allowfailure) | `boolean` | Allow the task to fail without failing the entire action pipeline. @since 1.13.0 |
-| [`cache`](#cache) | `boolean \| string` | Cache the `outputs` of the task for incremental builds. Defaults to `true` if outputs are configured for the task. |
+| [`cache`](#cache) | [`TaskOptionCache`](./TaskOptionCache.mdx) | Cache the `outputs` of the task for incremental builds. Defaults to `true` if outputs are configured for the task. |
 | [`cacheKey`](#cachekey) | `string` | A custom key to include in the cache hashing process. Can be used to invalidate local and remote caches. |
-| [`cacheLifetime`](#cachelifetime) | `string` | Lifetime to cache the task itself, in the format of "1h", "30m", etc. If not defined, caches live forever, or until inputs change. @since 1.29.0 |
+| [`cacheLifetime`](#cachelifetime) | `string` | Lifetime to cache the task itself, in the format of "1h", "30m", etc. If not defined, caches live forever, or until inputs change. |
 | [`envFile`](#envfile) | [`TaskOptionEnvFile`](./TaskOptionEnvFile.mdx) | Loads and sets environment variables from the `.env` file(s) when running the task. |
-| [`inferInputs`](#inferinputs) | `boolean` | Automatically infer inputs from file groups or environment variables that were utilized within `command`, `script`, `args`, and `env`. @since 1.31.0 |
-| [`interactive`](#interactive) | `boolean` | Marks the task as interactive, so that it will run in isolation, and have direct access to stdin. @since 1.12.0 |
-| [`internal`](#internal) | `boolean` | Marks the task as internal, which disables it from being ran from the command line, but can still be depended on by other tasks. @since 1.23.0 |
+| [`envOverride`](#envoverride) | [`TaskOptionEnvOverride`](./TaskOptionEnvOverride.mdx) | Override system environment variables with the task's `env`, instead of only setting them when missing. When a list of variable names, only those variables will be overridden. |
+| [`inferInputs`](#inferinputs) | `boolean` | Automatically infer inputs from file groups or environment variables that were utilized within `command`, `script`, `args`, and `env`. |
+| [`interactive`](#interactive) | `boolean` | Marks the task as interactive, so that it will run in isolation, and have direct access to stdin. |
+| [`internal`](#internal) | `boolean` | Marks the task as internal, which disables it from being ran from the command line, but can still be depended on by other tasks. |
 | [`merge`](#merge) | [`MergeStrategy`](./MergeStrategy.mdx) | The default strategy to use when merging `args`, `deps`, `env`, `inputs`, or `outputs` with an inherited task. Can be overridden with the other field-specific merge options. |
 | [`mergeArgs`](#mergeargs) | [`MergeStrategy`](./MergeStrategy.mdx) | The strategy to use when merging `args` with an inherited task. |
-| [`mergeChecks`](#mergechecks) | [`MergeStrategy`](./MergeStrategy.mdx) | The strategy to use when merging `checks` with an inherited task. @since 2.4.0 |
+| [`mergeChecks`](#mergechecks) | [`MergeStrategy`](./MergeStrategy.mdx) | The strategy to use when merging `checks` with an inherited task. |
 | [`mergeDeps`](#mergedeps) | [`MergeStrategy`](./MergeStrategy.mdx) | The strategy to use when merging `deps` with an inherited task. |
 | [`mergeEnv`](#mergeenv) | [`MergeStrategy`](./MergeStrategy.mdx) | The strategy to use when merging `env` with an inherited task. |
 | [`mergeInputs`](#mergeinputs) | [`MergeStrategy`](./MergeStrategy.mdx) | The strategy to use when merging `inputs` with an inherited task. |
 | [`mergeOutputs`](#mergeoutputs) | [`MergeStrategy`](./MergeStrategy.mdx) | The strategy to use when merging `outputs` with an inherited task. |
-| [`mergeTags`](#mergetags) | [`MergeStrategy`](./MergeStrategy.mdx) | The strategy to use when merging `tags` with an inherited task. @since 2.3.0 |
-| [`mergeToolchains`](#mergetoolchains) | [`MergeStrategy`](./MergeStrategy.mdx) | The strategy to use when merging `toolchains` with an inherited task. @since 2.0.0 |
-| [`mutex`](#mutex) | `string` | Creates an exclusive lock on a virtual resource, preventing other tasks using the same resource from running concurrently. @since 1.24.0 |
+| [`mergeTags`](#mergetags) | [`MergeStrategy`](./MergeStrategy.mdx) | The strategy to use when merging `tags` with an inherited task. |
+| [`mergeToolchains`](#mergetoolchains) | [`MergeStrategy`](./MergeStrategy.mdx) | The strategy to use when merging `toolchains` with an inherited task. |
+| [`mutex`](#mutex) | `string` | Creates an exclusive lock on a virtual resource, preventing other tasks using the same resource from running concurrently. |
+| [`onFailure`](#onfailure) | [`TaskOptionOnFailure`](./TaskOptionOnFailure.mdx) | How a failure of the task affects the action pipeline. When `allow`, the task can fail without failing the pipeline. When `expect`, the task must fail, and fails the pipeline if it passes, which is useful for checks that are known to be broken, and should be re-enabled once fixed. An expected failure is never cached. |
 | [`os`](#os) | `TaskOperatingSystem \| TaskOperatingSystem[]` | The operating system in which to only run this task on. |
 | [`outputStyle`](#outputstyle) | [`TaskOutputStyle`](./TaskOutputStyle.mdx) | The style in which task output will be printed to the console. |
-| [`persistent`](#persistent) | `boolean` | Marks the task as persistent (continuously running). This is ideal for watchers, servers, or never-ending processes. @since 1.6.0 |
+| [`persistent`](#persistent) | `boolean` | Marks the task as persistent (continuously running). This is ideal for watchers, servers, or never-ending processes. |
 | [`priority`](#priority) | [`TaskPriority`](./TaskPriority.mdx) | Marks the task with a certain priority, which determines the order in which it is ran within the action pipeline. |
 | [`retryCount`](#retrycount) | `number` | The number of times a failing task will be retried to succeed. |
 | [`runDepsInParallel`](#rundepsinparallel) | `boolean` | Runs direct task dependencies (via `deps`) in sequential order. Each dependency's own dependency subtree is also ordered, so that transitive dependencies run after the preceding direct dependency. |
 | [`runFromWorkspaceRoot`](#runfromworkspaceroot) | `boolean` | Runs the task from the workspace root, instead of the project root. |
-| [`runInCI`](#runinci) | `boolean \| string` | Whether to run the task in CI or not, when executing `moon ci`, `moon check`, or `moon run`. |
+| [`runInCI`](#runinci) | [`TaskOptionRunInCI`](./TaskOptionRunInCI.mdx) | Whether to run the task in CI or not, when executing `moon ci`, `moon check`, or `moon run`. |
 | [`runInSyncPhase`](#runinsyncphase) | `boolean` | Runs the task automatically when executing `moon sync`. |
 | [`shell`](#shell) | `boolean` | Runs the task within a shell. When not defined, runs the task directly while relying on native `PATH` resolution. |
 | [`timeout`](#timeout) | `number` | The maximum time in seconds that a task can run before being cancelled. |
-| [`unixShell`](#unixshell) | [`TaskUnixShell`](./TaskUnixShell.mdx) | The shell to run the task in when on a Unix-based machine. @since 1.21.0 |
-| [`windowsShell`](#windowsshell) | [`TaskWindowsShell`](./TaskWindowsShell.mdx) | The shell to run the task in when on a Windows machine. @since 1.21.0 |
+| [`unixShell`](#unixshell) | [`TaskUnixShell`](./TaskUnixShell.mdx) | The shell to run the task in when on a Unix-based machine. |
+| [`windowsShell`](#windowsshell) | [`TaskWindowsShell`](./TaskWindowsShell.mdx) | The shell to run the task in when on a Windows machine. |
 
 ## Properties
 
@@ -52,17 +53,7 @@ The pattern in which affected files will be passed to the task.
 | Attribute | Value |
 | --- | --- |
 | Type | [`TaskOptionAffectedFilesEntry`](./TaskOptionAffectedFilesEntry.mdx) |
-
-### `allowFailure`
-
-> **Optional** · **Nullable**
-
-Allow the task to fail without failing the entire action pipeline.
-@since 1.13.0
-
-| Attribute | Value |
-| --- | --- |
-| Type | `boolean` |
+| Default | `true` |
 
 ### `cache`
 
@@ -73,7 +64,8 @@ Defaults to `true` if outputs are configured for the task.
 
 | Attribute | Value |
 | --- | --- |
-| Type | `boolean \| string` |
+| Type | [`TaskOptionCache`](./TaskOptionCache.mdx) |
+| Default | `true` |
 
 ### `cacheKey`
 
@@ -88,11 +80,10 @@ used to invalidate local and remote caches.
 
 ### `cacheLifetime`
 
-> **Optional** · **Nullable**
+> **Optional** · **Nullable** · **Since** (1.29.0)
 
 Lifetime to cache the task itself, in the format of "1h", "30m", etc.
 If not defined, caches live forever, or until inputs change.
-@since 1.29.0
 
 | Attribute | Value |
 | --- | --- |
@@ -109,13 +100,24 @@ running the task.
 | --- | --- |
 | Type | [`TaskOptionEnvFile`](./TaskOptionEnvFile.mdx) |
 
+### `envOverride`
+
+> **Optional** · **Nullable** · **Since** (2.6.0)
+
+Override system environment variables with the task's `env`, instead
+of only setting them when missing. When a list of variable names,
+only those variables will be overridden.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`TaskOptionEnvOverride`](./TaskOptionEnvOverride.mdx) |
+
 ### `inferInputs`
 
-> **Optional** · **Nullable**
+> **Optional** · **Nullable** · **Since** (1.31.0)
 
 Automatically infer inputs from file groups or environment variables
 that were utilized within `command`, `script`, `args`, and `env`.
-@since 1.31.0
 
 | Attribute | Value |
 | --- | --- |
@@ -123,11 +125,10 @@ that were utilized within `command`, `script`, `args`, and `env`.
 
 ### `interactive`
 
-> **Optional** · **Nullable**
+> **Optional** · **Nullable** · **Since** (1.12.0)
 
 Marks the task as interactive, so that it will run in isolation,
 and have direct access to stdin.
-@since 1.12.0
 
 | Attribute | Value |
 | --- | --- |
@@ -135,11 +136,10 @@ and have direct access to stdin.
 
 ### `internal`
 
-> **Optional** · **Nullable**
+> **Optional** · **Nullable** · **Since** (1.23.0)
 
 Marks the task as internal, which disables it from being ran
 from the command line, but can still be depended on by other tasks.
-@since 1.23.0
 
 | Attribute | Value |
 | --- | --- |
@@ -173,10 +173,9 @@ The strategy to use when merging `args` with an inherited task.
 
 ### `mergeChecks`
 
-> **Optional** · **Nullable**
+> **Optional** · **Nullable** · **Since** (2.4.0)
 
 The strategy to use when merging `checks` with an inherited task.
-@since 2.4.0
 
 | Attribute | Value |
 | --- | --- |
@@ -234,10 +233,9 @@ The strategy to use when merging `outputs` with an inherited task.
 
 ### `mergeTags`
 
-> **Optional** · **Nullable**
+> **Optional** · **Nullable** · **Since** (2.3.0)
 
 The strategy to use when merging `tags` with an inherited task.
-@since 2.3.0
 
 | Attribute | Value |
 | --- | --- |
@@ -247,10 +245,9 @@ The strategy to use when merging `tags` with an inherited task.
 
 ### `mergeToolchains`
 
-> **Optional** · **Nullable**
+> **Optional** · **Nullable** · **Since** (2.0.0)
 
 The strategy to use when merging `toolchains` with an inherited task.
-@since 2.0.0
 
 | Attribute | Value |
 | --- | --- |
@@ -260,15 +257,29 @@ The strategy to use when merging `toolchains` with an inherited task.
 
 ### `mutex`
 
-> **Optional** · **Nullable**
+> **Optional** · **Nullable** · **Since** (1.24.0)
 
 Creates an exclusive lock on a virtual resource, preventing other
 tasks using the same resource from running concurrently.
-@since 1.24.0
 
 | Attribute | Value |
 | --- | --- |
 | Type | `string` |
+
+### `onFailure`
+
+> **Optional** · **Nullable** · **Since** (3.0.0)
+
+How a failure of the task affects the action pipeline. When `allow`,
+the task can fail without failing the pipeline. When `expect`, the
+task must fail, and fails the pipeline if it passes, which is useful
+for checks that are known to be broken, and should be re-enabled once
+fixed. An expected failure is never cached.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`TaskOptionOnFailure`](./TaskOptionOnFailure.mdx) |
+| Values | `"allow"`, `"expect"` |
 
 ### `os`
 
@@ -296,11 +307,10 @@ The style in which task output will be printed to the console.
 
 ### `persistent`
 
-> **Optional** · **Nullable**
+> **Optional** · **Nullable** · **Since** (1.6.0)
 
 Marks the task as persistent (continuously running). This is ideal
 for watchers, servers, or never-ending processes.
-@since 1.6.0
 
 | Attribute | Value |
 | --- | --- |
@@ -361,7 +371,8 @@ Whether to run the task in CI or not, when executing `moon ci`,
 
 | Attribute | Value |
 | --- | --- |
-| Type | `boolean \| string` |
+| Type | [`TaskOptionRunInCI`](./TaskOptionRunInCI.mdx) |
+| Default | `true` |
 
 ### `runInSyncPhase`
 
@@ -396,10 +407,9 @@ The maximum time in seconds that a task can run before being cancelled.
 
 ### `unixShell`
 
-> **Optional** · **Nullable**
+> **Optional** · **Nullable** · **Since** (1.21.0)
 
 The shell to run the task in when on a Unix-based machine.
-@since 1.21.0
 
 | Attribute | Value |
 | --- | --- |
@@ -409,10 +419,9 @@ The shell to run the task in when on a Unix-based machine.
 
 ### `windowsShell`
 
-> **Optional** · **Nullable**
+> **Optional** · **Nullable** · **Since** (1.21.0)
 
 The shell to run the task in when on a Windows machine.
-@since 1.21.0
 
 | Attribute | Value |
 | --- | --- |
@@ -425,7 +434,11 @@ The shell to run the task in when on a Windows machine.
 - [`MergeStrategy`](./MergeStrategy.mdx)
 - [`TaskOperatingSystem`](./TaskOperatingSystem.mdx)
 - [`TaskOptionAffectedFilesEntry`](./TaskOptionAffectedFilesEntry.mdx)
+- [`TaskOptionCache`](./TaskOptionCache.mdx)
 - [`TaskOptionEnvFile`](./TaskOptionEnvFile.mdx)
+- [`TaskOptionEnvOverride`](./TaskOptionEnvOverride.mdx)
+- [`TaskOptionOnFailure`](./TaskOptionOnFailure.mdx)
+- [`TaskOptionRunInCI`](./TaskOptionRunInCI.mdx)
 - [`TaskOutputStyle`](./TaskOutputStyle.mdx)
 - [`TaskPriority`](./TaskPriority.mdx)
 - [`TaskUnixShell`](./TaskUnixShell.mdx)

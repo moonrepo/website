@@ -9,10 +9,11 @@ A task referenced by target, with additional parameters to pass through.
 | Property | Type | Description |
 | --- | --- | --- |
 | [`args`](#args) | `string[]` | Additional arguments to pass to this dependency when it's ran. |
-| [`cacheStrategy`](#cachestrategy) | [`TaskDependencyCacheStrategy`](./TaskDependencyCacheStrategy.mdx) | Controls how this dependency invalidates the current task's cache. When omitted, defaults to `hash` if the dependency declares outputs, otherwise `ignored`. @since 2.3.0 |
+| [`cacheStrategy`](#cachestrategy) | [`TaskDependencyCacheStrategy`](./TaskDependencyCacheStrategy.mdx) | Controls how this dependency invalidates the current task's cache. When omitted, defaults to `hash` if the dependency declares outputs, otherwise `ignored`. |
 | [`env`](#env) | `Record<string, string \| null>` | A map of environment variables specific to this dependency. |
-| [`optional`](#optional) | `boolean` | Marks the dependency as optional when being inherited from the top-level. @since 1.20.0 |
+| [`optional`](#optional) | `boolean` | Marks the dependency as optional when being inherited from the top-level. |
 | [`target`](#target) | `string` | The target of the depended on task. |
+| [`type`](#type) | [`TaskDependencyType`](./TaskDependencyType.mdx) | Controls when this dependency is ran in relation to the current task. When `required`, runs before the task and must complete successfully. When `cleanup`, runs after the task has ran its command, even when the task fails (but not when it was skipped, or hydrated from the cache). When `wait`, runs before the task, but the task only waits for the dependency to have started running, not to have completed. |
 
 ## Properties
 
@@ -28,12 +29,11 @@ Additional arguments to pass to this dependency when it's ran.
 
 ### `cacheStrategy`
 
-> **Optional** · **Nullable**
+> **Optional** · **Nullable** · **Since** (2.3.0)
 
 Controls how this dependency invalidates the current task's cache.
 When omitted, defaults to `hash` if the dependency declares outputs,
 otherwise `ignored`.
-@since 2.3.0
 
 | Attribute | Value |
 | --- | --- |
@@ -52,10 +52,9 @@ A map of environment variables specific to this dependency.
 
 ### `optional`
 
-> **Optional** · **Nullable**
+> **Optional** · **Nullable** · **Since** (1.20.0)
 
 Marks the dependency as optional when being inherited from the top-level.
-@since 1.20.0
 
 | Attribute | Value |
 | --- | --- |
@@ -71,6 +70,24 @@ The target of the depended on task.
 | --- | --- |
 | Type | `string` |
 
+### `type`
+
+> **Required** · **Since** (2.6.0)
+
+Controls when this dependency is ran in relation to the current task.
+When `required`, runs before the task and must complete successfully.
+When `cleanup`, runs after the task has ran its command, even when
+the task fails (but not when it was skipped, or hydrated from the cache).
+When `wait`, runs before the task, but the task only waits for the
+dependency to have started running, not to have completed.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`TaskDependencyType`](./TaskDependencyType.mdx) |
+| Default | `"required"` |
+| Values | `"cleanup"`, `"required"`, `"wait"`, `"optional"` |
+
 ## References
 
 - [`TaskDependencyCacheStrategy`](./TaskDependencyCacheStrategy.mdx)
+- [`TaskDependencyType`](./TaskDependencyType.mdx)

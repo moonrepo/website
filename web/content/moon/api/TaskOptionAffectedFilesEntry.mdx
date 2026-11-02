@@ -6,18 +6,21 @@ title: TaskOptionAffectedFilesEntry
 
 | Variant | Type | Description |
 | --- | --- | --- |
-| [`Pattern`](#pattern) | `boolean \| string` |  |
-| [`Object`](#object) | [`TaskOptionAffectedFilesConfig`](./TaskOptionAffectedFilesConfig.mdx) | Expanded information about affected files handling. |
+| [`pattern`](#pattern) | [`TaskOptionAffectedFilesPattern`](./TaskOptionAffectedFilesPattern.mdx) | The pattern in which affected files will be passed to the affected task. |
+| [`object`](#object) | [`TaskOptionAffectedFilesConfig`](./TaskOptionAffectedFilesConfig.mdx) | Expanded information about affected files handling. |
 
 ## Variants
 
-### `Pattern`
+### `pattern`
+
+The pattern in which affected files will be passed to the affected task.
 
 | Attribute | Value |
 | --- | --- |
-| Type | `boolean \| string` |
+| Type | [`TaskOptionAffectedFilesPattern`](./TaskOptionAffectedFilesPattern.mdx) |
+| Default | `true` |
 
-### `Object`
+### `object`
 
 Expanded information about affected files handling.
 
@@ -28,3 +31,4 @@ Expanded information about affected files handling.
 ## References
 
 - [`TaskOptionAffectedFilesConfig`](./TaskOptionAffectedFilesConfig.mdx)
+- [`TaskOptionAffectedFilesPattern`](./TaskOptionAffectedFilesPattern.mdx)
