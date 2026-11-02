@@ -22,7 +22,7 @@ versions declared in `.prototools` files automatically, at any depth in the repo
 node = "22.18.0"
 yarn = "4.16.0"
 rust = "1.85.0"
-moon = "2.6.4"
+moon = "3.0.0"
 ```
 
 Because moon toolchains inherit their version from `.prototools` by default (via
@@ -174,7 +174,7 @@ Useful when annotating a version, or adding a toolchain the structural managers 
   resolved to a concrete version, and are ignored. Annotated versions default to `semver`
   versioning, which doesn't support ranges, so pin exact versions. For this reason, moon's
   [`versionConstraint`](/moon/api/WorkspaceConfig#versionconstraint) (usually a range like
-  `>=2.0.0`) is best updated by hand.
+  `>=3.0.0`) is best updated by hand.
 - **Pin each toolchain in one place.** Don't set the same version in both `.prototools` and
   `.moon/toolchains.config` (or add an annotation on top of a structurally-managed version), as
   you'll get duplicate pull requests. A `version` in `.moon/toolchains.config` also takes precedence

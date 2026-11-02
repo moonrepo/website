@@ -1,0 +1,42 @@
+---
+title: TaskOptionAffectedFilesPattern
+---
+
+The pattern in which affected files will be passed to the affected task.
+
+## Index
+
+| Variant | Type | Description |
+| --- | --- | --- |
+| [`args`](#args) | `"args"` | Passed as command line arguments. |
+| [`env`](#env) | `"env"` | Passed as environment variables. |
+| [`enabled`](#enabled) | `boolean` | Passed as command line arguments and environment variables. |
+
+## Variants
+
+### `args`
+
+Passed as command line arguments.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `"args"` |
+
+### `env`
+
+Passed as environment variables.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `"env"` |
+
+### `enabled`
+
+> **Default**
+
+Passed as command line arguments and environment variables.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+| Default | `true` |

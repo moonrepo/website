@@ -10,7 +10,7 @@ Code generation provides an easy mechanism for automating common development wor
 structures. Whether it's scaffolding a new library or application, updating configuration, or
 standardizing patterns.
 
-To accomplish this, we provide a generator, which is divided into two parts. The first being the
+To accomplish this, we provide a code generator, which is divided into two parts. The first being the
 templates and their files to be scaffolded. The second is our rendering engine that writes template
 files to a destination.
 
@@ -36,7 +36,7 @@ The following concepts are important to understand when working with code genera
 ## Creating a new template
 
 To create a new template, run [`moon generate --template`][command]. This will create a template
-directory in the first file-based template location defined in [`generator.templates`][gen-templates]
+directory in the first file-based template location defined in [`codegen.templates`][gen-templates]
 (globs, Git repositories, npm packages, and archives are skipped), and fail if there isn't one.
 
 ```shell
@@ -45,7 +45,7 @@ $ moon generate npm-package --template
 ```
 
 Every template requires a [`template.config`][config] file in the template's directory root. This file
-acts as a schema and declares metadata and variables required by the generator. Only
+acts as a schema and declares metadata and variables required by the code generator. Only
 [`title`](/moon/api/TemplateConfig#title) and [`description`](/moon/api/TemplateConfig#description)
 are required, and both are displayed when generating.
 
@@ -166,7 +166,7 @@ When generating a template that extends others:
   a file at the same path, the extending template's file wins.
 - Variables from extended templates are inherited, so they're prompted for as well. When both
   define a variable with the same name, the extending template's configuration wins.
-- [Partials](#partials) and macros from extended templates can be included in the template's own
+- [Partials](#partials) and components from extended templates can be used in the template's own
   files.
 - Extended templates can extend other templates themselves.
 
@@ -233,8 +233,8 @@ configured based on file type.
 ### Partials
 
 Partials are special template files that are used for
-[composition](https://keats.github.io/tera/docs/#include) and
-[inheritance](https://keats.github.io/tera/docs/#inheritance). Because of this, these files _are
+[composition](https://keats.github.io/tera/#include) and
+[inheritance](https://keats.github.io/tera/#inheritance). Because of this, these files _are
 not_ generated into the target destination, and _do not_ support [frontmatter](#frontmatter).
 
 To mark a file as a partial, include the word "partial" anywhere in its path, for example
@@ -324,22 +324,22 @@ always written, even when a file already exists at the destination.
 
 ## Template engine
 
-Rendering templates is powered by [Tera](https://keats.github.io/tera/), a Rust based template
+Rendering templates is powered by [Tera](https://keats.github.io/tera/) v2, a Rust based template
 engine with syntax similar to Twig, Liquid, Django, and more. We highly encourage everyone to read
 Tera's documentation for an in-depth understanding, but as a quick reference, Tera supports the
 following:
 
-- [Variable interpolation](https://keats.github.io/tera/docs/#variables) (defined with the
+- [Variable interpolation](https://keats.github.io/tera/#variables) (defined with the
   [`variables`](/moon/api/TemplateConfig#variables) setting), with
-  [built-in filters](https://keats.github.io/tera/docs/#built-in-filters).
+  [built-in filters](https://keats.github.io/tera/#built-in-filters).
 
 ```twig
 {{ varName }} -> foo
 {{ varName | upper }} -> FOO
 ```
 
-- [Conditional blocks](https://keats.github.io/tera/docs/#if) and
-  [loops](https://keats.github.io/tera/docs/#for).
+- [Conditional blocks](https://keats.github.io/tera/#if) and
+  [loops](https://keats.github.io/tera/#for).
 
 ```twig
 {% if price < 10 or always_show %}
@@ -357,12 +357,35 @@ following:
 {% endfor %}
 ```
 
-- And many more features, like macros, white space control, and math operators!
+- [Components](https://keats.github.io/tera/#components), reusable snippets that accept arguments.
+  A component defined in a template file, like a [partial](#partials), can be called from any other
+  file, without an import.
+
+```twig
+{% component field(label, type = "text") %}
+  <label>{{ label }} <input type="{{ type }}" /></label>
+{% endcomponent field %}
+
+{{ <field label="Name" /> }}
+```
+
+- And many more features, like
+  [white space control](https://keats.github.io/tera/#whitespace-control), and math operators!
+
+Filters, functions, includes, and parent templates must exist when a template is loaded, so a typo
+in any of them fails generation up front, even when it's inside a branch that never renders. Array
+items are accessed with brackets, like `list[0]`.
+
+<Callout>
+  Templates written for Tera v1 (moon v2 and earlier) need some syntax changes,
+  like rewriting macros as components. See the [v3 migration
+  guide](./migrate/3.0.mdx#code-generation) for the most common changes.
+</Callout>
 
 ### Filters
 
 Filters are a mechanism for transforming values during interpolation and are written using pipes
-(`|`). Tera provides many [built-in filters](https://keats.github.io/tera/docs/#built-in-filters),
+(`|`). Tera provides many [built-in filters](https://keats.github.io/tera/#built-in-filters),
 but we also provide the following custom filters:
 
 - Strings - `camel_case`, `pascal_case`, `snake_case`, `upper_snake_case`, `kebab_case`,
@@ -382,7 +405,7 @@ but we also provide the following custom filters:
 
 ### Functions
 
-In addition to Tera's [built-in functions](https://keats.github.io/tera/docs/#built-in-functions),
+In addition to Tera's [built-in functions](https://keats.github.io/tera/#built-in-functions),
 the `variables` function builds a map from the keyword arguments it's given. This is useful for
 grouping values into an object, like when rendering it as JSON with Tera's `json_encode` filter.
 
@@ -507,15 +530,15 @@ created, merged, replaced, or skipped.
 ## Configuring template locations
 
 Templates can be located anywhere, especially when [being shared](#sharing-templates). Because of
-this, our generator loads templates from every location configured in
-[`generator.templates`][gen-templates], which defaults to `./templates`. A location is a directory
+this, our code generator loads templates from every location configured in
+[`codegen.templates`][gen-templates], which defaults to `./templates`. A location is a directory
 that _contains_ templates, where each template is a child directory with a
 [`template.config`][config] file.
 
 <ConfigTabs
   file=".moon/workspace"
   config={{
-    generator: {
+    codegen: {
       templates: [
         "./templates",
         "projects/*/templates",
@@ -536,7 +559,7 @@ protocol.
 <ConfigTabs
   file=".moon/workspace"
   config={{
-    generator: {
+    codegen: {
       templates: ["./templates", "file://other/templates"],
     },
   }}
@@ -551,7 +574,7 @@ as a template location. This is useful for co-locating templates with the projec
 <ConfigTabs
   file=".moon/workspace"
   config={{
-    generator: {
+    codegen: {
       templates: ["projects/*/templates", "glob://packages/*/templates"],
     },
   }}
@@ -572,7 +595,7 @@ revision (branch, tag, or commit), separated with a `#`.
 <ConfigTabs
   file=".moon/workspace"
   config={{
-    generator: {
+    codegen: {
       templates: [
         "git://github.com/moonrepo/templates#master",
         "git://gitlab.com/org/repo#v1.2.3",
@@ -595,7 +618,7 @@ version, separated with a `#`.
 <ConfigTabs
   file=".moon/workspace"
   config={{
-    generator: {
+    codegen: {
       templates: [
         "npm://@moonrepo/templates#1.2.3",
         "npm://other-templates#4.5.6",
@@ -616,7 +639,7 @@ supported archive extension.
 <ConfigTabs
   file=".moon/workspace"
   config={{
-    generator: {
+    codegen: {
       templates: ["https://domain.com/some/path/to/archive.zip"],
     },
   }}
@@ -644,13 +667,13 @@ not try...
 - npm packages (using the `npm://` protocol)
 - Another packaging system
 
-Regardless of the choice, simply configure [`generator.templates`][gen-templates] to point to these
+Regardless of the choice, simply configure [`codegen.templates`][gen-templates] to point to these
 locations:
 
 <ConfigTabs
   file=".moon/workspace"
   config={{
-    generator: {
+    codegen: {
       templates: [
         "./templates",
         "./path/to/submodule",
@@ -690,4 +713,4 @@ These templates can then be referenced by name, such as `moon generate template-
 
 [config]: /moon/api/TemplateConfig
 [command]: ../commands/generate.mdx
-[gen-templates]: /moon/api/GeneratorConfig#templates
+[gen-templates]: /moon/api/CodegenConfig#templates

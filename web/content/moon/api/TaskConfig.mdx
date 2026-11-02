@@ -9,18 +9,18 @@ Configures a task to be ran within the action pipeline.
 | Property | Type | Description |
 | --- | --- | --- |
 | [`args`](#args) | [`TaskArgs`](./TaskArgs.mdx) | Arguments to pass to the command when it's ran. Can be defined as a string, or a list of individual arguments. |
-| [`checks`](#checks) | `TaskCheck[]` | Checks are shell scripts that run before the task is executed, and are categorized into three types: conditions, requirements, and fingerprints. Depending on the result of the script and the type of check, the task may be skipped, will fail, or continue. @since 2.4.0 |
+| [`checks`](#checks) | `TaskCheck[]` | Checks are shell scripts that run before the task is executed, and are categorized into three types: conditions, requirements, and fingerprints. Depending on the result of the script and the type of check, the task may be skipped, will fail, or continue. |
 | [`command`](#command) | [`TaskArgs`](./TaskArgs.mdx) | The command line to execute when the task is ran. Supports the command (executable) with or without arguments. Can be defined as a string, or a list of individual arguments. |
 | [`deps`](#deps) | `TaskDependency[]` | Other tasks that this task depends on, and must run to completion before this task is ran. Can depend on sibling tasks, or tasks in other projects, using targets. |
-| [`description`](#description) | `string` | A human-readable description about the task. @since 1.22.0 |
+| [`description`](#description) | `string` | A human-readable description about the task. |
 | [`env`](#env) | `Record<string, string \| null>` | A map of environment variables that will be set in the child process when the task is ran. |
 | [`extends`](#extends) | [`Id`](./Id.mdx) | Extends settings from a sibling task by identifier. |
 | [`inputs`](#inputs) | `Input[]` | A list of inputs that will be hashing and compared against changed files to determine affected status. If affected, the task will run, otherwise it will exit early. An input can be a literal file path, a glob pattern, environment variable, and more. |
 | [`options`](#options) | [`TaskOptionsConfig`](./TaskOptionsConfig.mdx) | Options to control task inheritance, execution, and more. |
 | [`outputs`](#outputs) | `Output[]` | A list of outputs that will be created when the task has successfully ran. An output can be a literal file path, or a glob pattern. |
 | [`preset`](#preset) | [`TaskPreset`](./TaskPreset.mdx) | The preset to apply for the task. Will inherit default options. |
-| [`script`](#script) | `string` | A script to run within a shell. A script is anything from a single command, to multiple commands, or shell specific syntax. Does not support arguments, merging, or inheritance. This overrides `command` and `args`. @since 1.27.0 |
-| [`tags`](#tags) | `Id[]` | A list of tags to categorize this task with. Tags are inherited and can be used for querying and filtering tasks. @since 2.3.0 |
+| [`script`](#script) | `string` | A script to run within a shell. A script is anything from a single command, to multiple commands, or shell specific syntax. Does not support arguments, merging, or inheritance. This overrides `command` and `args`. |
+| [`tags`](#tags) | `Id[]` | A list of tags to categorize this task with. Tags are inherited and can be used for querying and filtering tasks. |
 | [`toolchains`](#toolchains) | `Id \| Id[]` | A toolchain, or list of toolchains, in which the task will inherit functionality from. |
 | [`type`](#type) | [`TaskType`](./TaskType.mdx) | The type of task, primarily used for categorical reasons. When not provided, will be automatically determined based on configured outputs. |
 
@@ -39,13 +39,12 @@ defined as a string, or a list of individual arguments.
 
 ### `checks`
 
-> **Optional** · **Nullable**
+> **Optional** · **Nullable** · **Since** (2.4.0)
 
 Checks are shell scripts that run before the task is executed,
 and are categorized into three types: conditions, requirements,
 and fingerprints. Depending on the result of the script and the
 type of check, the task may be skipped, will fail, or continue.
-@since 2.4.0
 
 | Attribute | Value |
 | --- | --- |
@@ -80,10 +79,9 @@ other projects, using targets.
 
 ### `description`
 
-> **Optional** · **Nullable**
+> **Optional** · **Nullable** · **Since** (1.22.0)
 
 A human-readable description about the task.
-@since 1.22.0
 
 | Attribute | Value |
 | --- | --- |
@@ -163,12 +161,11 @@ The preset to apply for the task. Will inherit default options.
 
 ### `script`
 
-> **Optional** · **Nullable**
+> **Optional** · **Nullable** · **Since** (1.27.0)
 
 A script to run within a shell. A script is anything from a single command,
 to multiple commands, or shell specific syntax. Does not support
 arguments, merging, or inheritance. This overrides `command` and `args`.
-@since 1.27.0
 
 | Attribute | Value |
 | --- | --- |
@@ -176,11 +173,10 @@ arguments, merging, or inheritance. This overrides `command` and `args`.
 
 ### `tags`
 
-> **Optional** · **Nullable**
+> **Optional** · **Nullable** · **Since** (2.3.0)
 
 A list of tags to categorize this task with. Tags are inherited and can
 be used for querying and filtering tasks.
-@since 2.3.0
 
 | Attribute | Value |
 | --- | --- |

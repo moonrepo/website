@@ -14,8 +14,10 @@ plugin's setup. It then walks each toolchain configured in
 to download and install it. For toolchains whose [dependencies
 root](<../(fundamentals)/toolchain.mdx#locating-dependencies-root>) is the workspace root, the
 toolchain's [environment](<../(fundamentals)/toolchain.mdx#setting-up-the-environment>) is also set
-up, like creating a virtual environment. Nested dependency roots aren't set up, as they're set up
-before running the tasks of the projects that belong to them.
+up, like creating a virtual environment. When the workspace root is also a project (a
+[root-level project](../guides/root-project.mdx)), the environment is set up with that project's
+toolchain version and settings, the same as when running its tasks. Nested dependency roots aren't
+set up, as they're set up before running the tasks of the projects that belong to them.
 
 If no toolchains are configured, or all configured toolchains are already installed and up to
 date, the command exits early with an informational message and does nothing further. Otherwise,

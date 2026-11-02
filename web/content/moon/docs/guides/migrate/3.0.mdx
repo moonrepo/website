@@ -1,0 +1,239 @@
+---
+title: v3.0
+---
+
+import { ConfigTabs } from "@/components/ConfigTabs";
+
+To ease the migration process from moon v2 to v3, we've compiled a list of all breaking changes and
+important changes that you should be aware of. Please read through these carefully before upgrading
+your workspace.
+
+To automate most of the migration process, we've created the
+[`moon migrate v3`](../../commands/migrate/v3.mdx) command, which migrates the settings that have
+been renamed or removed in `.moon/workspace.*`, `.moon/tasks/**/*`, and `moon.*` configuration files.
+Only files that change are rewritten, which strips their comments, so run it against a clean working
+tree and review the diff.
+
+```shell
+$ moon migrate v3
+```
+
+The command can't migrate everything, so the following must still be updated by hand, as described
+in the sections below:
+
+- Pkl configuration files (`.pkl`), which are never migrated.
+- Scripts and CI workflows that use the removed [graph depth](#graph-depth) options, like
+  `--upstream`, `--downstream`, and `--include-relations`.
+- Tooling that reads the [JSON output](#json-output) of projects, tasks, and `moon query affected`.
+- Projects with more than one [`moon.*` file](#configuration-moon).
+- [Code generation templates](#code-generation) and custom `Dockerfile` templates.
+- [Execution plans](#execution-plans).
+
+Removed settings fail validation, so moon will point out any that were missed.
+
+## CLI
+
+### Graph depth
+
+`moon run`, `moon exec`, `moon ci`, and `moon check` now traverse the graph with 3 independent
+options, instead of `--upstream` and `--downstream`. Each depth accepts `none`, `direct`, `deep`,
+or a number of hops. See [graph depth](../../advanced/affected.mdx#tracking-depth) for more
+information.
+
+- Added `--affected-depth <DEPTH>` (`-d`, `MOON_AFFECTED_DEPTH`), which controls how far affected
+  state propagates from an affected task to its dependents. Defaults to `deep`. This only changes
+  which tasks count as affected, and never adds tasks.
+- Replaced `--downstream` with `--dependents <DEPTH>`, which adds the dependents of every selected
+  target. Defaults to `none`.
+- Removed `--upstream` (and `--dependencies`), as dependencies always run. Use
+  `--no-dependencies` instead of `--upstream none`.
+- Removed `-g`/`--include-relations` (and `MOON_INCLUDE_RELATIONS`), as affected state now always
+  propagates through relations. Use `--affected-depth` to limit it.
+
+```shell
+# Before
+$ moon run app:build --upstream none --downstream deep
+
+# After
+$ moon run app:build --no-dependencies --dependents deep
+```
+
+#### `moon ci`
+
+- No longer runs the direct dependents of affected tasks by default, as affected dependents that
+  match the requested targets are already selected through `--affected-depth`. Pass
+  `--dependents direct` to restore the previous behavior.
+
+#### `moon action-graph`, `moon project-graph`, `moon task-graph`
+
+- `--dependents` now requires a depth, like `--dependents deep`. For the project and task graphs,
+  the previous flag was equivalent to `deep`.
+
+#### `moon query affected`, `moon query projects`, `moon query tasks`
+
+- Replaced `--downstream` with `--dependents <DEPTH>`.
+- `moon query projects` and `moon query tasks` replaced `--upstream` with
+  `--dependencies <DEPTH>`, while `moon query affected` no longer supports it.
+- The JSON output of `moon query affected` replaced the `upstream`, `downstream`, and `projects`
+  fields of an affected task, and the `upstream` and `downstream` fields of an affected project,
+  with a single `dependencies` field, the affected dependencies that it was reached through.
+
+### JSON output
+
+- Fields that are their default value are now omitted when projects and tasks are serialized to
+  JSON, like in `moon project --json`, `moon task --json`, and `moon query projects|tasks`. This
+  includes most task `options` (like `cache`, `persistent`, and `runInCI`), a project's `language`,
+  `layer`, and `stack` when they're `unknown`, and empty file group lists. A missing field is its
+  default value.
+- A project's `inherited` field is now only included in `moon project --json`. Other output, like
+  `moon projects --json`, `moon query projects`, and `moon project-graph --json`, includes the paths
+  of the inherited configs in a new `inheritedFrom` field instead.
+
+## Workspace
+
+### Configuration: `.moon/workspace.*`
+
+The following settings are migrated by `moon migrate v3`, except in Pkl files. When both the old and
+new name of a setting are defined, the new setting is kept.
+
+- Renamed `generator` to [`codegen`](/moon/api/WorkspaceConfig#codegen). Use `codegen.templates`
+  instead of `generator.templates`.
+- Renamed `unstable_daemon` to [`daemon`](/moon/api/WorkspaceConfig#daemon), which is now enabled
+  by default.
+- Renamed `cache.unstable_sharedWorktreeCache` to
+  [`cache.sharedWorktreeCache`](/moon/api/CacheConfig#sharedworktreecache).
+- Removed `remote.cache.verifyIntegrity`. Use
+  [`cache.cas.verifyIntegrity`](/moon/api/CacheCasConfig#verifyintegrity) instead.
+- Removed the `bitbucket-legacy` provider from [`vcs.provider`](/moon/api/VcsConfig#provider). Use
+  `bitbucket` instead.
+- Removed every experiment from [`experiments`](/moon/api/WorkspaceConfig#experiments), as their
+  behavior is now always enabled (see [removed experiments](#removed-experiments)).
+
+<ConfigTabs
+  file=".moon/workspace"
+  config={{
+    cache: {
+      sharedWorktreeCache: true,
+      cas: {
+        verifyIntegrity: true,
+      },
+    },
+    codegen: {
+      templates: ["./templates"],
+    },
+    vcs: {
+      provider: "bitbucket",
+    },
+  }}
+/>
+
+### Daemon enabled by default
+
+The [daemon](../daemon.mdx) has been stabilized, and is now enabled by default. It's still never used
+in CI or one-off Docker containers. If you run into any issues, disable it with `daemon: false` in
+`.moon/workspace.config`, or the `MOON_DAEMON=false` environment variable.
+
+### Removed experiments
+
+The following experiments have been removed, and their behavior is always enabled. They're removed
+from `.moon/workspace.config` by `moon migrate v3`, as unknown settings fail validation. Their
+`MOON_EXPERIMENT_*` environment variables no longer have any effect.
+
+- `asyncAffectedTracking` - Affected tracking is always asynchronous.
+- `asyncGraphBuilding` - The project and task graphs are always built asynchronously. If you
+  disabled it to work around a dependency cycle error (`moon migrate v3` logs a warning when it
+  was), break the cycle, or move one of its edges to
+  a different [dependency scope](<../../(fundamentals)/project.mdx#scopes>), so that it
+  crosses the production and development partitions.
+- `casOutputsCache` - Task outputs are always stored in the local content-addressable store. The
+  legacy `.moon/cache/hashes` and `.moon/cache/outputs` directories are removed automatically.
+- `explicitTaskOutputStyle` - A task's `outputStyle` option is always applied, including to primary
+  targets (see [output style](#output-style)).
+- `nativeFileHashing` - Files are always hashed natively, instead of through the VCS.
+
+## Projects
+
+### Configuration: `moon.*`
+
+- Only a single `moon.*` file is loaded per project. moon checks for each extension in the order of
+  `yml`, `yaml`, `jsonc`, `json`, `pkl`, `hcl`, and `toml`, and loads the first that exists, instead
+  of merging every project config file in the project. If a project has more than one, merge them
+  into a single file by hand.
+
+## Tasks
+
+### Configuration: `moon.*`, `.moon/tasks/*`
+
+- Replaced the `allowFailure` and `expectFailure` task options with a single
+  [`onFailure`](/moon/api/TaskOptionsConfig#onfailure) option, that accepts `allow` or `expect`. A
+  task's `onFailure` overrides an inherited value, instead of conflicting with it.
+
+`moon migrate v3` replaces these options in both `taskOptions` and each task's `options`, except in
+Pkl files. `allowFailure: true` becomes `onFailure: allow`, and `expectFailure: true` becomes
+`onFailure: expect` (which wins when both are enabled). As `onFailure` has no equivalent of `false`,
+`allowFailure: false` and `expectFailure: false` are removed with a warning. If one of them
+overrode an inherited value, the inherited value now applies, so review those tasks.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      lint: {
+        command: "eslint .",
+        options: {
+          onFailure: "allow",
+        },
+      },
+    },
+  }}
+  comments={{
+    onFailure: "Previously `allowFailure: true`",
+  }}
+/>
+
+### Output style
+
+A task's [`outputStyle`](<../../(fundamentals)/task.mdx#output-style>) option is now applied to
+primary targets (those passed on the command line), which previously ignored it and always displayed
+their output. For example, a task configured with `outputStyle: "none"` no longer prints its output
+when ran directly. Tasks without a configured style behave as before, and the `--output-style`
+option still overrides the style for every task.
+
+## Code generation
+
+[Templates](../codegen.mdx#template-engine) are rendered with
+[Tera](https://keats.github.io/tera/) v2, which includes breaking syntax changes for template files.
+See Tera's [migration guide](https://github.com/Keats/tera/blob/master/MIGRATION.md) for every
+change, but the most common are:
+
+- Macros have been replaced with components. A `{% macro %}` must be rewritten as a
+  `{% component %}`, which no longer needs an `{% import %}`, and is called like
+  `{{ <name arg="value" /> }}`.
+- Array items must be accessed with brackets, like `list[0]`, instead of `list.0`.
+- Some built-in filters and functions have been renamed, like `as_str` to `str`, or removed, like
+  `date`, `now`, `slugify`, `get_env`, `map`, and `filter`. The `json_encode` filter is still
+  available.
+- Includes, parent templates, filters, and functions must now exist when a template is loaded,
+  instead of when it's rendered.
+- Objects are now rendered as maps, like `{"key": "value"}`, instead of `[object]`, and strings
+  within arrays are now quoted.
+
+This also applies to custom `Dockerfile` templates, configured with
+[`docker.file.template`](/moon/api/DockerFileConfig#template). Templates aren't migrated by
+`moon migrate v3`, and must be updated by hand.
+
+## Execution plans
+
+- Replaced the `affected.includeRelations` field with `affected.depth`, the `graph.downstream`
+  field with `graph.dependents`, and the `graph.upstream` field with `graph.noDependencies`. Plans
+  that use the old fields fail to parse, and aren't migrated by `moon migrate v3`. See the
+  [execution plan guide](../exec-plan.mdx).
+
+## Toolchains
+
+- `.prototools` files within the workspace are always trusted by proto, while other local files,
+  like one in a parent directory, must be trusted with `proto trust` before their security-sensitive
+  settings are applied (see [installing with proto](<../../(fundamentals)/toolchain.mdx#installing-with-proto>)).
+- Disabling dependency installs, with [`pipeline.installDependencies`](/moon/api/PipelineConfig#installdependencies)
+  or a toolchain's [`installDependencies`](/moon/api/ToolchainPluginConfig#installdependencies)
+  setting, no longer stops the toolchain from being set up before tasks.

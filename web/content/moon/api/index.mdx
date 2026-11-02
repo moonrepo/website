@@ -8,6 +8,7 @@ title: Index
 | --- | --- | --- |
 | [`CacheCasConfig`](./CacheCasConfig.mdx) | Struct | Configures aspects of the content-addressable storage (CAS) cache. |
 | [`CacheConfig`](./CacheConfig.mdx) | Struct | Configures aspects of the caching engine and layer. |
+| [`CodegenConfig`](./CodegenConfig.mdx) | Struct | Configures the code generator for scaffolding from templates. |
 | [`CodeownersConfig`](./CodeownersConfig.mdx) | Struct | Configures code ownership rules for generating a `CODEOWNERS` file. |
 | [`CodeownersOrderBy`](./CodeownersOrderBy.mdx) | Enum | How to order ownership rules within the generated file. |
 | [`ConstraintsConfig`](./ConstraintsConfig.mdx) | Struct | Configures boundaries and constraints between projects. |
@@ -25,10 +26,9 @@ title: Index
 | [`FileGroupInputFormat`](./FileGroupInputFormat.mdx) | Enum | Available formats to resolve the file group into. |
 | [`FileInput`](./FileInput.mdx) | Struct | A file path input. |
 | [`FileOutput`](./FileOutput.mdx) | Struct | A file path output. |
-| [`GeneratorConfig`](./GeneratorConfig.mdx) | Struct | Configures the generator for scaffolding from templates. |
 | [`GlobInput`](./GlobInput.mdx) | Struct | A glob pattern input. |
 | [`GlobOutput`](./GlobOutput.mdx) | Struct | A glob pattern output. |
-| [`HasherConfig`](./HasherConfig.mdx) | Struct | Configures aspects of the content hashing engine. |
+| [`HasherConfig`](./HasherConfig.mdx) | Struct | Configures aspects of the task hashing engine. |
 | [`HasherOptimization`](./HasherOptimization.mdx) | Enum | The optimization to use when hashing. |
 | [`HasherWalkStrategy`](./HasherWalkStrategy.mdx) | Enum | The strategy to use when walking the file system. |
 | [`Id`](./Id.mdx) | `string` |  |
@@ -52,7 +52,7 @@ title: Index
 | [`ProjectConfig`](./ProjectConfig.mdx) | Struct | Configures information and tasks for a project. Docs: https://moonrepo.dev/docs/config/project |
 | [`ProjectDependencyConfig`](./ProjectDependencyConfig.mdx) | Struct | A project referenced by identifier, with additional parameters. |
 | [`ProjectDependsOn`](./ProjectDependsOn.mdx) | Union | Expanded information about a project dependency. |
-| [`ProjectDockerConfig`](./ProjectDockerConfig.mdx) | Struct | Configures our Docker integration. @since 1.27.0 |
+| [`ProjectDockerConfig`](./ProjectDockerConfig.mdx) | Struct | Configures our Docker integration. |
 | [`ProjectInput`](./ProjectInput.mdx) | Struct | An external project input. |
 | [`ProjectMetadataConfig`](./ProjectMetadataConfig.mdx) | Struct | Expanded information about the project. |
 | [`ProjectToolchainEntry`](./ProjectToolchainEntry.mdx) | Union | Variants a project-level toolchain can be configured. |
@@ -62,28 +62,35 @@ title: Index
 | [`ProjectWorkspaceMergeStrategiesConfig`](./ProjectWorkspaceMergeStrategiesConfig.mdx) | Struct | Controls how project settings are merged with inherited workspace-level settings. |
 | [`ProtoConfig`](./ProtoConfig.mdx) | Struct | Configures how moon integrates with proto. |
 | [`Range`](./Range.mdx) | `string` |  |
-| [`RemoteApi`](./RemoteApi.mdx) | Enum | The API format of the remote service. @since 1.32.0 |
-| [`RemoteAuthConfig`](./RemoteAuthConfig.mdx) | Struct | Configures basic HTTP authentication. @since 1.32.0 |
-| [`RemoteCacheConfig`](./RemoteCacheConfig.mdx) | Struct | Configures the action cache (AC) and content-addressable cache (CAS). @since 1.30.0 |
-| [`RemoteCompression`](./RemoteCompression.mdx) | Enum | Supported blob compression levels for gRPC APIs. @since 1.31.0 |
-| [`RemoteConfig`](./RemoteConfig.mdx) | Struct | Configures the remote service, powered by the Bazel Remote Execution API. @since 1.30.0 |
-| [`RemoteMtlsConfig`](./RemoteMtlsConfig.mdx) | Struct | Configures for both server and client authentication with mTLS. @since 1.30.0 |
-| [`RemoteTlsConfig`](./RemoteTlsConfig.mdx) | Struct | Configures for server-only authentication with TLS. @since 1.30.0 |
+| [`RemoteApi`](./RemoteApi.mdx) | Enum | The API format of the remote service. |
+| [`RemoteAuthConfig`](./RemoteAuthConfig.mdx) | Struct | Configures basic HTTP authentication. |
+| [`RemoteCacheConfig`](./RemoteCacheConfig.mdx) | Struct | Configures the action cache (AC) and content-addressable cache (CAS). |
+| [`RemoteCompression`](./RemoteCompression.mdx) | Enum | Supported blob compression levels for gRPC APIs. |
+| [`RemoteConfig`](./RemoteConfig.mdx) | Struct | Configures the remote service, powered by the Bazel Remote Execution API. |
+| [`RemoteMtlsConfig`](./RemoteMtlsConfig.mdx) | Struct | Configures for both server and client authentication with mTLS. |
+| [`RemoteTlsConfig`](./RemoteTlsConfig.mdx) | Struct | Configures for server-only authentication with TLS. |
 | [`StackType`](./StackType.mdx) | Enum | The technology stack of the project, for categorizing. |
 | [`TaggedTaskCheck`](./TaggedTaskCheck.mdx) | Union |  |
 | [`TaskArgs`](./TaskArgs.mdx) | Union | Configures a command and its arguments to execute. |
 | [`TaskCheck`](./TaskCheck.mdx) | Union |  |
 | [`TaskCheckConditionConfig`](./TaskCheckConditionConfig.mdx) | Struct | Task check configuration for conditions. |
+| [`TaskCheckFingerprint`](./TaskCheckFingerprint.mdx) | Union | The fingerprinting strategy for hashing a task check. |
 | [`TaskCheckFingerprintConfig`](./TaskCheckFingerprintConfig.mdx) | Struct | Task check configuration for fingerprinting. |
 | [`TaskCheckRequirementConfig`](./TaskCheckRequirementConfig.mdx) | Struct | Task check configuration for requirements. |
 | [`TaskConfig`](./TaskConfig.mdx) | Struct | Configures a task to be ran within the action pipeline. |
 | [`TaskDependency`](./TaskDependency.mdx) | Union | Configures another task that this task depends on. |
-| [`TaskDependencyCacheStrategy`](./TaskDependencyCacheStrategy.mdx) | Enum | Controls how a task dependency invalidates the current task's cache entry. When omitted, the effective strategy is `Hash` if the dependency declares outputs, or `Ignored` otherwise. @since 2.3.0 |
+| [`TaskDependencyCacheStrategy`](./TaskDependencyCacheStrategy.mdx) | Enum | Controls how a task dependency invalidates the current task's cache entry. When omitted, the effective strategy is `Hash` if the dependency declares outputs, or `Ignored` otherwise. |
 | [`TaskDependencyConfig`](./TaskDependencyConfig.mdx) | Struct | A task referenced by target, with additional parameters to pass through. |
+| [`TaskDependencyType`](./TaskDependencyType.mdx) | Enum | The task-to-task relationship of the dependency. |
 | [`TaskOperatingSystem`](./TaskOperatingSystem.mdx) | Enum | The operating system in which to only run this task on. |
 | [`TaskOptionAffectedFilesConfig`](./TaskOptionAffectedFilesConfig.mdx) | Struct | Expanded information about affected files handling. |
 | [`TaskOptionAffectedFilesEntry`](./TaskOptionAffectedFilesEntry.mdx) | Union |  |
-| [`TaskOptionEnvFile`](./TaskOptionEnvFile.mdx) | Union |  |
+| [`TaskOptionAffectedFilesPattern`](./TaskOptionAffectedFilesPattern.mdx) | Union | The pattern in which affected files will be passed to the affected task. |
+| [`TaskOptionCache`](./TaskOptionCache.mdx) | Union | The environment in which to apply task caching. |
+| [`TaskOptionEnvFile`](./TaskOptionEnvFile.mdx) | Union | The pattern in which a task is dependent on a `.env` file. |
+| [`TaskOptionEnvOverride`](./TaskOptionEnvOverride.mdx) | Union | Which task environment variables override system environment variables. |
+| [`TaskOptionOnFailure`](./TaskOptionOnFailure.mdx) | Enum | How a failure of the task affects the action pipeline. |
+| [`TaskOptionRunInCI`](./TaskOptionRunInCI.mdx) | Union | The pattern in which to run the task automatically in CI. |
 | [`TaskOptionsConfig`](./TaskOptionsConfig.mdx) | Struct | Options to control task inheritance, execution, and more. |
 | [`TaskOutputStyle`](./TaskOutputStyle.mdx) | Enum | The style in which task output will be printed to the console. |
 | [`TaskPreset`](./TaskPreset.mdx) | Enum | Preset options to inherit. |
@@ -108,7 +115,7 @@ title: Index
 | [`UnresolvedVersionSpec`](./UnresolvedVersionSpec.mdx) | `string` | Represents an unresolved version or alias that must be resolved to a fully-qualified version. |
 | [`VcsClient`](./VcsClient.mdx) | Enum | The VCS being utilized by the repository. |
 | [`VcsConfig`](./VcsConfig.mdx) | Struct | Configures the version control system (VCS). |
-| [`VcsHookFormat`](./VcsHookFormat.mdx) | Enum | The format to use for generated VCS hook files. @since 1.29.0 |
+| [`VcsHookFormat`](./VcsHookFormat.mdx) | Enum | The format to use for generated VCS hook files. |
 | [`VcsProvider`](./VcsProvider.mdx) | Enum | The upstream version control provider, where the repository source code is stored. |
 | [`VersionSpec`](./VersionSpec.mdx) | `string` | Represents a resolved version or alias. |
 | [`WorkspaceConfig`](./WorkspaceConfig.mdx) | Struct | Configures all aspects of the moon workspace. Docs: https://moonrepo.dev/docs/config/workspace |

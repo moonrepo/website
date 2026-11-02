@@ -23,7 +23,9 @@ $ moon projects
 ```
 
 Pass `--json` to print the full list of expanded project objects as JSON instead of
-rendering a table, which is useful for piping into other tools or scripts.
+rendering a table, which is useful for piping into other tools or scripts. Fields that are their
+default value are omitted, and the task configuration files that each project inherited from are
+listed by path in an `inheritedFrom` field.
 
 ```shell
 $ moon projects --json

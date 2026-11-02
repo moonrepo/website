@@ -2,29 +2,37 @@
 title: TaskOptionEnvFile
 ---
 
+The pattern in which a task is dependent on a `.env` file.
+
 ## Index
 
 | Variant | Type | Description |
 | --- | --- | --- |
-| [`boolean`](#boolean) | `boolean` |  |
-| [`string`](#string) | `string` |  |
-| [`string[]`](#string) | `string[]` |  |
+| [`enabled`](#enabled) | `boolean` | Uses an `.env` file in the project root. |
+| [`file`](#file) | `string` | An explicit path to an `.env` file. |
+| [`files`](#files) | `string[]` | A list of explicit `.env` file paths. |
 
 ## Variants
 
-### `boolean`
+### `enabled`
+
+Uses an `.env` file in the project root.
 
 | Attribute | Value |
 | --- | --- |
 | Type | `boolean` |
 
-### `string`
+### `file`
+
+An explicit path to an `.env` file.
 
 | Attribute | Value |
 | --- | --- |
 | Type | `string` |
 
-### `string[]`
+### `files`
+
+A list of explicit `.env` file paths.
 
 | Attribute | Value |
 | --- | --- |

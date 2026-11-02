@@ -11,13 +11,13 @@ Docs: https://moonrepo.dev/docs/config/tasks
 | Property | Type | Description |
 | --- | --- | --- |
 | [`$schema`](#schema) | `string` |  |
-| [`env`](#env) | `Record<string, string \| null>` | A map of environment variables that will be inherited by all matching projects, and merged into their `env` setting. @since 2.5.0 |
-| [`extends`](#extends) | [`ExtendsFrom`](./ExtendsFrom.mdx) | Extends one or many tasks configuration files. Supports a relative file path or a secure URL. @since 1.12.0 |
+| [`env`](#env) | `Record<string, string \| null>` | A map of environment variables that will be inherited by all matching projects, and merged into their `env` setting. |
+| [`extends`](#extends) | [`ExtendsFrom`](./ExtendsFrom.mdx) | Extends one or many tasks configuration files. Supports a relative file path or a secure URL. |
 | [`fileGroups`](#filegroups) | `Record<Id, Input[]>` | A map of group identifiers to a list of file paths, globs, and environment variables, that can be referenced from tasks. |
 | [`implicitDeps`](#implicitdeps) | `TaskDependency[]` | Task dependencies (`deps`) that will be automatically injected into every task that inherits this configuration. |
 | [`implicitInputs`](#implicitinputs) | `Input[]` | Task inputs (`inputs`) that will be automatically injected into every task that inherits this configuration. |
-| [`inheritedBy`](#inheritedby) | [`InheritedByConfig`](./InheritedByConfig.mdx) | A map of conditions that define which projects will inherit these tasks and configuration. If not defined, will be inherited by all projects. @since 2.0.0 |
-| [`taskOptions`](#taskoptions) | [`TaskOptionsConfig`](./TaskOptionsConfig.mdx) | Default task options for all inherited tasks. @since 1.20.0 |
+| [`inheritedBy`](#inheritedby) | [`InheritedByConfig`](./InheritedByConfig.mdx) | A map of conditions that define which projects will inherit these tasks and configuration. If not defined, will be inherited by all projects. |
+| [`taskOptions`](#taskoptions) | [`TaskOptionsConfig`](./TaskOptionsConfig.mdx) | Default task options for all inherited tasks. |
 | [`tasks`](#tasks) | `Record<Id, TaskConfig>` | A map of identifiers to task objects. Tasks represent the work-unit of a project, and can be ran in the action pipeline. |
 
 ## Properties
@@ -33,11 +33,10 @@ Docs: https://moonrepo.dev/docs/config/tasks
 
 ### `env`
 
-> **Optional**
+> **Required** · **Since** (2.5.0)
 
 A map of environment variables that will be inherited by all
 matching projects, and merged into their `env` setting.
-@since 2.5.0
 
 | Attribute | Value |
 | --- | --- |
@@ -45,11 +44,10 @@ matching projects, and merged into their `env` setting.
 
 ### `extends`
 
-> **Optional** · **Nullable**
+> **Optional** · **Nullable** · **Since** (1.12.0)
 
 Extends one or many tasks configuration files.
 Supports a relative file path or a secure URL.
-@since 1.12.0
 
 | Attribute | Value |
 | --- | --- |
@@ -57,7 +55,7 @@ Supports a relative file path or a secure URL.
 
 ### `fileGroups`
 
-> **Optional**
+> **Required**
 
 A map of group identifiers to a list of file paths, globs, and
 environment variables, that can be referenced from tasks.
@@ -69,7 +67,7 @@ environment variables, that can be referenced from tasks.
 
 ### `implicitDeps`
 
-> **Optional**
+> **Required**
 
 Task dependencies (`deps`) that will be automatically injected into every
 task that inherits this configuration.
@@ -81,7 +79,7 @@ task that inherits this configuration.
 
 ### `implicitInputs`
 
-> **Optional**
+> **Required**
 
 Task inputs (`inputs`) that will be automatically injected into every
 task that inherits this configuration.
@@ -93,11 +91,10 @@ task that inherits this configuration.
 
 ### `inheritedBy`
 
-> **Optional** · **Nullable**
+> **Optional** · **Nullable** · **Since** (2.0.0)
 
 A map of conditions that define which projects will inherit these
 tasks and configuration. If not defined, will be inherited by all projects.
-@since 2.0.0
 
 | Attribute | Value |
 | --- | --- |
@@ -105,10 +102,9 @@ tasks and configuration. If not defined, will be inherited by all projects.
 
 ### `taskOptions`
 
-> **Optional** · **Nullable**
+> **Optional** · **Nullable** · **Since** (1.20.0)
 
 Default task options for all inherited tasks.
-@since 1.20.0
 
 | Attribute | Value |
 | --- | --- |
@@ -116,7 +112,7 @@ Default task options for all inherited tasks.
 
 ### `tasks`
 
-> **Optional**
+> **Required**
 
 A map of identifiers to task objects. Tasks represent the work-unit
 of a project, and can be ran in the action pipeline.

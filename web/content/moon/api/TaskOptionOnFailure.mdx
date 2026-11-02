@@ -1,0 +1,12 @@
+---
+title: TaskOptionOnFailure
+---
+
+How a failure of the task affects the action pipeline.
+
+## Variants
+
+| Variant | Value | Tags | Description |
+| --- | --- | --- | --- |
+| `allow` | `"allow"` |  | Allow the task to fail without failing the entire action pipeline. |
+| `expect` | `"expect"` |  | Expect the task to fail, and fail the entire action pipeline if it passes. The task is never cached. |

@@ -1,0 +1,36 @@
+---
+title: moon migrate v3
+---
+
+Migrates an existing moon v2 workspace to moon v3, by rewriting the settings that have been renamed
+or removed in v3, within the workspace's configuration files. See the
+[v3 migration guide](../../guides/migrate/3.0.mdx) for every breaking change, including the ones
+this command can't migrate for you.
+
+By default, the command prompts for confirmation before changing any files. Pass `--yes` to skip
+the prompt, like in CI or scripts.
+
+```shell
+# Prompt before migrating
+$ moon migrate v3
+
+# Migrate without prompting
+$ moon migrate v3 --yes
+```
+
+Only files with a setting that needs migrating are rewritten. Because a rewritten file is parsed and
+then re-serialized, its comments are stripped and its formatting is normalized (respecting the
+closest `.editorconfig` for JSON and YAML), while files that don't need changes are left untouched.
+Run the command against a clean working tree, so you can review the diff before committing.
+
+The following files are skipped, and must be migrated manually:
+
+- Pkl files (`.pkl`) are never migrated, and a warning is logged once per run.
+- Files that fail to parse are skipped with a warning, and the rest are still migrated.
+- [Execution plans](../../guides/exec-plan.mdx) and
+  [template files](../../guides/codegen.mdx#template-engine) aren't migrated, nor are scripts that
+  use removed command line options, like `--upstream` and `--downstream`.
+
+## Options
+
+- `--yes` - Skip the confirmation prompt, and apply all migrations immediately.

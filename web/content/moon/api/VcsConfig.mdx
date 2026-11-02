@@ -10,11 +10,11 @@ Configures the version control system (VCS).
 | --- | --- | --- |
 | [`client`](#client) | [`VcsClient`](./VcsClient.mdx) | The VCS client being utilized by the repository. |
 | [`defaultBranch`](#defaultbranch) | `string` | The default branch / base. |
-| [`hookFormat`](#hookformat) | [`VcsHookFormat`](./VcsHookFormat.mdx) | The format to use for generated VCS hook files. @since 1.29.0 |
-| [`hooks`](#hooks) | `Record<string, string[]>` | A map of hooks to a list of commands to run when the hook is triggered. @since 1.9.0 |
-| [`provider`](#provider) | [`VcsProvider`](./VcsProvider.mdx) | The upstream version control provider, where the repository source code is stored. @since 1.8.0 |
+| [`hookFormat`](#hookformat) | [`VcsHookFormat`](./VcsHookFormat.mdx) | The format to use for generated VCS hook files. |
+| [`hooks`](#hooks) | `Record<string, string[]>` | A map of hooks to a list of commands to run when the hook is triggered. |
+| [`provider`](#provider) | [`VcsProvider`](./VcsProvider.mdx) | The upstream version control provider, where the repository source code is stored. |
 | [`remoteCandidates`](#remotecandidates) | `string[]` | List of remote's in which to compare branches against. |
-| [`sync`](#sync) | `boolean` | Automatically generate hooks and scripts during a sync operation, based on the `hooks` setting. @since 1.9.0 |
+| [`sync`](#sync) | `boolean` | Automatically generate hooks and scripts during a sync operation, based on the `hooks` setting. |
 
 ## Properties
 
@@ -43,10 +43,9 @@ The default branch / base.
 
 ### `hookFormat`
 
-> **Required**
+> **Required** · **Since** (1.29.0)
 
 The format to use for generated VCS hook files.
-@since 1.29.0
 
 | Attribute | Value |
 | --- | --- |
@@ -56,10 +55,9 @@ The format to use for generated VCS hook files.
 
 ### `hooks`
 
-> **Optional**
+> **Required** · **Since** (1.9.0)
 
 A map of hooks to a list of commands to run when the hook is triggered.
-@since 1.9.0
 
 | Attribute | Value |
 | --- | --- |
@@ -67,17 +65,16 @@ A map of hooks to a list of commands to run when the hook is triggered.
 
 ### `provider`
 
-> **Required**
+> **Required** · **Since** (1.8.0)
 
 The upstream version control provider, where the repository
 source code is stored.
-@since 1.8.0
 
 | Attribute | Value |
 | --- | --- |
 | Type | [`VcsProvider`](./VcsProvider.mdx) |
 | Default | `"github"` |
-| Values | `"bitbucket"`, `"bitbucket-legacy"`, `"github"`, `"gitlab"`, `"other"` |
+| Values | `"bitbucket"`, `"github"`, `"gitlab"`, `"other"` |
 
 ### `remoteCandidates`
 
@@ -91,11 +88,10 @@ List of remote's in which to compare branches against.
 
 ### `sync`
 
-> **Optional**
+> **Required** · **Since** (1.9.0)
 
 Automatically generate hooks and scripts during a sync operation,
 based on the `hooks` setting.
-@since 1.9.0
 
 | Attribute | Value |
 | --- | --- |

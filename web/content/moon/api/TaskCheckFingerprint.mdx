@@ -1,0 +1,51 @@
+---
+title: TaskCheckFingerprint
+---
+
+The fingerprinting strategy for hashing a task check.
+
+## Index
+
+| Variant | Type | Description |
+| --- | --- | --- |
+| [`exit-code`](#exit-code) | `"exit-code"` | Only hash the exit code. |
+| [`stderr`](#stderr) | `"stderr"` | Only hash stderr. |
+| [`stdout`](#stdout) | `"stdout"` | Only hash stdout. |
+| [`enabled`](#enabled) | `boolean` | Whether to hash all script output. |
+
+## Variants
+
+### `exit-code`
+
+Only hash the exit code.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `"exit-code"` |
+
+### `stderr`
+
+Only hash stderr.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `"stderr"` |
+
+### `stdout`
+
+Only hash stdout.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `"stdout"` |
+
+### `enabled`
+
+> **Default**
+
+Whether to hash all script output.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
+| Default | `true` |

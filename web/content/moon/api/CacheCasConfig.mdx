@@ -8,19 +8,18 @@ Configures aspects of the content-addressable storage (CAS) cache.
 
 | Property | Type | Description |
 | --- | --- | --- |
-| [`maxSize`](#maxsize) | `string` | Maximum total size of the local cache, for example "10gb" or "512mib". When exceeded, the least recently used cached task outputs are evicted. Unlimited when unset. @since 2.4.0 |
-| [`verifyIntegrity`](#verifyintegrity) | `boolean` | Verify hash on every read. When enabled, reads are slower but detect on-disk corruption. @since 2.3.0 |
+| [`maxSize`](#maxsize) | `string` | Maximum total size of the local cache, for example "10gb" or "512mib". When exceeded, the least recently used cached task outputs are evicted. Unlimited when unset. |
+| [`verifyIntegrity`](#verifyintegrity) | `boolean` | Verify hash on every read. When enabled, reads are slower but they detect on-disk corruption. |
 
 ## Properties
 
 ### `maxSize`
 
-> **Nullable**
+> **Optional** · **Nullable** · **Since** (2.4.0)
 
 Maximum total size of the local cache, for example "10gb" or
 "512mib". When exceeded, the least recently used cached task outputs
 are evicted. Unlimited when unset.
-@since 2.4.0
 
 | Attribute | Value |
 | --- | --- |
@@ -29,11 +28,10 @@ are evicted. Unlimited when unset.
 
 ### `verifyIntegrity`
 
-> **Required**
+> **Required** · **Since** (2.3.0)
 
 Verify hash on every read. When enabled, reads are slower
-but detect on-disk corruption.
-@since 2.3.0
+but they detect on-disk corruption.
 
 | Attribute | Value |
 | --- | --- |

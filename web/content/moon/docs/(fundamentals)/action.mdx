@@ -3,6 +3,8 @@ title: Actions
 icon: Play
 ---
 
+import { ConfigTabs } from "@/components/ConfigTabs";
+
 An **action** is a single unit of work that moon executes. Everything moon does at runtime is an
 action: syncing the workspace, installing a toolchain, installing dependencies, syncing a project,
 and running a task are all the same kind of thing as far as the pipeline is concerned.
@@ -55,16 +57,29 @@ A failing action normally bails the pipeline, aborting the work that hasn't star
 exception is [`cleanup` dependencies](./task.mdx#dependency-types) of tasks that already ran, which
 still run before moon exits. A few things change how failures are handled.
 
-A task with [`options.allowFailure`](/moon/api/TaskOptionsConfig#allowfailure) enabled is permitted to fail without stopping anything else.
-Its action is still recorded as failed, and a warning is logged, but the pipeline carries on. Note
-that tasks marked this way cannot be depended on by other tasks, since their success can't be
-relied upon, except as a [`cleanup` dependency](./task.mdx#dependency-types).
+A task with [`options.onFailure`](/moon/api/TaskOptionsConfig#onfailure) set to `allow` is permitted
+to fail without stopping anything else. Its action is still recorded as failed, and a warning is
+logged, but the pipeline carries on. Note that tasks marked this way cannot be depended on by other
+tasks, since their success can't be relied upon, except as a
+[`cleanup` dependency](./task.mdx#dependency-types).
 
-A task with
-[`options.expectFailure`](./task.mdx#options) enabled is the inverse:
-its action is recorded as passed when the command fails, and as failed when the
-command unexpectedly passes, so the setting can be removed once the underlying
-issue is fixed.
+A task with `options.onFailure` set to `expect` is the inverse: its action is recorded as passed when
+the command fails, and as failed when the command unexpectedly passes, so the setting can be removed
+once the underlying issue is fixed.
+
+<ConfigTabs
+  file="moon"
+  config={{
+    tasks: {
+      lint: {
+        command: "eslint .",
+        options: {
+          onFailure: "allow",
+        },
+      },
+    },
+  }}
+/>
 
 A task with [`options.retryCount`](/moon/api/TaskOptionsConfig#retrycount) set is re-executed on failure, up to that many additional
 attempts. Each attempt is recorded, so the full history is preserved rather than replaced.

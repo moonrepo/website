@@ -12,9 +12,11 @@ The command reads the `dockerManifest.json` file from the workspace root, which 
 versus pulled in as dependencies. If this manifest doesn't exist, the command fails and suggests
 running [`moon docker scaffold`](./scaffold.mdx) first.
 
-For every toolchain-specific dependencies workspace used by the focused projects (for example, a
-pnpm workspace root or a Cargo workspace root), moon runs the following steps, processing
-workspaces in parallel. When none of the focused projects belong to a dependencies workspace,
+The focused projects are placed into the [layout graph](../../advanced/layout-graph.mdx), the same
+way a run would, and for every dependencies root that they belong to (for example, a pnpm workspace
+root, a Cargo workspace root, or a project's own package), moon runs the following steps,
+processing roots in parallel. The unfocused projects that were scaffolded as dependencies are
+matched against each root's members, and are included in that root as well. When none of the focused projects belong to a dependencies root,
 there's nothing to prune, and the command does nothing.
 
 1. Each toolchain plugin's own pruning logic runs first, which typically deletes vendor directories

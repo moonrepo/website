@@ -9,7 +9,7 @@ Task check configuration for fingerprinting.
 | Property | Type | Description |
 | --- | --- | --- |
 | [`check`](#check) | `"fingerprint"` |  |
-| [`hash`](#hash) | `boolean \| string` | The content hashing strategy. |
+| [`hash`](#hash) | [`TaskCheckFingerprint`](./TaskCheckFingerprint.mdx) | The content hashing strategy. |
 | [`script`](#script) | `string` | The shell script to execute. |
 
 ## Properties
@@ -30,7 +30,8 @@ The content hashing strategy.
 
 | Attribute | Value |
 | --- | --- |
-| Type | `boolean \| string` |
+| Type | [`TaskCheckFingerprint`](./TaskCheckFingerprint.mdx) |
+| Default | `true` |
 
 ### `script`
 
@@ -41,3 +42,7 @@ The shell script to execute.
 | Attribute | Value |
 | --- | --- |
 | Type | `string` |
+
+## References
+
+- [`TaskCheckFingerprint`](./TaskCheckFingerprint.mdx)

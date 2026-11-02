@@ -2,6 +2,7 @@ import { flattenTree, type Root } from 'fumadocs-core/page-tree';
 import { SidebarTabsDropdown } from 'fumadocs-ui/components/sidebar/tabs/dropdown';
 import { getLayoutTabs, type LayoutTab } from 'fumadocs-ui/layouts/shared';
 import { useMemo } from 'react';
+import { ScrollText } from 'lucide-react';
 import { PRODUCTS, type Product } from '@/lib/products';
 
 // Renders a dropdown for switching between products, followed by a dropdown
@@ -33,7 +34,21 @@ export function DocsSidebarTabs({
 		);
 	}, [product, tree]);
 
-	const sectionTabs = useMemo(() => getLayoutTabs(tree), [tree]);
+	const sectionTabs = useMemo(() => {
+		const tabs = getLayoutTabs(tree);
+
+		if (product !== "wasm") {
+			tabs.push({
+					title: 'Changelog',
+					description: 'Latest releases and changes',
+					icon: <ScrollText />,
+					url: `/${product}/changelog`,
+					urls: new Set([`/${product}/changelog`]),
+				});
+		}
+
+		return tabs;
+	}, [tree, product]);
 
 	return (
 		<>

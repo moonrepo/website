@@ -28,6 +28,11 @@ following:
 Formats can be mixed, as each file's format is detected from its extension. For example, a
 `.moon/workspace.toml` can [extend](../guides/sharing-config.mdx) a shared `workspace.yml`.
 
+However, each configuration file should only exist in a single format. For a project's
+[`moon.config`](./project.mdx), moon checks for each extension in the order of `yml`, `yaml`,
+`jsonc`, `json`, `pkl`, `hcl`, and `toml`, and only loads the first file that exists. For example, if
+a project contains both a `moon.yml` and a `moon.toml`, the `moon.toml` is ignored.
+
 ## Schema validation
 
 We support schema validation for configuration files through

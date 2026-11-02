@@ -304,7 +304,7 @@ HTTP API.
 
 When using the HTTP API, requests that fail with a transient error (connection failures, timeouts,
 and `5xx`, `408`, or `429` responses) are retried up to 3 times, with exponential backoff. This can
-be customized with the `remote.cache.retryCount` setting (or the `MOON_REMOTE_CACHE_RETRY_COUNT`
+be customized with the [`remote.cache.retryCount`](/moon/api/RemoteCacheConfig#retrycount) setting (or the `MOON_REMOTE_CACHE_RETRY_COUNT`
 environment variable), where `0` disables retries. Retries are not supported for gRPC.
 
 <ConfigTabs

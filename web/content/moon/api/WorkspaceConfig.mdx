@@ -10,15 +10,15 @@ Docs: https://moonrepo.dev/docs/config/workspace
 | Property | Type | Description |
 | --- | --- | --- |
 | [`$schema`](#schema) | `string` |  |
-| [`cache`](#cache) | [`CacheConfig`](./CacheConfig.mdx) | Configures aspects of the caching engine and layer. @since 2.3.0 |
-| [`codeowners`](#codeowners) | [`CodeownersConfig`](./CodeownersConfig.mdx) | Configures code ownership rules for generating a `CODEOWNERS` file. @since 1.8.0 |
+| [`cache`](#cache) | [`CacheConfig`](./CacheConfig.mdx) | Configures aspects of the caching engine and layer. |
+| [`codegen`](#codegen) | [`CodegenConfig`](./CodegenConfig.mdx) | Configures the code generator for scaffolding from templates. |
+| [`codeowners`](#codeowners) | [`CodeownersConfig`](./CodeownersConfig.mdx) | Configures code ownership rules for generating a `CODEOWNERS` file. |
 | [`constraints`](#constraints) | [`ConstraintsConfig`](./ConstraintsConfig.mdx) | Configures boundaries and constraints between projects. |
-| [`daemon`](#daemon) | `boolean` | Enables a daemon that will process heavy tasks in the background, greatly increasing performance of the main thread/executable. @since 2.2.0 |
-| [`defaultProject`](#defaultproject) | [`Id`](./Id.mdx) | The default/main project within the workspace. When a task is ran without a project, the default will be used. @since 2.0.0 |
-| [`docker`](#docker) | [`DockerConfig`](./DockerConfig.mdx) | Configures Docker integration for the workspace. @since 1.27.0 |
-| [`experiments`](#experiments) | [`ExperimentsConfig`](./ExperimentsConfig.mdx) | Configures experiments across the entire moon workspace. @since 1.11.0 |
-| [`extends`](#extends) | [`ExtendsFrom`](./ExtendsFrom.mdx) | Extends one or many workspace configuration file. Supports a relative file path or a secure URL. @since 1.12.0 |
-| [`generator`](#generator) | [`GeneratorConfig`](./GeneratorConfig.mdx) | Configures the generator for scaffolding from templates. |
+| [`daemon`](#daemon) | `boolean` | Enables a daemon that will process heavy tasks in the background, greatly increasing performance of the main thread/executable. |
+| [`defaultProject`](#defaultproject) | [`Id`](./Id.mdx) | The default/main project within the workspace. When a task is ran without a project, the default will be used. |
+| [`docker`](#docker) | [`DockerConfig`](./DockerConfig.mdx) | Configures Docker integration for the workspace. |
+| [`experiments`](#experiments) | [`ExperimentsConfig`](./ExperimentsConfig.mdx) | Configures experiments across the entire moon workspace. |
+| [`extends`](#extends) | [`ExtendsFrom`](./ExtendsFrom.mdx) | Extends one or many workspace configuration file. Supports a relative file path or a secure URL. |
 | [`hasher`](#hasher) | [`HasherConfig`](./HasherConfig.mdx) | Configures aspects of the content hashing engine. |
 | [`notifier`](#notifier) | [`NotifierConfig`](./NotifierConfig.mdx) | Configures how and where notifications are sent. |
 | [`pipeline`](#pipeline) | [`PipelineConfig`](./PipelineConfig.mdx) | Configures aspects of the action pipeline. |
@@ -41,21 +41,29 @@ Docs: https://moonrepo.dev/docs/config/workspace
 
 ### `cache`
 
-> **Required**
+> **Required** · **Since** (2.3.0)
 
 Configures aspects of the caching engine and layer.
-@since 2.3.0
 
 | Attribute | Value |
 | --- | --- |
 | Type | [`CacheConfig`](./CacheConfig.mdx) |
 
-### `codeowners`
+### `codegen`
 
 > **Required**
 
+Configures the code generator for scaffolding from templates.
+
+| Attribute | Value |
+| --- | --- |
+| Type | [`CodegenConfig`](./CodegenConfig.mdx) |
+
+### `codeowners`
+
+> **Required** · **Since** (1.8.0)
+
 Configures code ownership rules for generating a `CODEOWNERS` file.
-@since 1.8.0
 
 | Attribute | Value |
 | --- | --- |
@@ -73,25 +81,23 @@ Configures boundaries and constraints between projects.
 
 ### `daemon`
 
-> **Required**
+> **Optional** · **Since** (2.2.0)
 
 Enables a daemon that will process heavy tasks in the background,
 greatly increasing performance of the main thread/executable.
-@since 2.2.0
 
 | Attribute | Value |
 | --- | --- |
 | Type | `boolean` |
-| Aliases | `unstable_daemon` |
+| Default | `true` |
 | Environment variable | `MOON_DAEMON` |
 
 ### `defaultProject`
 
-> **Optional** · **Nullable**
+> **Optional** · **Nullable** · **Since** (2.0.0)
 
 The default/main project within the workspace. When a task is
 ran without a project, the default will be used.
-@since 2.0.0
 
 | Attribute | Value |
 | --- | --- |
@@ -99,10 +105,9 @@ ran without a project, the default will be used.
 
 ### `docker`
 
-> **Required**
+> **Required** · **Since** (1.27.0)
 
 Configures Docker integration for the workspace.
-@since 1.27.0
 
 | Attribute | Value |
 | --- | --- |
@@ -110,10 +115,9 @@ Configures Docker integration for the workspace.
 
 ### `experiments`
 
-> **Required**
+> **Required** · **Since** (1.11.0)
 
 Configures experiments across the entire moon workspace.
-@since 1.11.0
 
 | Attribute | Value |
 | --- | --- |
@@ -121,25 +125,14 @@ Configures experiments across the entire moon workspace.
 
 ### `extends`
 
-> **Optional** · **Nullable**
+> **Optional** · **Nullable** · **Since** (1.12.0)
 
 Extends one or many workspace configuration file.
 Supports a relative file path or a secure URL.
-@since 1.12.0
 
 | Attribute | Value |
 | --- | --- |
 | Type | [`ExtendsFrom`](./ExtendsFrom.mdx) |
-
-### `generator`
-
-> **Required**
-
-Configures the generator for scaffolding from templates.
-
-| Attribute | Value |
-| --- | --- |
-| Type | [`GeneratorConfig`](./GeneratorConfig.mdx) |
 
 ### `hasher`
 
@@ -229,12 +222,12 @@ Requires a specific version of the `moon` binary.
 ## References
 
 - [`CacheConfig`](./CacheConfig.mdx)
+- [`CodegenConfig`](./CodegenConfig.mdx)
 - [`CodeownersConfig`](./CodeownersConfig.mdx)
 - [`ConstraintsConfig`](./ConstraintsConfig.mdx)
 - [`DockerConfig`](./DockerConfig.mdx)
 - [`ExperimentsConfig`](./ExperimentsConfig.mdx)
 - [`ExtendsFrom`](./ExtendsFrom.mdx)
-- [`GeneratorConfig`](./GeneratorConfig.mdx)
 - [`HasherConfig`](./HasherConfig.mdx)
 - [`Id`](./Id.mdx)
 - [`NotifierConfig`](./NotifierConfig.mdx)
