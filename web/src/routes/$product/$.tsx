@@ -21,7 +21,13 @@ import { SiteHeader } from '@/components/SiteHeader';
 import browserCollections from '@/generated/browser';
 import { readingMinutes } from '@/lib/blog';
 import { baseOptions } from '@/lib/layout.shared';
-import { isProduct, PRODUCT_THEMES, type Product } from '@/lib/products';
+import { excerpt, seo } from '@/lib/meta';
+import {
+	isProduct,
+	PRODUCT_THEMES,
+	PRODUCTS,
+	type Product,
+} from '@/lib/products';
 import { productSources } from '@/lib/source';
 import { getMdxComponents } from '@/mdxComponents';
 
@@ -41,6 +47,14 @@ export const Route = createFileRoute('/$product/$')({
 
 		return data;
 	},
+	head: ({ loaderData }) =>
+		loaderData
+			? seo({
+					title: docsTitle(loaderData.title, loaderData.product),
+					description: loaderData.description,
+					path: loaderData.url,
+				})
+			: {},
 });
 
 const serverLoader = createServerFn({
@@ -72,12 +86,23 @@ const serverLoader = createServerFn({
 
 		return {
 			product,
+			title: page.data.title,
+			description:
+				page.data.description ??
+				excerpt(await page.data.getText('processed')) ??
+				PRODUCTS[product].description,
 			minutes: readingMinutes(await page.data.getText('raw')),
 			path: page.path,
 			url: page.url,
 			pageTree: await source.serializePageTree(source.getPageTree()),
 		};
 	});
+
+function docsTitle(title: string, product: Product) {
+	const name = PRODUCTS[product].title;
+
+	return title === name ? `${name} docs` : `${title} - ${name}`;
+}
 
 interface ContentProps {
 	/** path of the content file, relative to `web/content` */

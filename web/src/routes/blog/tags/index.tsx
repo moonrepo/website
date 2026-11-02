@@ -4,9 +4,16 @@ import { BlogBackLink, BlogRecentPosts, BlogTagCards } from '@/components/blog';
 import { BlogLayout } from '@/components/blog/layout';
 import { getTags } from '@/lib/blog';
 import { loadBlogPosts } from '@/lib/blogPosts';
+import { seo } from '@/lib/meta';
 
 export const Route = createFileRoute('/blog/tags/')({
 	component: Page,
+	head: () =>
+		seo({
+			title: 'Blog tags',
+			description: 'Browse moonrepo blog posts by tag.',
+			path: '/blog/tags',
+		}),
 	loader: () => serverLoader(),
 });
 
