@@ -7,10 +7,12 @@ import mdx from 'fumadocs-mdx/vite';
 import {
 	type FileObject,
 	printErrors,
+	type ScanResult,
 	scanURLs,
 	validateFiles,
 } from 'next-validate-link';
 import { createServer } from 'vite';
+import { REDIRECTS } from '../src/lib/redirects.ts';
 
 type Sources = typeof import('../src/lib/source');
 type AnySource =
@@ -65,6 +67,19 @@ try {
 		sources.flatMap((source) => source.getPages().map(getFile)),
 	);
 
+	// Redirect targets aren't linked from content, so check them separately
+	const brokenRedirects = Object.entries(REDIRECTS).filter(
+		([, to]) => !isScanned(scanned, to),
+	);
+
+	for (const [from, to] of brokenRedirects) {
+		console.error(`Redirect from ${from} to ${to} doesn't match a page`);
+	}
+
+	if (brokenRedirects.length > 0) {
+		process.exitCode = 1;
+	}
+
 	printErrors(
 		await validateFiles(files, {
 			scanned,
@@ -79,9 +94,20 @@ try {
 		true,
 	);
 
-	console.log(`Validated links in ${files.length} files`);
+	console.log(
+		`Validated links in ${files.length} files, and ${Object.keys(REDIRECTS).length} redirects`,
+	);
 } finally {
 	await server.close();
+}
+
+function isScanned(scanned: ScanResult, href: string): boolean {
+	const [path, hash] = href.split('#');
+	const meta =
+		scanned.urls.get(path) ??
+		scanned.fallbackUrls.find((fallback) => fallback.url.test(path))?.meta;
+
+	return meta !== undefined && (!hash || !!meta.hashes?.includes(hash));
 }
 
 async function getHeadings(page: AnyPage): Promise<string[]> {
