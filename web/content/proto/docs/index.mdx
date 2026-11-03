@@ -2,36 +2,281 @@
 title: Install proto
 ---
 
+proto is a pluggable version manager for programming languages and their tooling, written in Rust.
+It installs any number of versions of a [tool](<./(fundamentals)/tool.mdx>) side by side, and
+[detects](<./(fundamentals)/detection.mdx>) which one to run from the current directory, using a
+[`.prototools`](<./(fundamentals)/config.mdx>) file or the tool's own ecosystem files, like
+`.nvmrc`. One CLI manages Node.js, Python, Rust, Go, and more, and
+[plugins](<./(fundamentals)/plugin.mdx>) add support for anything else. proto also powers the
+toolchain of [moon](../../moon/docs/index.mdx).
+
+This page covers how to install proto, and how to keep it up to date. Already installed? Jump to
+[getting started](./start/index.mdx).
+
 ## Supported platforms
+
+proto is shipped as 2 self-contained binaries: `proto`, and `proto-shim`, which powers
+[shims](<./(fundamentals)/workflows.mdx#shims>). They're built for the following targets:
+
+| Operating system | Architecture          | Target                       |
+| ---------------- | --------------------- | ---------------------------- |
+| macOS            | Apple Silicon (ARM64) | `aarch64-apple-darwin`       |
+| macOS            | Intel (x64)           | `x86_64-apple-darwin`        |
+| Linux            | ARM64 (GNU)           | `aarch64-unknown-linux-gnu`  |
+| Linux            | ARM64 (musl)          | `aarch64-unknown-linux-musl` |
+| Linux            | x64 (GNU)             | `x86_64-unknown-linux-gnu`   |
+| Linux            | x64 (musl)            | `x86_64-unknown-linux-musl`  |
+| Windows          | x64                   | `x86_64-pc-windows-msvc`     |
 
 ## Requirements
 
+proto unpacks tool archives itself, so it doesn't need external archive utilities. It does need:
+
+- **Git** - Most built-in tools load their available versions from Git tags (with
+  `git ls-remote`), so `git` must be on your `PATH`.
+- **curl, tar, and xz** - Only for the [Bash install script](#macos-linux-and-wsl), which downloads
+  and extracts the release archive. The Windows script uses built-in PowerShell cmdlets instead.
+
+```shell
+# macOS
+$ brew install git xz
+
+# Ubuntu / Debian
+$ apt-get install git curl xz-utils
+
+# RHEL-based / Fedora
+$ dnf install git curl xz
+```
+
 ## Installing
+
+Choose one of the following methods. If you're unsure, use the install script for your platform,
+as it also configures your shell so that installed tools are on your `PATH`.
 
 ### macOS, Linux, and WSL
 
+In a terminal that supports Bash, run the install script:
+
+```shell
+$ bash <(curl -fsSL https://moonrepo.dev/install/proto.sh)
+```
+
+The script detects your operating system and architecture (including GNU or musl on Linux),
+downloads the matching release from GitHub, and installs `proto` and `proto-shim` into
+`~/.proto/bin`. It then runs [`proto setup`](./commands/setup.mdx), which adds the following to
+your shell profile, prompting for the shell and profile file when it can't detect them:
+
+```shell
+export PROTO_HOME="$HOME/.proto"
+export PATH="$PROTO_HOME/shims:$PROTO_HOME/bin:$PATH"
+```
+
+Open a new terminal for the change to take effect. If `~/.proto/shims` or `~/.proto/bin` is already
+on your `PATH`, your profile is left untouched.
+
+The script is run with process substitution, instead of piping it to `bash`, so that the setup
+prompts can read your input. In Fish, use `psub` instead:
+
+```shell
+$ bash (curl -fsSL https://moonrepo.dev/install/proto.sh | psub)
+```
+
+To install a specific version instead of the latest, pass it as an argument. Any options are
+passed through to `proto setup`, like `--yes` to skip the prompts and use defaults:
+
+```shell
+$ bash <(curl -fsSL https://moonrepo.dev/install/proto.sh) 0.63.2 --yes
+```
+
 ### Windows
+
+In PowerShell or Windows Terminal, run the install script:
+
+```shell
+$ irm https://moonrepo.dev/install/proto.ps1 | iex
+```
+
+The script installs `proto.exe` and `proto-shim.exe` into `~\.proto\bin`. Interactive prompts don't
+work in a piped command, so it doesn't configure your environment. Finish the installation by
+running [`proto setup`](./commands/setup.mdx) yourself:
+
+```shell
+$ ~\.proto\bin\proto.exe setup
+```
+
+This adds `~\.proto\shims` and `~\.proto\bin` to the `Path` environment variable of your user
+account (no administrator access required), and adds the exports to your PowerShell profile. Open a
+new terminal for the changes to take effect.
+
+Arguments can't be passed through `iex`. To install a specific version, run the script as a script
+block instead:
+
+```shell
+$ & ([scriptblock]::Create((irm https://moonrepo.dev/install/proto.ps1))) 0.63.2
+```
+
+<Callout>
+  PowerShell only loads your profile when its execution policy allows local
+  scripts. If the exports in your profile aren't applied, allow them with
+  `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`. If you use Git Bash,
+  you can run the [Bash script](#macos-linux-and-wsl) instead, which requires
+  `unzip`.
+</Callout>
 
 ### Nix
 
+proto's repository provides a Nix flake for Linux (x64 and ARM64) and macOS on Apple Silicon. Run
+proto from the flake without installing it:
+
+```shell
+$ nix run github:moonrepo/proto -- --version
+```
+
+Or, for a flake-based NixOS or home-manager configuration, add proto as an input, and use its
+`default` package, which includes both binaries:
+
+```nix title="flake.nix"
+{
+  inputs.proto.url = "github:moonrepo/proto";
+
+  outputs = { nixpkgs, proto, ... }: {
+    # Somewhere in your configuration
+    environment.systemPackages = [ proto.packages.x86_64-linux.default ];
+  };
+}
+```
+
+Nix only provides the `proto` binaries. Tools that proto installs still live in `~/.proto`, so run
+[`proto setup`](./commands/setup.mdx) (or use [shell
+activation](<./(fundamentals)/workflows.mdx#shell-activation>)) to put them on your `PATH`.
+
 ### Manual download
+
+Every release is published to [GitHub releases](https://github.com/moonrepo/proto/releases), as an
+archive per target (`proto_cli-<target>.tar.xz`, or `.zip` on Windows), with a `.sha256` checksum
+file alongside it. Download and extract the archive for your platform, move `proto` and
+`proto-shim` into `~/.proto/bin`, and run [`proto setup`](./commands/setup.mdx) to configure your
+shell.
 
 ## Upgrading
 
+proto can upgrade itself with [`proto upgrade`](./commands/upgrade.mdx). It installs the new version
+into the [store](<./(fundamentals)/store.mdx>) like any other tool, then replaces `proto` and
+`proto-shim` in `~/.proto/bin`. The previous binaries are moved aside as `.backup` files, which the
+next command removes. If another proto process is running, it asks for confirmation first, as
+replacing the binaries may interrupt it.
+
+```shell
+# Upgrade to the latest version
+$ proto upgrade
+
+# Check whether a newer version is available, without upgrading
+$ proto upgrade --check
+
+# Upgrade, or downgrade, to a specific version
+$ proto upgrade 0.62.0
+```
+
+Upgrading requires an internet connection. Re-running an install script also installs the latest
+(or requested) version, overwriting the previous one.
+
+proto checks for a newer version in the background, at most once every 12 hours, and prints a
+notice when one is available. Set the `PROTO_VERSION_CHECK` environment variable to `false` to
+turn this off.
+
 ## Uninstalling
 
-## Canary releases
+proto keeps everything in its home directory, `~/.proto` (or `PROTO_HOME`), including every tool
+it installed. To uninstall it:
 
-## Nightly releases
+1. Delete the `~/.proto` directory. This also removes every tool, plugin, and cached file proto
+   downloaded.
+2. Remove the `PROTO_HOME` and `PATH` lines that `proto setup` added to your shell profile.
+3. On Windows, also remove `~\.proto\shims` and `~\.proto\bin` from the `Path` environment variable
+   of your user account.
+
+If you installed proto with Nix, remove it from your configuration instead of steps 1 and 3.
 
 ## How to
 
 ### Verify the installation
 
+Once installed, confirm proto is on your `PATH` by printing its version:
+
+```shell
+$ proto --version
+```
+
+If something doesn't work as expected, run [`proto diagnose`](./commands/diagnose.mdx). It checks
+your installation and shell for common problems, like `~/.proto/shims` missing from `PATH`, and
+explains how to resolve each one.
+
+You can also enable tab-completion for commands and options in your shell, with
+[`proto completions`](./commands/completions.mdx).
+
 ### Pin a version
+
+Different proto versions can behave differently, so everyone working in a repository, including CI,
+should run the same version. Pin it in the repository's `.prototools`, like any other tool:
+
+```toml title=".prototools"
+proto = "0.63.2"
+```
+
+The pinned version is installed like any other tool, with [`proto install`](./commands/install.mdx).
+With [shell activation](<./(fundamentals)/workflows.mdx#shell-activation>), it's then put first on
+your `PATH` within that directory, so `proto`, and the shims that run your tools, use it instead of
+the globally installed version. See [pinning proto](<./(fundamentals)/config.mdx#pinning-proto>)
+for details.
+
+<Callout type="warning">
+  Pinning proto is a security-sensitive setting, so a local `.prototools` must
+  be [trusted](<./(fundamentals)/trust.mdx>) before the pin is applied.
+</Callout>
 
 ### Customize install location
 
+Both install scripts, and proto itself, use the first of the following directories as proto's home
+directory:
+
+1. `$PROTO_HOME`
+2. `$XDG_DATA_HOME/proto`
+3. `~/.proto`
+
+This directory holds proto's binaries (`bin`), [shims](<./(fundamentals)/workflows.mdx#shims>)
+(`shims`), and installed tools (`tools`), as described in [the
+store](<./(fundamentals)/store.mdx>). Set the variable in your shell profile, so that proto
+resolves the same directory in every session.
+
+To install without modifying your shell profile, like in a Docker image or a CI job where you
+manage `PATH` yourself, pass `--no-modify-profile` (and `--no-modify-path`, which skips updating
+the user `Path` on Windows). The `PROTO_NO_MODIFY_PROFILE` and `PROTO_NO_MODIFY_PATH` environment
+variables are equivalent.
+
+```shell
+$ bash <(curl -fsSL https://moonrepo.dev/install/proto.sh) --no-modify-profile --yes
+```
+
+Then add `$PROTO_HOME/shims` and `$PROTO_HOME/bin` to `PATH` yourself.
+
 ### Setup continuous integration
 
+CI machines need proto too. On GitHub Actions, the
+[`moonrepo/setup-toolchain`](https://github.com/moonrepo/setup-toolchain) action installs proto,
+and caches the store between runs. With other providers, use the install script. See the
+[CI guide](./guides/ci.mdx) for complete workflows.
+
 ## Next steps
+
+<Cards>
+  <Card
+    title="Getting started"
+    description="Install your first tools, pin their versions, and set up your shell."
+    href="./start/index.mdx"
+  />
+  <Card
+    title="Workflows"
+    description="Choose how tools are made available: shims, binaries, or shell activation."
+    href="./(fundamentals)/workflows.mdx"
+  />
+</Cards>
