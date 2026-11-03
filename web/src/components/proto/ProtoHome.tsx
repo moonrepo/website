@@ -12,6 +12,7 @@ import {
 	dashed,
 	heading,
 	muted,
+	panel,
 	wordmark,
 } from '@moonrepo/ui/layout/styles';
 import { cn } from '@moonrepo/ui/utils/cn';
@@ -134,7 +135,7 @@ function Hero() {
 function SectionTitle({ children }: { children: ReactNode }) {
 	return (
 		<>
-			<Heading className="py-[52px] text-center" level={2}>
+			<Heading className={cn('py-[52px] text-center', panel)} level={2}>
 				{children}
 			</Heading>
 			<Divider />
@@ -175,17 +176,25 @@ function Simplify() {
 
 			<div className="min-w-0 border-dashed border-olive border-t px-6 pt-12 pb-16 md:border-t-0 md:px-12">
 				<Heading level={3}>Instead of remembering:</Heading>
-				<CodeLines
-					className="mt-8 py-[7px] leading-[37px]"
-					lines={['nvm use 18.16.0', 'pyenv local 3.11.2', 'rbenv local 3.2.0']}
-				/>
+				<Figure caption="One manager per language" className="mt-8">
+					<CodeLines
+						className="py-[7px] leading-[37px]"
+						lines={[
+							'nvm use 18.16.0',
+							'pyenv local 3.11.2',
+							'rbenv local 3.2.0',
+						]}
+					/>
+				</Figure>
 				<Heading className="mt-14" level={3}>
 					Just use:
 				</Heading>
-				<CodeLines
-					className="mt-8 flex h-[52px] flex-col justify-center"
-					lines={['proto use']}
-				/>
+				<Figure caption="One command for all" className="mt-8">
+					<CodeLines
+						className="flex h-[52px] flex-col justify-center"
+						lines={['proto use']}
+					/>
+				</Figure>
 			</div>
 		</Columns>
 	);
@@ -354,18 +363,22 @@ function GetStarted() {
 			<div className="mt-12 grid gap-12 lg:max-w-[1216px] lg:grid-cols-2 lg:gap-x-16">
 				<div className="min-w-0 space-y-12">
 					<Step title="Install proto for Linux, macOS, or WSL">
-						<CodeLines
-							className={single}
-							lines={[
-								'bash <(curl -fsSL https://moonrepo.dev/install/proto.sh)',
-							]}
-						/>
+						<Figure caption="Install on Unix">
+							<CodeLines
+								className={single}
+								lines={[
+									'bash <(curl -fsSL https://moonrepo.dev/install/proto.sh)',
+								]}
+							/>
+						</Figure>
 					</Step>
 					<Step title="Install for Windows">
-						<CodeLines
-							className={single}
-							lines={['irm https://moonrepo.dev/install/proto.ps1 | iex']}
-						/>
+						<Figure caption="Install on Windows">
+							<CodeLines
+								className={single}
+								lines={['irm https://moonrepo.dev/install/proto.ps1 | iex']}
+							/>
+						</Figure>
 						<a
 							className={cn(
 								link,
@@ -379,18 +392,22 @@ function GetStarted() {
 				</div>
 				<div className="min-w-0 space-y-12">
 					<Step title="Install a tool">
-						<CodeLines className={single} lines={['proto install node 18']} />
+						<Figure caption="Install Node.js 18">
+							<CodeLines className={single} lines={['proto install node 18']} />
+						</Figure>
 					</Step>
 					<Step title="Run the tool">
-						<CodeLines
-							className="py-4 leading-[25px]"
-							lines={[
-								'node ./main.mjs',
-								null,
-								{ comment: 'Or with proto' },
-								'proto run node -- ./main.mjs',
-							]}
-						/>
+						<Figure caption="Run through proto">
+							<CodeLines
+								className="py-4 leading-[25px]"
+								lines={[
+									'node ./main.mjs',
+									null,
+									{ comment: 'Or with proto' },
+									'proto run node -- ./main.mjs',
+								]}
+							/>
+						</Figure>
 					</Step>
 				</div>
 			</div>
@@ -439,7 +456,12 @@ function LanguageSupport() {
 	];
 
 	return (
-		<section className="flex flex-col gap-12 px-6 py-16 md:px-12 lg:h-[309px] lg:flex-row lg:items-center lg:justify-between lg:py-0">
+		<section
+			className={cn(
+				'flex flex-col gap-12 px-6 py-16 md:px-12 lg:h-[309px] lg:flex-row lg:items-center lg:justify-between lg:py-0',
+				panel,
+			)}
+		>
 			<div>
 				<Heading level={2}>Language support</Heading>
 				<Text className="mt-3" tone="muted">

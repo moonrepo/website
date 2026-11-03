@@ -12,6 +12,7 @@ import {
 	dashed,
 	heading,
 	muted,
+	panel,
 	wordmark,
 } from '@moonrepo/ui/layout/styles';
 import { cn } from '@moonrepo/ui/utils/cn';
@@ -113,7 +114,7 @@ let result = ConfigLoader::<AppConfig>::new()
 function SectionTitle({ children }: { children: ReactNode }) {
 	return (
 		<>
-			<Heading className="py-[52px] text-center" level={2}>
+			<Heading className={cn('py-[52px] text-center', panel)} level={2}>
 				{children}
 			</Heading>
 			<Divider />
@@ -198,8 +199,9 @@ function TwoFeatures() {
 				]}
 				title="Configuration"
 			>
-				<CodeBlock
-					code={`#[derive(Config)]
+				<Figure caption="Derive a config">
+					<CodeBlock
+						code={`#[derive(Config)]
 struct NavConfig {
     #[setting(validate = schematic::validate::url)]
     pub url: String,
@@ -207,8 +209,9 @@ struct NavConfig {
     #[setting(merge = schematic::merge::append_vec)]
     pub links: Vec<String>,
 }`}
-					lang="rust"
-				/>
+						lang="rust"
+					/>
+				</Figure>
 			</Feature>
 
 			<div className="border-dashed border-olive border-t md:border-t-0">
@@ -223,14 +226,16 @@ struct NavConfig {
 					]}
 					title="Schemas"
 				>
-					<CodeBlock
-						code={`#[derive(Schematic)]
+					<Figure caption="Derive a schema">
+						<CodeBlock
+							code={`#[derive(Schematic)]
 struct User {
     pub name: String,
     pub age: usize,
 }`}
-						lang="rust"
-					/>
+							lang="rust"
+						/>
+					</Figure>
 				</Feature>
 			</div>
 		</Columns>
@@ -319,30 +324,36 @@ function GetStarted() {
 			<div className="mt-12 grid gap-12 lg:max-w-[1216px] lg:grid-cols-2 lg:gap-x-16">
 				<div className="min-w-0 space-y-12">
 					<Step title="Add the crate">
-						<CodeBlock code="cargo add schematic" lang="shell" />
+						<Figure caption="Install the crate">
+							<CodeBlock code="cargo add schematic" lang="shell" />
+						</Figure>
 					</Step>
 					<Step title="Load your config">
-						<CodeBlock
-							code={`let mut loader = ConfigLoader::<AppConfig>::new();
+						<Figure caption="Load and merge layers">
+							<CodeBlock
+								code={`let mut loader = ConfigLoader::<AppConfig>::new();
 loader.file("path/to/config.yml")?;
 
 let result = loader.load()?;
 result.config; // AppConfig`}
-							lang="rust"
-						/>
+								lang="rust"
+							/>
+						</Figure>
 					</Step>
 				</div>
 				<div className="min-w-0 space-y-12">
 					<Step title="Generate types">
-						<CodeBlock
-							code={`let mut generator = SchemaGenerator::default();
+						<Figure caption="Render TypeScript types">
+							<CodeBlock
+								code={`let mut generator = SchemaGenerator::default();
 generator.add::<AppConfig>();
 generator.generate(
     PathBuf::from("types.ts"),
     TypeScriptRenderer::default(),
 )?;`}
-							lang="rust"
-						/>
+								lang="rust"
+							/>
+						</Figure>
 					</Step>
 				</div>
 			</div>
@@ -359,7 +370,12 @@ function Formats() {
 	const formats = ['JSON', 'PKL', 'RON', 'TOML', 'YAML'];
 
 	return (
-		<section className="flex flex-col gap-12 px-6 py-16 md:px-12 lg:h-[309px] lg:flex-row lg:items-center lg:justify-between lg:py-0">
+		<section
+			className={cn(
+				'flex flex-col gap-12 px-6 py-16 md:px-12 lg:h-[309px] lg:flex-row lg:items-center lg:justify-between lg:py-0',
+				panel,
+			)}
+		>
 			<div>
 				<Heading level={2}>Format support</Heading>
 				<Text className="mt-3" tone="muted">

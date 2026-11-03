@@ -12,6 +12,7 @@ import {
 	dashed,
 	heading,
 	muted,
+	panel,
 	wordmark,
 } from '@moonrepo/ui/layout/styles';
 import { cn } from '@moonrepo/ui/utils/cn';
@@ -273,12 +274,14 @@ function Comparison() {
 		{
 			command: 'npm run test',
 			glyph: <X />,
+			caption: 'Runs every test',
 			stats: '15 files changed, 3m 45s',
 			title: 'Without moon',
 		},
 		{
 			command: 'moon run test',
 			glyph: <Check />,
+			caption: 'Runs affected tests',
 			stats: '2 files changed, 12s',
 			title: 'With moon',
 		},
@@ -300,20 +303,22 @@ function Comparison() {
 						</span>
 						{col.title}
 					</Heading>
-					<div
-						className={cn(
-							codeBox,
-							'mt-8 flex min-h-[50px] items-center gap-3 px-4 py-2',
-						)}
-					>
-						<Hash className="size-5 shrink-0 text-graphite-500" />
-						<span className="whitespace-nowrap text-graphite-800 dark:text-paper-50">
-							{col.command}
-						</span>
-						<span className="truncate text-taupe dark:text-graphite-500">
-							({col.stats})
-						</span>
-					</div>
+					<Figure caption={col.caption} className="mt-8">
+						<div
+							className={cn(
+								codeBox,
+								'flex min-h-[50px] items-center gap-3 px-4 py-2',
+							)}
+						>
+							<Hash className="size-5 shrink-0 text-graphite-500" />
+							<span className="whitespace-nowrap text-graphite-800 dark:text-paper-50">
+								{col.command}
+							</span>
+							<span className="truncate text-taupe dark:text-graphite-500">
+								({col.stats})
+							</span>
+						</div>
+					</Figure>
 				</div>
 			))}
 		</section>
@@ -376,7 +381,12 @@ function Stack() {
 	];
 
 	return (
-		<section className="flex flex-col gap-12 px-6 py-16 md:px-12 lg:h-[362px] lg:flex-row lg:items-center lg:justify-between lg:py-0">
+		<section
+			className={cn(
+				'flex flex-col gap-12 px-6 py-16 md:px-12 lg:h-[362px] lg:flex-row lg:items-center lg:justify-between lg:py-0',
+				panel,
+			)}
+		>
 			<div>
 				<Heading className="max-w-[400px]" level={2}>
 					Works with your existing stack
@@ -465,7 +475,7 @@ function AdvancedFeatures() {
 
 	return (
 		<section>
-			<Heading className="py-[52px] text-center" level={2}>
+			<Heading className={cn('py-[52px] text-center', panel)} level={2}>
 				Advanced features
 			</Heading>
 			<Divider />
@@ -511,21 +521,26 @@ function QuickStart() {
 			<Heading className="mt-10" level={3}>
 				Get running in 3 commands:
 			</Heading>
-			<div
-				className={cn(
-					codeBox,
-					'mt-8 w-full max-w-[576px] overflow-x-auto px-6 py-[7px] text-left leading-[37px]',
-				)}
+			<Figure
+				caption="Install and run"
+				className="mt-8 w-full max-w-[576px] text-left"
 			>
-				{commands.map((command) => (
-					<div
-						className="whitespace-nowrap text-graphite-700 dark:text-paper-50"
-						key={command}
-					>
-						{command}
-					</div>
-				))}
-			</div>
+				<div
+					className={cn(
+						codeBox,
+						'overflow-x-auto px-6 py-[7px] leading-[37px]',
+					)}
+				>
+					{commands.map((command) => (
+						<div
+							className="whitespace-nowrap text-graphite-700 dark:text-paper-50"
+							key={command}
+						>
+							{command}
+						</div>
+					))}
+				</div>
+			</Figure>
 			<ButtonLink className="mt-8" href="/moon/docs">
 				Full installation guide
 				<ArrowRight className="ml-3 size-5" />
