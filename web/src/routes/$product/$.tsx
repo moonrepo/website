@@ -1,4 +1,8 @@
+import { Heading } from '@moonrepo/ui/components/Heading';
+import { BlueprintGrid, BlueprintScope } from '@moonrepo/ui/layout/Frame';
+import { tech } from '@moonrepo/ui/layout/styles';
 import { useProductTheme } from '@moonrepo/ui/theme';
+import { cn } from '@moonrepo/ui/utils/cn';
 import { createFileRoute, notFound, redirect } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import { flattenTree } from 'fumadocs-core/page-tree';
@@ -7,12 +11,7 @@ import type { CompiledMDXProperties } from 'fumadocs-mdx';
 import { DocsLayout } from 'fumadocs-ui/layouts/docs';
 import { Breadcrumb } from 'fumadocs-ui/layouts/docs/page/slots/breadcrumb';
 import { SearchTrigger } from 'fumadocs-ui/layouts/shared/slots/search-trigger';
-import {
-	DocsBody,
-	DocsDescription,
-	DocsPage,
-	DocsTitle,
-} from 'fumadocs-ui/page';
+import { DocsBody, DocsDescription, DocsPage } from 'fumadocs-ui/page';
 import { Suspense } from 'react';
 import { DocsSidebarTabs } from '@/components/DocsSidebarTabs';
 import { PageActions } from '@/components/PageActions';
@@ -122,18 +121,21 @@ function renderContent(
 ) {
 	return (
 		<DocsPage breadcrumb={{ enabled: false }} toc={toc}>
-			<div className="flex flex-row items-center gap-4">
-				<Breadcrumb />
-				<span className="ml-auto shrink-0 text-sm text-fd-muted-foreground">
-					{minutes} min read
-				</span>
-			</div>
-			<div className="border-b pb-6">
+			<div className="relative isolate flex flex-col gap-4 border-b pb-6">
+				<BlueprintGrid className="-inset-x-8 -top-14 -z-10" />
+				<div className="flex flex-row items-center gap-4">
+					<Breadcrumb />
+					<span
+						className={cn(tech, 'ml-auto shrink-0 text-fd-muted-foreground')}
+					>
+						{minutes} min read
+					</span>
+				</div>
 				<div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-					<DocsTitle>{frontmatter.title}</DocsTitle>
+					<Heading level={1}>{frontmatter.title}</Heading>
 					<PageActions className="shrink-0" file={file} url={url} />
 				</div>
-				<DocsDescription className="mt-4 mb-0">
+				<DocsDescription className="mb-0">
 					{frontmatter.description}
 				</DocsDescription>
 			</div>
@@ -171,7 +173,7 @@ function Page() {
 	const base = baseOptions();
 
 	return (
-		<div className={themeClass}>
+		<BlueprintScope className={themeClass}>
 			<SiteHeader />
 			<DocsLayout
 				{...base}
@@ -203,6 +205,6 @@ function Page() {
 				</Suspense>
 			</DocsLayout>
 			<SiteFooter />
-		</div>
+		</BlueprintScope>
 	);
 }

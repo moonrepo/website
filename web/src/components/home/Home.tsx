@@ -1,6 +1,14 @@
-import { ButtonLink } from '@moonrepo/ui/components/Button';
-import { Divider, Hatch } from '@moonrepo/ui/layout/Frame';
-import { accent, dashed, heading, muted } from '@moonrepo/ui/layout/styles';
+import { ButtonLink, buttonClassName } from '@moonrepo/ui/components/Button';
+import { Heading } from '@moonrepo/ui/components/Heading';
+import { Text } from '@moonrepo/ui/components/Text';
+import { BlueprintGrid, Divider, Hatch } from '@moonrepo/ui/layout/Frame';
+import {
+	accent,
+	caps,
+	dashed,
+	heading,
+	wordmark,
+} from '@moonrepo/ui/layout/styles';
 import { cn } from '@moonrepo/ui/utils/cn';
 import {
 	ArrowRight,
@@ -34,7 +42,7 @@ function ListCard({
 		>
 			{items.map((item) => (
 				<li
-					className="flex min-h-[62px] items-center gap-3 px-6 py-3 text-graphite-700 text-lg dark:text-sand"
+					className="flex min-h-[62px] items-center gap-3 px-6 py-3 text-graphite-700 text-body dark:text-sand"
 					key={item.label}
 				>
 					<span
@@ -63,7 +71,7 @@ function Feature({
 }) {
 	return (
 		<div>
-			<h3 className={cn('flex items-center gap-3 text-[22px]', heading)}>
+			<Heading className="flex items-center gap-3" level={3} size="card">
 				<span
 					className={cn(
 						'flex size-6 items-center justify-center [&_svg]:size-5',
@@ -73,8 +81,10 @@ function Feature({
 					{icon}
 				</span>
 				{title}
-			</h3>
-			<p className={cn('mt-3 pl-9 text-base leading-6', muted)}>{children}</p>
+			</Heading>
+			<Text className="mt-3 pl-9" tone="muted" variant="small">
+				{children}
+			</Text>
 		</div>
 	);
 }
@@ -92,6 +102,7 @@ function Hero() {
 
 	return (
 		<section className="relative h-[880px] overflow-hidden md:h-[700px]">
+			<BlueprintGrid className="bottom-auto h-[560px]" />
 			<div className="absolute inset-x-0 top-[180px] bottom-0 md:top-0">
 				{/* Planet surface */}
 				<div className="absolute top-[420px] left-[43%] size-[2380px] -translate-x-1/2 rounded-full border-2 border-olive bg-paper-100 dark:border-graphite-500 dark:bg-graphite-800" />
@@ -114,19 +125,18 @@ function Hero() {
 			</div>
 
 			<div className="relative flex flex-col items-center px-6 pt-[120px] text-center">
-				<h1
-					className={cn(
-						'max-w-[680px] text-5xl leading-[1.1] md:text-[64px]',
-						heading,
-					)}
-				>
+				<Heading className="max-w-[680px]" level={1} size="hero">
 					A new era of productivity tooling
-				</h1>
-				<p className={cn('mt-6 max-w-[660px] text-xl leading-[30px]', muted)}>
+				</Heading>
+				<Text className="mt-6 max-w-[660px]" tone="muted" variant="lead">
 					The Rust-powered build system that makes monorepos manageable, no
 					matter what language you’re building in
-				</p>
-				<p className={cn('mt-3 flex items-center gap-2 text-base', muted)}>
+				</Text>
+				<Text
+					className="mt-3 flex items-center gap-2"
+					tone="muted"
+					variant="small"
+				>
 					Backed by
 					<span className="flex items-center gap-1.5 font-medium text-yc">
 						<span className="flex size-[22px] items-center justify-center bg-yc text-sm text-white">
@@ -134,7 +144,7 @@ function Hero() {
 						</span>
 						Combinator
 					</span>
-				</p>
+				</Text>
 			</div>
 		</section>
 	);
@@ -146,9 +156,9 @@ function ProblemSolution() {
 			<div className="hidden md:absolute md:inset-y-0 md:left-1/2 md:block md:border-l md:border-dashed md:border-olive" />
 
 			<div className="px-6 pt-[88px] pb-12 md:px-12 md:pb-24">
-				<h2 className={cn('text-[32px]', heading)}>
+				<Heading level={2} size="subtitle">
 					If you're dealing with...
-				</h2>
+				</Heading>
 				<ListCard
 					className="mt-12"
 					items={[
@@ -169,9 +179,9 @@ function ProblemSolution() {
 			</div>
 
 			<div className="px-6 pt-12 pb-[88px] md:px-12 md:pt-[88px]">
-				<h2 className={cn('text-[32px]', heading)}>
+				<Heading level={2} size="subtitle">
 					moonrepo solves this by...
-				</h2>
+				</Heading>
 				<ListCard
 					className="mt-12"
 					items={[
@@ -197,18 +207,11 @@ function WhatsIn() {
 
 	return (
 		<section className="px-6 pt-14 pb-24 text-center md:px-12">
-			<h2 className={cn('text-[44px] leading-tight', heading)}>
-				What’s in moonrepo?
-			</h2>
-			<p
-				className={cn(
-					'mx-auto mt-4 max-w-[640px] text-lg leading-[30px]',
-					muted,
-				)}
-			>
+			<Heading level={2}>What’s in moonrepo?</Heading>
+			<Text className="mx-auto mt-4 max-w-[640px]" tone="muted">
 				moonrepo is made up of two tools: moon and proto. Think of them as your
 				development workflow helpers.
-			</p>
+			</Text>
 
 			<div className="mt-16 flex flex-col items-center gap-4 md:flex-row md:gap-8">
 				{steps.map((step, i) => (
@@ -218,7 +221,7 @@ function WhatsIn() {
 								className={cn('size-5 shrink-0 rotate-90 md:rotate-0', accent)}
 							/>
 						)}
-						<div className="flex min-h-[46px] w-full flex-1 items-center justify-center rounded-md px-3 py-2 text-center border border-olive text-graphite-800 text-lg dark:text-paper-50">
+						<div className="flex min-h-[46px] w-full flex-1 items-center justify-center rounded-md px-3 py-2 text-center border border-olive text-graphite-800 text-body dark:text-paper-50">
 							{step}
 						</div>
 					</div>
@@ -257,18 +260,13 @@ function ToolIntro({
 				/>
 			</div>
 			<div className="px-6 pt-[70px] pb-16 md:px-12">
-				<p
-					className={cn(
-						'font-display font-semibold text-sm uppercase tracking-wide',
-						accent,
-					)}
-				>
-					{eyebrow}
-				</p>
-				<h2 className={cn('mt-2 text-[32px]', heading)}>{title}</h2>
-				<p className="mt-6 max-w-[575px] text-graphite-700 text-lg leading-[30px] dark:text-sand">
+				<p className={cn(caps, accent)}>{eyebrow}</p>
+				<Heading className="mt-2" level={2} size="subtitle">
+					{title}
+				</Heading>
+				<Text className="mt-6 max-w-[575px] text-graphite-700 dark:text-sand">
 					{children}
-				</p>
+				</Text>
 				<ButtonLink className="mt-6" href={href}>
 					{cta}
 				</ButtonLink>
@@ -281,14 +279,7 @@ function Logo({ name, color }: { name: string; color: string }) {
 	return (
 		<div className="flex items-center gap-7">
 			<span className={cn('size-[66px] rounded-full', color)} />
-			<span
-				className={cn(
-					heading,
-					'font-semibold font-stretch-125% text-[44px] tracking-[0.04em]',
-				)}
-			>
-				{name}
-			</span>
+			<span className={cn(heading, wordmark, 'text-display-1')}>{name}</span>
 		</div>
 	);
 }
@@ -403,23 +394,24 @@ function Planet() {
 }
 
 function SimpleVersion() {
-	const tile =
-		'flex size-9 items-center justify-center rounded-[4px] border border-taupe border-b-[3px] bg-sand';
+	const tile = buttonClassName({
+		className: 'pointer-events-none shrink-0 border-olive',
+		size: 'icon',
+		variant: 'secondary',
+	});
 
 	return (
 		<section className="grid items-center gap-12 bg-paper-200 px-6 py-24 md:grid-cols-2 md:px-12 dark:bg-graphite-900">
 			<div>
-				<h2 className={cn('text-[44px] leading-tight', heading)}>
-					The simple version
-				</h2>
+				<Heading level={2}>The simple version</Heading>
 				<ul className="mt-10 divide-y divide-olive overflow-hidden rounded-[14px] border border-olive bg-paper-300 dark:bg-graphite-800">
-					<li className="flex min-h-[72px] items-center gap-3 px-6 py-3 text-graphite-700 text-lg dark:text-paper-50">
+					<li className="flex min-h-[72px] items-center gap-3 px-6 py-3 text-graphite-700 text-body dark:text-paper-50">
 						<span className={tile}>
 							<span className="size-4 rounded-full bg-moon" />
 						</span>
 						moon keeps your builds fast
 					</li>
-					<li className="flex min-h-[72px] items-center gap-3 px-6 py-3 text-graphite-700 text-lg dark:text-paper-50">
+					<li className="flex min-h-[72px] items-center gap-3 px-6 py-3 text-graphite-700 text-body dark:text-paper-50">
 						<span className={tile}>
 							<span className="size-0 border-x-8 border-x-transparent border-b-[14px] border-b-proto" />
 						</span>
@@ -454,23 +446,18 @@ function Languages() {
 
 	return (
 		<section className="px-6 pt-24 pb-32 text-center md:px-12">
-			<h2
-				className={cn(
-					'mx-auto max-w-[640px] text-[44px] leading-tight',
-					heading,
-				)}
-			>
+			<Heading className="mx-auto max-w-[640px]" level={2}>
 				Supporting your favorite languages and frameworks
-			</h2>
-			<p className={cn('mt-6 text-lg', muted)}>
+			</Heading>
+			<Text className="mt-6" tone="muted">
 				moonrepo is designed to work with your existing tools:
-			</p>
+			</Text>
 
 			<div className="mt-16 grid grid-cols-2 overflow-hidden rounded-xl border border-dashed border-olive bg-paper-200 md:grid-cols-4 dark:bg-graphite-surface">
 				{langs.map((lang, i) => (
 					<div
 						className={cn(
-							'flex h-[180px] items-center justify-center border-dashed border-olive font-bold text-3xl text-graphite-800 dark:text-paper-50',
+							'flex h-[180px] items-center justify-center border-dashed border-olive font-black font-display text-display-2 text-graphite-800 dark:text-paper-50',
 							i % 2 === 1 && 'border-l',
 							i % 4 !== 0 && 'md:border-l',
 							i % 4 === 0 && 'md:border-l-0',
@@ -485,7 +472,9 @@ function Languages() {
 				))}
 			</div>
 
-			<p className={cn('mt-10 text-lg', muted)}>...and 800+ more.</p>
+			<Text className="mt-10" tone="muted">
+				...and 800+ more.
+			</Text>
 
 			<div className="mt-16 flex justify-center gap-6">
 				<ButtonLink href="/moon/docs/toolchain" variant="secondary">

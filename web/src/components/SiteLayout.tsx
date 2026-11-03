@@ -8,22 +8,20 @@ import { SiteHeader } from './SiteHeader';
 /** The site header and footer around a page, in the design's frame. */
 export function SiteLayout({
 	children,
-	footerClassName,
 	theme,
 }: {
 	children?: ReactNode;
-	footerClassName?: string;
 	theme?: ProductTheme;
 }) {
 	return (
-		<PageFrame theme={theme}>
+		<PageFrame blueprint theme={theme}>
 			<SiteHeader />
 			{/* Keep the footer below the fold on short pages */}
 			<main className="min-h-[calc(100dvh-var(--site-header-height))]">
 				{children}
 			</main>
 			<Hatch />
-			<Footer {...footerProps} className={footerClassName} />
+			<Footer {...footerProps} />
 		</PageFrame>
 	);
 }

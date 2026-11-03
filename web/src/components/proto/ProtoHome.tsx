@@ -1,6 +1,20 @@
 import { ButtonLink } from '@moonrepo/ui/components/Button';
-import { Divider, Hatch } from '@moonrepo/ui/layout/Frame';
-import { codeBox, dashed, heading, muted } from '@moonrepo/ui/layout/styles';
+import { Heading } from '@moonrepo/ui/components/Heading';
+import { Text } from '@moonrepo/ui/components/Text';
+import {
+	BlueprintGrid,
+	Divider,
+	Figure,
+	Hatch,
+} from '@moonrepo/ui/layout/Frame';
+import {
+	codeBox,
+	dashed,
+	heading,
+	muted,
+	panel,
+	wordmark,
+} from '@moonrepo/ui/layout/styles';
 import { cn } from '@moonrepo/ui/utils/cn';
 import {
 	ArrowRight,
@@ -19,7 +33,7 @@ import type { ReactNode } from 'react';
 const code = 'font-mono text-olive dark:text-sand';
 const comment = 'text-taupe';
 const pill =
-	'flex min-h-[46px] items-center rounded-md border border-taupe/50 bg-paper-200 px-4 py-2 text-graphite-700 text-lg dark:border-white/5 dark:bg-graphite-surface dark:text-sand';
+	'flex min-h-[46px] items-center rounded-md border border-taupe/50 bg-paper-200 px-4 py-2 text-graphite-700 text-body dark:border-white/5 dark:bg-graphite-surface dark:text-sand';
 const link = 'underline underline-offset-2';
 
 function ProtoLogo() {
@@ -30,14 +44,7 @@ function ProtoLogo() {
 				<span className="absolute top-[22px] left-[24px] h-8 w-3 rotate-[30deg] rounded-full bg-proto-800/70" />
 				<Sparkle className="absolute -top-1 -right-1 size-8 fill-proto-300 text-proto-300 dark:fill-paper-100 dark:text-paper-100" />
 			</span>
-			<span
-				className={cn(
-					heading,
-					'font-semibold font-stretch-125% text-[44px] tracking-[0.04em]',
-				)}
-			>
-				PROTO
-			</span>
+			<span className={cn(heading, wordmark, 'text-display-1')}>PROTO</span>
 		</div>
 	);
 }
@@ -50,7 +57,7 @@ function CodeLines({
 	lines: (string | { comment: string } | null)[];
 }) {
 	return (
-		<div className={cn(codeBox, 'overflow-x-auto px-6 text-sm', className)}>
+		<div className={cn(codeBox, 'overflow-x-auto px-6 text-code', className)}>
 			{lines.map((line, i) =>
 				line === null ? (
 					// biome-ignore lint/suspicious/noArrayIndexKey: static spacer rows
@@ -76,26 +83,22 @@ function CodeLines({
 
 function Hero() {
 	return (
-		<section className="grid gap-12 px-6 pt-16 pb-16 md:h-[546px] md:grid-cols-2 md:px-12 md:pt-[96px]">
-			<div className="min-w-0">
+		<section className="relative grid gap-12 px-6 pt-16 pb-16 md:px-12 md:pt-[96px] lg:min-h-[546px] lg:grid-cols-2">
+			<BlueprintGrid />
+			<div className="relative min-w-0">
 				<ProtoLogo />
-				<h1
-					className={cn(
-						'mt-6 text-4xl leading-[1.2] md:text-[40px] xl:text-[44px]',
-						heading,
-					)}
-				>
+				<Heading className="mt-6" level={1}>
 					Stop juggling <span className={code}>nvm</span>,{' '}
 					<span className={code}>pyenv</span>,{' '}
 					<span className={code}>rbenv</span>, and{' '}
 					<span className={code}>gvm</span>.
-				</h1>
-				<p className="mt-6 text-graphite-800 text-xl dark:text-paper-50">
+				</Heading>
+				<Text className="mt-6" variant="lead">
 					Proto handles every language version from a single command.
-				</p>
-				<p className={cn('mt-2 text-[15px]', muted, 'dark:text-taupe')}>
+				</Text>
+				<Text className="mt-2 dark:text-taupe" tone="muted" variant="small">
 					Supports Bun, Deno, Node, Python, Rust, Go, and 800+ more.
-				</p>
+				</Text>
 				<div className="mt-6 flex gap-6">
 					<ButtonLink href="/proto/docs">
 						Get started
@@ -110,9 +113,9 @@ function Hero() {
 				</div>
 			</div>
 
-			<div className="min-w-0 md:pt-12">
+			<Figure caption="Install and run" className="relative min-w-0 lg:pt-12">
 				<CodeLines
-					className="py-4 text-[15px] leading-[25px] md:h-[260px]"
+					className="py-4 text-code lg:h-[260px]"
 					lines={[
 						{ comment: 'Install proto' },
 						'bash <(curl -fsSL https://moonrepo.dev/install/proto.sh)',
@@ -124,7 +127,7 @@ function Hero() {
 						'cargo build',
 					]}
 				/>
-			</div>
+			</Figure>
 		</section>
 	);
 }
@@ -132,11 +135,9 @@ function Hero() {
 function SectionTitle({ children }: { children: ReactNode }) {
 	return (
 		<>
-			<h2
-				className={cn('py-[52px] text-center text-4xl md:text-[44px]', heading)}
-			>
+			<Heading className={cn('py-[52px] text-center', panel)} level={2}>
 				{children}
-			</h2>
+			</Heading>
 			<Divider />
 		</>
 	);
@@ -160,9 +161,7 @@ function Simplify() {
 	return (
 		<Columns>
 			<div className="px-6 pt-12 pb-16 md:px-12">
-				<h3 className={cn('text-[32px] leading-[1.35]', heading)}>
-					Every language has its own version manager:
-				</h3>
+				<Heading level={3}>Every language has its own version manager:</Heading>
 				<div className="mt-8 grid grid-cols-2 gap-6">
 					<div className={cn(pill, 'col-span-2')}>nvm for Node.js</div>
 					<div className={pill}>rbenv for Ruby</div>
@@ -170,22 +169,32 @@ function Simplify() {
 					<div className={pill}>rustup for Rust</div>
 					<div className={pill}>...etc.</div>
 				</div>
-				<p className="mt-14 text-graphite-800 text-lg dark:text-paper-50">
+				<Text className="mt-14">
 					...each with different commands, config files, and quirks.
-				</p>
+				</Text>
 			</div>
 
 			<div className="min-w-0 border-dashed border-olive border-t px-6 pt-12 pb-16 md:border-t-0 md:px-12">
-				<h3 className={cn('text-[32px]', heading)}>Instead of remembering:</h3>
-				<CodeLines
-					className="mt-8 py-[7px] leading-[37px]"
-					lines={['nvm use 18.16.0', 'pyenv local 3.11.2', 'rbenv local 3.2.0']}
-				/>
-				<h3 className={cn('mt-14 text-[32px]', heading)}>Just use:</h3>
-				<CodeLines
-					className="mt-8 flex h-[52px] flex-col justify-center"
-					lines={['proto use']}
-				/>
+				<Heading level={3}>Instead of remembering:</Heading>
+				<Figure caption="One manager per language" className="mt-8">
+					<CodeLines
+						className="py-[7px] leading-[37px]"
+						lines={[
+							'nvm use 18.16.0',
+							'pyenv local 3.11.2',
+							'rbenv local 3.2.0',
+						]}
+					/>
+				</Figure>
+				<Heading className="mt-14" level={3}>
+					Just use:
+				</Heading>
+				<Figure caption="One command for all" className="mt-8">
+					<CodeLines
+						className="flex h-[52px] flex-col justify-center"
+						lines={['proto use']}
+					/>
+				</Figure>
 			</div>
 		</Columns>
 	);
@@ -211,20 +220,20 @@ function ManageThemAll() {
 		<Columns>
 			<div>
 				<div className="px-6 pt-[60px] pb-16 md:px-12">
-					<h3 className={cn('text-[28px] leading-[1.35]', heading)}>
+					<Heading level={3}>
 						How many version managers are installed on your machine?
-					</h3>
-					<p className={cn('mt-6 text-lg', muted)}>
+					</Heading>
+					<Text className="mt-6" tone="muted">
 						If the answer is more than one, proto can help.
-					</p>
+					</Text>
 				</div>
 				<Divider />
 				<div className="px-6 pt-12 pb-16 md:px-12">
-					<h3 className={cn('text-[28px]', heading)}>proto is perfect for:</h3>
+					<Heading level={3}>proto is perfect for:</Heading>
 					<ul className="mt-12 space-y-[30px]">
 						{audiences.map((item) => (
 							<li
-								className="flex items-center gap-3 text-graphite-800 text-lg dark:text-paper-50"
+								className="flex items-center gap-3 text-graphite-800 text-body dark:text-paper-50"
 								key={item}
 							>
 								<CheckBadge />
@@ -236,7 +245,7 @@ function ManageThemAll() {
 			</div>
 
 			<div className="border-dashed border-olive border-t px-6 pt-[68px] pb-16 md:border-t-0 md:px-12">
-				<h3 className={cn('text-[28px]', heading)}>Built for the real world</h3>
+				<Heading level={3}>Built for the real world</Heading>
 				<div className="mt-10 space-y-6">
 					<div className={pill}>
 						<span>
@@ -251,9 +260,9 @@ function ManageThemAll() {
 					<div className={pill}>Designed for team consistency</div>
 				</div>
 
-				<h3 className={cn('mt-[72px] text-[28px]', heading)}>
+				<Heading className="mt-[72px]" level={3}>
 					Switching is painless
-				</h3>
+				</Heading>
 				<div className="mt-8 space-y-6">
 					<div className={pill}>
 						<span>
@@ -310,13 +319,13 @@ function Benefits() {
 		<section className="grid gap-12 px-6 pt-[60px] pb-16 md:grid-cols-3 md:gap-8 md:px-12">
 			{benefits.map((benefit) => (
 				<div key={benefit.title}>
-					<h3 className={cn('flex items-center gap-4 text-[32px]', heading)}>
+					<Heading className="flex items-center gap-4" level={3}>
 						<span className="text-proto [&_svg]:size-6">{benefit.icon}</span>
 						{benefit.title}
-					</h3>
+					</Heading>
 					<ul
 						className={cn(
-							'mt-5 ml-6 list-disc text-[15px] leading-6 marker:text-xs',
+							'mt-5 ml-6 list-disc text-body-sm marker:text-xs',
 							muted,
 						)}
 					>
@@ -334,7 +343,7 @@ function Benefits() {
 function Step({ children, title }: { children: ReactNode; title: string }) {
 	return (
 		<div className="min-w-0">
-			<h3 className={cn('text-[32px]', heading)}>{title}</h3>
+			<Heading level={3}>{title}</Heading>
 			<div className="mt-6">{children}</div>
 		</div>
 	);
@@ -345,31 +354,35 @@ function GetStarted() {
 
 	return (
 		<section className="px-6 pt-[60px] pb-16 md:px-12">
-			<h2 className={cn('text-4xl md:text-[44px]', heading)}>Get started</h2>
-			<p className={cn('mt-3 text-lg', muted)}>
+			<Heading level={2}>Get started</Heading>
+			<Text className="mt-3" tone="muted">
 				proto works on your existing projects immediately, no configuration
 				required.
-			</p>
+			</Text>
 
 			<div className="mt-12 grid gap-12 lg:max-w-[1216px] lg:grid-cols-2 lg:gap-x-16">
 				<div className="min-w-0 space-y-12">
 					<Step title="Install proto for Linux, macOS, or WSL">
-						<CodeLines
-							className={single}
-							lines={[
-								'bash <(curl -fsSL https://moonrepo.dev/install/proto.sh)',
-							]}
-						/>
+						<Figure caption="Install on Unix">
+							<CodeLines
+								className={single}
+								lines={[
+									'bash <(curl -fsSL https://moonrepo.dev/install/proto.sh)',
+								]}
+							/>
+						</Figure>
 					</Step>
 					<Step title="Install for Windows">
-						<CodeLines
-							className={single}
-							lines={['irm https://moonrepo.dev/install/proto.ps1 | iex']}
-						/>
+						<Figure caption="Install on Windows">
+							<CodeLines
+								className={single}
+								lines={['irm https://moonrepo.dev/install/proto.ps1 | iex']}
+							/>
+						</Figure>
 						<a
 							className={cn(
 								link,
-								'mt-3 inline-block text-[15px] text-olive dark:text-proto',
+								'mt-3 inline-block text-body-sm text-olive dark:text-proto',
 							)}
 							href="/proto/docs"
 						>
@@ -379,18 +392,22 @@ function GetStarted() {
 				</div>
 				<div className="min-w-0 space-y-12">
 					<Step title="Install a tool">
-						<CodeLines className={single} lines={['proto install node 18']} />
+						<Figure caption="Install Node.js 18">
+							<CodeLines className={single} lines={['proto install node 18']} />
+						</Figure>
 					</Step>
 					<Step title="Run the tool">
-						<CodeLines
-							className="py-4 leading-[25px]"
-							lines={[
-								'node ./main.mjs',
-								null,
-								{ comment: 'Or with proto' },
-								'proto run node -- ./main.mjs',
-							]}
-						/>
+						<Figure caption="Run through proto">
+							<CodeLines
+								className="py-4 leading-[25px]"
+								lines={[
+									'node ./main.mjs',
+									null,
+									{ comment: 'Or with proto' },
+									'proto run node -- ./main.mjs',
+								]}
+							/>
+						</Figure>
 					</Step>
 				</div>
 			</div>
@@ -439,17 +456,20 @@ function LanguageSupport() {
 	];
 
 	return (
-		<section className="flex flex-col gap-12 px-6 py-16 md:px-12 lg:h-[309px] lg:flex-row lg:items-center lg:justify-between lg:py-0">
+		<section
+			className={cn(
+				'flex flex-col gap-12 px-6 py-16 md:px-12 lg:h-[309px] lg:flex-row lg:items-center lg:justify-between lg:py-0',
+				panel,
+			)}
+		>
 			<div>
-				<h2 className={cn('text-4xl leading-[1.2] md:text-[44px]', heading)}>
-					Language support
-				</h2>
-				<p className={cn('mt-3 text-lg', muted)}>
+				<Heading level={2}>Language support</Heading>
+				<Text className="mt-3" tone="muted">
 					Plus 800+ more via{' '}
 					<a className={cn(link, 'dark:text-proto')} href="/proto/docs">
 						plugins
 					</a>
-				</p>
+				</Text>
 				<ButtonLink className="mt-8" href="/proto/docs" variant="secondary">
 					See all supported languages
 				</ButtonLink>

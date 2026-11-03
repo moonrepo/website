@@ -3,7 +3,6 @@ import { createServerFn } from '@tanstack/react-start';
 import { Suspense } from 'react';
 import {
 	BlogAuthors,
-	BlogBackLink,
 	BlogBody,
 	BlogDescription,
 	BlogHeader,
@@ -72,8 +71,6 @@ const serverLoader = createServerFn({
 	});
 
 interface PostProps {
-	/** path of the content file, relative to `web/content/blog` */
-	path: string;
 	newer?: BlogPost;
 	older?: BlogPost;
 	post: BlogPost;
@@ -81,14 +78,13 @@ interface PostProps {
 
 const clientLoader = browserCollections.blog.createClientLoader({
 	id: 'blog',
-	component({ toc, default: MDX }, { newer, older, path, post }: PostProps) {
+	component({ toc, default: MDX }, { newer, older, post }: PostProps) {
 		return (
 			<BlogPage toc={toc}>
 				<BlogHeader>
 					<BlogDescription>{post.description}</BlogDescription>
 					<BlogAuthors authors={post.authors} />
 					<BlogTags tags={post.tags} />
-					<PageActions file={`blog/${path}`} url={post.url} />
 				</BlogHeader>
 				<BlogBody>
 					<MDX components={getMdxComponents()} />
@@ -104,17 +100,19 @@ function Page() {
 
 	return (
 		<BlogLayout
-			beforeTitle={
-				<>
-					<BlogBackLink href="/blog" />
-					<BlogMeta className="mt-5" post={post} />
-				</>
-			}
+			beforeTitle={<BlogMeta post={post} spread />}
 			sidebar={<BlogRecentPosts current={post.url} posts={posts} />}
 			title={post.title}
+			titleActions={
+				<PageActions
+					className="shrink-0"
+					file={`blog/${path}`}
+					url={post.url}
+				/>
+			}
 		>
 			<Suspense>
-				{clientLoader.useContent(path, { newer, older, path, post })}
+				{clientLoader.useContent(path, { newer, older, post })}
 			</Suspense>
 		</BlogLayout>
 	);

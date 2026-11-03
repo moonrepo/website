@@ -88,6 +88,124 @@
 
 /* Headings use the display face. */
 #nd-page :is(h1, h2, h3, h4),
+.prose :is(h2, h3, h4),
 #nd-toc h3 {
 	@apply font-display font-medium;
+}
+
+/*
+ * Technical-drawing touches for docs and blog content, enabled by
+ * `BlueprintScope` / `PageFrame blueprint` (which also reset the counters).
+ */
+.blueprint {
+	--blueprint-ink: var(--color-olive);
+	--blueprint-mark: var(--color-olive-300);
+}
+
+.dark .blueprint {
+	--blueprint-ink: var(--color-tangerine);
+	--blueprint-mark: var(--color-tangerine-600);
+}
+
+.blueprint .prose {
+	counter-reset: blueprint-heading;
+}
+
+/* Numbered section plates before each top-level heading. */
+.blueprint .prose > h2::before {
+	color: var(--blueprint-ink);
+	content: counter(blueprint-heading, decimal-leading-zero);
+	counter-increment: blueprint-heading;
+	@apply mr-2 rounded-[2px] border border-current px-1.5 py-0.5 font-mono font-normal text-tech;
+}
+
+.blueprint #toc-title {
+	color: var(--blueprint-ink);
+	@apply font-mono font-normal text-tech uppercase;
+}
+
+/* Tighter corners on code blocks, matching the landing pages' code panels. */
+.blueprint
+	.prose
+	:is(figure.shiki, div:has(> [role="tablist"]), [role="tabpanel"]) {
+	@apply rounded-md;
+}
+
+/* Crop marks around top-level code blocks and tab groups. */
+.blueprint .prose > :is(figure.shiki, div:has(> [role="tablist"])) {
+	position: relative;
+	overflow: visible;
+}
+
+.blueprint .prose > :is(figure.shiki, div:has(> [role="tablist"]))::after {
+	--c: var(--blueprint-mark);
+	--l: 12px;
+	position: absolute;
+	inset: -7px;
+	pointer-events: none;
+	content: "";
+	background:
+		linear-gradient(var(--c), var(--c)) top left / var(--l) 1px no-repeat,
+		linear-gradient(var(--c), var(--c)) top left / 1px var(--l) no-repeat,
+		linear-gradient(var(--c), var(--c)) top right / var(--l) 1px no-repeat,
+		linear-gradient(var(--c), var(--c)) top right / 1px var(--l) no-repeat,
+		linear-gradient(var(--c), var(--c)) bottom left / var(--l) 1px no-repeat,
+		linear-gradient(var(--c), var(--c)) bottom left / 1px var(--l) no-repeat,
+		linear-gradient(var(--c), var(--c)) bottom right / var(--l) 1px no-repeat,
+		linear-gradient(var(--c), var(--c)) bottom right / 1px var(--l) no-repeat;
+}
+
+/*
+ * Callouts: a tinted card with a solid left bar, colored per type. The hues
+ * are fixed (not remapped by product themes) so types read the same everywhere.
+ */
+.callout {
+	--callout-color: var(--color-info);
+	--callout-ink: var(--color-graphite-800);
+	color: var(--callout-ink);
+	background: color-mix(
+		in oklab,
+		var(--callout-color) 12%,
+		var(--color-fd-background)
+	);
+	border-color: color-mix(in oklab, var(--callout-color) 40%, transparent);
+	border-left-color: var(--callout-color);
+	@apply my-6 flex flex-col gap-3 rounded-md border border-l-[3px] px-5 py-4;
+}
+
+.dark .callout {
+	--callout-ink: var(--color-paper-50);
+}
+
+.callout[data-type="idea"] {
+	--callout-color: var(--color-idea);
+}
+
+.callout[data-type="success"] {
+	--callout-color: var(--color-success);
+}
+
+.callout[data-type="warning"] {
+	--callout-color: var(--color-warning);
+}
+
+.callout[data-type="error"] {
+	--callout-color: var(--color-error);
+}
+
+/* Darker hues on light backgrounds, for contrast. */
+html:not(.dark) .callout {
+	border-left-color: color-mix(in oklab, var(--callout-color) 80%, black);
+}
+
+html:not(.dark) .callout-header svg {
+	color: color-mix(in oklab, var(--callout-color) 65%, black);
+}
+
+.callout-header {
+	@apply flex items-center gap-2.5;
+}
+
+.callout-body {
+	@apply text-body-sm;
 }

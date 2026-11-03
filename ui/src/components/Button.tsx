@@ -4,14 +4,16 @@ import { cn } from '../utils/cn';
 
 const variants = {
 	primary:
-		'border-primary-dark bg-linear-to-b from-primary-light to-primary text-primary-fg shadow-md',
+		'border-primary-dark bg-primary bg-[radial-gradient(ellipse_at_center,rgb(0_0_0/0.07)_0%,transparent_75%)] text-primary-fg shadow-md',
 	secondary:
 		'border-taupe bg-paper-50 bg-[radial-gradient(ellipse_at_center,var(--color-secondary-glow)_0%,transparent_70%)] text-graphite-500 shadow-sm',
 };
 
 const sizes = {
-	md: 'h-14 rounded-md border-b-4 px-6 text-sm',
-	sm: 'h-12 rounded-[4px] border-b-[3px] px-4 text-base',
+	md: 'h-14 rounded-md border-b-4 px-6 text-caps',
+	sm: 'h-12 rounded-[4px] border-b-[3px] px-4 text-caps',
+	xs: 'h-8 gap-2 rounded-[4px] border-b-2 px-3 text-[12px] [&_svg]:size-3.5',
+	icon: 'size-10 rounded-md border-b-[3px] p-0',
 };
 
 interface ButtonStyleProps {

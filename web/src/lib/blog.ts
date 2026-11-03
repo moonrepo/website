@@ -40,6 +40,8 @@ export interface BlogPost {
 	image?: string;
 	tags: BlogTag[];
 	authors: BlogAuthor[];
+	/** SVG markup of the frontmatter `icon` (a Lucide icon name), see `loadBlogPosts()` */
+	icon?: string;
 	/** estimated reading time, see `readingMinutes()` */
 	minutes?: number;
 }

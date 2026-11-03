@@ -1,33 +1,43 @@
 import { PanelLeft } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Drawer } from '../components/Drawer';
+import { Heading } from '../components/Heading';
 import { cn } from '../utils/cn';
-import { Divider, Hatch, PageFrame } from './Frame';
-import { dashed, heading } from './styles';
+import { BlueprintGrid, Divider, Hatch, PageFrame } from './Frame';
+import { dashed } from './styles';
 
 export interface SidebarLayoutProps {
 	beforeTitle?: ReactNode;
+	/** Decorate the page like a technical drawing, see `PageFrame`. */
+	blueprint?: boolean;
 	children: ReactNode;
 	drawerTitle: string;
 	footer: ReactNode;
+	/** Label in the hatched band above the footer. */
+	hatchLabel?: string;
 	header: ReactNode;
 	sidebar: ReactNode;
 	sidebarClassName?: string;
 	title: string;
+	/** Shown at the end of the title row, like docs page actions. */
+	titleActions?: ReactNode;
 }
 
 export function SidebarLayout({
 	beforeTitle,
+	blueprint,
 	children,
 	drawerTitle,
 	footer,
+	hatchLabel,
 	header,
 	sidebar,
 	sidebarClassName,
 	title,
+	titleActions,
 }: SidebarLayoutProps) {
 	return (
-		<PageFrame full>
+		<PageFrame blueprint={blueprint} full>
 			{header}
 			<div className="flex">
 				<aside
@@ -41,7 +51,8 @@ export function SidebarLayout({
 					{sidebar}
 				</aside>
 				<main className="min-w-0 flex-1">
-					<div className="px-6 pt-9 pb-9 md:px-12">
+					<div className="relative isolate px-6 pt-9 pb-9 md:px-12">
+						{blueprint && <BlueprintGrid className="-z-10" />}
 						<Drawer
 							title={drawerTitle}
 							trigger={
@@ -55,21 +66,21 @@ export function SidebarLayout({
 							{sidebar}
 						</Drawer>
 						{beforeTitle}
-						<h1
+						<div
 							className={cn(
-								'text-4xl md:text-[44px]',
+								'flex flex-col gap-4 md:flex-row md:items-center md:justify-between',
 								beforeTitle ? 'mt-5' : undefined,
-								heading,
 							)}
 						>
-							{title}
-						</h1>
+							<Heading level={1}>{title}</Heading>
+							{titleActions}
+						</div>
 					</div>
 					<Divider />
 					{children}
 				</main>
 			</div>
-			<Hatch />
+			<Hatch label={hatchLabel} />
 			{footer}
 		</PageFrame>
 	);
