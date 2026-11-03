@@ -1,0 +1,32 @@
+{
+  "title": "Commands",
+  "pages": [
+    "overview",
+    "activate",
+    "alias",
+    "bin",
+    "clean",
+    "completions",
+    "deactivate",
+    "debug",
+    "diagnose",
+    "exec",
+    "install",
+    "mcp",
+    "outdated",
+    "pin",
+    "plugin",
+    "regen",
+    "run",
+    "setup",
+    "shell",
+    "status",
+    "trust",
+    "unalias",
+    "uninstall",
+    "unpin",
+    "untrust",
+    "upgrade",
+    "versions"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "title": "Fundamentals",
+  "pages": [
+    "config",
+    "tool",
+    "backend",
+    "plugin",
+    "version-spec",
+    "detection",
+    "workflows",
+    "store",
+    "trust",
+    "..."
+  ]
+}

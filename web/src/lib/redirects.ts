@@ -79,6 +79,42 @@ const MOON_GUIDES = [
 	'webhooks',
 ];
 
+const PROTO_COMMANDS = [
+	'activate',
+	'alias',
+	'bin',
+	'clean',
+	'completions',
+	'deactivate',
+	'debug',
+	'debug/config',
+	'debug/env',
+	'diagnose',
+	'exec',
+	'install',
+	'mcp',
+	'outdated',
+	'pin',
+	'plugin',
+	'plugin/add',
+	'plugin/info',
+	'plugin/list',
+	'plugin/remove',
+	'plugin/search',
+	'regen',
+	'run',
+	'setup',
+	'shell',
+	'status',
+	'trust',
+	'unalias',
+	'uninstall',
+	'unpin',
+	'untrust',
+	'upgrade',
+	'versions',
+];
+
 function moveUnder(
 	names: string[],
 	from: string,
@@ -170,9 +206,28 @@ export const REDIRECTS: Record<string, string> = {
 	'/docs/editors': '/moon/docs/editors/vscode',
 	'/docs/editors/vscode': '/moon/docs/editors/vscode',
 
-	// The proto docs haven't been rewritten yet, so everything lands on the
-	// index. Map individual pages once they exist.
+	// proto
 	'/docs/proto': '/proto/docs',
+	'/docs/proto/install': '/proto/docs',
+	'/docs/proto/config': '/proto/docs/config',
+	'/docs/proto/detection': '/proto/docs/detection',
+	'/docs/proto/lockfile': '/proto/docs/advanced/lockfile',
+	'/docs/proto/non-wasm-plugin': '/proto/docs/schema',
+	'/docs/proto/plugins': '/proto/docs/plugin',
+	'/docs/proto/reporting': '/proto/docs/guides/reporting',
+	'/docs/proto/tool-spec': '/proto/docs/version-spec',
+	'/docs/proto/toml-plugin': '/proto/docs/schema',
+	'/docs/proto/tools': '/proto/docs/tool',
+	'/docs/proto/version-spec': '/proto/docs/version-spec',
+	'/docs/proto/wasm-plugin': '/wasm/docs',
+	'/docs/proto/workflows': '/proto/docs/workflows',
+	'/docs/proto/commands': '/proto/docs/commands/overview',
+	...moveUnder(PROTO_COMMANDS, '/docs/proto/commands', '/proto/docs/commands'),
+	// Removed commands, replaced by `proto versions` and `proto install`
+	'/docs/proto/commands/list': '/proto/docs/commands/versions',
+	'/docs/proto/commands/list-remote': '/proto/docs/commands/versions',
+	'/docs/proto/commands/use': '/proto/docs/commands/install',
+	// Pages without a replacement, like the FAQ
 	'/docs/proto/**': '/proto/docs',
 
 	// Blog posts and tags kept their paths

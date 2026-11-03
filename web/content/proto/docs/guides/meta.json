@@ -1,0 +1,12 @@
+{
+  "title": "Guides",
+  "pages": [
+    "build-from-source",
+    "ci",
+    "mcp",
+    "offline-mode",
+    "opentelemetry",
+    "reporting",
+    "troubleshooting"
+  ]
+}
