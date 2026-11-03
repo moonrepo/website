@@ -1,0 +1,4 @@
+{
+  "title": "proto plugin",
+  "pages": ["add", "info", "list", "remove", "search"]
+}

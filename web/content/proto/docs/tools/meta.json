@@ -1,0 +1,24 @@
+{
+  "title": "Tools",
+  "pages": [
+    "bun",
+    "deno",
+    "go",
+    "java",
+    "kotlin",
+    "moon",
+    "node",
+    "npm",
+    "nub",
+    "pnpm",
+    "poetry",
+    "python",
+    "ruby",
+    "rust",
+    "swift",
+    "uv",
+    "yarn",
+    "zig",
+    "zls"
+  ]
+}

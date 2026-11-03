@@ -2,5 +2,19 @@
   "title": "Documentation",
   "description": "Concepts, references, and more",
   "icon": "BookOpen",
-  "root": true
+  "root": true,
+  "pages": [
+    "index",
+    "start",
+    "---Concepts---",
+    "(fundamentals)",
+    "advanced",
+    "guides",
+    "---References---",
+    "commands",
+    "---Plugins---",
+    "backends",
+    "tools",
+    "schema"
+  ]
 }
