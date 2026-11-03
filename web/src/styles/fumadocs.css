@@ -160,7 +160,7 @@
  * are fixed (not remapped by product themes) so types read the same everywhere.
  */
 .callout {
-	--callout-color: #53c0e5;
+	--callout-color: var(--color-info);
 	--callout-ink: var(--color-graphite-800);
 	color: var(--callout-ink);
 	background: color-mix(
@@ -178,19 +178,19 @@
 }
 
 .callout[data-type="idea"] {
-	--callout-color: #b753e5;
+	--callout-color: var(--color-idea);
 }
 
 .callout[data-type="success"] {
-	--callout-color: #53e57c;
+	--callout-color: var(--color-success);
 }
 
 .callout[data-type="warning"] {
-	--callout-color: #f2a13e;
+	--callout-color: var(--color-warning);
 }
 
 .callout[data-type="error"] {
-	--callout-color: #e55a53;
+	--callout-color: var(--color-error);
 }
 
 /* Darker hues on light backgrounds, for contrast. */
