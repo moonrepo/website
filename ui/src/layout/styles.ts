@@ -5,7 +5,7 @@ export const accent = 'text-olive dark:text-tangerine';
 export const dashed = 'border-dashed border-olive';
 /** Slightly darker panel background. Darkens the page color by a fixed amount so contrast is even across themes. */
 export const panel =
-	'bg-[color-mix(in_oklab,var(--color-paper-100)_99%,black)] dark:bg-[color-mix(in_oklab,var(--color-graphite-800)_95%,black)]';
+	'bg-[color-mix(in_oklab,var(--color-paper-100)_95%,black)] dark:bg-[color-mix(in_oklab,var(--color-graphite-800)_95%,black)]';
 export const codeBox =
 	'rounded-md border border-paper-300 bg-paper-50 font-mono text-code dark:border-graphite-950 dark:bg-graphite-950';
 
