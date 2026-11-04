@@ -5,11 +5,11 @@ icon: HardDrive
 
 The **store** is proto's home directory, `~/.proto` by default. Everything proto downloads or
 creates lives in it: the `proto` binaries themselves, every installed version of every
-[tool](<./(plugin)/tool.mdx>), the [shims](./workflows.mdx#shims) and binaries that put tools on your `PATH`,
-downloaded [plugins](<./(plugin)/plugin.mdx>), caches, and the global [`.prototools`](./config.mdx). Nothing is
-installed into system directories, so installing a tool never needs administrator access or
-conflicts with your system's packages, and removing proto, along with everything it installed,
-comes down to deleting one directory.
+[tool](<./(plugin)/tool.mdx>), the [shims](./workflows.mdx#shims) and binaries that put tools on
+your `PATH`, downloaded [plugins](<./(plugin)/plugin.mdx>), caches, and the global
+[`.prototools`](./config.mdx). Nothing is installed into system directories, so installing a tool
+never needs administrator access or conflicts with your system's packages, and removing proto, along
+with everything it installed, comes down to deleting one directory.
 
 Within the store, each tool has an [inventory](#inventory): a directory of its installed versions,
 with a manifest that tracks them. proto uses it to find what's installed, to prefer versions you
@@ -23,12 +23,12 @@ proto uses the first of the following directories as the store:
 2. `$XDG_DATA_HOME/proto`
 3. `~/.proto`
 
-Both `proto` and `proto-shim` resolve the store on their own, from their environment, so every
-process must see the same variables. That's why [`proto setup`](../commands/setup.mdx) exports
-`PROTO_HOME` from your shell profile, and why a custom location should be set there too. Use an
-absolute path: a relative path is resolved from the current directory, so each directory would
-resolve a different store. See [store and paths](../advanced/env-vars.mdx#store-and-paths) for the
-related environment variables.
+Every proto process, including each shim, works out where the store is from its own environment
+variables. So everything that runs proto, like your editor or a script, must see the same
+`PROTO_HOME`. That's why [`proto setup`](../commands/setup.mdx) exports `PROTO_HOME` from your shell
+profile, and why a custom location should be set there too. Use an absolute path: a relative path is
+resolved from the current directory, so each directory would resolve a different store. See
+[store and paths](../advanced/env-vars.mdx#store-and-paths) for the related environment variables.
 
 To print the store's paths, along with the configuration files that were loaded, run
 [`proto debug env`](../commands/debug/env.mdx):
@@ -37,19 +37,6 @@ To print the store's paths, along with the configuration files that were loaded,
 # Print the resolved store paths
 $ proto debug env
 ```
-
-Two directories can be moved out of the store on their own:
-
-- `PROTO_TEMP_DIR` - Replaces the `temp` directory, for example to stage downloads on a different
-  disk.
-- `PROTO_PLUGINS_DIR` - Replaces the `plugins` directory, for example to share downloaded plugins
-  between multiple stores. The locks that coordinate plugin downloads move with it (into a `.temp`
-  directory inside it), so processes using different stores don't download the same plugin at
-  the same time.
-
-If you move an existing store, update `PROTO_HOME` and your `PATH`, then run
-[`proto regen --bin`](../commands/regen.mdx) to recreate the shims and binaries. The symlinks in
-`bin` point to absolute paths, so they still point to the old location until then.
 
 ## Directory layout
 
@@ -78,13 +65,14 @@ If you move an existing store, update `PROTO_HOME` and your `PATH`, then run
 
 Directories are created when they're first needed, so a new store only contains some of them.
 
-- [`.prototools`](./config.mdx) - The global configuration, which has the lowest precedence of all
+- [`.prototools`](./config.mdx) - The global configuration, which holds fallback versions. Not to be
+  confused with your user config, `~/.prototools`. It has the lowest precedence of all
   [configuration locations](./config.mdx#locations), and is where
   [`proto pin --to global`](../commands/pin.mdx) writes. It belongs to you, so it never needs to be
   [trusted](./trust.mdx), and never has a lockfile.
-- `backends/` - Sources that [backends](<./(plugin)/backend.mdx>) need before they can install a tool, in a
-  `<backend>/<id>` directory each. For example, the asdf backend clones each asdf plugin repository
-  into `backends/asdf/<id>`.
+- `backends/` - Sources that [backends](<./(plugin)/backend.mdx>) need before they can install a
+  tool, in a `<backend>/<id>` directory each. For example, the asdf backend clones each asdf plugin
+  repository into `backends/asdf/<id>`.
 - `bin/` - The `proto` and `proto-shim` executables. With
   [binary linking](./workflows.mdx#binary-linking), it also holds symlinks to the executables of
   installed tools (copies on Windows, where symlinks require administrator access).
@@ -95,8 +83,8 @@ Directories are created when they're first needed, so a new store only contains 
   [`proto plugin search`](../commands/plugin/search.mdx), which are refreshed daily.
 - `plugins/` - Downloaded plugin files, `.wasm` for WASM plugins, or `.toml`, `.json`, or `.yaml`
   for schema plugins. Each file is named after the plugin's ID and a hash of its
-  [locator](../../../wasm/docs/plugin-locators.mdx), so different versions of a plugin are cached side by
-  side. Plugins with a `file://` locator are loaded in place, and never copied here.
+  [locator](../../../wasm/docs/plugin-locators.mdx), so different versions of a plugin are cached
+  side by side. Plugins with a `file://` locator are loaded in place, and never copied here.
 - `shims/` - A [shim](./workflows.mdx#shims) for each executable of the tools you've installed, and
   `registry.json`, which tells `proto-shim` which tool each shim belongs to, along with any
   arguments or environment variables to apply.
@@ -110,8 +98,27 @@ Directories are created when they're first needed, so a new store only contains 
   [`proto trust`](../commands/trust.mdx). See [trust](./trust.mdx).
 - `id` - A random identifier, generated on first use, that's sent with anonymous usage telemetry.
   Telemetry can be turned off with the [`telemetry`](./config.mdx#telemetry) setting.
-- `profile` - The shell profile chosen during [`proto setup`](../commands/setup.mdx). When a tool
-  needs environment variables or `PATH` entries after it's installed, proto adds them here.
+- `profile` - The path to the shell profile that [`proto setup`](../commands/setup.mdx) chose, like
+  `~/.zshrc`. When a tool needs environment variables or `PATH` entries after it's installed, proto
+  adds them to that shell profile.
+
+### Moving the store
+
+If you move an existing store, update `PROTO_HOME` and your `PATH`, then run
+[`proto regen --bin`](../commands/regen.mdx) to recreate the shims and binaries. The symlinks in
+`bin` point to absolute paths, so they still point to the old location until then.
+[`proto regen`](../commands/regen.mdx) only recreates them for tools with a version configured
+where you run it, so run it from a directory where all your tools are configured (see
+[shims setup](./workflows.mdx#setup)).
+
+Two directories can also be moved out of the store on their own:
+
+- `PROTO_TEMP_DIR` - Replaces the `temp` directory, for example to stage downloads on a different
+  disk.
+- `PROTO_PLUGINS_DIR` - Replaces the `plugins` directory, for example to share downloaded plugins
+  between multiple stores. The locks that coordinate plugin downloads move with it (into a `.temp`
+  directory inside it), so processes using different stores don't download the same plugin at
+  the same time.
 
 ## Inventory
 
@@ -155,7 +162,8 @@ $ proto versions node --installed
 
 ### Manifest
 
-The manifest is a record of every version proto installed, and how:
+The manifest is a record of every version proto installed, and how. proto manages it, so there's no
+need to edit it, but it's useful to read when debugging what's installed:
 
 ```json title="~/.proto/tools/node/manifest.json"
 {
@@ -211,8 +219,10 @@ last time proto ran that version. It's updated whenever proto prepares the versi
 [Cleaning](#stale-versions) uses it to find versions you no longer use.
 
 Running an executable directly, like a [linked binary](./workflows.mdx#binary-linking) in `bin`, or
-from another program that bypasses proto, doesn't update the timestamp. If you only use a version
-that way, install it with `PROTO_NO_CLEAN` so that it's never considered stale.
+from another program that bypasses proto, doesn't update the timestamp. A version that has never run
+through proto has no `.last-used` file, so cleaning never removes it by age. But once it has run
+through proto, even once, its timestamp only moves when proto runs it again. If you mostly use a
+version through `bin`, install it with `PROTO_NO_CLEAN`, so that it's never considered stale.
 
 ### Custom locations
 
@@ -293,9 +303,9 @@ last accessed. Tools with an [inventory outside the store](#custom-locations) ar
 
 ### Automatic cleaning
 
-Instead of running [`proto clean`](../commands/clean.mdx) yourself, enable the [`auto-clean`](./config.mdx#auto-clean) setting
-(or the `PROTO_AUTO_CLEAN` environment variable). proto then cleans every target, with the default
-of 30 days and without prompting, after each run of
+Instead of running [`proto clean`](../commands/clean.mdx) yourself, enable the
+[`auto-clean`](./config.mdx#auto-clean) setting (or the `PROTO_AUTO_CLEAN` environment variable).
+proto then cleans every target, with the default of 30 days and without prompting, after each run of
 [`proto activate`](../commands/activate.mdx), [`proto install`](../commands/install.mdx),
 [`proto outdated`](../commands/outdated.mdx), [`proto regen`](../commands/regen.mdx), and
 [`proto status`](../commands/status.mdx).
@@ -305,14 +315,17 @@ of 30 days and without prompting, after each run of
 auto-clean = true
 ```
 
-Cleaning is a preference for your machine, rather than for a repository, so set it in your global
-[`~/.proto/.prototools`](./config.mdx#locations), or `~/.prototools`. It's also a
-[security-sensitive setting](./trust.mdx#security-sensitive-settings), so a project's
-[`.prototools`](./config.mdx) must be trusted before it applies.
+Cleaning is a preference for your machine, rather than for a repository, so set it in your user
+config, [`~/.prototools`](./config.mdx#where-to-configure). Avoid the global config,
+`~/.proto/.prototools`, as most of the commands that clean, like
+[`proto install`](../commands/install.mdx) and [`proto activate`](../commands/activate.mdx), don't
+load it. It's also a [security-sensitive setting](./trust.mdx#security-sensitive-settings), so a
+project's [`.prototools`](./config.mdx) must be trusted before it applies.
 
 In CI, the store is usually cached between runs, so tools and plugins aren't downloaded every time.
-A cached store grows like a local one, so run [`proto clean`](../commands/clean.mdx) before the cache is saved (prompts are
-skipped in CI), or enable `auto-clean`. See [caching the store](../guides/ci.mdx#caching-the-store).
+A cached store grows like a local one, so run [`proto clean`](../commands/clean.mdx) before the
+cache is saved (prompts are skipped in CI), or enable `auto-clean`. See
+[caching the store](../guides/ci.mdx#caching-the-store).
 
 ### Uninstalling
 
