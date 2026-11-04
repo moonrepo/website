@@ -1,6 +1,6 @@
 ---
 title: Shell workflows
-icon: Workflow
+icon: ListTree
 ---
 
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
@@ -41,17 +41,34 @@ $ which node
 ~/.proto/shims/node
 ```
 
+Shims are the most flexible workflow: they pick the version for the directory you call them from,
+on every call, and work anywhere `~/.proto/shims` is on `PATH`, including scripts, editors, and CI.
+The trade-off is a small cost per call, as proto loads its configuration and the tool's plugin
+before the tool starts. It's rarely noticeable for commands you run by hand, but adds up in
+something that spawns a tool thousands of times.
+
+A shim only runs a version that proto [detects](./detection.mdx) for the current directory, like a
+pin in [`.prototools`](./config.mdx) or a version in `.nvmrc`. If no version is detected, or proto
+doesn't manage the tool at all, the shim falls back to an executable with the same name elsewhere on
+`PATH`, like a system install, skipping proto's own directories. If there isn't one, it fails with
+an error suggesting that you pin a version. So after installing a tool, pin a fallback version for
+it, as described in [setup](#setup).
+
+### How shims work
+
 On every call, [`proto run`](../commands/run.mdx) then:
 
 1. Detects the version to use from the current directory, following the
    [detection order](./detection.mdx#detection-order). A `PROTO_NODE_VERSION` environment variable
    overrides it, so `PROTO_NODE_VERSION=20 node --version` runs Node.js 20 for one command.
-2. Installs the version when it's missing and [`auto-install`](./config.mdx#auto-install) is enabled.
-   Otherwise, it fails with the [`proto install`](../commands/install.mdx) command to run.
+2. Installs the version when it's missing and [`auto-install`](./config.mdx#auto-install) is
+   enabled. Otherwise, it fails with the [`proto install`](../commands/install.mdx) command to run.
 3. Prepares the tool's process: applies [`[env]`](./config.mdx#env) and
-   [`[tools.*.env]`](./config.mdx#tools-env) variables, prepends the tool's executable and globals
-   directories to `PATH`, and sets `PROTO_NODE_VERSION` to the resolved version, so child processes,
-   like a script that spawns `node`, use the same version.
+   [`[tools.*.env]`](./config.mdx#tools-env) variables (see
+   [order of precedence](./config.mdx#order-of-precedence)), prepends the tool's executable
+   directories to `PATH`, along with its globals directories, where the executables of globally
+   installed packages live, and sets `PROTO_NODE_VERSION` to the resolved version, so child
+   processes, like a script that spawns `node`, use the same version.
 4. Runs the tool's executable with your arguments.
 
 On macOS and Linux, the shim and proto each replace their own process instead of spawning a child,
@@ -62,18 +79,6 @@ Shims for secondary executables, like `npx` from npm or `bunx` from Bun, are des
 `~/.proto/shims/registry.json`, which records the tool that owns the executable and any arguments to
 add (`bunx` runs `bun x`). When two tools provide the same executable name, the tool whose
 identifier matches the name keeps it, and otherwise the first tool installed does.
-
-If no version is detected for the current directory, or proto doesn't manage the tool at all, the
-shim falls back to an executable with the same name elsewhere on `PATH`, like a system install,
-skipping proto's own directories. To give every directory a default version instead, pin one in the
-[global configuration](./detection.mdx#5-global-configuration) with
-[`proto pin --to global`](../commands/pin.mdx).
-
-Shims are the most flexible workflow: they pick the version for the directory you call them from,
-on every call, and work anywhere `~/.proto/shims` is on `PATH`, including scripts, editors, and CI.
-The trade-off is a small cost per call, as proto loads its configuration and the tool's plugin
-before the tool starts. It's rarely noticeable for commands you run by hand, but adds up in
-something that spawns a tool thousands of times.
 
 To see what a shim is doing, set `PROTO_DEBUG_SHIM` to print its steps to stderr, and run
 [`proto bin node --shim`](../commands/bin.mdx) to print the shim's path. The variables that shims
@@ -95,17 +100,28 @@ export PATH="$PROTO_HOME/shims:$PROTO_HOME/bin:$PATH"
   happens. [`proto diagnose`](../commands/diagnose.mdx) warns about this order.
 </Callout>
 
+Installing a tool doesn't pin it, so pin a fallback version in the
+[global configuration](./detection.mdx#5-global-configuration). Shims use it in any directory that
+doesn't pin its own version:
+
+```shell
+# Use Node.js 22 wherever a project doesn't pin a version
+$ proto pin node 22 --to global
+```
+
 You don't create shims yourself. When you install a tool version, proto creates a shim for each
 executable that the tool's plugin exposes (a plugin can opt an executable out, see
-[executables](<./(plugin)/tool.mdx#executables>)). Re-running [`proto install`](../commands/install.mdx) for an
-installed version recreates any shims that are missing, and when a proto upgrade changes
-`proto-shim`, a tool's shims are recreated the next time you install it. A tool's shims are removed
-when its last version is uninstalled.
+[executables](<./(plugin)/tool.mdx#executables>)). Re-running
+[`proto install`](../commands/install.mdx) for an installed version recreates any shims that are
+missing, and when a proto upgrade changes `proto-shim`, a tool's shims are recreated the next time
+you install it. A tool's shims are removed when its last version is uninstalled.
 
 If your shims are missing or broken, regenerate them with [`proto regen`](../commands/regen.mdx). It
 deletes `~/.proto/shims`, and recreates shims for every tool that has a version configured in the
-[`.prototools`](./config.mdx) files of the current directory and its parents, and the global one. Tools without a
-configured version are skipped, so run it from a directory where your tools are configured.
+[`.prototools`](./config.mdx) files of the current directory and its parents, and the global one.
+Shims for any other tool are deleted, and aren't recreated until you install the tool again, or
+run [`proto regen`](../commands/regen.mdx) where it's configured. So run it from a directory where
+all your tools are configured, or pin each of them globally first.
 
 ```shell
 $ proto regen
@@ -143,15 +159,15 @@ $ readlink ~/.proto/bin/node
 ```
 
 Not every executable can be linked. npm, and the versions of pnpm and Yarn written in JavaScript,
-need Node.js to run them, so they're only available as shims. Each tool's plugin decides which of its
-[executables](<./(plugin)/tool.mdx#executables>) get a binary.
+need Node.js to run them, so they're only available as shims. Each tool's plugin decides which of
+its [executables](<./(plugin)/tool.mdx#executables>) get a binary.
 
 ### Setup
 
 Binaries are used when `~/.proto/bin` is on `PATH`, after `~/.proto/shims` if you use both.
-[`proto setup`](../commands/setup.mdx) adds it (see [shims setup](#setup)). Keep it on `PATH` even if
-you don't use binary linking, as `proto` and `proto-shim` themselves live there, unless you installed
-proto elsewhere, like with [Nix](../index.mdx#nix).
+[`proto setup`](../commands/setup.mdx) adds it (see [shims setup](#setup)). Keep it on `PATH` even
+if you don't use binary linking, as `proto` and `proto-shim` themselves live there, unless you
+installed proto elsewhere, like with [Nix](../index.mdx#nix).
 
 Binaries update as you install and uninstall versions. Installing a version relinks the tool's
 binaries, so a new highest version takes over `node`, `node-22`, and so on. Uninstalling a version
@@ -175,23 +191,8 @@ $ proto regen --bin
 Shell activation, also known as shell hooks, changes your shell session itself, instead of routing
 calls through proto. In your shell profile, you evaluate the output of
 [`proto activate`](../commands/activate.mdx), which registers a hook that runs whenever the prompt
-is drawn or the directory changes (depending on the [shell](#supported-shells)). Each time it runs,
-proto:
-
-1. Loads the [`.prototools`](./config.mdx) files in the current directory and its parents, and selects the tools
-   with a configured version.
-2. [Detects](./detection.mdx) the version of each tool, as shims do.
-3. Prepends the tool's executable directories, and its globals directories (where executables of
-   globally installed packages live), to `PATH`. A version that isn't installed is skipped, as
-   activation never installs anything.
-4. Exports [`[env]`](./config.mdx#env) and [`[tools.*.env]`](./config.mdx#tools-env) variables, and
-   defines [shell aliases](#shell-aliases).
-5. Puts a [pinned proto version](./config.mdx#pinning-proto) (an exact version) on `PATH`, and sets
-   `PROTO_HOME` when it isn't set.
-6. Appends `~/.proto/shims` and `~/.proto/bin` after the tool directories, so tools that weren't
-   activated still resolve through [shims](#shims) and [binaries](#binary-linking).
-7. Reverts what the previous run applied, unsetting variables and aliases that are no longer
-   configured, and replacing its own `PATH` entries instead of piling up new ones.
+is drawn or the directory changes (depending on the [shell](#supported-shells)). Each time you move
+between projects, `node` is already the right version:
 
 ```shell
 $ cd ~/projects/client && node --version
@@ -210,26 +211,39 @@ instead, which runs proto once per prompt or directory change. And because varia
 directories are exported into the session, everything you run sees them, not only the tools proto
 runs, including executables from globally installed packages.
 
+### How activation works
+
+Each time the hook runs, proto:
+
+1. Undoes what the previous run applied, unsetting variables and aliases that are no longer
+   configured, and removing its own `PATH` entries, so they don't pile up.
+2. Loads the [`.prototools`](./config.mdx) files in the current directory and its parents, and
+   selects the tools with a configured version.
+3. [Detects](./detection.mdx) the version of each tool, as shims do.
+4. Prepends each tool's executable and globals directories to `PATH`. A version that isn't
+   installed is skipped, as activation never installs anything.
+5. Exports [`[env]`](./config.mdx#env) and [`[tools.*.env]`](./config.mdx#tools-env) variables, and
+   defines [shell aliases](#shell-aliases).
+6. Puts a [pinned proto version](./config.mdx#pinning-proto) (an exact version) on `PATH`, and sets
+   `PROTO_HOME` when it isn't set.
+7. Appends `~/.proto/shims` and `~/.proto/bin` after the tool directories, so tools that weren't
+   activated still resolve through [shims](#shims) and [binaries](#binary-linking).
+
 A few things to keep in mind:
 
-- Versions pinned in the global [`~/.proto/.prototools`](./config.mdx) aren't activated, as activation loads
-  configuration in the `upwards` [resolution mode](./config.mdx#resolution-modes). Those tools
-  resolve through shims and binaries instead. To include them, pass
-  `--config-mode upwards-global` to [`proto activate`](../commands/activate.mdx), which makes every hook run load more tools.
+- Versions pinned in the global [`~/.proto/.prototools`](./config.mdx) aren't activated, as
+  activation loads configuration in the `upwards` [resolution mode](./config.mdx#resolution-modes).
+  Those tools still resolve through shims, which do use global pins. To activate them too, pass
+  `--config-mode upwards-global` to [`proto activate`](../commands/activate.mdx), which makes every
+  hook run load more tools.
 - Activation only happens in interactive shells that evaluate the hook. Processes you start from the
   session inherit its environment as it was when they started, but don't re-activate when they
   change directories, and non-interactive scripts and CI jobs never activate. Keep shims on `PATH`
   for those.
-- `[env]` variables and shell aliases are [security-sensitive](./trust.mdx#security-sensitive-settings),
-  so a local [`.prototools`](./config.mdx) must be [trusted](./trust.mdx) before activation applies them. The hook
-  warns about an untrusted file once per shell session.
-
-For a one-off session instead, [`proto shell`](../commands/shell.mdx) starts a new interactive shell
-with the configured tools (or the ones you list, like
-[`proto shell node@20`](../commands/shell.mdx)) on `PATH` and their environment variables applied,
-without registering a hook. Versions stay fixed for the life of that shell, and exiting it returns
-you to the original session. To run a single command this way, use
-[`proto exec`](../commands/exec.mdx).
+- A local [`.prototools`](./config.mdx) must be [trusted](./trust.mdx) before activation applies its
+  [security-sensitive settings](./trust.mdx#security-sensitive-settings), like `[env]` variables,
+  shell aliases, and pins for `proto`, asdf tools, and tools without a built-in plugin. Until then,
+  activation skips them, and warns about the untrusted file once per shell session.
 
 ### Setup
 
@@ -353,8 +367,9 @@ eval "$(proto activate zsh --config-mode upwards-global)"
 
 ### Supported shells
 
-Activation is supported in the following shells. Pass the argument to [`proto activate`](../commands/activate.mdx), or omit it
-to detect the shell from `$SHELL` and the parent process (in a profile, pass it explicitly).
+Activation is supported in the following shells. Pass the argument to
+[`proto activate`](../commands/activate.mdx), or omit it to detect the shell from `$SHELL` and the
+parent process (in a profile, pass it explicitly).
 
 | Shell          | Argument               | Activates on                                        |
 | -------------- | ---------------------- | --------------------------------------------------- |
@@ -370,15 +385,16 @@ to detect the shell from `$SHELL` and the parent process (in a profile, pass it 
 | sh, ash, dash  | `sh`, `ash`, or `dash` | `cd` only                                           |
 
 The prompt trigger is what picks up changes without a directory change: after you edit
-[`.prototools`](./config.mdx) or run [`proto install`](../commands/install.mdx), the next prompt activates the new version. POSIX shells have
-no hooks, so the hook replaces the `cd` builtin with a function that runs the original and then
-activates, which overrides any other `cd` wrapper. In those shells, run `cd .` to re-activate in
-place.
+[`.prototools`](./config.mdx) or run [`proto install`](../commands/install.mdx), the next prompt
+activates the new version. POSIX shells have no hooks, so the hook replaces the `cd` builtin with a
+function that runs the original and then activates, which overrides any other `cd` wrapper. In those
+shells, run `cd .` to re-activate in place.
 
 ### Shell aliases
 
-Activation can also define aliases in your shell, from the [`[shell.aliases]`](./config.mdx#shell-aliases) table in
-[`.prototools`](./config.mdx). Each key is the alias name, and the value is the command it runs:
+Activation can also define aliases in your shell, from the
+[`[shell.aliases]`](./config.mdx#shell-aliases) table in [`.prototools`](./config.mdx). Each key is
+the alias name, and the value is the command it runs:
 
 ```toml title=".prototools"
 [shell.aliases]
@@ -386,11 +402,11 @@ gs = "git status"
 dev = "pnpm run dev"
 ```
 
-Aliases from every loaded [`.prototools`](./config.mdx) are combined, and like everything activation applies,
-they're removed when you leave a directory where they're configured. They're only defined by shell
-activation, not by shims, [`proto run`](../commands/run.mdx), or [`proto shell`](../commands/shell.mdx),
-and they aren't part of the `--json` output, as they aren't environment variables. In Elvish,
-aliases are only available in an interactive session.
+Aliases from every loaded [`.prototools`](./config.mdx) are combined, and like everything activation
+applies, they're removed when you leave a directory where they're configured. They're only defined
+by shell activation, not by shims, [`proto run`](../commands/run.mdx), or
+[`proto shell`](../commands/shell.mdx), and they aren't part of the `--json` output, as they aren't
+environment variables. In Elvish, aliases are only available in an interactive session.
 
 ### Deactivating
 
@@ -408,24 +424,24 @@ set, removes the `PATH` entries it added, and finally removes the `proto_activat
 next prompt.
 
 The function evaluates the output of [`proto deactivate`](../commands/deactivate.mdx) with
-`--export`. Running [`proto deactivate`](../commands/deactivate.mdx) by itself only reminds you to call the function, as a command
-can't change the shell that launched it. To activate again, evaluate [`proto activate`](../commands/activate.mdx) again, or open
-a new terminal.
+`--export`. Running [`proto deactivate`](../commands/deactivate.mdx) by itself only reminds you to
+call the function, as a command can't change the shell that launched it. To activate again, evaluate
+[`proto activate`](../commands/activate.mdx) again, or open a new terminal.
 
 ## Comparison
 
 Each workflow trades flexibility for speed differently:
 
-|                           | Shims                                        | Binary linking                           | Shell activation                                       |
-| ------------------------- | -------------------------------------------- | ---------------------------------------- | ------------------------------------------------------ |
-| Version used              | Detected for the current directory, per call | Highest installed, or a versioned binary | Detected for the current directory, when the hook runs |
-| Overhead                  | proto runs before every call                 | None                                     | None per call; proto runs on each trigger              |
-| `[env]` variables         | Set for the tool's process                   | Not applied                              | Exported into the shell                                |
-| Global packages on `PATH` | Only within the tool's process               | No                                       | Yes                                                    |
-| Missing versions          | Installed when `auto-install` is enabled     | Only installed versions are linked       | Skipped                                                |
-| Pinned proto version      | No                                           | No                                       | Yes                                                    |
-| Scripts, editors, and CI  | Yes                                          | Yes                                      | Interactive shells only                                |
-| Setup                     | `~/.proto/shims` on `PATH`                   | `~/.proto/bin` on `PATH`                 | A hook in your shell profile                           |
+|                           | Shims                                                                                | Binary linking                           | Shell activation                                       |
+| ------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------- | ------------------------------------------------------ |
+| Version used              | Detected for the current directory, per call, or the next one on `PATH` when none is | Highest installed, or a versioned binary | Detected for the current directory, when the hook runs |
+| Overhead                  | proto runs before every call                                                         | None                                     | None per call; proto runs on each trigger              |
+| `[env]` variables         | Set for the tool's process                                                           | Not applied                              | Exported into the shell                                |
+| Global packages on `PATH` | Only within the tool's process                                                       | No                                       | Yes                                                    |
+| Missing versions          | Installed when `auto-install` is enabled                                             | Only installed versions are linked       | Skipped                                                |
+| Pinned proto version      | No                                                                                   | No                                       | Yes                                                    |
+| Scripts, editors, and CI  | Yes                                                                                  | Yes                                      | Interactive shells only                                |
+| Setup                     | `~/.proto/shims` on `PATH`                                                           | `~/.proto/bin` on `PATH`                 | A hook in your shell profile                           |
 
 Which to use:
 
@@ -435,9 +451,16 @@ Which to use:
   `node-20`, and executables that don't have a shim.
 - **Add shell activation** - For your interactive shell, when you want `[env]` variables, shell
   aliases, and globally installed packages in your session, a pinned proto version, or no overhead
-  per call. Keep shims and binaries on `PATH` underneath, for scripts and editors, and for tools that
-  activation skips.
+  per call. Keep shims and binaries on `PATH` underneath, for scripts and editors, and for tools
+  that activation skips.
 - **Binaries only** - When you want one version of each tool everywhere, with zero overhead, like in
   a container image that installs a single version of each tool. Leave `~/.proto/shims` off `PATH`.
+
+For a one-off session, without changing your setup, [`proto shell`](../commands/shell.mdx) starts a
+new interactive shell with the configured tools (or the ones you list, like
+[`proto shell node@20`](../commands/shell.mdx)) on `PATH` and their environment variables applied,
+without registering a hook. Versions stay fixed for the life of that shell, and exiting it returns
+you to the original session. To run a single command this way, use
+[`proto exec`](../commands/exec.mdx).
 
 For CI pipelines, see the [CI guide](../guides/ci.mdx).
