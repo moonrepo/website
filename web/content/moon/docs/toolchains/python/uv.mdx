@@ -174,9 +174,10 @@ when it creates the virtual environment and installs dependencies, so they only 
 
 When `syncArgs` or `venvArgs` is empty, moon passes its own default arguments to that command instead:
 
-- `--no-managed-python` and `--no-python-downloads` - Only when the Python toolchain has a `version` (configured or
-  inherited from `.prototools`). These ensure uv uses the Python that moon installed, instead of a Python that uv
-  manages or downloads itself.
+- `--no-managed-python` and `--no-python-downloads` - Only when the Python toolchain has a `version`
+  (configured or inherited from
+  [`.prototools`](<../../../../proto/docs/(fundamentals)/config.mdx>)). These ensure uv uses the
+  Python that moon installed, instead of a Python that uv manages or downloads itself.
 - `--no-progress` - Always, to keep the output of moon's actions readable.
 
 Configuring your own arguments _replaces_ these defaults, so include them in your list if you still need them.
@@ -464,8 +465,9 @@ reused.
   the [astral-sh/uv](https://github.com/astral-sh/uv) repository. Canary releases aren't supported.
 - Archives are downloaded from uv's GitHub releases for Linux (x64 and arm64, glibc and musl), macOS (x64 and arm64),
   and Windows (x64), and verified against their published SHA-256 checksum.
-- uv is installed into proto's store (for example, `~/.proto/tools/uv/0.8.0`), which is shared with proto, so a version
-  installed with `proto install uv` is reused.
+- uv is installed into proto's store (for example, `~/.proto/tools/uv/0.8.0`), which is shared with
+  proto, so a version installed with
+  [`proto install uv`](../../../../proto/docs/commands/install.mdx) is reused.
 - The installation provides the `uv` and `uvx` executables, with `uv` as the primary executable.
 
 The `uv venv` and `uv sync` commands that the Python toolchain runs also use the installed uv.

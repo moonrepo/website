@@ -438,7 +438,8 @@ through [proto](../../../../proto/docs/index.mdx), by downloading a prebuilt arc
   arm64), and Windows (x64, and arm64 for Deno v2.7+), and verified against their published
   SHA-256 checksum for Deno v2.0.1+.
 - Deno provides a single `deno` executable. It's stored in proto's store and shared with proto, so
-  a version installed with `proto install deno` is reused as-is.
+  a version installed with [`proto install deno`](../../../../proto/docs/commands/install.mdx) is
+  reused as-is.
 
 For tasks that use the Deno toolchain, moon also prepends Deno's global binaries directories to
 `PATH`: `$DENO_INSTALL_ROOT/bin` and `$DENO_HOME/bin` when those variables are set, and

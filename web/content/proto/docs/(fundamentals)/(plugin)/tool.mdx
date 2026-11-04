@@ -1,0 +1,329 @@
+---
+title: Tools
+icon: Wrench
+---
+
+A **tool** is anything proto installs, versions, and runs: a programming language like Node.js or
+Python, a package manager like pnpm or uv, or a command-line program like moon. proto itself doesn't
+know how any of them work. Each tool is powered by a [plugin](./plugin.mdx), which tells proto where
+to find its versions, what to download for your platform, and which executables it provides. That
+split is what lets one CLI manage every language in a repository, and lets you add any tool that
+proto doesn't support out of the box.
+
+Every tool, built-in or not, goes through the same lifecycle:
+
+1. **Resolve** - proto [detects](../detection.mdx) a version requirement, like `24` or `~3.12`, from
+   the command line, the environment, a [`.prototools`](../config.mdx) file, or the tool's own
+   files, like `.nvmrc`. It then resolves the requirement to an exact version, from the versions the
+   plugin lists.
+2. **Download** - The plugin provides the URL of a prebuilt archive for your operating system and
+   architecture. Some tools can also be [built from source](../../guides/build-from-source.mdx), or
+   install themselves natively, like Rust with rustup.
+3. **Verify** - The download is checked against the tool's
+   [checksum or signature](../../advanced/checksums.mdx), and against the
+   [lockfile](../../advanced/lockfile.mdx) when it's enabled.
+4. **Install** - The archive is unpacked into the [store](../store.mdx), in a directory per version,
+   like `~/.proto/tools/node/24.1.0`, so any number of versions live side by side.
+5. **Locate** - proto locates the tool's [executables](#executables), and makes them available
+   through [shims, binaries, or shell activation](../workflows.mdx).
+
+## Key characteristics
+
+- **Powered by plugins** - Every tool, including those built into proto, is a
+  [WASM or schema plugin](./plugin.mdx#plugin-formats). proto provides the workflow, and the plugin
+  provides the knowledge: where versions are listed, what to download for each platform, and where
+  the executables are.
+- **Named by an ID** - A short [identifier](#tool-identifiers), like `node` or `npm:prettier`, names
+  the tool on the command line, in [`.prototools`](../config.mdx), and in the store.
+- **Installed side by side** - Each version has its own directory in the [store](../store.mdx), so
+  projects can use different versions without conflicting with each other.
+- **Detected per directory** - The version to use is [detected](../detection.mdx) every time a tool
+  runs, so changing into another project switches versions automatically.
+- **Verified** - Downloads are checked against the checksums or signatures that a tool publishes,
+  when available, before anything is installed.
+- **Composable** - A tool can require another to function, like npm requires Node.js, and Poetry
+  requires Python. The required tool must have a version configured too, so pinning `npm` needs a
+  `node` pin alongside it. It's installed first, and added to the environment when the tool runs.
+- **Configurable** - Tools accept their own [settings](#configuration), environment variables, and
+  version aliases in [`.prototools`](../config.mdx).
+
+## Tool identifiers
+
+Every tool has an identifier (ID), like `node`, `pnpm`, or `rust`. It's how you refer to the tool
+in commands, and the key you pin its version with in [`.prototools`](../config.mdx):
+
+```shell
+# Install a tool, and a tool from a backend
+$ proto install node 24
+$ proto install npm:prettier 3
+
+# Pin a version in .prototools
+$ proto pin pnpm 10
+```
+
+```toml title=".prototools"
+node = "24"
+pnpm = "10"
+"npm:prettier" = "3"
+```
+
+IDs are lowercase by convention, and matched exactly, so `Node` and `node` are different tools. In
+[`.prototools`](../config.mdx), quote any ID that contains more than ASCII letters, numbers, dashes,
+and underscores, like `"npm:prettier"`, as TOML doesn't allow other characters in bare keys.
+
+In full, an ID may contain Unicode letters and numbers, dashes (`-`), underscores (`_`), periods
+(`.`), and forward slashes (`/`), plus a leading `@`, so that scoped npm packages like
+`@biomejs/biome` are valid. Anything else, including spaces, fails with an invalid identifier error.
+
+The ID is also how proto finds a tool's plugin: a plugin configured for the ID comes first, then the
+[built-in tools](#built-in-tools), the [community tools](#community-tools), and a default registry
+(see [resolution order](./plugin.mdx#resolution-order)). Because configuration is checked first, you
+can [replace a built-in tool](#overriding-built-in-tools) with another plugin under the same ID. The
+`proto` ID is reserved for proto itself, which is how you
+[pin proto's version](../config.mdx#pinning-proto).
+
+### Backend prefixed
+
+Tools from another ecosystem's package registry use a backend-prefixed ID, in the format
+`<backend>:<tool>`, like `npm:prettier` or `cargo:ripgrep`. The part before the `:` selects a
+[backend](./backend.mdx) plugin, which installs the package named by the part after it, so a package
+becomes a tool without a plugin of its own. Both parts follow the rules above, and an ID can only
+contain one `:`. `npm:prettier` and a plain `prettier` are different tools, each with their own
+versions and settings.
+
+### Environment variables
+
+IDs are also turned into environment variable names, like `PROTO_NODE_VERSION`, which
+[overrides the detected version](../detection.mdx#2-environment-variable). The ID is uppercased,
+dashes become underscores, other characters are removed, and a backend prefix isn't included, so
+`npm:prettier` is controlled by `PROTO_PRETTIER_VERSION`.
+
+## Executables
+
+A tool provides one or more executables, which its plugin locates within each installed version:
+
+- **Primary** - The main executable, typically named after the tool itself. It's
+  what [`proto run`](../../commands/run.mdx) and [`proto bin`](../../commands/bin.mdx) use by
+  default.
+- **Secondary** - Other executables that ship with the tool, like `npx` with npm, or `gofmt` with
+  Go.
+
+Once a version is installed, proto exposes its executables through the
+[workflow](../workflows.mdx) you've chosen:
+
+- [Shims](../workflows.mdx#shims) in `~/.proto/shims`, one per executable. A shim runs
+  [`proto run`](../../commands/run.mdx), so the version is detected from the current directory every
+  time it's executed.
+- [Binaries](../workflows.mdx#binary-linking) in `~/.proto/bin`, which are symlinks to the
+  executables of an installed version.
+- [Shell activation](../workflows.mdx#shell-activation), which adds the executable directories of
+  the detected versions to `PATH`, and updates them as you change directories.
+
+Plugins can opt individual executables out of shims and binaries. Rust, for example, creates
+neither, as rustup already provides `cargo`, `rustc`, and friends in `~/.cargo/bin`. To see a tool's
+executables, shims, and binaries, run [`proto plugin info <id>`](../../commands/plugin/info.mdx).
+
+## Running tools
+
+To run a tool without shims or activation, use [`proto run`](../../commands/run.mdx). It detects a
+version, or uses the one you pass, and runs the primary executable, or a secondary one with `--exe`.
+Arguments for the tool go after `--`.
+
+```shell
+# Run the primary executable, with the detected version
+$ proto run node -- --version
+
+# Run a specific version
+$ proto run node 22 -- ./script.mjs
+
+# Run a secondary executable
+$ proto run npm --exe npx -- cowsay hello
+```
+
+A few things to know about [`proto run`](../../commands/run.mdx), and the shims built on it:
+
+- If the version isn't installed, [`proto run`](../../commands/run.mdx) fails with the command to
+  install it, unless [`auto-install`](../config.mdx#auto-install) is enabled.
+- Secondary executables can also be run by name, like [`proto run npx`](../../commands/run.mdx),
+  once the tool that provides them is installed.
+- If proto doesn't know the tool, or can't detect a version for it, it falls back to an executable
+  with the same name on your `PATH`, outside of proto.
+- A tool's own self-upgrade command, like `bun upgrade`, is blocked, as it would conflict with
+  proto.
+
+To run any command with one or more tools available, use [`proto exec`](../../commands/exec.mdx). It
+adds each tool's executable directories and environment variables to the command's environment,
+so the command, and every process it spawns, uses those versions. Tools are passed as `<id>` or
+`<id>@<version>`, and must already be installed.
+
+```shell
+# Run a command with Node.js 24 and pnpm 10
+$ proto exec node@24 pnpm@10 -- pnpm install
+
+# Run a command with every tool pinned in .prototools
+$ proto exec --tools-from-config -- npm test
+```
+
+To find where an executable lives, use [`proto bin`](../../commands/bin.mdx). It prints the absolute
+path to the primary executable of the detected, or given, version:
+
+```shell
+# Print the path to the primary executable
+$ proto bin node
+
+# Print the path to its shim, or its binary
+$ proto bin node --shim
+$ proto bin node --bin
+
+# Print where executables of globally installed packages are located
+$ proto bin npm --dir globals
+```
+
+## Built-in tools
+
+proto ships with plugins for the following tools, developed in the
+[moonrepo/plugins](https://github.com/moonrepo/plugins) repository, so they work by ID with no
+configuration. Each proto release pins a version of every built-in plugin, which is downloaded from
+`ghcr.io/moonrepo` the first time it's used (or from a
+[mirror](./plugin.mdx#mirroring-built-in-plugins)). Upgrading proto with
+[`proto upgrade`](../../commands/upgrade.mdx) is how you get newer versions of them. Refer to each
+tool's page for its settings and behavior.
+
+| Tool                             | ID                   | Notes                                       |
+| -------------------------------- | -------------------- | ------------------------------------------- |
+| [Bun](../../tools/bun.mdx)       | `bun`                | JavaScript runtime and package manager      |
+| [Deno](../../tools/deno.mdx)     | `deno`               | JavaScript runtime                          |
+| [Go](../../tools/go.mdx)         | `go`                 |                                             |
+| [Java](../../tools/java.mdx)     | `java`, `jdk`, `jre` | `jre` installs the runtime only. Unstable   |
+| [Kotlin](../../tools/kotlin.mdx) | `kotlin`             | Unstable                                    |
+| [moon](../../tools/moon.mdx)     | `moon`               | Build system and repository management tool |
+| [Node.js](../../tools/node.mdx)  | `node`               | JavaScript runtime                          |
+| [npm](../../tools/npm.mdx)       | `npm`                | Package manager, requires `node`            |
+| [Nub](../../tools/nub.mdx)       | `nub`                | Node.js toolkit and package manager         |
+| [pnpm](../../tools/pnpm.mdx)     | `pnpm`               | Package manager, requires `node`            |
+| [Poetry](../../tools/poetry.mdx) | `poetry`             | Python package manager, requires `python`   |
+| [Python](../../tools/python.mdx) | `python`             |                                             |
+| [Ruby](../../tools/ruby.mdx)     | `ruby`               | Unstable, Windows isn't supported           |
+| [Rust](../../tools/rust.mdx)     | `rust`               | Installs toolchains with rustup             |
+| [Swift](../../tools/swift.mdx)   | `swift`              | Unstable                                    |
+| [uv](../../tools/uv.mdx)         | `uv`                 | Python package and project manager          |
+| [Yarn](../../tools/yarn.mdx)     | `yarn`               | Package manager, requires `node`            |
+| [Zig](../../tools/zig.mdx)       | `zig`                | Unstable                                    |
+| [ZLS](../../tools/zls.mdx)       | `zls`                | Zig language server. Unstable               |
+
+Unstable tools are still maturing, and proto prints a warning when installing them. proto itself is
+also a built-in tool, with the reserved `proto` ID, and the asdf, Cargo, and npm
+[backends](./backend.mdx#built-in-backends) are built in too.
+
+### Overriding built-in tools
+
+To replace a built-in tool, like to use a fork, or a different release of its plugin, configure a
+plugin for its ID. Configured plugins take precedence over built-in ones:
+
+```toml title=".prototools"
+[plugins.tools]
+node = "https://github.com/moonrepo/plugins/releases/download/node_tool-v0.17.13/node_tool.wasm"
+```
+
+To limit which built-in tools are available, use the [`builtin-tools`](../config.mdx#builtin-tools)
+setting. `false` disables all of them, and a list enables only the IDs in it. proto itself is always
+available. This is useful in locked-down environments, where every plugin must come from an
+approved source.
+
+```toml title=".prototools"
+[settings]
+builtin-tools = ["node", "npm", "pnpm"]
+```
+
+A disabled tool is then located like any unknown ID (see
+[resolution order](./plugin.mdx#resolution-order)). The [community registry](#community-tools)
+doesn't include built-in tools, so it needs a configured plugin, or an image in a
+[default registry](./plugin.mdx#registries).
+
+## Community tools
+
+The [community plugins](https://github.com/moonrepo/community-plugins) repository collects
+[schema plugins](./plugin.mdx#toml-json-and-yaml) for popular tools that aren't built in, like
+Bazel, Biome, just, Ruff, and ShellCheck. They're maintained by the community, each one is
+install-tested on Linux, macOS, and Windows, and new tools are added with a pull request to that
+repository. Browse its README for the full list.
+
+Community tools work by ID, without configuring a plugin. When an ID isn't configured or built in,
+proto looks it up in the community registry, an index of these plugins that's published in the
+proto repository (`registry/data/community.json`), and cached locally for 24 hours.
+
+```shell
+# No plugin configuration required
+$ proto install just
+$ proto install ruff
+```
+
+To turn this off, and require every tool that isn't built in to be configured explicitly, set
+[`community-tools`](../config.mdx#community-tools) to `false` in `[settings]`, or the
+`PROTO_COMMUNITY_TOOLS` environment variable to `false`. Configured plugins and built-in tools
+always take precedence, so a community tool never replaces one of them.
+
+```toml title=".prototools"
+[settings]
+community-tools = false
+```
+
+<Callout>
+  Community plugins aren't shipped with proto, so pinning a community tool in a
+  project's [`.prototools`](../config.mdx) requires [trusting](../trust.mdx)
+  that configuration first. Pins for built-in tools are always applied.
+</Callout>
+
+## Third-party tools
+
+Any other tool can be used through a plugin of its own: one published by its authors or someone in
+the community, or one you create yourself, as a [WASM](../../../../wasm/docs/creating.mdx) or
+[schema](../../schema.mdx#creating-a-plugin) plugin. proto doesn't resolve
+these automatically, so you register the plugin under an ID of your choosing, with a
+[locator](../../../../wasm/docs/plugin-locators.mdx) that tells proto where to download it from.
+
+Find published plugins with [`proto plugin search`](../../commands/plugin/search.mdx), which
+searches the third-party registry (`registry/data/third-party.json` in the proto repository) by ID,
+name, and description, and prints each plugin's locator. Then register it with
+[`proto plugin add`](../../commands/plugin/add.mdx), and install it like any other tool:
+
+```shell
+# Find a plugin, register it, and install it
+$ proto plugin search example
+$ proto plugin add example github://org/proto-example-tool
+$ proto install example
+```
+
+[`proto plugin add`](../../commands/plugin/add.mdx) writes the locator to
+[`.prototools`](../config.mdx), in the tool's [`plugin`](../config.mdx#tools-plugin) setting, or in
+[`[plugins]`](../config.mdx#plugins) when the file already has that table. You can write either by
+hand too. Relative `file://` locators are resolved from the directory of the config file.
+
+```toml title=".prototools"
+# What proto plugin add writes
+[tools.example]
+plugin = "github://org/proto-example-tool"
+
+# The same, in [plugins]
+[plugins.tools]
+example = "file://./plugins/example.toml"
+```
+
+To make your own plugin appear in search results, add it to the third-party registry with a pull
+request to the proto repository.
+
+<Callout type="warning">
+  Plugins are executable code, so a locator in a project's
+  [`.prototools`](../config.mdx) is ignored until that configuration is
+  [trusted](../trust.mdx). Until then, using the tool fails, instead of falling
+  back to a different plugin.
+</Callout>
+
+## Configuration
+
+Tools are configured in [`.prototools`](../config.mdx). A tool's version is pinned with a
+top-level key, as described in [pinning versions](../config.mdx#pinning-versions). Everything else
+about it lives in its own [`[tools.*]`](../config.mdx#tools) table, like custom
+[aliases](../config.mdx#tools-aliases), [environment variables](../config.mdx#tools-env), a
+[plugin locator](../config.mdx#tools-plugin), and settings for the tool's plugin, which each tool
+documents on its own page.

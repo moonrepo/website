@@ -3,32 +3,413 @@ title: Version specification
 icon: Tag
 ---
 
-## Semantic versions
+A **version specification**, or spec, is how you tell proto which version of a
+[tool](<./(plugin)/tool.mdx>) to use. It can be an exact version like `20.11.0`, a partial version
+or requirement like `20` or `^20.11`, a range like `>=18 <21`, or an alias like `latest`. Specs are
+accepted anywhere proto asks for a version: as an argument to commands like
+[`proto install`](../commands/install.mdx) and [`proto run`](../commands/run.mdx), in
+[`.prototools`](./config.mdx), in `PROTO_<TOOL>_VERSION`
+[environment variables](./detection.mdx#2-environment-variable), and in the
+[ecosystem files](./detection.mdx#4-ecosystem-files) that a tool's plugin reads, like `.nvmrc` or
+`rust-toolchain.toml`.
 
-### Syntax
+```shell
+# Install the newest Node.js 20 release
+$ proto install node 20
 
-### Guidelines
+# Run a specific version, regardless of what's configured
+$ proto run node 18.20.4 -- --version
 
-## Calendar versions
+# Use the current LTS release for a single command
+$ PROTO_NODE_VERSION=stable node --version
+```
 
-### Syntax
+```toml title=".prototools"
+node = "20.11.0"
+npm = "^10.2"
+python = "3.12"
+rust = "stable"
+```
 
-### Guidelines
+What you write is an _unresolved_ spec. Before proto can install or run a tool, it _resolves_ the
+spec to an exact version, from the versions that the tool's plugin reports as available:
 
-## Version scopes
+- A **version** resolves to itself, as long as the tool has that version. When running a tool, it's
+  used as-is, without loading the available versions at all.
+- A **requirement** or **range** resolves to the highest version that matches it, preferring
+  versions that are already installed.
+- An **alias** is looked up, and the spec it maps to is resolved instead.
 
-### Syntax
+To check what a spec matches, pass it to [`proto versions`](../commands/versions.mdx):
 
-### Guidelines
+```shell
+$ proto versions node "^20 || ^22"
+```
+
+Not sure which kind to write? See [choosing a spec](#choosing-a-spec).
 
 ## Requirements and ranges
 
+A **requirement** is an operator followed by a full or partial version, like `^20.11` or `>=18`. It
+accepts a family of versions instead of a single one, and proto resolves it to the highest version
+that matches. A **range** combines multiple requirements, like `>=18 <21` or `^20 || ^22`. The
+syntax is compatible with most ranges you'll find in ecosystem files, like `engines` in
+`package.json`.
+
+```toml title=".prototools"
+node = "20"
+npm = "^10.2"
+pnpm = ">=9 <10"
+```
+
 ### Syntax
+
+| Operator      | Meaning                                      | Example   | Matches                  | Doesn't match    |
+| ------------- | -------------------------------------------- | --------- | ------------------------ | ---------------- |
+| _none_        | A partial version, the same as `~`           | `1.2`     | `1.2.0`, `1.2.9`         | `1.1.9`, `1.3.0` |
+| `=`, `==`     | Exactly, ignoring build metadata             | `=1.2.3`  | `1.2.3`, `1.2.3+build.5` | `1.2.2`, `1.2.4` |
+| `>`           | Greater than                                 | `>1.2.3`  | `1.2.4`, `2.0.0`         | `1.2.2`, `1.2.3` |
+| `>=`          | Greater than or equal to                     | `>=1.2.3` | `1.2.3`, `2.0.0`         | `0.9.0`, `1.2.2` |
+| `<`           | Less than                                    | `<1.2.3`  | `0.9.0`, `1.2.2`         | `1.2.3`, `2.0.0` |
+| `<=`          | Less than or equal to                        | `<=1.2.3` | `1.2.2`, `1.2.3`         | `1.2.4`, `2.0.0` |
+| `~`           | At least this version, within the same minor | `~1.2.3`  | `1.2.3`, `1.2.9`         | `1.2.2`, `1.3.0` |
+| `^`           | At least this version, within the same major | `^1.2.3`  | `1.2.3`, `1.9.0`         | `1.2.2`, `2.0.0` |
+| `*`, `x`, `X` | Any value for a part, or any version alone   | `1.x`     | `1.0.0`, `1.9.9`         | `0.9.9`, `2.0.0` |
+
+A few operators depend on which parts you define:
+
+- **Partial versions** - Omitted parts match any value, so a partial version covers every release
+  that starts with it. That's why `1.2`, `=1.2`, and `~1.2` are the same, and all match any `1.2.x`,
+  while `~1` matches any `1.x.x`. Comparisons work the same way: `>1.2` only matches versions beyond
+  every `1.2.x`, so it's the same as `>=1.3`, and `<=1.2` includes every `1.2.x`.
+- **Caret with zeros** - `^` never moves past the leftmost non-zero part: `^0.2.3` matches
+  `>=0.2.3 <0.3.0`, and `^0.0.3` matches only `0.0.3`.
+- **Wildcard parts** - `1.*` and `1.2.x` match any value for the wildcard part, and a wildcard can't
+  be followed by a number, so `1.*.3` is invalid. A lone `*` matches any version.
+
+[Calendar](#calendar-versions) requirements use the same operators, with the year, month, and day
+in place of the major, minor, and patch: `~2024-02` matches any day in February 2024, `^2024-02`
+matches February through December 2024, and `>=2024-06` matches June 2024 onwards. `2024-02-*` is
+the same as `~2024-02`.
+
+Requirements are combined into ranges with the following, where a _clause_ is a single requirement,
+requirements combined with and, or a bounded range:
+
+| Combination        | Syntax                                          | Example             | Matches                    | Doesn't match              |
+| ------------------ | ----------------------------------------------- | ------------------- | -------------------------- | -------------------------- |
+| And                | `<req> <req>`, `<req>, <req>`, `<req> && <req>` | `>=1.2 <1.5`        | `1.2.0`, `1.4.9`           | `1.1.9`, `1.5.0`           |
+| Or                 | `<clause> \|\| <clause>`                        | `^1.2 \|\| ^3`      | `1.2.0`, `3.1.0`           | `1.1.9`, `2.0.0`           |
+| And with or        | `<req> <req> \|\| <clause>`                     | `>=1 <1.5 \|\| ^2`  | `1.4.9`, `2.3.0`           | `1.5.0`, `3.0.0`           |
+| Bounded            | `<version> - <version>`                         | `1.2.3 - 2.3.4`     | `1.2.3`, `2.3.4`           | `1.2.2`, `2.3.5`           |
+| Bounded (calendar) | `<version> - <version>`                         | `2024-01 - 2024-06` | `2024-01-01`, `2024-06-30` | `2023-12-31`, `2024-07-01` |
+
+- **And** - Every requirement must match. The 3 forms are equivalent, so `>=1.2, <1.5` and
+  `>=1.2 && <1.5` are the same as `>=1.2 <1.5`.
+- **Or** - At least one clause must match. And is applied before or, so `>=1 <1.5 || ^2` is either
+  `>=1 <1.5`, or `^2`.
+- **Bounded** - Matches both versions, and every version between them. Both sides must be full
+  versions, and the `-` must have spaces around it, as `1.2.3-2.3.4` is a version with a
+  pre-release. With calendar versions, a bound without a day covers the whole month, so
+  `2024-01 - 2024-06` includes all of June. Bounded ranges can be combined with or, but not with
+  and.
+
+Whitespace is allowed after an operator, like `>= 1.2`, but not within a version. Build metadata is
+accepted but ignored, so `=1.2.3+build` is the same as `=1.2.3`. The `!=` and `=>` operators, and
+`|` or `or` as separators, aren't supported.
 
 ### Guidelines
 
+- **Partial versions are requirements.** `20` matches any `20.x.x` release, and `20.11` any
+  `20.11.x`, so they follow a release line. Unlike Cargo, which reads `1.2` as `^1.2`, proto stays
+  within the last part you wrote. When proto writes one for you, like with
+  [`proto pin`](../commands/pin.mdx), it adds the operator, so `20` is written as `~20`, which means
+  the same thing.
+- **A full version isn't a requirement.** `20.11.0` only resolves to `20.11.0`. To accept newer
+  patch or minor releases, add an operator, like `~20.11.0` or `^20.11.0`.
+- **The highest installed match wins.** When proto resolves a requirement to run a tool, it prefers
+  the highest matching version that's already installed, and only checks the available versions
+  when none match. So with `node = "20"` and 20.11.0 installed, 20.11.0 keeps running after 20.12.0
+  is released, until you install the newer one. [`proto outdated`](../commands/outdated.mdx)
+  reports newer matches.
+
+  ```shell
+  # Installs missing versions only, so 20.11.0 keeps running
+  $ proto install
+
+  # Resolves against the available versions, and installs 20.12.0
+  $ proto install node
+  ```
+
+- **Pre-releases must be opted into.** A requirement only matches a pre-release when it includes a
+  pre-release with the same major, minor, and patch. `>=1.2.3-alpha` matches `1.2.3-beta` and
+  `1.2.4`, but not `1.2.4-beta`, while `*` and `>=20` never match `21.0.0-rc.1`. To use a
+  pre-release, pin it as a full version.
+- **Lockfiles freeze the result.** With the [lockfile](../advanced/lockfile.mdx) enabled, a
+  requirement resolves to the version locked for it, so every machine uses the same version until
+  the lockfile is updated with [`proto install --update-lockfile`](../commands/install.mdx). See
+  [version resolution](../advanced/lockfile.mdx#version-resolution).
+- **Quote requirements in your shell.** Characters like `>`, `<`, `|`, and `^` have special meaning
+  in most shells, so wrap requirements in quotes on the command line, like
+  [`proto install node ">=18 <21"`](../commands/install.mdx).
+
+## Semantic versions
+
+[Semantic versioning](https://semver.org) (semver) is the format most tools use: a major, minor,
+and patch number, like `1.2.3`, with an optional pre-release and build metadata. In proto, only a
+spec with all three numbers is a semantic _version_. With fewer numbers, like `1.2`, it's a
+[requirement](#requirements-and-ranges) instead.
+
+```toml title=".prototools"
+node = "20.11.0"
+```
+
+### Syntax
+
+| Format                                  | Example                                         |
+| --------------------------------------- | ----------------------------------------------- |
+| `<major>.<minor>.<patch>`               | `1.2.3`                                         |
+| `<major>.<minor>.<patch>-<pre>`         | `1.2.3-alpha.1`, `1.2.3-rc.0`                   |
+| `<major>.<minor>.<patch>+<build>`       | `1.2.3+build.5`                                 |
+| `<major>.<minor>.<patch>-<pre>+<build>` | `1.2.3-beta.1+exp.sha.5114f85`                  |
+| `v<major>.<minor>.<patch>`              | `v1.2.3`, the same as `1.2.3`                   |
+| `<scope>-<major>.<minor>.<patch>`       | `temurin-21.0.2`, see [scopes](#version-scopes) |
+
+- **Numbers** - Major, minor, and patch are all required, and are whole numbers without leading
+  zeros. `1.02.3` and `1.2.3.4` are invalid.
+- **Pre-release** - Starts with `-`, followed by `.` separated identifiers made of letters, digits,
+  `-`, and `_`, like `alpha.1` or `rc-2`.
+- **Build metadata** - Starts with `+`, followed by identifiers in the same format, like `build.5`.
+- **Prefix** - A leading `v` or `V` is accepted, and dropped, so proto writes `v1.2.3` as `1.2.3`.
+
+### Guidelines
+
+- **Full versions don't move.** A full version runs the same on every machine and in CI, which is
+  why it's the recommended spec for [shared configs](#choosing-a-spec). It's also the fastest to
+  run, as proto doesn't need to load the tool's available versions to resolve it.
+- **Versions match exactly.** A version must exist exactly as written, build metadata included, so
+  `21.0.2` doesn't resolve to a release published as `21.0.2+13`. The
+  [requirement](#requirements-and-ranges) `=21.0.2` ignores build metadata, so it does match it.
+- **Pre-releases come before their release.** Versions are ordered by semver precedence, so
+  `1.0.0-alpha` < `1.0.0-alpha.1` < `1.0.0-beta` < `1.0.0-rc.1` < `1.0.0`. Numeric identifiers are
+  compared as numbers (`rc.2` < `rc.10`), and build metadata doesn't affect precedence. Requirements
+  only match pre-releases when they opt in, as described in
+  [requirements and ranges](#requirements-and-ranges).
+- **Plugins normalize other formats.** A tool whose releases don't follow semver is converted by its
+  plugin, so the version you write may differ from the tool's own. For example, Python's `3.13.0rc1`
+  is `3.13.0-rc.1` in proto. When unsure, list the tool's versions with
+  [`proto versions`](../commands/versions.mdx).
+
+## Calendar versions
+
+[Calendar versioning](https://calver.org) (calver) uses the release date as the version: a year, a
+month, and an optional day, separated by dashes, like `2024-02-26`. Calendar versions support
+pre-releases and build metadata like semver, with a few differences.
+
+```toml title=".prototools"
+my-tool = "2024-02-26"
+```
+
+### Syntax
+
+| Format                           | Example                                         |
+| -------------------------------- | ----------------------------------------------- |
+| `<year>-<month>`                 | `2024-02`, `2024-2`                             |
+| `<year>-<month>-<day>`           | `2024-02-26`, `2024-2-26`                       |
+| `<year>-<month>[-<day>]-<pre>`   | `2024-02-rc.1`, `2024-02-26-beta.1`             |
+| `<year>-<month>[-<day>]+<build>` | `2024-02-26+2`                                  |
+| `v<year>-<month>[-<day>]`        | `v2024-02-26`                                   |
+| `<scope>-<year>-<month>[-<day>]` | `vendor-2024-02`, see [scopes](#version-scopes) |
+
+- **Year** - 2 to 4 digits. Shorter years are added to 2000, so `24-02` is `2024-02`, and `124-02`
+  is `2124-02`.
+- **Month** - `1` to `12`, with or without a leading zero.
+- **Day** - `1` to `31`, with or without a leading zero. Optional.
+- **Pre-release** - Starts with `-` like semver, but must start with a letter, so that it can't be
+  mistaken for a month or day. `2024-02-rc.1` has a pre-release, while `2024-02-26-1` is invalid.
+- **Build metadata** - Starts with `+`, like semver. There's no separate "micro" number, so a
+  release counter goes here, like `2024-02-26+2`.
+- **Normalized form** - proto writes years with 4 digits, and months and days with 2, so `24-2-6`
+  is written as `2024-02-06`.
+
+### Guidelines
+
+- **The separator decides the format.** Dashes are calendar, and dots are semantic. `2024-02-26` is
+  a calendar version, while `2024.2.26` is a semantic version with a major of `2024`. If a tool
+  publishes dotted dates, write them as semver.
+- **A year and month is a complete version.** `2024-02` is a version, not a partial one, so it only
+  resolves to a release published as exactly `2024-02`. To accept any release in February 2024, use
+  a requirement like `~2024-02`.
+- **A year alone is a requirement.** `2024` has no dash, so it's the semantic requirement `~2024`.
+  Requirements match versions by their numbers, regardless of format, so it still matches every
+  calendar release in 2024.
+
 ## Aliases
+
+An **alias** is a name that maps to another spec, like `latest` to `22.11.0`, or `work` to `^20`.
+Aliases come from proto itself, from the tool's plugin, or from your own configuration. Any spec
+that isn't a version, requirement, or range is an alias: a name that starts with a letter, followed
+by letters, digits, `-`, `_`, `.`, `/`, or `\`. That's why `lts-iron` and `lts/iron` are aliases,
+while `node-20` is a [scoped requirement](#version-scopes), and `v20` is the requirement `~20`.
+
+When resolving an alias, proto looks it up in the following order, and resolves the spec it maps to,
+which may be a version, a requirement, a range, or another alias. An alias that isn't defined fails
+to resolve.
+
+1. **Custom aliases** - Defined in your configuration, see [custom aliases](#custom-aliases).
+2. **Tool aliases** - Provided by the tool's plugin, along with its available versions.
+
+Aliases like `latest` and `stable` move as new versions are released, so different machines can
+resolve them differently (see [choosing a spec](#choosing-a-spec)). To list a tool's aliases, and
+what they map to, run:
+
+```shell
+$ proto versions node --aliases
+```
 
 ### Built-in aliases
 
+proto itself handles 2 aliases, for every tool:
+
+- **`latest`** - The newest stable release, as reported by the tool's plugin. This is usually the
+  highest version that isn't a pre-release. When a plugin doesn't report one, the highest available
+  version is used. It's also what [`proto install <tool>`](../commands/install.mdx) installs when no
+  version is configured or detected, and the [`pin-latest`](./config.mdx#pin-latest) setting pins
+  the version it resolved to when installing it.
+- **`canary`** - A special spec that's never looked up or matched against the available versions.
+  It's passed to the tool's plugin, which installs its latest unreleased build, typically a nightly.
+  Not every tool supports it, and those that don't fail with an error. Once installed, select it
+  like any other version, for example with `PROTO_BUN_VERSION=canary`.
+
+```shell
+$ proto install bun canary
+```
+
+Every other alias comes from the tool's plugin, so they vary per tool. Some notable ones:
+
+| Tool                                                                          | Aliases                                                                                                                                                                                               |
+| ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Node.js](../tools/node.mdx)                                                  | `stable` for the latest LTS release, and LTS codenames like `iron` or `jod`. Also `lts` and `lts-latest` for `stable`, `lts-<codename>` and `lts/<codename>` for a codename, and `node` for `latest`. |
+| [npm](../tools/npm.mdx), [pnpm](../tools/pnpm.mdx), [yarn](../tools/yarn.mdx) | The package's dist-tags on the npm registry, like `next`. npm also supports `bundled`, the version that ships with the current Node.js version, and yarn supports `berry`.                            |
+| [Rust](../tools/rust.mdx)                                                     | The `stable`, `beta`, and `nightly` channels, which are kept as-is and installed with `rustup`, instead of resolving to a version.                                                                    |
+| [Zig](../tools/zig.mdx)                                                       | `master`, for the latest development build.                                                                                                                                                           |
+
 ### Custom aliases
+
+You can define your own aliases per tool, with the [`aliases`](./config.mdx#tools-aliases) table of
+`[tools.<id>]` in [`.prototools`](./config.mdx). Each maps a name to any
+spec, and the name can then be used anywhere a spec is accepted, for that tool. This is handy for
+giving a version a meaningful name, or for sharing a requirement between projects.
+
+```toml title=".prototools"
+node = "work"
+
+[tools.node.aliases]
+work = "^20.11"
+legacy = "16.20.2"
+```
+
+Instead of editing the file, you can manage aliases with [`proto alias`](../commands/alias.mdx) and
+[`proto unalias`](../commands/unalias.mdx). Both update the closest [`.prototools`](./config.mdx)
+by default, and accept a location, like `global` for [`~/.proto/.prototools`](./config.mdx), to
+make an alias available in every directory.
+
+```shell
+# Add an alias to the closest .prototools
+$ proto alias node work "^20.11"
+
+# Add an alias to the global .prototools
+$ proto alias node work "^20.11" --to global
+
+# Remove an alias
+$ proto unalias node work
+```
+
+- **Naming** - A name must start with a letter, followed by letters, digits, `-`, `_`, `.`, `/`, or
+  `\`. [`proto alias`](../commands/alias.mdx) rejects other names, and an alias that maps to itself.
+- **Precedence** - Custom aliases are looked up before the tool's own, so a custom alias with the
+  same name, like `stable`, takes its place.
+- **Chaining** - An alias can map to another alias, like `ci = "work"`.
+- **Merging** - Aliases from every loaded [`.prototools`](./config.mdx) are merged, like other
+  [`[tools.<id>]`](./config.mdx#tools) settings, so an alias in the global config is available
+  everywhere.
+- **Trust** - Aliases aren't security-sensitive, so they're applied even from configs that aren't
+  [trusted](./trust.mdx).
+
+<Callout type="warning">
+  A name is only used as an alias when it isn't a version, requirement, or
+  range. [`proto alias`](../commands/alias.mdx) accepts names like `v2` (the
+  requirement `~2`), `x` (any version), `work-2024` (a scoped requirement), and
+  `canary`, but they're never resolved as aliases. Choose names that don't look
+  like versions.
+</Callout>
+
+## Version scopes
+
+A **scope** is a prefix that groups a tool's versions, like by the vendor or distribution that built
+them. It's joined to the version with a dash: `<scope>-<version>`. Java is the main example:
+`temurin-21.0.2` and `zulu-21.0.2` are both Java 21.0.2, built by different vendors, and the scope
+tells them apart.
+
+```toml title=".prototools"
+java = "temurin-21"
+```
+
+### Syntax
+
+| Format                            | Example                           | Kind        |
+| --------------------------------- | --------------------------------- | ----------- |
+| `<scope>-<major>.<minor>.<patch>` | `temurin-21.0.2`                  | Version     |
+| `<scope>-<year>-<month>[-<day>]`  | `vendor-2024-02`                  | Version     |
+| `<scope>-<partial>`               | `temurin-21`, `temurin-21.0`      | Requirement |
+| `<op><scope>-<version>`           | `^temurin-21`, `>=temurin-17.0.1` | Requirement |
+| `<scope>-*`                       | `temurin-*`                       | Requirement |
+
+Scoped requirements and versions can also be combined into ranges, like `temurin-17 || temurin-21`
+or `>=temurin-17 <temurin-22`.
+
+- **Name** - Starts with a letter or digit, followed by letters, digits, `-`, `_`, or `.`.
+- **Separator** - The scope ends at the last `-` that's followed by a version, so a scope can
+  contain dashes and numbers itself. `graalvm-ce-21.0.2` has the scope `graalvm-ce`.
+- **Operators** - Go before the scope, as in `^temurin-21`, not `temurin-^21`.
+- **Pre-releases** - A dash _after_ the version starts a pre-release, not a scope, so `1.2.3-alpha`
+  is unscoped.
+
+### Guidelines
+
+- **Only use scopes that the tool supports.** Each tool's plugin decides what its scopes mean, and
+  most tools don't use them. [Java](../tools/java.mdx) uses the scope for the distribution, and adds
+  its default distribution (`openjdk`) to unscoped versions, so `java = "21"` is the same as
+  `java = "openjdk-21"`.
+- **Scoped requirements stay in their scope.** `temurin-21` only matches versions scoped to
+  `temurin`, never `zulu-21.0.2` or an unscoped `21.0.2`. An unscoped requirement, like `21`,
+  matches versions in any scope.
+- **Use one scope per spec.** proto loads and caches a tool's available versions for the spec's
+  scope. A spec that mixes scopes, like `temurin-17 || zulu-21`, has no single scope to load them
+  for.
+- **Watch out for dashed names.** A name followed by a dash and a number, like `node-20`, is a
+  scoped requirement, not an [alias](#aliases). Only when the part after the dash isn't a version,
+  like `lts-iron`, is it an alias.
+
+## Choosing a spec
+
+Which kind of spec to write depends on who uses the config:
+
+- **Shared with a team** - In a repository's [`.prototools`](./config.mdx), pin full versions, so
+  every machine and CI run the same version. To pin the exact version that a requirement or alias
+  currently resolves to, pass `--resolve` to [`proto pin`](../commands/pin.mdx). If you'd rather
+  write requirements, enable the [lockfile](../advanced/lockfile.mdx), which locks each one to the
+  version it resolved to.
+
+  ```shell
+  # Pins the version that stable resolves to, like 22.11.0
+  $ proto pin node stable --resolve
+  ```
+
+- **Just for you** - For your own fallback versions, in the
+  [global config](./config.mdx#locations), a partial version or requirement, like `node = "22"`,
+  follows a release line without editing the file. [`proto outdated`](../commands/outdated.mdx)
+  reports newer matches.
+- **A single command** - Aliases that move with new releases, like `latest` and `stable`, suit
+  one-off commands, like [`proto install node latest`](../commands/install.mdx). In a config,
+  different machines can resolve them to different versions, and
+  [`proto outdated --update`](../commands/outdated.mdx) leaves them untouched.

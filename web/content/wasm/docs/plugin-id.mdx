@@ -4,7 +4,8 @@ icon: IdCard
 ---
 
 The plugin identifier (or ID) is the key the plugin was configured with, for example `node` in
-`.moon/toolchains.config` for moon, or `rust` in `.prototools` for proto.
+`.moon/toolchains.config` for moon, or `rust` in
+[`.prototools`](<../../proto/docs/(fundamentals)/config.mdx>) for proto.
 
 The ID is chosen by whoever configures the plugin, not by the plugin itself, so the same WASM file
 can be loaded under different IDs. Avoid hardcoding an ID in your plugin, and read it at runtime

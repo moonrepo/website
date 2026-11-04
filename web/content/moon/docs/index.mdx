@@ -47,9 +47,9 @@ $ proto install moon --pin
 ```
 
 proto installs moon into its own store (`~/.proto/tools/moon`), and makes `moon` and `moonx`
-available through its shims, so the version that runs is resolved from the closest `.prototools`
-file. This is the easiest way to pin moon per repository (see
-[pinning a version](#pinning-a-version)).
+available through its shims, so the version that runs is resolved from the closest
+[`.prototools`](<../../proto/docs/(fundamentals)/config.mdx>) file. This is the easiest way to pin
+moon per repository (see [pinning a version](#pinning-a-version)).
 
 ```toml title=".prototools"
 moon = "3.0.0"
@@ -160,8 +160,10 @@ platform, extract it, and move `moon` and `moonx` into a directory on your `PATH
 moon can upgrade itself with [`moon upgrade`](./commands/upgrade.mdx), which checks for a newer
 version, and installs it based on how moon was installed:
 
-- **proto** - Defers to proto, by running `proto install moon latest --pin local`, which also pins
-  the new version in the `.prototools` of the current directory.
+- **proto** - Defers to proto, by running
+  [`proto install moon latest --pin local`](../../proto/docs/commands/install.mdx), which also pins
+  the new version in the [`.prototools`](<../../proto/docs/(fundamentals)/config.mdx>) of the
+  current directory.
 - **Install scripts** - Downloads the new release, and replaces `moon` and `moonx` in place, keeping
   the previous binaries as `.backup` files. Pass `--update-constraint` to also update
   [`versionConstraint`](/moon/api/WorkspaceConfig#versionconstraint) to the new version.
@@ -195,7 +197,7 @@ read the [v3 migration guide](./guides/migrate/3.0.mdx) first.
 
 Uninstall moon with the tool that installed it:
 
-- **proto** - Run `proto uninstall moon`.
+- **proto** - Run [`proto uninstall moon`](../../proto/docs/commands/uninstall.mdx).
 - **Install scripts** - Delete the `moon` and `moonx` executables from the
   [install location](#install-location), and remove any references from your shell profiles. To also remove moon's global data, like downloaded plugins, delete `~/.moon`
   entirely.
@@ -222,8 +224,9 @@ You can also enable tab-completion for commands and options in your shell, with
 Different moon versions can behave differently, so everyone working in a repository, including CI,
 should run the same version. There are a few ways to pin it:
 
-- **`.prototools`** - When installed with [proto](#proto), the version in `.prototools` is the one
-  that runs in that repository.
+- **[`.prototools`](<../../proto/docs/(fundamentals)/config.mdx>)** - When installed with
+  [proto](#proto), the version in [`.prototools`](<../../proto/docs/(fundamentals)/config.mdx>) is
+  the one that runs in that repository.
 - **`package.json`** - When installed with [npm](#npm), the version in `package.json` and the
   lockfile is the one that runs, even when a global binary is invoked.
 - **`versionConstraint`** - Regardless of how moon is installed, the
@@ -264,9 +267,9 @@ $ curl -fsSL https://moonrepo.dev/install/moon.sh | MOON_CLI_NO_MODIFY_PATH=1 ba
 
 CI machines need moon too. On GitHub Actions, the
 [`moonrepo/setup-toolchain`](https://github.com/moonrepo/setup-toolchain) action installs proto and
-moon, honoring the version pinned in `.prototools`. With other providers, use any of the methods
-above, like the install script or the npm package. See the [CI guide](./guides/ci.mdx) for complete
-workflows.
+moon, honoring the version pinned in [`.prototools`](<../../proto/docs/(fundamentals)/config.mdx>).
+With other providers, use any of the methods above, like the install script or the npm package. See
+the [CI guide](./guides/ci.mdx) for complete workflows.
 
 ## Next steps
 

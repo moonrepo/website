@@ -192,8 +192,8 @@ environment variables like `MOON_UNSTABLE_PYTHON_VERSION` and `MOON_SKIP_INSTALL
 A few places use the stable ID (without the prefix) instead, mostly because they're shared with
 proto:
 
-- **`.prototools`** - Versions are inherited from the `python` entry, not `unstable_python` (see
-  [installing with proto](#installing-with-proto)).
+- **[`.prototools`](<../../../proto/docs/(fundamentals)/config.mdx>)** - Versions are inherited from
+  the `python` entry, not `unstable_python` (see [installing with proto](#installing-with-proto)).
 - **`PROTO_<ID>_VERSION`** - Set for tasks as `PROTO_PYTHON_VERSION`.
 - **[`moon bin`](../commands/bin.mdx)** - Passes the ID to proto, so run `moon bin python`.
 - **[`inheritedBy.toolchains`](/moon/api/InheritedByConfig#toolchains)** - Matches stable IDs, so
@@ -220,7 +220,7 @@ Toolchains are configured in `.moon/toolchains.config`, by ID. Alongside its own
   the tool to download and install through proto, for toolchains that support
   [tier 3](#tier-3-tool-management). When not defined, the tool's binary on your `PATH` is used.
 - [`versionFromPrototools`](/moon/api/ToolchainPluginConfig#versionfromprototools) <TypeLabel type="boolean | string" /> -
-  Inherit `version` from `.prototools` when it isn't configured. `true` matches the toolchain's
+  Inherit `version` from [`.prototools`](<../../../proto/docs/(fundamentals)/config.mdx>) when it isn't configured. `true` matches the toolchain's
   stable ID, and a string matches a custom ID. Defaults to `true`.
 - [`installDependencies`](/moon/api/ToolchainPluginConfig#installdependencies) <TypeLabel type="boolean" /> -
   Install dependencies before running tasks. Defaults to `true`. See
@@ -386,7 +386,7 @@ in order, and the first match wins. When no version is found, moon prompts for o
 
 Version files are only read when adding a toolchain, never at runtime. When running tasks, moon uses
 the configured [`version`](/moon/api/ToolchainPluginConfig#version), or the one inherited from
-`.prototools`.
+[`.prototools`](<../../../proto/docs/(fundamentals)/config.mdx>).
 
 ## Tier 2: Ecosystem integration
 
@@ -558,8 +558,8 @@ Use [`moon hash`](../commands/hash.mdx) to inspect what went into a hash.
 Tier 3 lets moon download, install, and pin a tool for you, like Go, Node.js, or Python, so every
 developer and CI machine runs the same version without installing it themselves. It's enabled by
 configuring a [`version`](/moon/api/ToolchainPluginConfig#version), or inheriting one from
-`.prototools`. Without a version, moon uses the tool's binary on your `PATH`, which must already be
-installed.
+[`.prototools`](<../../../proto/docs/(fundamentals)/config.mdx>). Without a version, moon uses the
+tool's binary on your `PATH`, which must already be installed.
 
 ### Installing with proto
 
@@ -572,19 +572,21 @@ manager. The version comes from the first of:
    like when [testing against multiple versions](../guides/open-source.mdx#testing-multiple-tool-versions)
    in CI.
 3. The `version` setting in [`.moon/toolchains.config`](#configuration).
-4. The `.prototools` file in the directory moon runs in (normally the workspace root), matched by the
-   toolchain's stable ID, unless
+4. The [`.prototools`](<../../../proto/docs/(fundamentals)/config.mdx>) file in the directory moon
+   runs in (normally the workspace root), matched by the toolchain's stable ID, unless
    [`versionFromPrototools`](/moon/api/ToolchainPluginConfig#versionfromprototools) is disabled.
 
 Tools are installed into proto's store, and versions that are already installed are reused, even
 across workspaces. If proto itself isn't installed yet, moon installs it first, at the version set
 by [`proto.version`](/moon/api/ProtoConfig#version) in `.moon/toolchains.config`.
 
-proto only applies the security-sensitive settings of a local `.prototools` file, like `[env]`,
-`[plugins]`, and `[tools.*]`, once the file is trusted. As moon already runs the workspace's tasks,
-every `.prototools` file within the workspace is trusted automatically, while other local files,
-like one in a parent directory of the workspace, must be trusted with `proto trust` first. In CI,
-every file is trusted.
+proto only applies the security-sensitive settings of a local
+[`.prototools`](<../../../proto/docs/(fundamentals)/config.mdx>) file, like `[env]`, `[plugins]`,
+and `[tools.*]`, once the file is trusted. As moon already runs the workspace's tasks, every
+[`.prototools`](<../../../proto/docs/(fundamentals)/config.mdx>) file within the workspace is
+trusted automatically, while other local files, like one in a parent directory of the workspace,
+must be trusted with [`proto trust`](../../../proto/docs/commands/trust.mdx) first. In CI, every
+file is trusted.
 
 For tasks that use the toolchain, moon prepends the tool's executable directories (and its global
 packages directory) to `PATH`, and sets the `PROTO_<ID>_VERSION` environment variable (using the
@@ -593,12 +595,11 @@ installing dependencies, get the same environment.
 
 Some tools need more than a binary on `PATH`,
 like Java expecting `JAVA_HOME`. moon also activates the environment of each of
-these toolchains, the same way `proto activate` does in your shell, which may
-set environment variables and prepend more directories to `PATH`. Activation
-never overrides a variable that's already configured for the command, like a
-task's [`env`](./task.mdx#environment-variables), and when a task has multiple
-toolchains, the first in the [task's order](./task.mdx#toolchains) takes
-precedence.
+these toolchains, the same way [`proto activate`](../../../proto/docs/commands/activate.mdx) does in
+your shell, which may set environment variables and prepend more directories to `PATH`. Activation
+never overrides a variable that's already configured for the command, like a task's
+[`env`](./task.mdx#environment-variables), and when a task has multiple toolchains, the first in the
+[task's order](./task.mdx#toolchains) takes precedence.
 
 To use the binaries on your `PATH` instead, set the `MOON_TOOLCHAIN_FORCE_GLOBALS` environment
 variable to `true` for every toolchain, or to a comma-separated list of toolchain IDs. moon then

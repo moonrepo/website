@@ -14,9 +14,10 @@ extend it to versions pinned in moon's own configuration files.
 
 ## Pin versions in `.prototools` (recommended)
 
-The cleanest setup requires **no Renovate configuration and no annotations at all**. Renovate ships a
-built-in [`proto` manager](https://docs.renovatebot.com/modules/manager/proto/) that updates tool
-versions declared in `.prototools` files automatically, at any depth in the repository.
+The cleanest setup requires **no Renovate configuration and no annotations at all**. Renovate ships
+a built-in [`proto` manager](https://docs.renovatebot.com/modules/manager/proto/) that updates tool
+versions declared in [`.prototools`](<../../../proto/docs/(fundamentals)/config.mdx>) files
+automatically, at any depth in the repository.
 
 ```toml title=".prototools"
 node = "22.18.0"
@@ -25,7 +26,8 @@ rust = "1.85.0"
 moon = "3.0.0"
 ```
 
-Because moon toolchains inherit their version from `.prototools` by default (via
+Because moon toolchains inherit their version from
+[`.prototools`](<../../../proto/docs/(fundamentals)/config.mdx>) by default (via
 [`versionFromPrototools`](/moon/api/ToolchainPluginConfig#versionfromprototools)), you can leave the
 `version` out of [`.moon/toolchains.config`](<../(fundamentals)/toolchain.mdx>) entirely and let
 proto be the single source of truth:
@@ -38,8 +40,9 @@ proto be the single source of truth:
   }}
 />
 
-With this approach, Renovate keeps `.prototools` current, and moon resolves toolchain versions from
-it. Files that moon derives from those versions, like the
+With this approach, Renovate keeps [`.prototools`](<../../../proto/docs/(fundamentals)/config.mdx>)
+current, and moon resolves toolchain versions from it. Files that moon derives from those versions,
+like the
 [`packageManager` field](../toolchains/javascript/index.mdx#syncing-the-packagemanager-field) in
 `package.json`, are updated the next time moon syncs. No `# renovate:` comments required.
 
@@ -49,15 +52,16 @@ it. Files that moon derives from those versions, like the
   out of sync.
 </Callout>
 
-Tools that are provided by third-party WASM plugins (configured under `[plugins]` in `.prototools`)
-are skipped by Renovate's `proto` manager.
+Tools that are provided by third-party WASM plugins (configured under `[plugins]` in
+[`.prototools`](<../../../proto/docs/(fundamentals)/config.mdx>)) are skipped by Renovate's `proto`
+manager.
 
 ## Pin versions in moon configuration
 
 If you'd rather pin versions in moon's config files, or you have versions that don't live in
-`.prototools` at all (like a toolchain that isn't built into Renovate, or a CI input), moon
-publishes a shared Renovate [config preset](https://docs.renovatebot.com/config-presets/) to cover
-them.
+[`.prototools`](<../../../proto/docs/(fundamentals)/config.mdx>) at all (like a toolchain that isn't
+built into Renovate, or a CI input), moon publishes a shared Renovate
+[config preset](https://docs.renovatebot.com/config-presets/) to cover them.
 
 <Tabs groupId="renovate-setup" items={['Extend the preset (recommended)', 'Inline configuration']}>
 <Tab>
@@ -169,16 +173,19 @@ Useful when annotating a version, or adding a toolchain the structural managers 
 
 - **Config format coverage.** Comment-free structural updates work for the `yml`, `yaml`, `json`,
   and `toml` formats; `jsonc`, `pkl`, and `hcl` are updated through `#` or `//` annotations. Strict
-  `json` can't hold comments, so pin those toolchains structurally or in `.prototools`.
+  `json` can't hold comments, so pin those toolchains structurally or in
+  [`.prototools`](<../../../proto/docs/(fundamentals)/config.mdx>).
 - **Aliases and ranges are skipped.** Values like `latest`, `stable`, `canary`, or `nightly` can't be
   resolved to a concrete version, and are ignored. Annotated versions default to `semver`
   versioning, which doesn't support ranges, so pin exact versions. For this reason, moon's
   [`versionConstraint`](/moon/api/WorkspaceConfig#versionconstraint) (usually a range like
   `>=3.0.0`) is best updated by hand.
-- **Pin each toolchain in one place.** Don't set the same version in both `.prototools` and
-  `.moon/toolchains.config` (or add an annotation on top of a structurally-managed version), as
-  you'll get duplicate pull requests. A `version` in `.moon/toolchains.config` also takes precedence
-  over `.prototools`, so the two can silently disagree.
+- **Pin each toolchain in one place.** Don't set the same version in both
+  [`.prototools`](<../../../proto/docs/(fundamentals)/config.mdx>) and `.moon/toolchains.config` (or
+  add an annotation on top of a structurally-managed version), as you'll get duplicate pull
+  requests. A `version` in `.moon/toolchains.config` also takes precedence over
+  [`.prototools`](<../../../proto/docs/(fundamentals)/config.mdx>), so the two can silently
+  disagree.
 - **Propagate changes on self-hosted Renovate.** You can run [`moon sync`](../commands/sync.mdx)
   after an update via
   [`postUpgradeTasks`](https://docs.renovatebot.com/configuration-options/#postupgradetasks) to

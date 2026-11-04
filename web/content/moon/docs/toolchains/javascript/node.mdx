@@ -363,7 +363,8 @@ through [proto](../../../../proto/docs/index.mdx), by downloading a prebuilt arc
   Node.js 16 (which had no arm64 builds) are downloaded as x64 builds, and run through Rosetta.
 - **Downloads** - Archives are downloaded from `https://nodejs.org/download/release`, and verified
   against the release's `SHASUMS256.txt`. To use an internal mirror, configure the `dist-url`,
-  `dist-url-unofficial`, and `index-url` settings under `[tools.node]` in `.prototools`.
+  `dist-url-unofficial`, and `index-url` settings under `[tools.node]` in
+  [`.prototools`](<../../../../proto/docs/(fundamentals)/config.mdx>).
 - **Executables** - Each release provides `node`, along with the bundled `npm` and `npx`. Installed
   versions are stored in proto's store (`~/.proto/tools/node/<version>`, or under `$PROTO_HOME`),
   and shared with proto and other workspaces.

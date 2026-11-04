@@ -32,10 +32,10 @@ dashes converted to underscores, like `MOON_NODE_VERSION`, `MOON_RUST_VERSION`, 
 accepts any version that proto supports, like `22` or `22.12.0`.
 
 The variable takes precedence over the [`version`](/moon/api/ToolchainPluginConfig#version) setting
-and `.prototools`, and moon installs the requested version through proto before running tasks. A
-project's own version [override](<../(fundamentals)/toolchain.mdx#project-overrides>) still wins
-for that project's tasks (see
-[installing with proto](<../(fundamentals)/toolchain.mdx#installing-with-proto>)).
+and [`.prototools`](<../../../proto/docs/(fundamentals)/config.mdx>), and moon installs the
+requested version through proto before running tasks. A project's own version
+[override](<../(fundamentals)/toolchain.mdx#project-overrides>) still wins for that project's tasks
+(see [installing with proto](<../(fundamentals)/toolchain.mdx#installing-with-proto>)).
 
 In CI, set the variable from your build matrix, so each job runs against a different version.
 

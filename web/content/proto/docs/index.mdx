@@ -3,11 +3,11 @@ title: Install proto
 ---
 
 proto is a pluggable version manager for programming languages and their tooling, written in Rust.
-It installs any number of versions of a [tool](<./(fundamentals)/tool.mdx>) side by side, and
+It installs any number of versions of a [tool](<./(fundamentals)/(plugin)/tool.mdx>) side by side, and
 [detects](<./(fundamentals)/detection.mdx>) which one to run from the current directory, using a
 [`.prototools`](<./(fundamentals)/config.mdx>) file or the tool's own ecosystem files, like
 `.nvmrc`. One CLI manages Node.js, Python, Rust, Go, and more, and
-[plugins](<./(fundamentals)/plugin.mdx>) add support for anything else. proto also powers the
+[plugins](<./(fundamentals)/(plugin)/plugin.mdx>) add support for anything else. proto also powers the
 toolchain of [moon](../../moon/docs/index.mdx).
 
 This page covers how to install proto, and how to keep it up to date. Already installed? Jump to
@@ -82,7 +82,8 @@ $ bash (curl -fsSL https://moonrepo.dev/install/proto.sh | psub)
 ```
 
 To install a specific version instead of the latest, pass it as an argument. Any options are
-passed through to `proto setup`, like `--yes` to skip the prompts and use defaults:
+passed through to [`proto setup`](./commands/setup.mdx), like `--yes` to skip the prompts and use
+defaults:
 
 ```shell
 $ bash <(curl -fsSL https://moonrepo.dev/install/proto.sh) 0.63.2 --yes
@@ -191,7 +192,8 @@ it installed. To uninstall it:
 
 1. Delete the `~/.proto` directory. This also removes every tool, plugin, and cached file proto
    downloaded.
-2. Remove the `PROTO_HOME` and `PATH` lines that `proto setup` added to your shell profile.
+2. Remove the `PROTO_HOME` and `PATH` lines that [`proto setup`](./commands/setup.mdx) added to your
+   shell profile.
 3. On Windows, also remove `~\.proto\shims` and `~\.proto\bin` from the `Path` environment variable
    of your user account.
 
@@ -217,21 +219,23 @@ You can also enable tab-completion for commands and options in your shell, with
 ### Pin a version
 
 Different proto versions can behave differently, so everyone working in a repository, including CI,
-should run the same version. Pin it in the repository's `.prototools`, like any other tool:
+should run the same version. Pin it in the repository's
+[`.prototools`](<./(fundamentals)/config.mdx>), like any other tool:
 
 ```toml title=".prototools"
 proto = "0.63.2"
 ```
 
 The pinned version is installed like any other tool, with [`proto install`](./commands/install.mdx).
-With [shell activation](<./(fundamentals)/workflows.mdx#shell-activation>), it's then put first on
-your `PATH` within that directory, so `proto`, and the shims that run your tools, use it instead of
-the globally installed version. See [pinning proto](<./(fundamentals)/config.mdx#pinning-proto>)
-for details.
+With [shell activation](<./(fundamentals)/workflows.mdx#shell-activation>) and an exact version
+pinned, it's then added to your `PATH` within that directory, ahead of `~/.proto/shims` and
+`~/.proto/bin`, so `proto`, and the shims that run your tools, use it instead of the globally
+installed version. See [pinning proto](<./(fundamentals)/config.mdx#pinning-proto>) for details.
 
 <Callout type="warning">
-  Pinning proto is a security-sensitive setting, so a local `.prototools` must
-  be [trusted](<./(fundamentals)/trust.mdx>) before the pin is applied.
+  Pinning proto is a security-sensitive setting, so a local
+  [`.prototools`](<./(fundamentals)/config.mdx>) must be
+  [trusted](<./(fundamentals)/trust.mdx>) before the pin is applied.
 </Callout>
 
 ### Customize install location

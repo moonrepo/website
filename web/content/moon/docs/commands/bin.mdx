@@ -6,9 +6,10 @@ Return an absolute path to a binary within a [toolchain](<../(fundamentals)/tool
 by [proto](../../../proto/docs/index.mdx). This is useful for locating the exact binary that moon (and its tasks)
 will execute, without having to guess at proto's tool directory structure.
 
-Internally this command delegates straight to `proto bin <toolchain>`, inheriting any
-toolchain-specific plugin configuration from the workspace, so the resolved path always matches
-what moon itself would run.
+Internally this command delegates straight to
+[`proto bin <toolchain>`](../../../proto/docs/commands/bin.mdx), inheriting any toolchain-specific
+plugin configuration from the workspace, so the resolved path always matches what moon itself would
+run.
 
 ```shell
 $ moon bin node

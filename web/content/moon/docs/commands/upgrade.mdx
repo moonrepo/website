@@ -14,7 +14,8 @@ a notice and exits without doing anything further.
 How the upgrade is applied depends on how moon was originally installed:
 
 - If moon was installed through [proto](/proto/docs), the upgrade defers to proto by running
-  `proto install moon latest --pin local`, letting proto manage the download and pinning.
+  [`proto install moon latest --pin local`](../../../proto/docs/commands/install.mdx), letting proto
+  manage the download and pinning.
 - If moon was installed via the official install script (living under `~/.moon`), moon downloads
   the appropriate release archive for your operating system and architecture (accounting for
   `musl` vs `gnu` on Linux), unpacks it into a temporary directory, and replaces the existing

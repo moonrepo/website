@@ -3,18 +3,311 @@ title: Version detection
 icon: ScanSearch
 ---
 
+Version detection is how proto decides which version of a [tool](<./(plugin)/tool.mdx>) to run when
+you haven't said. Whenever a tool runs through a [shim](./workflows.mdx#shims) or
+[`proto run`](../commands/run.mdx), or [shell activation](./workflows.mdx#shell-activation) builds
+your environment, proto checks the environment and the current directory, and uses the first version
+it finds. This is what lets `node` be Node.js 22 in one repository and 20 in another, without
+switching anything by hand. It also means proto respects the version files your projects already
+have, like `.nvmrc` or `rust-toolchain.toml`.
+
+Detection finds a [version specification](./version-spec.mdx), like `22.14.0`, `^3.12`, or `lts`.
+Resolving it to a version, and installing it if needed, happens afterwards.
+
 ## Detection order
+
+In short: a version on the command line wins, then a `PROTO_<TOOL>_VERSION` environment variable,
+then the closest [`.prototools`](./config.mdx) or ecosystem file, like `.nvmrc`, walking up from the
+working directory, and finally your global config.
+
+proto checks these sources in order, from most to least explicit, and stops at the first one that
+has a version for the tool. Steps 3 and 4 happen together, in a single walk up the file system, so
+whichever is closest to the working directory wins. A [detection strategy](#detection-strategies)
+can change this, and some commands skip a source, as listed in
+[detection by command](#detection-by-command).
 
 ### 1. Command line argument
 
+A version passed to a command always wins, and skips detection entirely. Any version specification
+works, including ranges and aliases.
+
+```shell
+# Run a specific version
+$ proto run node 20.18.0 -- --version
+
+# Install, or locate the executable of, a specific version
+$ proto install node 22
+$ proto bin node 22
+
+# Run a command with specific versions available
+$ proto exec node@22 pnpm@10 -- pnpm install
+```
+
+Shims pass every argument through to the tool, so they can't accept a version. Use an
+environment variable instead.
+
 ### 2. Environment variable
+
+Next, proto checks the `PROTO_<TOOL>_VERSION` environment variable. `<TOOL>` is the tool's
+[identifier](<./(plugin)/tool.mdx#tool-identifiers>), uppercased, with dashes converted to
+underscores and every other non-alphanumeric character removed. A
+[backend](<./(plugin)/backend.mdx>) prefix isn't part of the name, so `typescript` and
+`npm:typescript` share a variable.
+
+| Tool                 | Variable                     |
+| -------------------- | ---------------------------- |
+| `node`               | `PROTO_NODE_VERSION`         |
+| `my-tool`            | `PROTO_MY_TOOL_VERSION`      |
+| `npm:typescript`     | `PROTO_TYPESCRIPT_VERSION`   |
+| `npm:@biomejs/biome` | `PROTO_BIOMEJSBIOME_VERSION` |
+
+The value can be any version specification, and an empty value is ignored. This is the way to
+override the version for a shim, or for a whole shell session:
+
+```shell
+# Use Node.js 20 for a single command
+$ PROTO_NODE_VERSION=20 node --version
+
+# Use Python 3.12 for the rest of the session
+$ export PROTO_PYTHON_VERSION=3.12
+```
+
+proto also sets these variables itself when it runs a tool, for the tool and the tools it
+requires, so that child processes use the same versions. For example, running `npm` sets both
+`PROTO_NPM_VERSION` and `PROTO_NODE_VERSION`, so the `node` processes it spawns match, even if
+they run in a directory that pins another version. See
+[variables proto sets](../advanced/env-vars.mdx#within-tool-processes).
 
 ### 3. Local configuration
 
+proto then looks for a [`.prototools`](./config.mdx) file that pins the tool, starting in the
+working directory and walking up through each parent directory. The closest pin wins, so a pin in a
+project overrides one at the repository root. This is where [`proto pin`](../commands/pin.mdx)
+writes by default.
+
+```toml title=".prototools"
+node = "22.14.0"
+pnpm = "10"
+```
+
+When the working directory is within your home directory, the walk stops there, so your user config,
+[`~/.prototools`](./config.mdx#locations), is the last file it checks. Don't confuse it with the
+global config, `~/.proto/.prototools`, which lives in proto's own directory, and is checked
+separately, [after the walk](#5-global-configuration). Outside of your home directory, like in
+`/tmp`, the walk continues to the root of the file system, and `~/.prototools` isn't checked.
+
+Which files are checked also depends on the command's
+[resolution mode](./config.mdx#resolution-modes). You'll rarely change it, but
+`--config-mode local` only checks the working directory, and `--config-mode global` only checks
+the global config. In [environment mode](./config.mdx#environment-mode),
+[`.prototools.<env>`](./config.mdx) is checked before [`.prototools`](./config.mdx) in each
+directory.
+
+<Callout>
+  A [`.prototools`](./config.mdx) that hasn't been [trusted](./trust.mdx) only
+  applies pins for built-in tools, and tools using the built-in `npm` and
+  `cargo` backends. Pins for tools loaded from other plugins, tools using the
+  `asdf` backend, and proto itself are skipped, as if they weren't there, until
+  the file is trusted.
+</Callout>
+
 ### 4. Ecosystem files
+
+While walking up, proto also checks each directory for the files that a tool's own ecosystem uses to
+declare a version, right after that directory's [`.prototools`](./config.mdx). The tool's
+[plugin](<./(plugin)/plugin.mdx>) decides which files these are, and how to read them. This means a
+repository with an `.nvmrc`, or a `package.json` with `engines`, works with proto as-is, with no
+[`.prototools`](./config.mdx) required.
+
+In each directory, files are checked in the order the plugin lists them, and the first with a
+version wins. Files that are empty, or that don't declare a version for the tool, like a
+`package.json` without the relevant fields, are skipped, while an invalid version is an error. A
+plugin can also ignore directories, such as anything within `node_modules` for the JavaScript
+tools, so that a dependency's `package.json` never decides which version you run.
+
+Versions from ecosystem files are used everywhere a version is detected, except by shell
+activation (see [detection by command](#detection-by-command)).
+
+Plugins for other tools can support ecosystem files too, whether they're
+[WASM plugins](../../../wasm/docs/tool.mdx#detect_version_files) or
+[schema plugins](../schema.mdx#detecting-versions).
+
+To pin a version in a tool's ecosystem file instead of [`.prototools`](./config.mdx), run
+[`proto pin`](../commands/pin.mdx) with `--tool-native`. For Node.js, Bun, Deno, and the package
+managers, this writes to `devEngines` in `package.json`.
 
 ### 5. Global configuration
 
+When nothing pins the tool while walking up, proto falls back to the global config, at
+[`~/.proto/.prototools`](./config.mdx#locations) (or `$PROTO_HOME/.prototools`). Unlike your user
+config, it isn't part of the walk, and only holds fallback versions. It's your machine-wide default,
+used in any directory without a pin of its own, and is where
+[`proto pin --to global`](../commands/pin.mdx) writes.
+
+```shell
+$ proto pin node 24 --to global
+```
+
+Shims always check the global config, but commands that act on a project, like
+[`proto install`](../commands/install.mdx) and [`proto activate`](../commands/activate.mdx), don't.
+See [detection by command](#detection-by-command).
+
 ### 6. No version detected
 
+When no source has a version, what happens depends on the command, as listed in
+[detection by command](#detection-by-command). Shims and [`proto run`](../commands/run.mdx) look
+for an executable with the same name on `PATH`, outside of `~/.proto/shims` and `~/.proto/bin`, like
+one installed by Homebrew or your operating system, and run it instead. If there isn't one, they
+fail with an error suggesting that you pin a version with [`proto pin`](../commands/pin.mdx), or
+pass it as an argument or environment variable.
+
+The [`auto-install`](./config.mdx#auto-install) setting doesn't change this. It installs a detected
+version that's missing, but never picks a version to install on its own.
+
+<Callout type="warning">
+  The fallback to `PATH` means a tool may still run in a directory without a
+  pin, just not with a version managed by proto. If an unexpected version runs,
+  check what was detected with [`proto status`](../commands/status.mdx).
+</Callout>
+
+### Example
+
+Given the following files, with the default strategy:
+
+```text
+~/
+├── .prototools            # No pin for node
+├── .proto/
+│   └── .prototools        # node = "24"
+└── projects/
+    ├── app/
+    │   ├── .prototools    # node = "22.14.0"
+    │   ├── client/
+    │   │   └── package.json   # "engines": { "node": ">=20" }
+    │   └── server/
+    │       ├── .nvmrc     # 20.18.0
+    │       └── src/
+    └── scripts/
+        └── .nvmrc         # 18
+```
+
+Running `node` in each directory uses the following version:
+
+| Working directory           | Detected  | Source                               |
+| --------------------------- | --------- | ------------------------------------ |
+| `~/projects/app`            | `22.14.0` | `~/projects/app/.prototools`         |
+| `~/projects/app/client`     | `>=20`    | `~/projects/app/client/package.json` |
+| `~/projects/app/server`     | `20.18.0` | `~/projects/app/server/.nvmrc`       |
+| `~/projects/app/server/src` | `20.18.0` | `~/projects/app/server/.nvmrc`       |
+| `~/projects/scripts`        | `18`      | `~/projects/scripts/.nvmrc`          |
+| `~/projects`                | `24`      | `~/.proto/.prototools`               |
+
+And anywhere, `PROTO_NODE_VERSION=21 node` runs Node.js 21, and
+[`proto run node 23`](../commands/run.mdx) runs Node.js 23.
+
+Note how `client` uses its `engines` range instead of the repository's pin, as its `package.json`
+is closer than `app/.prototools`. If that isn't what you want, change the
+[detection strategy](#detection-strategies). As `>=20` is a requirement, not a version, it then
+[resolves](./version-spec.mdx#requirements-and-ranges) to the highest installed version that
+matches, or the highest available one when none is installed.
+
+In `~/projects`, nothing on the way up pins `node`, including your user config, `~/.prototools`, so
+the global config's `24` is used.
+
+## Detection by command
+
+Detection runs whenever proto needs a version you didn't provide, but commands differ in which
+sources they check, and in what they do when nothing is found. Commands that act on a project
+default to the `upwards` [resolution mode](./config.mdx#upwards), so they don't check the global
+config.
+
+| Command                                                                                                                            | Global config | When nothing is detected                               |
+| ---------------------------------------------------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------ |
+| Shims, [`proto run`](../commands/run.mdx)                                                                                          | Checked       | Runs the executable from elsewhere on `PATH`, or fails |
+| [`proto bin <tool>`](../commands/bin.mdx)                                                                                          | Checked       | Uses `*`, the highest installed version                |
+| [`proto install <tool>`](../commands/install.mdx)                                                                                  | Not checked   | Installs `latest`                                      |
+| [`proto install`](../commands/install.mdx), [`proto status`](../commands/status.mdx), [`proto outdated`](../commands/outdated.mdx) | Not checked   | Skips the tool                                         |
+| [`proto activate`](../commands/activate.mdx)                                                                                       | Not checked   | Skips the tool, which still resolves through shims     |
+
+A few commands differ in other ways:
+
+- **Shell activation** only activates tools that are pinned in a [`.prototools`](./config.mdx)
+  file. A tool that's only declared in ecosystem files still runs at the detected version through
+  its shim, and a bare [`proto install`](../commands/install.mdx) installs it.
+- **[`proto exec`](../commands/exec.mdx) and [`proto shell`](../commands/shell.mdx)** don't detect
+  at all. They use the versions you pass them, or the pins in [`.prototools`](./config.mdx) when
+  loading tools from configuration, and a tool passed without a version uses `*`, the highest
+  installed version.
+
+So a version that's only pinned globally runs through its shim, but isn't installed by
+[`proto install`](../commands/install.mdx), or added to your shell by activation. To include the
+global config in those commands, pass `--config-mode upwards-global`:
+
+```shell
+# Also install the versions pinned globally
+$ proto install --config-mode upwards-global
+```
+
 ## Detection strategies
+
+By default, proto treats [`.prototools`](./config.mdx) and ecosystem files equally, and whichever is
+closest to the working directory wins. The [`detect-strategy`](./config.mdx#detect-strategy) setting
+changes how they're ordered. It supports the following values:
+
+- `first-available` (default) - Walks up from the working directory, and in each directory, checks
+  [`.prototools`](./config.mdx), then ecosystem files. The global config is checked last.
+- `prefer-prototools` - Checks every [`.prototools`](./config.mdx) file first, from the working
+  directory up to and including the global config. Only if none pins the tool does it walk up again
+  for ecosystem files.
+- `only-prototools` - Only checks [`.prototools`](./config.mdx) files, and ignores ecosystem files
+  entirely.
+
+```toml title=".prototools"
+[settings]
+detect-strategy = "prefer-prototools"
+```
+
+The setting is read from the merged configuration, so it's typically set once at the root of a
+repository, or with the `PROTO_DETECT_STRATEGY` environment variable. It isn't a
+[security-sensitive setting](./trust.mdx#security-sensitive-settings), so it applies from any
+[`.prototools`](./config.mdx), trusted or not.
+
+With the [example](#example) above, the strategies detect the following:
+
+| Working directory       | `first-available` | `prefer-prototools` | `only-prototools` |
+| ----------------------- | ----------------- | ------------------- | ----------------- |
+| `~/projects/app`        | `22.14.0`         | `22.14.0`           | `22.14.0`         |
+| `~/projects/app/client` | `>=20`            | `22.14.0`           | `22.14.0`         |
+| `~/projects/app/server` | `20.18.0`         | `22.14.0`           | `22.14.0`         |
+| `~/projects/scripts`    | `18`              | `24`                | `24`              |
+
+Which strategy fits depends on how your team pins versions:
+
+- Use `first-available` when projects pin versions with their ecosystem's files, especially when
+  directories need different versions, or teammates use other version managers, like nvm.
+- Use `prefer-prototools` when [`.prototools`](./config.mdx) is the source of truth, but directories
+  without a pin should still respect ecosystem files. Because the global config is checked before
+  ecosystem files, a tool you've pinned globally never reaches them.
+- Use `only-prototools` when ecosystem files describe compatibility rather than the version to run,
+  like a broad `engines` range, and only explicit pins should be used.
+
+## Debugging detection
+
+[`proto status`](../commands/status.mdx) lists the tools with a detected version in the current
+directory, with the specification that was detected, the version it resolves to, whether it's
+installed, and the file it was detected from. For a step by step account, enable debug logs, which
+report the source of every detected version, or trace logs, which also list every directory that
+was checked. Logs work through shims too, with the `PROTO_LOG` environment variable.
+
+```shell
+# Show detected versions, and where they came from
+$ proto status
+
+# Include versions pinned in the global config
+$ proto status --config-mode upwards-global
+
+# Log how a shim detects its version
+$ PROTO_LOG=trace node --version
+```
+
+See [logging](../guides/troubleshooting.mdx#logging) for more options.

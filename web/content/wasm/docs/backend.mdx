@@ -59,11 +59,12 @@ let package = get_plugin_id()?; // typescript
 
 ### Loading priority
 
-When a tool is referenced with a backend, proto locates the backend's plugin by the backend's ID, from the `plugin` setting of the `[backends.<id>]` table, or the
-`[plugins.backends]` table of `.prototools`, then the built-in backends (`asdf`, `cargo`, and
-`npm`), and then the default [registry](./plugin-locators.mdx#oci-registry). It then loads a separate instance of the plugin for
-each tool, with the tool's ID as the [plugin ID](./plugin-id.mdx), and
-calls [`register_tool`](./tool.mdx#register_tool), followed by
+When a tool is referenced with a backend, proto locates the backend's plugin by the backend's ID,
+from the `plugin` setting of the `[backends.<id>]` table, or the `[plugins.backends]` table of
+[`.prototools`](<../../proto/docs/(fundamentals)/config.mdx>), then the built-in backends (`asdf`,
+`cargo`, and `npm`), and then the default [registry](./plugin-locators.mdx#oci-registry). It then
+loads a separate instance of the plugin for each tool, with the tool's ID as the
+[plugin ID](./plugin-id.mdx), and calls [`register_tool`](./tool.mdx#register_tool), followed by
 [`register_backend`](#register_backend).
 
 From there, proto treats the tool like any other, calling the [tool functions](#tool) to resolve,
@@ -72,15 +73,17 @@ install, and run it. A plugin can also be loaded as a tool without a backend, in
 
 ## Configuration
 
-Users configure a backend in the `[backends.<id>]` table of a `.prototools` file, which applies to
-every tool from that backend. Except for the settings that proto handles itself (`env` and
-`plugin`), every setting is passed through to the plugin, and can be read from any function with
+Users configure a backend in the `[backends.<id>]` table of a
+[`.prototools`](<../../proto/docs/(fundamentals)/config.mdx>) file, which applies to every tool from
+that backend. Except for the settings that proto handles itself (`env` and `plugin`), every setting
+is passed through to the plugin, and can be read from any function with
 [`get_backend_config`](https://docs.rs/proto_pdk/latest/proto_pdk/fn.get_backend_config.html).
 
 A single tool can also be configured in a `[tools."<backend>:<id>"]` table, which is read with
 [`get_tool_config`](https://docs.rs/proto_pdk/latest/proto_pdk/fn.get_tool_config.html), the same
-as for [tools](./tool.mdx#configuration). Both are merged from every `.prototools` file that proto
-loads, with files closer to the current directory taking precedence.
+as for [tools](./tool.mdx#configuration). Both are merged from every
+[`.prototools`](<../../proto/docs/(fundamentals)/config.mdx>) file that proto loads, with files
+closer to the current directory taking precedence.
 
 ```toml title=".prototools"
 [backends.example]
