@@ -237,9 +237,10 @@ node = "registry://ghcr.io/moonrepo/node_tool:0.17.13"
 ```
 
 To disable built-in plugins, set the [`builtin-tools`](../config.mdx#builtin-tools) and
-[`builtin-backends`](../config.mdx#builtin-backends) settings to `false`, or to a list of IDs to keep enabled. A disabled tool
-is then located like any other tool (see [resolution order](#resolution-order)), so it needs a
-configured plugin. This is useful in locked-down environments, where every plugin must come from an
+[`builtin-backends`](../config.mdx#builtin-backends) settings to `false`, or to a list of IDs to
+keep enabled. A disabled tool or backend is then located like any other (see
+[resolution order](#resolution-order)). The community registry doesn't include built-in tools, so
+it needs a configured plugin, or an image in a [default registry](#registries). This is useful in locked-down environments, where every plugin must come from an
 approved source.
 
 ```toml title=".prototools"

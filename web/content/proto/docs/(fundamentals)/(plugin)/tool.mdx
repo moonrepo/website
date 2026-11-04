@@ -220,8 +220,10 @@ also a built-in tool, with the reserved `proto` ID, and the asdf, Cargo, and npm
 ### Overriding built-in tools
 
 To limit which built-in tools are available, use the [`builtin-tools`](../config.mdx#builtin-tools)
-setting. `false` disables all of them, and a list enables only the IDs in it. A disabled ID falls
-through to the [community tools](#community-tools) registry, like any unknown ID.
+setting. `false` disables all of them, and a list enables only the IDs in it. A disabled ID is then
+located like any unknown ID (see [resolution order](./plugin.mdx#resolution-order)). The
+[community registry](#community-tools) doesn't include built-in tools, so it needs a configured
+plugin, or an image in a [default registry](./plugin.mdx#registries).
 
 ```toml title=".prototools"
 [settings]

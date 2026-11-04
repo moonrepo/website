@@ -283,9 +283,10 @@ never removed by age. Neither is a version marked as `no_clean`:
 $ PROTO_NO_CLEAN=1 proto install node 22
 ```
 
-A stale version is uninstalled like [`proto uninstall`](#uninstalling) would, with one difference:
-its records in [lockfiles](../advanced/lockfile.mdx) are kept, as the version may still be pinned in
-a repository and used on other machines.
+A stale version is uninstalled like [`proto uninstall`](#uninstalling) would, except that cleaning
+never edits your configuration. Pins in [`.prototools`](./config.mdx) files, and records in
+[lockfiles](../advanced/lockfile.mdx), are kept, as the version may still be pinned in a repository
+and used on other machines.
 
 proto's own versions, in `tools/proto`, are checked separately, by when their `proto` executable was
 last accessed. Tools with an [inventory outside the store](#custom-locations) are skipped.
