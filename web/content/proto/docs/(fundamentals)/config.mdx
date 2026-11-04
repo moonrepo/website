@@ -3,44 +3,931 @@ title: Configuration
 icon: Settings
 ---
 
+import { TypeLabel } from "@/components/TypeLabel";
+
+proto is configured with `.prototools` files, written in [TOML](https://toml.io/en/). A single file
+can pin the [versions](#versions) of tools, set [environment variables](#env), register
+[plugins](#plugins), pass settings to [tools](#tools) and [backends](#backends), and customize how
+proto itself [behaves](#settings). Since a `.prototools` can live in any directory, configuration
+is layered: a repository pins the tools its developers need, a directory within it can refine that,
+and your home directory holds personal settings and fallback versions. proto finds every applicable
+file and merges them into one configuration, where the file closest to the current directory wins.
+
+This page covers where files are located, how they're resolved and merged, and every available
+setting.
+
 ## File format
+
+A `.prototools` file has a top-level key for each pinned tool, and a table for each section. Every
+section is optional, and setting names are written in kebab-case.
+
+```toml title=".prototools"
+# Versions of tools to use in this directory
+node = "24.11.0"
+pnpm = "10"
+"cargo:ripgrep" = "14"
+
+# Environment variables for every tool
+[env]
+NODE_ENV = "development"
+
+# Settings for proto itself
+[settings]
+auto-install = true
+
+# Plugins for tools that proto doesn't ship with
+[plugins.tools]
+my-tool = "github://my-org/my-tool-plugin@v1.0.0"
+
+# Settings for a specific tool
+[tools.node]
+bundled-npm = true
+
+# Settings for a specific backend
+[backends.cargo]
+no-binstall = true
+
+# Aliases defined by shell activation
+[shell.aliases]
+dev = "pnpm run dev"
+```
+
+proto validates each file when it's loaded, and fails with an error that names the file and the
+problem, like an unknown section or setting, or a version that can't be parsed. Versions are
+strings, so a pin like `node = 24` must be quoted as `node = "24"`. Settings within
+[`[tools.*]`](#tools) and [`[backends.*]`](#backends) are passed through to plugins, which validate
+them instead.
+
+You can edit the file by hand, or let commands like [`proto pin`](../commands/pin.mdx),
+[`proto alias`](../commands/alias.mdx), and [`proto plugin add`](../commands/plugin/add.mdx) edit it
+for you. They change the file in place, preserving its formatting and comments.
+
+Alongside `.prototools`, a directory can contain environment-specific files, like
+`.prototools.production`, which are loaded when that environment is active. See
+[environment mode](#environment-mode).
 
 ## Locations
 
+A `.prototools` can exist in any directory. When proto runs, it looks in the current directory and
+each of its parents, up to your home directory (or the filesystem root, when you're working outside
+of your home directory), and then in proto's own home directory. Which of these files are actually
+loaded depends on the [resolution mode](#resolution-modes).
+
+Commands that write to a `.prototools` let you choose which file with a location.
+
+- `closest` - The closest `.prototools` to the current directory, described [below](#closest). This
+  is the default.
+- `local` (or `cwd`) - `./.prototools` in the current directory.
+- `user` (or `home`) - `~/.prototools` in your home directory.
+- `global` (or `store`) - `~/.proto/.prototools` in proto's home directory, the
+  [store](./store.mdx#store-location), which moves with `PROTO_HOME`.
+
+```shell
+# Add an alias to the .prototools in the current directory
+$ proto alias node work 22 --to local
+
+# Register a plugin for everything in your home directory
+$ proto plugin add my-tool "github://my-org/my-tool-plugin" --to user
+```
+
 ### Closest
+
+`closest` writes to the file that already configures the current directory, instead of creating a
+new one. proto walks upwards from the current directory, and picks the first directory that contains
+a `.prototools`. If none do, it uses the current directory, and creates `./.prototools`.
+
+Only project directories are considered: the user and global files are never the closest, so writing
+to them is always explicit. Directories that only contain an [environment file](#environment-mode),
+like `.prototools.production`, are skipped too, as commands always write to a base `.prototools`.
+
+For example, in a monorepo with a `.prototools` at its root:
+
+```text
+monorepo/
+├── .prototools
+└── packages/
+    └── app/  (current directory)
+```
+
+Running [`proto pin node 24`](../commands/pin.mdx) in `packages/app` updates `monorepo/.prototools`.
+Pass `--to local` to create `packages/app/.prototools` instead, which then overrides the root file
+within `packages/app`.
 
 ### Where to configure?
 
+With multiple locations, and [resolution modes](#resolution-modes) deciding which of them are
+loaded, it's not always obvious where something belongs. We suggest the following:
+
+- **Project** (a `.prototools` in a repository) - The versions a project needs, tool and backend
+  settings, environment variables, plugins for project-specific tools, and project-wide settings,
+  like [`lockfile`](#lockfile) or [`detect-strategy`](#detect-strategy). Commit it, so everyone
+  working in the repository, including CI, uses the same configuration (see
+  [sharing with your team](../start/team.mdx)). Its security-sensitive settings only apply once
+  it's [trusted](./trust.mdx).
+- **User** (`~/.prototools`) - Personal settings that apply to everything you work on, like
+  [HTTP proxies and certificates](#settingshttp), [offline detection](#settingsoffline),
+  [`auto-install`](#auto-install), [`telemetry`](#telemetry), [shell aliases](#shell-aliases), and plugins
+  you use everywhere. It's loaded whenever the current directory is within your home directory,
+  except in the `global` and `local` modes. When working outside of your home directory, like in
+  some CI and Docker environments, it isn't loaded at all.
+- **Global** (`~/.proto/.prototools`) - Fallback versions, used in any directory where no other
+  file pins the tool. This is the file that [`proto pin --to global`](../commands/pin.mdx) and [`proto install --pin global`](../commands/install.mdx)
+  write to.
+
+<Callout type="warning">
+  The global file isn't loaded in the [`upwards`](#upwards) mode, which is the
+  default for commands like [`proto install`](../commands/install.mdx) and
+  [`proto activate`](../commands/activate.mdx). Settings, environment variables,
+  and plugins configured there don't apply to these commands, so configure them
+  in `~/.prototools` instead.
+</Callout>
+
 ## Resolution modes
+
+When a command or shim runs, proto loads every applicable `.prototools`, and merges them into a
+single configuration. Files are merged from lowest to highest precedence, and the closer a file is
+to the current directory, the higher its precedence:
+
+- Versions, environment variables, plugins, aliases, and other tables of entries are merged key by
+  key. A project can pin `node`, while still using the `go` version pinned in a parent directory.
+- Individual settings, like [`auto-install`](#auto-install), are taken from the highest precedence
+  file that sets them.
+
+Which files are loaded depends on the resolution mode. Each command has a default mode, which you
+can change with the global `--config-mode` (`-c`) option, or the `PROTO_CONFIG_MODE` environment
+variable. The following examples assume that the current directory is `~/Projects/app`.
+
+```shell
+# Only use the .prototools in the current directory
+$ proto status --config-mode local
+
+# Also install the versions pinned globally
+$ proto install --config-mode upwards-global
+```
 
 ### `global`
 
+Only loads the global `~/.proto/.prototools`, ignoring every project and user file. This is useful
+for working with your fallback versions in isolation.
+
+```text
+~/.proto/.prototools
+```
+
 ### `local`
+
+Only loads the `.prototools` in the current directory (and its
+[environment file](#environment-mode)), ignoring every parent directory.
+
+```text
+~/Projects/app/.prototools
+```
 
 ### `upwards`
 
+Traverses upwards from the current directory, loading the `.prototools` in each directory, until it
+reaches your home directory or the filesystem root, whichever comes first. The user `~/.prototools`
+is included when the current directory is within your home directory, but the global file is not.
+
+```text
+~/Projects/app/.prototools
+~/Projects/.prototools
+~/.prototools
+```
+
+This is the default mode for [`proto activate`](../commands/activate.mdx),
+[`proto install`](../commands/install.mdx), [`proto outdated`](../commands/outdated.mdx), and
+[`proto status`](../commands/status.mdx). These commands act on the tools that a project needs, so
+they leave out global fallback versions: [`proto install`](../commands/install.mdx) without arguments installs what your
+project pins, not every tool you've ever pinned globally, and
+[shell activation](./workflows.mdx#shell-activation) only puts the project's tools on `PATH`, while
+[shims](./workflows.mdx#shims) still cover the rest.
+
 ### `upwards-global`
+
+Like [`upwards`](#upwards), but also loads the global `~/.proto/.prototools` last, with the lowest
+precedence. `all` is accepted as an alias of this mode.
+
+```text
+~/Projects/app/.prototools
+~/Projects/.prototools
+~/.prototools
+~/.proto/.prototools
+```
+
+This is the default mode for every other command, including [`proto run`](../commands/run.mdx),
+which shims are built on. That's why a globally pinned version is used in any directory that doesn't
+pin its own (see [version detection](./detection.mdx#5-global-configuration)).
 
 ## Environment mode
 
+To vary configuration by environment, set the `PROTO_ENV` environment variable. With
+`PROTO_ENV=production`, proto also looks for a `.prototools.production` in every directory it
+traverses, which takes precedence over the `.prototools` in the same directory, and is merged like
+any other file. The global `~/.proto/.prototools` doesn't have environment variants.
+
+```text
+~/Projects/app/.prototools.production
+~/Projects/app/.prototools
+~/Projects/.prototools.production
+~/Projects/.prototools
+~/.prototools.production
+~/.prototools
+~/.proto/.prototools
+```
+
+An environment file only needs what differs from the base file, like environment variables for a
+production build:
+
+```toml title=".prototools.production"
+[env]
+NODE_ENV = "production"
+```
+
+```shell
+$ PROTO_ENV=production proto run node -- build.js
+```
+
+Commands that write configuration, like [`proto pin`](../commands/pin.mdx), always write to the base
+`.prototools`, so edit environment files by hand. When [lockfiles](../advanced/lockfile.mdx) are
+enabled, each environment file is locked to its own `.protolock.<env>` (see
+[environment scopes](../advanced/lockfile.mdx#environment-scopes)).
+
 ## Pinning versions
+
+Pinning a version writes it to a `.prototools`, where it becomes the version that proto
+[detects](./detection.mdx) for the tool, in that directory and every directory beneath it. Pin
+versions by hand, or with [`proto pin`](../commands/pin.mdx), which writes to the
+[closest](#closest) file by default:
+
+```shell
+# Pin a version to the closest .prototools
+$ proto pin node 24
+
+# Resolve the version to a fully-qualified version, then pin it
+$ proto pin node 24 --resolve
+
+# Pin a fallback version to the global .prototools
+$ proto pin go 1.25 --to global
+```
+
+```toml title=".prototools"
+node = "24"
+```
+
+A pin can be any [version specification](./version-spec.mdx): a fully-qualified version, a partial
+version, a requirement or range, or an alias. A fully-qualified version, like `24.11.0`, is the
+most reproducible, while a partial version, like `24`, matches newer releases over time. To keep
+the flexibility of requirements while still getting reproducible installs, enable
+[lockfiles](../advanced/lockfile.mdx).
+
+Versions can also be pinned while installing, with the `--pin` option of
+[`proto install`](../commands/install.mdx), which pins the resolved version and accepts a
+[location](#locations), or automatically with the [`pin-latest`](#pin-latest) setting. To remove a
+pin, run [`proto unpin`](../commands/unpin.mdx).
+
+```shell
+# Install, then pin the resolved version, like 24.11.0, to the closest .prototools
+$ proto install node 24 --pin
+```
+
+With `--tool-native`, [`proto pin`](../commands/pin.mdx) and [`proto unpin`](../commands/unpin.mdx) use the tool's own ecosystem file instead of a
+`.prototools`, like the `devEngines` field in `package.json` for Node.js, when its plugin supports
+it.
 
 ### Pinning proto
 
+proto is managed like any other tool, so it can be pinned too, with the reserved `proto` key. This
+keeps everyone working in a repository, including CI, on the same version of proto, and the
+behavior that comes with it.
+
+```toml title=".prototools"
+proto = "0.63.2"
+```
+
+Install the pinned version like any other tool, with [`proto install`](../commands/install.mdx). The
+pin is then applied by [shell activation](./workflows.mdx#shell-activation): within the directory,
+activation puts `~/.proto/tools/proto/<version>` on `PATH` ahead of the globally installed proto,
+and sets the `PROTO_VERSION` environment variable, which [shims](./workflows.mdx#shims) use to run
+their tool with the same proto binary. Without activation, `proto` and shims use the globally
+installed version.
+
+A few rules apply to this pin:
+
+- Pin a fully-qualified version, like `0.63.2`, as activation ignores partial versions and
+  requirements for proto.
+- Only project files can pin proto. The pin is ignored in `~/.prototools` and
+  `~/.proto/.prototools`; to change the version used everywhere else, run
+  [`proto upgrade`](../commands/upgrade.mdx).
+- The pin decides which proto binary runs, so it's a
+  [security-sensitive setting](./trust.mdx#security-sensitive-settings), and is only applied once
+  the `.prototools` has been [trusted](./trust.mdx).
+
 ## Available settings
+
+Settings that can run code on your machine, or change where tools and plugins are downloaded from,
+are [security-sensitive](./trust.mdx#security-sensitive-settings). In a project `.prototools`,
+they're ignored until the file is [trusted](./trust.mdx). Your user and global files are always
+trusted.
 
 ### Versions
 
+Top-level keys pin a version of a tool, where the key is the tool's
+[identifier](<./(plugin)/tool.mdx#tool-identifiers>), and the value is a
+[version specification](./version-spec.mdx). Tools from a [backend](<./(plugin)/backend.mdx>) use a
+`backend:id` identifier, which must be quoted, as TOML keys can't contain a colon otherwise.
+
+```toml title=".prototools"
+node = "24.11.0"
+pnpm = "10"
+python = "~3.13"
+rust = "stable"
+"npm:typescript" = "5.9"
+"cargo:ripgrep" = "14"
+```
+
+Pins are merged across every loaded file, with the closest file winning for each tool. proto checks
+them during [version detection](./detection.mdx#3-local-configuration) whenever a tool runs, and
+[`proto install`](../commands/install.mdx) without arguments installs a version of every pinned
+tool. The `proto` key pins proto itself (see [pinning proto](#pinning-proto)).
+
+Pins for [built-in tools](<./(plugin)/tool.mdx#built-in-tools>), and for tools from the built-in `npm` and
+`cargo` backends, are applied without trust. Every other pin requires trust, including pins for
+community and third-party tools, whose plugins come from outside of proto, `proto` itself, and tools
+from the `asdf` backend, which runs third-party scripts.
+
 ### `[env]`
+
+A map of environment variables to set when proto executes a tool, through a shim,
+[`proto run`](../commands/run.mdx), or [`proto exec`](../commands/exec.mdx). Variables are also
+exported into your shell by [shell activation](./workflows.mdx#shell-activation), which unsets them
+again when you leave the directory. This makes `[env]` a simple way to set per-directory variables.
+
+```toml title=".prototools"
+[env]
+DEBUG = "app:*"
+NODE_OPTIONS = "--max-old-space-size=4096"
+# Sets the value "true"
+FORCE_COLOR = true
+# Removes the variable, even if it's inherited from your shell
+NODE_ENV = false
+```
+
+A value is either a string, or a boolean: `true` sets the variable to `"true"`, and `false` removes
+it from the environment. Variables from every loaded file are merged, with the closest file winning
+for each variable. Variables in a tool's [`[tools.*.env]`](#tools-env) and a backend's
+[`[backends.*.env]`](#backends-env) table override these when that tool runs.
+
+Values can reference other variables with `${NAME}`, which resolves to the variable in the current
+environment, or to one defined before it. A variable that isn't defined resolves to an empty string.
+Only the braced syntax is supported, with names in uppercase letters, numbers, and underscores, so
+`$NAME` is left as-is.
+
+```toml title=".prototools"
+[env]
+APP_DIR = "${HOME}/app"
+APP_CONFIG = "${APP_DIR}/config.json"
+```
+
+#### Loading `.env` files
+
+The special `file` key loads variables from a [dotenv](https://github.com/motdotla/dotenv) file,
+relative to the `.prototools` it's defined in. Variables from the file are loaded first, so
+variables defined in the table take precedence, and if the file doesn't exist, it's ignored. When
+multiple loaded files define a `file`, all of them are loaded, with variables from the files of more
+deeply nested `.prototools` taking precedence. The `file` key is also supported in `[tools.*.env]` and `[backends.*.env]`.
+
+```toml title=".prototools"
+[env]
+file = ".env"
+```
+
+Like `[env]` values, values in the dotenv file can reference other variables with `${NAME}`.
 
 ### `[settings]`
 
+Settings that customize how proto behaves. Many can also be set with an
+[environment variable](../advanced/env-vars.mdx#settings), listed with each setting, which takes
+precedence over every `.prototools`.
+
+```toml title=".prototools"
+[settings]
+auto-install = true
+detect-strategy = "prefer-prototools"
+
+[settings.http]
+root-cert = "./certs/corporate.pem"
+```
+
+Only [`detect-strategy`](#detect-strategy), [`lockfile`](#lockfile), [`pin-latest`](#pin-latest),
+and [`telemetry`](#telemetry) are applied from an untrusted project `.prototools`. Every other
+setting requires trust.
+
+#### `auto-clean`
+
+<TypeLabel type="boolean" />
+
+When enabled, proto cleans up the store in the background after running
+[`proto activate`](../commands/activate.mdx), [`proto install`](../commands/install.mdx),
+[`proto outdated`](../commands/outdated.mdx), [`proto regen`](../commands/regen.mdx), or
+[`proto status`](../commands/status.mdx). Like [`proto clean`](../commands/clean.mdx), but without
+prompting, it removes tool versions that haven't been used in 30 days, along with plugins and
+temporary files older than that (see [cleaning](./store.mdx#cleaning)). Defaults to `false`, or
+`PROTO_AUTO_CLEAN`.
+
+#### `auto-install`
+
+<TypeLabel type="boolean" />
+
+When enabled, running a tool with a version that isn't installed installs it, instead of failing
+with an error. This applies to [`proto run`](../commands/run.mdx), and therefore every
+[shim](./workflows.mdx#shims). Since a shim only exists once its tool has been installed at least
+once, a tool that has never been installed must be installed first. Defaults to `false`, or
+`PROTO_AUTO_INSTALL`.
+
+Progress is printed to stderr, as stdout belongs to the tool. Set `PROTO_AUTO_INSTALL_HIDE_OUTPUT`
+to hide it.
+
+#### `builtin-backends`
+
+<TypeLabel type="boolean | string[]" />
+
+Controls which [built-in backends](<./(plugin)/backend.mdx#built-in-backends>) are available: `true` enables
+all of them, `false` disables all of them, and a list of IDs only enables those. Defaults to `true`.
+
+```toml title=".prototools"
+[settings]
+builtin-backends = ["npm"]
+```
+
+#### `builtin-tools`
+
+<TypeLabel type="boolean | string[]" />
+
+Controls which [built-in tools](<./(plugin)/tool.mdx#built-in-tools>) are available: `true` enables all of
+them, `false` disables all of them, and a list of IDs only enables those. proto itself is always
+available. A disabled tool needs a plugin configured in [`[plugins]`](#plugins), like any other
+tool. Defaults to `true`.
+
+```toml title=".prototools"
+[settings]
+builtin-tools = ["node", "npm", "pnpm"]
+```
+
+#### `cache-duration`
+
+<TypeLabel type="number" />
+
+How long, in seconds, a downloaded [plugin](<./(plugin)/plugin.mdx>) is cached, before it's considered stale
+and downloaded again. Set to `0` to disable the cache, so plugins are downloaded every time (unless
+you're offline). Defaults to 180 days, or `PROTO_CACHE_DURATION`.
+
+```toml title=".prototools"
+[settings]
+# 7 days
+cache-duration = 604800
+```
+
+#### `community-tools`
+
+<TypeLabel type="boolean" />
+
+When enabled, a tool without a configured or built-in plugin is looked up in proto's registry of
+[community tools](<./(plugin)/tool.mdx#community-tools>), so that it works by ID alone. Disable it to only
+allow plugins that you configure. Defaults to `true`, or `PROTO_COMMUNITY_TOOLS`.
+
+#### `detect-strategy`
+
+<TypeLabel type="first-available | prefer-prototools | only-prototools" />
+
+The strategy used to [detect a version](./detection.mdx#detection-strategies) from the current
+directory. Defaults to `first-available`, or `PROTO_DETECT_STRATEGY`.
+
+- `first-available` - Checks each directory, from the current directory upwards, for a pin in
+  `.prototools` or a version in the tool's ecosystem files (like `.nvmrc`), and uses the first found.
+- `prefer-prototools` - Checks every `.prototools` first, even those in parent directories, then
+  falls back to ecosystem files.
+- `only-prototools` - Only checks `.prototools`, and ignores ecosystem files.
+
+```toml title=".prototools"
+[settings]
+detect-strategy = "prefer-prototools"
+```
+
+#### `lockfile`
+
+<TypeLabel type="boolean" />
+
+When enabled, proto records the resolved version and checksum of each tool pinned in this
+`.prototools` in a sibling `.protolock` file, so every machine installs exactly the same versions.
+Only applies to project files, not the user or global files. Defaults to `false`. See
+[lockfiles](../advanced/lockfile.mdx#enabling-lockfiles).
+
+```toml title=".prototools"
+[settings]
+lockfile = true
+```
+
+#### `pin-latest`
+
+<TypeLabel type="closest | global | local | user" />
+
+When a tool is installed with the `latest` alias, including when no version is provided or
+detected, automatically pin the resolved version to this [location](#locations). Not set by
+default, so nothing is pinned, or `PROTO_PIN_LATEST`.
+
+```toml title=".prototools"
+[settings]
+pin-latest = "global"
+```
+
+#### `registries`
+
+<TypeLabel type="{ registry, namespace, auth, default }[]" />
+
+A list of OCI registries to pull [plugins](<./(plugin)/plugin.mdx#registries>) from, with `registry://`
+locators. Registries from every loaded file are combined, and are added after the built-in
+`ghcr.io/moonrepo` registry. Each registry supports `registry` (the host), `namespace`, `auth`, and
+`default` fields, explained in [registries](<./(plugin)/plugin.mdx#registries>).
+
+```toml title=".prototools"
+[settings]
+registries = [
+  { registry = "ghcr.io", namespace = "my-org", auth = true },
+]
+```
+
+#### `telemetry`
+
+<TypeLabel type="boolean" />
+
+When enabled, proto sends anonymous usage data when installing and uninstalling tools, or
+upgrading proto, which helps us prioritize tools, and find broken versions and plugins. This
+includes the tool, its version and plugin, proto's version, and your operating system and
+architecture. Data isn't sent when you're offline. See
+[the source](https://github.com/moonrepo/proto/blob/master/crates/cli/src/telemetry.rs) for every
+field sent. Defaults to `true`, or `PROTO_TELEMETRY`.
+
+```toml title=".prototools"
+[settings]
+telemetry = false
+```
+
+#### `url-rewrites`
+
+<TypeLabel type="Record<string, string>" />
+
+A map of [regular expressions](https://docs.rs/regex/latest/regex/#syntax) to replacement strings,
+used to rewrite URLs before proto requests them, like pointing downloads to an internal mirror.
+Every entry is applied in order, and replaces every match, with `$1`, `$2`, and so on referencing
+capture groups. Rewrites apply to tool download and checksum URLs (including those from third-party
+plugins), plugin URLs, and archive and script URLs used when
+[building from source](../guides/build-from-source.mdx). See
+[URL rewrites](../advanced/http.mdx#url-rewrites).
+
+```toml title=".prototools"
+[settings.url-rewrites]
+'github\.com/(\w+)/(\w+)' = "github-mirror.internal/$1/$2"
+```
+
+Single-quoted (literal) TOML strings avoid having to escape every backslash in a pattern.
+
+### `[settings.build]`
+
+Customizes [building tools from source](../guides/build-from-source.mdx).
+
+#### `exclude-packages`
+
+<TypeLabel type="string[]" />
+
+System packages to skip when installing a tool's build dependencies, like those you've installed
+another way. Also set with `PROTO_BUILD_EXCLUDE_PACKAGES`, as a comma-separated list. See
+[excluding packages](../guides/build-from-source.mdx#excluding-packages).
+
+```toml title=".prototools"
+[settings.build]
+exclude-packages = ["git", "curl"]
+```
+
+#### `install-system-packages`
+
+<TypeLabel type="boolean" />
+
+Install a tool's build dependencies with the system package manager. Defaults to `true`, or
+`PROTO_BUILD_INSTALL_SYSTEM_PACKAGES`.
+
+#### `system-package-manager`
+
+<TypeLabel type="Record<string, string>" />
+
+The package manager to use for each operating system, instead of detecting it. Keys are operating
+systems, like `linux`, `macos`, and `windows`, and values are package managers: `apk`, `apt`,
+`brew`, `choco`, `dnf`, `pacman`, `pkg`, `pkgin`, `scoop`, or `yum`. See
+[package managers](../guides/build-from-source.mdx#package-managers).
+
+```toml title=".prototools"
+[settings.build.system-package-manager]
+macos = "brew"
+```
+
+#### `write-log-file`
+
+<TypeLabel type="boolean" />
+
+Write a `proto-<id>-install.log` file to the current directory after every build, not only failed
+ones. Defaults to `false`, or `PROTO_BUILD_WRITE_LOG_FILE`. See
+[build logs](../guides/build-from-source.mdx#build-logs).
+
+### `[settings.http]`
+
+Customizes the HTTP client used for every request, like downloading tools and plugins, and loading
+available versions. See [HTTP requests](../advanced/http.mdx).
+
+Unlike other nested settings, `[settings.http]` isn't merged setting by setting: the highest
+precedence file that defines the table replaces it entirely.
+
+#### `allow-invalid-certs`
+
+<TypeLabel type="boolean" />
+
+Accept invalid TLS certificates, instead of failing. This is an escape hatch of last resort, so
+prefer [`root-cert`](#root-cert). Defaults to `false`.
+
+#### `proxies`
+
+<TypeLabel type="string[]" />
+
+Proxy URLs, used by protocol: an `https:` URL (or an `http:` URL on port `443`) proxies HTTPS
+requests, and other `http:` URLs proxy plain HTTP requests. See
+[proxies](../advanced/http.mdx#proxies).
+
+#### `secure-proxies`
+
+<TypeLabel type="string[]" />
+
+Proxy URLs for HTTPS requests, regardless of their protocol. Use this for an `http:` proxy that
+handles HTTPS traffic.
+
+```toml title=".prototools"
+[settings.http]
+secure-proxies = ["http://proxy.internal:8080"]
+```
+
+#### `retry-count`
+
+<TypeLabel type="number" />
+
+How many times to retry a request that fails with a transient error. Defaults to `3`.
+
+#### `root-cert`
+
+<TypeLabel type="string" />
+
+Path to a root certificate, in PEM (`.pem`) or DER (`.der`) format, relative to the `.prototools`.
+Useful behind a corporate proxy with a self-signed certificate. See
+[certificates](../advanced/http.mdx#certificates).
+
+```toml title=".prototools"
+[settings.http]
+root-cert = "/etc/ssl/certs/corporate.pem"
+```
+
+#### `user-agent`
+
+<TypeLabel type="string" />
+
+A custom `User-Agent` header to send with every request.
+
+### `[settings.offline]`
+
+Customizes how proto detects whether there's an internet connection, which is useful behind a VPN
+or firewall that blocks the default hosts. See
+[customizing detection](../guides/offline-mode.mdx#customizing-detection).
+
+#### `custom-hosts`
+
+<TypeLabel type="string[]" />
+
+Additional hosts to check, as `host:port`, after the default hosts. Also set with
+`PROTO_OFFLINE_HOSTS`, as a comma-separated list.
+
+```toml title=".prototools"
+[settings.offline]
+custom-hosts = ["artifactory.internal:443"]
+```
+
+#### `override-default-hosts`
+
+<TypeLabel type="boolean" />
+
+Don't check the default hosts, only [`custom-hosts`](#custom-hosts). Defaults to `false`, or
+`PROTO_OFFLINE_OVERRIDE_HOSTS`.
+
+```toml title=".prototools"
+[settings.offline]
+custom-hosts = ["artifactory.internal:443"]
+override-default-hosts = true
+```
+
+#### `timeout`
+
+<TypeLabel type="number" />
+
+How long to wait for each host to respond, in milliseconds. Defaults to `750`, or
+`PROTO_OFFLINE_TIMEOUT`.
+
 ### `[plugins]`
 
-### `[tools.*]`
+Registers [plugins](<./(plugin)/plugin.mdx>) for tools and backends that proto doesn't ship with, or overrides
+a built-in one. Tool plugins go in `[plugins.tools]`, and backend plugins in `[plugins.backends]`,
+mapping an ID to a [plugin locator](../../../wasm/docs/plugin-locators.mdx). The ID is then used everywhere
+in proto, like in version pins and commands.
 
-### `[backends.*]`
+```toml title=".prototools"
+my-tool = "1.2.0"
+"my-backend:some-tool" = "3.0.0"
+
+[plugins.tools]
+my-tool = "github://my-org/my-tool-plugin@v1.0.0"
+local-tool = "file://./plugins/local_tool.wasm"
+
+[plugins.backends]
+my-backend = "registry://ghcr.io/my-org/my_backend:0.1.0"
+```
+
+Entries directly in `[plugins]`, outside of a sub-table, are treated as tool plugins. `file://`
+locators are relative to the `.prototools` they're defined in. `proto` is reserved, and can't be
+used as an ID. Plugins from every loaded file are merged by ID, with the closest file winning.
+
+A plugin can also be configured with the `plugin` setting in a tool's [`[tools.*]`](#tools-plugin) or a
+backend's [`[backends.*]`](#backends-plugin) table, which takes precedence over `[plugins]`. Instead of
+editing the file, you can use [`proto plugin add`](../commands/plugin/add.mdx) and
+[`proto plugin remove`](../commands/plugin/remove.mdx). See
+[enabling plugins](<./(plugin)/plugin.mdx#enabling-plugins>).
 
 ### `[shell]`
 
+Configures [shell activation](./workflows.mdx#shell-activation).
+
+#### `aliases` [#shell-aliases]
+
+<TypeLabel type="Record<string, string>" />
+
+Shell aliases to define while activated, mapping an alias name to the command it runs. They're
+removed again when you leave the directory. See [shell aliases](./workflows.mdx#shell-aliases).
+
+```toml title=".prototools"
+[shell.aliases]
+gs = "git status"
+dev = "pnpm run dev"
+```
+
+Aliases from every loaded file are combined, with the closest file winning for each name. Since an
+alias can run any command, they require trust.
+
+## Tool settings
+
+### `[tools.*]`
+
+Configures a single tool, in a table named after its identifier, like `[tools.node]`. Tools from a
+backend use a quoted identifier, like `[tools."cargo:ripgrep"]`. Besides the following settings,
+any other setting is passed to the tool's plugin, which validates it. Each tool documents its own
+settings, like [Node.js](../tools/node.mdx#configuration).
+
+```toml title=".prototools"
+node = "24.11.0"
+npm = "bundled"
+
+[tools.node]
+# Also install the npm version that ships with Node.js
+bundled-npm = true
+
+[tools."cargo:ripgrep"]
+features = ["pcre2"]
+```
+
+Tool tables from every loaded file are merged per tool, setting by setting, with the closest file
+winning.
+
+#### `aliases` [#tools-aliases]
+
+<TypeLabel type="Record<string, string>" />
+
+[Custom aliases](./version-spec.mdx#custom-aliases) that map a name to a version specification,
+which can then be used like a version. Managed by [`proto alias`](../commands/alias.mdx) and
+[`proto unalias`](../commands/unalias.mdx), and the only part of a tool's table that's applied
+without trust.
+
+```toml title=".prototools"
+node = "work"
+
+[tools.node.aliases]
+work = "22"
+```
+
+#### `env` [#tools-env]
+
+<TypeLabel type="Record<string, string | boolean>" />
+
+Environment variables to set when this tool runs, with the same syntax as [`[env]`](#env),
+including `file`. They override `[env]` and the [backend's variables](#backends-env). When the tool
+is run through [`proto run`](../commands/run.mdx) or a shim, they don't override a variable that's
+already set in the parent environment, so a variable passed on the command line still wins.
+
+```toml title=".prototools"
+[tools.node.env]
+NODE_ENV = "development"
+file = "frontend/.env"
+```
+
+#### `plugin` [#tools-plugin]
+
+<TypeLabel type="string" />
+
+A [plugin locator](../../../wasm/docs/plugin-locators.mdx) for the tool, which takes precedence over
+[`[plugins]`](#plugins).
+
+```toml title=".prototools"
+[tools.my-tool]
+plugin = "github://my-org/my-tool-plugin@v1.0.0"
+```
+
+## Backend settings
+
+### `[backends.*]`
+
+Configures a [backend](<./(plugin)/backend.mdx>), in a table named after its ID, like `[backends.cargo]`.
+Settings here apply to every tool from that backend, while settings for a single tool go in
+[`[tools."<backend>:<id>"]`](#tools). Besides the following settings, any other setting is passed
+to the backend's plugin, which validates it. Each backend documents its own settings, like
+[cargo](../backends/cargo.mdx#backend-settings).
+
+```toml title=".prototools"
+"cargo:ripgrep" = "14"
+
+[backends.cargo]
+# Don't use cargo-binstall, even when it's available
+no-binstall = true
+```
+
+Every setting in a backend's table requires [trust](./trust.mdx#security-sensitive-settings).
+
+#### `env` [#backends-env]
+
+<TypeLabel type="Record<string, string | boolean>" />
+
+Environment variables to set when any of the backend's tools run, with the same syntax as
+[`[env]`](#env), including `file`. They override `[env]`, are overridden by a
+[tool's own variables](#tools-env), and like a tool's variables, don't override a variable that's
+already set in the parent environment of [`proto run`](../commands/run.mdx).
+
+```toml title=".prototools"
+[backends.cargo.env]
+CARGO_NET_GIT_FETCH_WITH_CLI = "true"
+```
+
+#### `plugin` [#backends-plugin]
+
+<TypeLabel type="string" />
+
+A [plugin locator](../../../wasm/docs/plugin-locators.mdx) for the backend, which takes precedence over
+[`[plugins.backends]`](#plugins).
+
+```toml title=".prototools"
+[backends.my-backend]
+plugin = "registry://ghcr.io/my-org/my_backend:0.1.0"
+```
+
 ## Debugging configuration
+
+When a setting doesn't seem to apply, run [`proto debug config`](../commands/debug/config.mdx). It
+prints every `.prototools` that proto found, from lowest to highest precedence, followed by the final
+configuration that they merge into.
+
+```shell
+# Print each file, and the merged result
+$ proto debug config
+
+# Print the same information as JSON, for scripts
+$ proto debug config --json
+
+# Show the configuration that a command in upwards mode sees
+$ proto debug config --config-mode upwards
+```
+
+Each file is printed as proto parsed it, so a misspelled setting or a mistake in TOML is easy to
+spot. A file whose security-sensitive settings were ignored, because it hasn't been trusted, is
+marked as `(untrusted)`, and printed without them. When a file enables a [lockfile](#lockfile), its
+`.protolock` is printed after it.
+
+The final configuration includes every default, and the locators of the built-in plugins, so it's
+also a quick way to check which plugin a tool loads, or which value a setting ended up with. It's
+merged with the current [resolution mode](#resolution-modes), so pass `--config-mode` to compare
+what different commands see. Environment variables that override settings, like
+`PROTO_AUTO_INSTALL`, are applied to it too.
+
+For a short list of the files that were loaded, run [`proto debug env`](../commands/debug/env.mdx),
+which prints them as config sources. To follow the loading process itself, run any command with
+`--log debug`, which logs the resolution mode and each file as it's loaded. See
+[inspecting configuration](../guides/troubleshooting.mdx#inspecting-configuration) for more
+troubleshooting tips.

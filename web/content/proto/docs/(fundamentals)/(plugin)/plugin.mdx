@@ -1,0 +1,331 @@
+---
+title: Plugins
+icon: Plug
+---
+
+import { TypeLabel } from "@/components/TypeLabel";
+
+proto doesn't know how to install Node.js, Python, or any other tool by itself. Every
+[tool](./tool.mdx) and [backend](./backend.mdx) is powered by a **plugin**, which teaches proto
+everything specific to that tool: where its versions are listed, which archive to download for
+your platform, how to install it, and which executables it provides. proto handles everything
+else the same way for every tool, like [detecting](../detection.mdx) which version to use, managing
+the [store](../store.mdx), and creating [shims](../workflows.mdx#shims).
+
+Splitting the work this way is what makes proto a _pluggable_ version manager:
+
+- **Pluggable** - Supporting a new tool doesn't require a change to proto. Anyone can write a
+  plugin, host it anywhere, and enable it with a single line of configuration.
+- **Sandboxed** - Plugins run as WebAssembly, and can only reach the parts of your file system that
+  proto maps into them.
+- **Portable** - The same plugin file runs on every platform proto supports.
+- **Versioned independently** - Plugins are released separately from proto, so a plugin can ship
+  a fix for its tool without a proto release, and you can pin the exact plugin version you want.
+
+Plugins are loaded on demand. The first time a tool is used, proto finds its plugin with a
+[locator](../../../../wasm/docs/plugin-locators.mdx), downloads it, and caches it in
+`~/.proto/plugins` (see the [store](../store.mdx#directory-layout) and
+[caching](../../../../wasm/docs/plugin-locators.mdx#caching)), so later commands load it straight
+from disk.
+
+## Plugin types
+
+A plugin is either a tool plugin or a backend plugin, depending on how many tools it provides. Both
+are enabled, downloaded, and cached the same way.
+
+| Type                     | Provides                                             | Identifier                            | Enabled in           | Formats                |
+| ------------------------ | ---------------------------------------------------- | ------------------------------------- | -------------------- | ---------------------- |
+| [Tool](./tool.mdx)       | A single tool, like Node.js or Python                | `<id>`, like `node`                   | `[plugins.tools]`    | WASM, TOML, JSON, YAML |
+| [Backend](./backend.mdx) | Every tool from another ecosystem, like npm packages | `<backend>:<id>`, like `npm:prettier` | `[plugins.backends]` | WASM                   |
+
+A **tool plugin** installs and runs one tool, and is loaded with the tool's ID. Most plugins are
+tool plugins, including every [built-in tool](./tool.mdx#built-in-tools). A single tool plugin can
+also power multiple IDs: the built-in `npm`, `pnpm`, `yarn`, and `nub` tools share one plugin, which
+installs the package manager named by the ID it's loaded with.
+
+A **backend plugin** installs any package from another ecosystem, like the npm registry or
+crates.io, so that a package becomes a tool without a plugin of its own. It's loaded once for each
+tool that uses its prefix, and receives the tool's ID, like `prettier` in `npm:prettier`. See
+[backends](./backend.mdx) for how they work.
+
+In a WASM plugin, the type is decided by the registration function it exports: `register_tool` for
+a tool, or `register_backend` for a backend. Both implement the same functions after that, which
+are listed in the [tool](../../../../wasm/docs/tool.mdx) and
+[backend](../../../../wasm/docs/backend.mdx) API references.
+
+## Plugin formats
+
+A plugin is either compiled to WebAssembly, or written as a declarative schema file. proto
+determines the format from the plugin file's extension, or from the layer's media type when it's
+pulled from an [OCI registry](#registries).
+
+| Format                      | File extensions   | Plugin types       | Logic                                         |
+| --------------------------- | ----------------- | ------------------ | --------------------------------------------- |
+| [WASM](#wasm)               | `.wasm`           | Tools and backends | Any, as it's compiled code                    |
+| [TOML](#toml-json-and-yaml) | `.toml`           | Tools              | Declarative, for tools with prebuilt archives |
+| [JSON](#toml-json-and-yaml) | `.json`, `.jsonc` | Tools              | Declarative, for tools with prebuilt archives |
+| [YAML](#toml-json-and-yaml) | `.yaml`, `.yml`   | Tools              | Declarative, for tools with prebuilt archives |
+
+### WASM
+
+A WASM plugin is a [WebAssembly](https://webassembly.org/) module that exports functions which
+proto calls throughout a tool's lifecycle. For example, `load_versions` lists the available
+versions, `download_prebuilt` describes which archive to download for the current platform, and
+`locate_executables` points proto to the executables once installed. Only a few functions are
+required, and proto checks whether the others exist before calling them, so a plugin implements
+only what its tool needs.
+
+Because they're real programs, WASM plugins can handle whatever a tool requires: parsing ecosystem
+version files (like `.nvmrc`), resolving versions from a remote API, verifying checksums, building
+from source, running a native installer, or pinning a version in the tool's own files. They can
+also define their own settings, which are configured in the tool's
+[`[tools.*]`](../config.mdx#tools) table and passed to the plugin. All of proto's
+[built-in plugins](#built-in-plugins), and every backend, are WASM plugins. To write one, see
+[creating a plugin](../../../../wasm/docs/creating.mdx).
+
+Plugins are executed with [Extism](https://extism.org/), a framework for building WASM plugins,
+which runs them with the [wasmtime](https://wasmtime.dev/) runtime. Each plugin runs in a sandbox
+with its own memory, and can only access the file system through
+[virtual paths](../../../../wasm/docs/virtual-paths.mdx) that proto maps into it: your home directory
+(`/userhome`), proto's home directory (`/proto`), proto's temporary directory (`/temp`), and the
+current working directory (`/cwd`) when it's outside your home directory. Anything else goes through
+[host functions](../../../../wasm/docs/host-funcs.mdx) that proto implements in Rust, like executing
+commands, downloading files, sending HTTP requests, and reading or setting environment variables.
+
+The sandbox limits what a plugin can access directly, but a plugin can still execute commands on
+your machine through the host. Treat a plugin like any other software you install, and only enable
+plugins from sources you trust. This is why plugins configured in a project's [`.prototools`](../config.mdx)
+must be [trusted](../trust.mdx) before they're loaded.
+
+### TOML, JSON, and YAML
+
+Many tools don't need custom logic: their releases are prebuilt archives at a predictable URL, and
+their versions are Git tags. For these tools, a _schema plugin_ describes the tool in a declarative
+file instead, which is much faster to write than a WASM plugin, and requires no compiling. The same
+schema can be written in TOML (`.toml`), JSON (`.json` or `.jsonc`), or YAML (`.yaml` or `.yml`), so pick
+whichever you prefer.
+
+For example, the following schema describes [just](https://github.com/casey/just): its versions are
+loaded from the repository's Git tags, and the archive to download is built from the platform,
+architecture, and version.
+
+```toml title="just.toml"
+name = "just"
+type = "cli"
+
+[resolve]
+git-url = "https://github.com/casey/just"
+
+[platform.linux]
+archs = ["x64", "arm64"]
+download-file = "just-{version}-{arch}-unknown-linux-musl.tar.gz"
+
+[platform.macos]
+archs = ["x64", "arm64"]
+download-file = "just-{version}-{arch}-apple-darwin.tar.gz"
+
+[platform.windows]
+archs = ["x64", "arm64"]
+download-file = "just-{version}-{arch}-pc-windows-msvc.zip"
+
+[install]
+download-url = "https://github.com/casey/just/releases/download/{version}/{download_file}"
+```
+
+proto doesn't interpret the schema itself. Instead, it loads its built-in schema plugin, a WASM
+plugin from the [moonrepo/plugins](https://github.com/moonrepo/plugins) repository, and passes the
+parsed schema to it as configuration. A schema plugin is therefore downloaded, cached, and
+sandboxed exactly like a WASM plugin, and behaves the same from the outside.
+
+The trade-off is flexibility. A schema can only describe a tool that's installed from a prebuilt
+archive: where to load versions from, which files to detect versions in, where to download the
+archive, and which executables it contains. Backends, and tools that must be built from source or
+need custom logic, require a [WASM plugin](#wasm). See [schema plugins](../../schema.mdx) for the
+complete format.
+
+## Enabling plugins
+
+Plugins are enabled in the [`[plugins]`](../config.mdx#plugins) section of a
+[`.prototools`](../config.mdx) file, with tool plugins in `[plugins.tools]`, and backend plugins in
+`[plugins.backends]`. The key is the ID used to reference the tool or backend everywhere in proto,
+like in version pins, commands, and environment variables, and the value is a
+[plugin locator](../../../../wasm/docs/plugin-locators.mdx), which tells proto where to download
+the plugin from.
+
+```toml title=".prototools"
+my-tool = "1.2.0"
+
+[plugins.tools]
+my-tool = "github://my-org/my-tool-plugin@v1.0.0"
+
+[plugins.backends]
+my-backend = "registry://ghcr.io/my-org/my_backend:0.1.0"
+```
+
+Alternatively, configure the locator with the `plugin` setting in a tool's
+[`[tools.*]`](../config.mdx#tools-plugin) table, or a backend's [`[backends.*]`](../config.mdx#backends-plugin)
+table, alongside its other settings. When both are configured, this setting takes precedence.
+
+```toml title=".prototools"
+my-tool = "1.2.0"
+
+[tools.my-tool]
+plugin = "github://my-org/my-tool-plugin@v1.0.0"
+```
+
+Instead of editing the file by hand, run [`proto plugin add`](../../commands/plugin/add.mdx) with an ID
+and a locator. It adds the plugin to the closest [`.prototools`](../config.mdx) (customizable with `--to`), and then
+loads the plugin to verify that it works. Pass `--type backend` to add a backend.
+[`proto plugin remove`](../../commands/plugin/remove.mdx) removes it again.
+
+```shell
+# Add a tool plugin
+$ proto plugin add my-tool "github://my-org/my-tool-plugin@v1.0.0"
+
+# Add a backend plugin to the user config
+$ proto plugin add my-backend "registry://ghcr.io/my-org/my_backend:0.1.0" --type backend --to user
+```
+
+To see which plugin each tool uses, and where it's located, run
+[`proto plugin list`](../../commands/plugin/list.mdx), or
+[`proto plugin info`](../../commands/plugin/info.mdx) for a single tool.
+
+<Callout type="warning">
+  Plugin locators are a [security-sensitive
+  setting](../trust.mdx#security-sensitive-settings), as a plugin executes code
+  on your machine. Plugins configured in a project's
+  [`.prototools`](../config.mdx) aren't loaded until the file is trusted with
+  [`proto trust`](../../commands/trust.mdx). Until then, built-in tools keep
+  using their built-in plugin, and other tools aren't loaded. Your user and
+  global configs are [trusted
+  automatically](../trust.mdx#automatically-trusted).
+</Callout>
+
+### Resolution order
+
+When a tool is used, proto looks for its plugin in the following order, and uses the first one it
+finds:
+
+1. A plugin configured in [`.prototools`](../config.mdx), with the `plugin` setting or in `[plugins]`.
+2. A [built-in plugin](#built-in-plugins), unless disabled.
+3. A [community plugin](#community-plugins) from proto's community registry (tools only).
+4. An image named after the ID in a [default registry](#registries).
+
+If none is found, proto fails with an error that the tool is unknown. For backends, the lookup uses
+the backend's ID (like `npm` in `npm:typescript`), not the tool's.
+
+## Built-in plugins
+
+proto ships with locators for its first-party plugins, which are developed in the
+[moonrepo/plugins](https://github.com/moonrepo/plugins) repository. That's why tools like `node`,
+`python`, and `rust`, and backends like `npm` and `cargo`, work without any plugin configuration.
+See [built-in tools](./tool.mdx#built-in-tools) and [built-in backends](./backend.mdx#built-in-backends)
+for the full lists.
+
+Built-in plugins are pulled from `ghcr.io/moonrepo`, and each proto release pins a specific version
+of every built-in plugin. Upgrading proto with [`proto upgrade`](../../commands/upgrade.mdx) is how
+you receive new versions of them. proto itself is also managed through a built-in plugin, which
+powers [pinning proto](../config.mdx#pinning-proto), so `proto` is a reserved ID that can't be used
+for other plugins.
+
+To use a different version of a built-in plugin, or a fork of it, configure a locator with the same
+ID, which takes precedence over the built-in:
+
+```toml title=".prototools"
+[plugins.tools]
+node = "registry://ghcr.io/moonrepo/node_tool:0.17.13"
+```
+
+To disable built-in plugins, set the [`builtin-tools`](../config.mdx#builtin-tools) and
+[`builtin-backends`](../config.mdx#builtin-backends) settings to `false`, or to a list of IDs to keep enabled. A disabled tool
+is then located like any other tool (see [resolution order](#resolution-order)), so it needs a
+configured plugin. This is useful in locked-down environments, where every plugin must come from an
+approved source.
+
+```toml title=".prototools"
+[settings]
+# Only enable these built-in tools
+builtin-tools = ["node", "npm", "pnpm"]
+# Disable all built-in backends
+builtin-backends = false
+```
+
+If your network can't reach `ghcr.io`, mirror the built-in plugins to your own registry, and point
+proto to it with the `PROTO_BUILTIN_REGISTRY_HOST` and `PROTO_BUILTIN_REGISTRY_NAMESPACE` environment
+variables (and `PROTO_BUILTIN_REGISTRY_AUTH=true` to authenticate). Or set
+`PROTO_PLUGINS_USE_URL_DIST=true` to download them from GitHub releases instead, which can be
+redirected with [URL rewrites](../../advanced/http.mdx#url-rewrites).
+
+## Community plugins
+
+Beyond the built-in plugins, there's a large ecosystem of plugins maintained by the community, for
+tools like linters, cloud CLIs, and build systems. They come from 2 sources.
+
+**Community tools** are schema plugins maintained in the
+[moonrepo/community-plugins](https://github.com/moonrepo/community-plugins) repository, and tested
+on Linux, macOS, and Windows. proto knows their locators from its community registry, so like
+built-in tools, they work by ID alone, without configuring a plugin. This lookup can be turned off
+with the [`community-tools`](../config.mdx#community-tools) setting. See
+[community tools](./tool.mdx#community-tools).
+
+```shell
+$ proto install just
+```
+
+**Third-party plugins** are published and maintained by their authors, anywhere a locator can
+reach. Search them with [`proto plugin search`](../../commands/plugin/search.mdx), which prints each
+plugin's author, format, and locator, then enable one with
+[`proto plugin add`](../../commands/plugin/add.mdx). See
+[third-party tools](./tool.mdx#third-party-tools).
+
+```shell
+$ proto plugin search terraform
+$ proto plugin add <id> <locator>
+```
+
+Both lists are static JSON files in the [proto repository](https://github.com/moonrepo/proto/tree/master/registry),
+which proto downloads and caches for 24 hours. To list your own plugin in search results, add an
+entry to its `third-party.json` file with a pull request.
+
+## Registries
+
+An OCI registry, like `ghcr.io` or a self-hosted registry, stores plugins as OCI artifacts,
+alongside container images. Registries are a good fit for distributing plugins within
+an organization: they're versioned with tags, support private access, and are likely already part
+of your infrastructure. Plugins are pulled from a registry with the
+[`registry://` locator](../../../../wasm/docs/plugin-locators.mdx#oci-registry).
+
+Registries are configured with the [`registries`](../config.mdx#registries) setting, as a list of
+tables. Each registry supports the following fields:
+
+- `registry` <TypeLabel type="string" /> - The host of the registry, like `ghcr.io`. Required.
+- `namespace` <TypeLabel type="string" /> - The namespace that plugin images are in, typically the
+  organization or user.
+- `auth` <TypeLabel type="boolean" /> - Authenticate with the registry, using the credentials in
+  your Docker configuration for its host, like those created by `docker login`. Only username and
+  password credentials are supported. Defaults to `false`, which pulls anonymously.
+- `default` <TypeLabel type="boolean" /> - Use the registry for tools without any other plugin.
+  Defaults to `false`.
+
+```toml title=".prototools"
+[[settings.registries]]
+registry = "registry.example.com"
+namespace = "platform-team"
+auth = true
+default = true
+```
+
+The built-in `ghcr.io/moonrepo` registry is always first in the list, and registries you configure
+are appended after it. They're used in 2 ways:
+
+- **Image only locators** - A `registry://` locator without a host, like
+  `registry://my_tool:1.2.0`, is searched for in each registry in order, under the registry's
+  namespace. The first registry that has the image is used.
+- **Default registry** - When a tool has no configured, built-in, or community plugin, proto
+  locates it in the first registry with `default` enabled, using the tool's ID as the image name
+  and the `latest` tag. With the registry above,
+  [`proto install my-tool`](../../commands/install.mdx) pulls
+  `registry.example.com/platform-team/my-tool:latest`.
+
+A locator that includes a host, like `registry://registry.example.com/platform-team/my_tool:1.2.0`,
+is pulled from that host, using the matching registry's `auth` setting when one is configured.

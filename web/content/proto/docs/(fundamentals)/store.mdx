@@ -1,12 +1,333 @@
 ---
-title: Store
+title: Store & inventory
 icon: HardDrive
 ---
 
-## Location
+The **store** is proto's home directory, `~/.proto` by default. Everything proto downloads or
+creates lives in it: the `proto` binaries themselves, every installed version of every
+[tool](<./(plugin)/tool.mdx>), the [shims](./workflows.mdx#shims) and binaries that put tools on your `PATH`,
+downloaded [plugins](<./(plugin)/plugin.mdx>), caches, and the global [`.prototools`](./config.mdx). Nothing is
+installed into system directories, so installing a tool never needs administrator access or
+conflicts with your system's packages, and removing proto, along with everything it installed,
+comes down to deleting one directory.
+
+Within the store, each tool has an [inventory](#inventory): a directory of its installed versions,
+with a manifest that tracks them. proto uses it to find what's installed, to prefer versions you
+already have, and to [clean up](#cleaning) versions you no longer use.
+
+## Store location
+
+proto uses the first of the following directories as the store:
+
+1. `$PROTO_HOME`
+2. `$XDG_DATA_HOME/proto`
+3. `~/.proto`
+
+Both `proto` and `proto-shim` resolve the store on their own, from their environment, so every
+process must see the same variables. That's why [`proto setup`](../commands/setup.mdx) exports
+`PROTO_HOME` from your shell profile, and why a custom location should be set there too. Use an
+absolute path: a relative path is resolved from the current directory, so each directory would
+resolve a different store. See [store and paths](../advanced/env-vars.mdx#store-and-paths) for the
+related environment variables.
+
+To print the store's paths, along with the configuration files that were loaded, run
+[`proto debug env`](../commands/debug/env.mdx):
+
+```shell
+# Print the resolved store paths
+$ proto debug env
+```
+
+Two directories can be moved out of the store on their own:
+
+- `PROTO_TEMP_DIR` - Replaces the `temp` directory, for example to stage downloads on a different
+  disk.
+- `PROTO_PLUGINS_DIR` - Replaces the `plugins` directory, for example to share downloaded plugins
+  between multiple stores. The locks that coordinate plugin downloads move with it (into a `.temp`
+  directory inside it), so processes using different stores don't download the same plugin at
+  the same time.
+
+If you move an existing store, update `PROTO_HOME` and your `PATH`, then run
+[`proto regen --bin`](../commands/regen.mdx) to recreate the shims and binaries. The symlinks in
+`bin` point to absolute paths, so they still point to the old location until then.
 
 ## Directory layout
 
+```text
+~/.proto/
+├── .prototools          # Global configuration
+├── backends/            # Sources acquired by backends
+│   └── <backend>/<id>/
+├── bin/                 # proto, proto-shim, and linked tool executables
+├── builders/            # Build tools for building from source
+├── cache/               # HTTP responses and plugin registry data
+│   ├── registry/
+│   └── requests-v2/
+├── plugins/             # Downloaded WASM and schema plugins
+├── shims/               # Shims for tool executables
+│   └── registry.json
+├── temp/                # Downloads, install locks, and other temporary files
+├── tools/               # One inventory per tool
+│   └── <tool>/
+│       ├── <version>/
+│       └── manifest.json
+├── trust/               # Records of trusted configuration
+├── id                   # Anonymous telemetry identifier
+└── profile              # Shell profile chosen during setup
+```
+
+Directories are created when they're first needed, so a new store only contains some of them.
+
+- [`.prototools`](./config.mdx) - The global configuration, which has the lowest precedence of all
+  [configuration locations](./config.mdx#locations), and is where
+  [`proto pin --to global`](../commands/pin.mdx) writes. It belongs to you, so it never needs to be
+  [trusted](./trust.mdx), and never has a lockfile.
+- `backends/` - Sources that [backends](<./(plugin)/backend.mdx>) need before they can install a tool, in a
+  `<backend>/<id>` directory each. For example, the asdf backend clones each asdf plugin repository
+  into `backends/asdf/<id>`.
+- `bin/` - The `proto` and `proto-shim` executables. With
+  [binary linking](./workflows.mdx#binary-linking), it also holds symlinks to the executables of
+  installed tools (copies on Windows, where symlinks require administrator access).
+- `builders/` - Git checkouts of the build tools a plugin needs when
+  [building from source](../guides/build-from-source.mdx), like `ruby-build`.
+- `cache/` - Cached responses to HTTP requests (`requests-v2`, not used inside Docker containers),
+  and the lists of available plugins (`registry`) used to look up community tools and by
+  [`proto plugin search`](../commands/plugin/search.mdx), which are refreshed daily.
+- `plugins/` - Downloaded plugin files, `.wasm` for WASM plugins, or `.toml`, `.json`, or `.yaml`
+  for schema plugins. Each file is named after the plugin's ID and a hash of its
+  [locator](../../../wasm/docs/plugin-locators.mdx), so different versions of a plugin are cached side by
+  side. Plugins with a `file://` locator are loaded in place, and never copied here.
+- `shims/` - A [shim](./workflows.mdx#shims) for each executable of the tools you've installed, and
+  `registry.json`, which tells `proto-shim` which tool each shim belongs to, along with any
+  arguments or environment variables to apply.
+- `temp/` - In-progress downloads, staged in a directory per tool and version. The directory is
+  also a lock, so when multiple processes install the same version at once, only one downloads it.
+  It also holds plugin download locks, and the time of proto's last update check.
+- `tools/` - An [inventory](#inventory) for each tool. proto's own versions, installed by
+  [`proto upgrade`](../commands/upgrade.mdx) or for a [pinned version](./config.mdx#pinning-proto),
+  are in `tools/proto`.
+- `trust/` - A record for each configuration file or directory trusted with
+  [`proto trust`](../commands/trust.mdx). See [trust](./trust.mdx).
+- `id` - A random identifier, generated on first use, that's sent with anonymous usage telemetry.
+  Telemetry can be turned off with the [`telemetry`](./config.mdx#telemetry) setting.
+- `profile` - The shell profile chosen during [`proto setup`](../commands/setup.mdx). When a tool
+  needs environment variables or `PATH` entries after it's installed, proto adds them here.
+
 ## Inventory
 
+A tool's inventory is its directory in `tools`, named after its
+[identifier](<./(plugin)/tool.mdx#tool-identifiers>):
+
+```text
+~/.proto/tools/node/
+├── 20.11.0/
+│   ├── bin/
+│   ├── ...
+│   └── .last-used
+├── 22.14.0/
+├── manifest.json
+└── remote-versions.json
+```
+
+- `<version>/` - An installed version, exactly as it was unpacked (or built). It's named after the
+  version it resolved to, like `22.14.0`, not the requirement or alias that was requested, like
+  `22` or `lts`.
+- `manifest.json` - Tracks the installed versions. See [manifest](#manifest).
+- `remote-versions.json` - A cache of the versions available to install, as loaded by the tool's
+  plugin. It's reused for 12 hours, and used regardless of its age when you're
+  [offline](../guides/offline-mode.mdx), or when the versions can't be loaded. Set `PROTO_CACHE` to
+  `false` to bypass it. Tools with [version scopes](./version-spec.mdx#version-scopes) have a cache
+  per scope, `remote-versions-<scope>.json`.
+
+When resolving a requirement or range, like `node = "22"`, proto checks the inventory first, and
+uses the highest installed version that matches, before considering versions it would have to
+download. See [requirements and ranges](./version-spec.mdx#requirements-and-ranges).
+
+To list the installed versions of a tool, and when they were installed, run
+[`proto versions`](../commands/versions.mdx) with `--installed`.
+[`proto plugin info`](../commands/plugin/info.mdx) also shows the tool's inventory directory, and
+when each version was last used.
+
+```shell
+# List installed versions of Node.js
+$ proto versions node --installed
+```
+
+### Manifest
+
+The manifest is a record of every version proto installed, and how:
+
+```json title="~/.proto/tools/node/manifest.json"
+{
+  "installed_versions": ["20.11.0", "22.14.0"],
+  "shim_version": 20,
+  "versions": {
+    "20.11.0": {
+      "no_clean": false,
+      "installed_at": 1767225600000,
+      "lock": {
+        "os": "macos",
+        "arch": "arm64",
+        "checksum": "sha256:6616f388e127c858...",
+        "source": "https://nodejs.org/download/release/v20.11.0/node-v20.11.0-darwin-arm64.tar.xz"
+      }
+    },
+    "22.14.0": {
+      "no_clean": false,
+      "installed_at": 1772323200000,
+      "lock": {
+        "os": "macos",
+        "arch": "arm64",
+        "checksum": "sha256:4e845cb71b4e8972...",
+        "source": "https://nodejs.org/download/release/v22.14.0/node-v22.14.0-darwin-arm64.tar.xz"
+      }
+    }
+  }
+}
+```
+
+- `installed_versions` - Every installed version. This is what proto checks to decide whether a
+  version is installed, and to resolve requirements against what you already have.
+- `shim_version` - The version of the shims created for the tool. When proto ships a new shim
+  format, the tool's shims are recreated.
+- `versions.*.installed_at` - When the version was installed, as a Unix timestamp in milliseconds.
+- `versions.*.no_clean` - When `true`, [`proto clean`](#cleaning) never removes the version. It's
+  set by installing with the `PROTO_NO_CLEAN` environment variable.
+- `versions.*.lock` - The platform, [checksum](../advanced/checksums.mdx), and download URL of the
+  artifact that was installed. If the version is installed again and a
+  [lockfile](../advanced/lockfile.mdx) has no record of it, the new download is verified against
+  this record instead.
+- `versions.*.suffix` - A suffix that the tool's plugin appends to version directory names, if any.
+
+The manifest is read and written under a file lock, so multiple proto processes can install
+versions of the same tool at the same time without losing each other's changes.
+
+### Last used
+
+Each version directory has a `.last-used` file, holding a Unix timestamp (in milliseconds) of the
+last time proto ran that version. It's updated whenever proto prepares the version to run, through
+[`proto run`](../commands/run.mdx) (which shims call), [`proto exec`](../commands/exec.mdx),
+[`proto shell`](../commands/shell.mdx), and [`proto activate`](../commands/activate.mdx).
+[Cleaning](#stale-versions) uses it to find versions you no longer use.
+
+Running an executable directly, like a [linked binary](./workflows.mdx#binary-linking) in `bin`, or
+from another program that bypasses proto, doesn't update the timestamp. If you only use a version
+that way, install it with `PROTO_NO_CLEAN` so that it's never considered stale.
+
+### Custom locations
+
+A tool's plugin decides where its inventory lives, and it can't be changed with configuration. Most
+use the default, but a plugin can:
+
+- **Scope it by backend** - Tools provided by [backends](<./(plugin)/backend.mdx>) are prefixed with
+  the backend, so `npm:typescript` is installed into `tools/npm__typescript`, and doesn't collide
+  with a tool named `typescript`.
+- **Rename it** - Multiple IDs can share an inventory. For example, the `java` and `jdk` tools both
+  use `tools/jdk`.
+- **Move it outside the store** - The Rust plugin installs toolchains into rustup's own directory,
+  `~/.rustup/toolchains` (or `$RUSTUP_HOME/toolchains`), so that rustup and Cargo can use them
+  too. Version directories are suffixed with the target, like `1.85.0-aarch64-apple-darwin`. The
+  manifest and the remote versions cache still live in `~/.proto/tools/rust`.
+
+Versions in an inventory outside the store are never removed by [`proto clean`](#cleaning). Use
+[`proto uninstall`](#uninstalling) to remove them.
+
 ## Cleaning
+
+The store only grows on its own: every version you install, every plugin update, and every cached
+response adds to it. [`proto clean`](../commands/clean.mdx) removes what hasn't been used recently:
+
+```shell
+# Clean everything that hasn't been used in 30 days
+$ proto clean
+
+# Clean only downloaded plugins
+$ proto clean plugins
+
+# Clean everything that hasn't been used in a week
+$ proto clean --days 7
+```
+
+The optional argument is the target to clean, which defaults to `all`. Age is measured with
+`--days`, which defaults to `30`.
+
+- `tools` - Installed versions that haven't been used within `--days`. See
+  [stale versions](#stale-versions).
+- `plugins` - Downloaded plugins that haven't been read within `--days`. They're downloaded again
+  the next time they're needed.
+- `temp` - Files directly in `temp` that haven't been read within `--days`. Its directories are
+  left alone, as in-progress installs manage them.
+- `cache` - Cached files that haven't been read within `--days`, and directories left empty.
+- `trust` - [Trust](./trust.mdx) records for files and directories that no longer exist, regardless
+  of age. Otherwise, a record for a deleted path would trust a different repository that's later
+  cloned there.
+- `all` - Every target above.
+
+Before removing a tool's versions, proto asks for confirmation, unless `--yes` is passed or it's
+running in CI. Pass `--json` to print what was removed as JSON.
+
+### Stale versions
+
+proto checks every built-in tool, and every tool with a configured plugin or pinned version in the
+current configuration. It removes a version when either:
+
+- Its directory exists in the inventory, but isn't tracked in the [manifest](#manifest), like the
+  leftovers of an interrupted install. These are removed regardless of age.
+- Its [last used](#last-used) timestamp is older than `--days`.
+
+A version with no `.last-used` file, because it was installed but never run through proto, is
+never removed by age. Neither is a version marked as `no_clean`:
+
+```shell
+# Install a version that proto clean never removes
+$ PROTO_NO_CLEAN=1 proto install node 22
+```
+
+A stale version is uninstalled like [`proto uninstall`](#uninstalling) would, with one difference:
+its records in [lockfiles](../advanced/lockfile.mdx) are kept, as the version may still be pinned in
+a repository and used on other machines.
+
+proto's own versions, in `tools/proto`, are checked separately, by when their `proto` executable was
+last accessed. Tools with an [inventory outside the store](#custom-locations) are skipped.
+
+### Automatic cleaning
+
+Instead of running [`proto clean`](../commands/clean.mdx) yourself, enable the [`auto-clean`](./config.mdx#auto-clean) setting
+(or the `PROTO_AUTO_CLEAN` environment variable). proto then cleans every target, with the default
+of 30 days and without prompting, after each run of
+[`proto activate`](../commands/activate.mdx), [`proto install`](../commands/install.mdx),
+[`proto outdated`](../commands/outdated.mdx), [`proto regen`](../commands/regen.mdx), and
+[`proto status`](../commands/status.mdx).
+
+```toml title=".prototools"
+[settings]
+auto-clean = true
+```
+
+Cleaning is a preference for your machine, rather than for a repository, so set it in your global
+[`~/.proto/.prototools`](./config.mdx#locations), or `~/.prototools`. It's also a
+[security-sensitive setting](./trust.mdx#security-sensitive-settings), so a project's
+[`.prototools`](./config.mdx) must be trusted before it applies.
+
+In CI, the store is usually cached between runs, so tools and plugins aren't downloaded every time.
+A cached store grows like a local one, so run [`proto clean`](../commands/clean.mdx) before the cache is saved (prompts are
+skipped in CI), or enable `auto-clean`. See [caching the store](../guides/ci.mdx#caching-the-store).
+
+### Uninstalling
+
+To remove a version right away, regardless of when it was last used, run
+[`proto uninstall`](../commands/uninstall.mdx) with the tool and version. Without a version, it
+removes every version of the tool, along with its entire inventory.
+
+```shell
+# Remove a single version
+$ proto uninstall node 20.11.0
+
+# Remove every version of Node.js
+$ proto uninstall node
+```
+
+Uninstalling a version removes its directory and manifest entry, and its executables from `bin`.
+Executables shared across versions, like `node`, are re-pointed to the highest remaining version,
+and removing the last version also removes the tool's shims. Unlike cleaning, it also removes the
+version's records from lockfiles, and matching pins from [`.prototools`](./config.mdx) files.

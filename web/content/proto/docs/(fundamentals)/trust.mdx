@@ -1,14 +1,265 @@
 ---
-title: Trust
+title: Trust & safety
 icon: ShieldCheck
 ---
 
+A [`.prototools`](./config.mdx) file can do much more than pin versions. It can set environment
+variables and shell aliases, load plugins from any URL, and change where tools are downloaded from.
+That's useful in a file you wrote, and risky in one you didn't. Without a safeguard, cloning a
+repository and changing into it with [shell activation](./workflows.mdx#shell-activation) enabled
+would let its `.prototools` run code on your machine before you'd even read it.
+
+So proto ignores the security-sensitive settings of a local [`.prototools`](./config.mdx) until you
+explicitly trust its file or directory with [`proto trust`](../commands/trust.mdx), much like
+`direnv allow`. Safe settings, like version pins for built-in tools, are still applied, so most
+repositories work out of the box, and proto warns you about whatever it skipped. Your own configs,
+in your home directory and proto's store, are always trusted.
+
 ## How trust works
+
+When proto loads configuration, it [traverses upwards](./config.mdx#locations) from the current
+directory and checks each local [`.prototools`](./config.mdx) (and
+[`.prototools.<env>`](./config.mdx#environment-mode)) on its own. A config without
+[security-sensitive settings](#security-sensitive-settings) doesn't need trust. Otherwise, it's
+trusted if any of the following apply, checked in order:
+
+1. proto is running in CI.
+2. The config is within a directory listed in `PROTO_TRUSTED_PATHS`.
+3. The config file itself was trusted.
+4. The config's directory, or any of its parent directories, was trusted.
+
+The first 2 are covered in [automatically trusted](#automatically-trusted). The check runs in every
+proto process that loads configuration: every command, every [shim](./workflows.mdx#shims) (which
+runs [`proto run`](../commands/run.mdx)), and every run of the shell activation hook. Trust isn't
+cached between commands, so trusting or untrusting takes effect on the next one.
+
+[`proto trust`](../commands/trust.mdx) records trust as a small JSON file in the `trust` directory
+of the [store](./store.mdx#directory-layout) (`~/.proto/trust`), one file per trusted path, named
+after a hash of that path. The record contains only the path, not the config's content, which has a
+few consequences:
+
+- **Trust follows the location, not the content.** Editing a trusted config, or pulling changes to
+  it, keeps it trusted. Review changes to [`.prototools`](./config.mdx) in pull requests like any
+  other code that runs on your machine.
+- **A directory covers everything within it.** Trusting a directory trusts every config in it and
+  its sub-directories, including configs added later, like an environment config or a new package
+  in a monorepo. Trusting a file trusts only that file.
+- **Trust doesn't flow upwards.** Trusting `~/Projects/app/packages/web` doesn't trust
+  `~/Projects/app/.prototools`, even though both are loaded when you're in `packages/web`.
+- **Paths are resolved first.** Relative components and symlinked directories are resolved, so a
+  directory is trusted no matter which path you reach it by. A [`.prototools`](./config.mdx) that's
+  itself a symlink isn't followed, so it can't borrow the trust of the config it points to.
+
+A record outlives the directory it points to. If you delete a trusted repository, then clone a
+different one to the same path, the new one would be trusted too. [`proto clean`](../commands/clean.mdx)
+removes records whose path no longer exists (`proto clean trust` cleans only those), and a record
+that can't be read is treated as untrusted.
 
 ## Security-sensitive settings
 
+proto splits every local config into safe and security-sensitive settings. The split is an
+allowlist: a few settings are known to be safe, and everything else is sensitive, including settings
+added in future releases.
+
+These settings are **safe**, and are applied from any config:
+
+- [Version pins](./config.mdx#versions) for [built-in tools](<./(plugin)/tool.mdx#built-in-tools>).
+- [Version aliases](./version-spec.mdx#custom-aliases) in `[tools.*.aliases]`.
+- The [`detect-strategy`](./config.mdx#detect-strategy), [`lockfile`](./config.mdx#lockfile),
+  [`pin-latest`](./config.mdx#pin-latest), and [`telemetry`](./config.mdx#telemetry) settings.
+
+Everything else **requires trust**:
+
+- **[`[env]`](./config.mdx#env)** - Environment variables, and `.env` files loaded with `file`, are
+  exported to your shell by activation, and passed to every tool proto runs. A variable like
+  `NODE_OPTIONS` or `BASH_ENV` is enough to make a tool execute a script.
+- **[`[shell]`](./config.mdx#shell)** - [Shell aliases](./workflows.mdx#shell-aliases) are defined
+  in your shell by activation, so a config could redefine a command you type every day, like `git`.
+- **[`[plugins]`](./config.mdx#plugins)** - Plugins are downloaded from any URL or file, and
+  executed by proto.
+- **[`[tools.*]`](./config.mdx#tools)** - Everything except `aliases`: a tool's `plugin`, its `env`,
+  and the settings passed to its plugin, like a custom URL to download the tool from.
+- **[`[backends.*]`](./config.mdx#backends)** - A backend's plugin, environment variables, and
+  settings, like the Git repository an asdf plugin is cloned from.
+- **[`[settings]`](./config.mdx#settings)** - Everything except the 4 safe settings. For example,
+  `auto-install` installs tools without asking, `url-rewrites` and `http` change where and how
+  downloads happen, `registries`, `builtin-tools`, `builtin-backends`, and `community-tools` change
+  which plugins are used, and `build` controls the system packages installed when
+  [building from source](../guides/build-from-source.mdx).
+- **Other version pins** - A pin isn't just data: loading a tool downloads and executes its plugin,
+  and resolving a version can run more, all of which happens during activation. So a pin requires
+  trust when its plugin isn't built into proto, or runs third-party code:
+  - `proto` itself, as [pinning proto](./config.mdx#pinning-proto) decides which proto binary runs,
+    and a version released before trust existed wouldn't enforce it.
+  - Tools using the [asdf backend](../backends/asdf.mdx), like `"asdf:terraform"`, as it clones and
+    runs third-party scripts.
+  - Tools without a built-in plugin, like [community tools](<./(plugin)/tool.mdx#community-tools>), as their
+    plugin is loaded from a registry.
+
+For example, an untrusted copy of this config only pins `node` and `typescript`, defines the `work`
+alias, and enables the lockfile:
+
+```toml title=".prototools"
+# Safe
+node = "24.11.0"
+"npm:typescript" = "5.9.3"
+
+# Requires trust
+proto = "0.63.2"
+"asdf:terraform" = "1.9.0"
+
+# Requires trust
+[env]
+NODE_ENV = "development"
+
+# Safe
+[tools.node.aliases]
+work = "22"
+
+[settings]
+lockfile = true # Safe
+auto-install = true # Requires trust
+```
+
+proto refers to sensitive settings by their path, like `env`, `plugins.tools`, `tools.node`, or
+`settings.auto-install`, both when you trust a config and in the warnings for untrusted ones.
+
 ## Trusting configurations
+
+Read the config first (it's a short TOML file), then trust it with
+[`proto trust`](../commands/trust.mdx). It accepts a directory or a config file, either relative to
+the current directory or absolute, and defaults to the current directory. The path must exist.
+
+```shell
+# Trust the current directory, and every config within it
+$ proto trust
+
+# Trust a repository by path
+$ proto trust ~/Projects/app
+
+# Trust a single config file, but not its siblings or sub-directories
+$ proto trust packages/web/.prototools
+```
+
+Trusting a directory is usually what you want: run it once in a repository's root after cloning, and
+every config in the repository is trusted, including ones added later. Trust a file instead when you
+only want to vouch for that one file, like a repository's root config, but not the configs in each of
+its packages.
+
+Once trusted, proto prints the security-sensitive settings it will now apply, for the trusted file
+or each config in the trusted directory, followed by a summary of the configs and their sensitive
+settings. Check that it's what you expected.
+
+proto never prompts you to trust a config. Trusting is always an explicit
+[`proto trust`](../commands/trust.mdx), and a few paths are handled specially:
+
+- Trusting your home directory, or a directory above it like `/`, prints a warning, as it trusts
+  every config within your home directory, including repositories you clone in the future.
+- Trusting `~/.prototools` or `~/.proto/.prototools` changes nothing, as configs you own are
+  [always trusted](#automatically-trusted).
+- Any file that isn't a [`.prototools`](./config.mdx) or `.prototools.<env>` config is rejected.
 
 ## Untrusted configurations
 
+When a config with security-sensitive settings isn't trusted, proto removes those settings from it
+before merging it with other configs, and applies the rest. Nothing else is affected: other configs,
+like a trusted parent directory, or your [user and global configs](./config.mdx#locations), still
+apply as usual. In practice:
+
+- Its environment variables and shell aliases aren't set.
+- Tools pinned with a sensitive pin aren't configured by it, so
+  [`proto install`](../commands/install.mdx) doesn't install them.
+- Plugins it configures aren't loaded. A built-in tool falls back to its built-in plugin. For any
+  other tool, proto doesn't look the tool up in the community registry instead, as that could load a
+  different plugin than the one configured. Commands that use the tool fail with an error that names
+  the config and the [`proto trust`](../commands/trust.mdx) command to run, while commands that load
+  every configured tool, like shell activation, skip it.
+
+Untrusted configs behave the same way in scripts, editors, and other non-interactive contexts:
+nothing prompts or blocks, the sensitive settings are ignored. The exception is CI, where every
+config is [automatically trusted](#automatically-trusted).
+
+### Warnings
+
+proto tells you when it ignored settings, without getting in the way of your tools:
+
+- Most commands log a warning for each untrusted config, listing the settings that were ignored and
+  the [`proto trust`](../commands/trust.mdx) command to run.
+- [Shell activation](./workflows.mdx#shell-activation) warns once per config per shell session,
+  instead of on every prompt. It tracks the configs it has warned about in the
+  `_PROTO_ACTIVATED_UNTRUSTED` environment variable, which [`proto deactivate`](../commands/deactivate.mdx)
+  removes.
+- Tool commands, [`proto run`](../commands/run.mdx), [`proto exec`](../commands/exec.mdx),
+  [`proto bin`](../commands/bin.mdx), and [`proto shell`](../commands/shell.mdx), and therefore
+  shims, stay quiet, as scripts and editors run them constantly. They only fail when the tool itself
+  is affected, as described above.
+- [`proto status`](../commands/status.mdx) lists untrusted configs in their own section, which also
+  explains tools that seem to be missing. [`proto diagnose`](../commands/diagnose.mdx) reports them
+  as warnings, and [`proto debug config`](../commands/debug/config.mdx) marks each one as
+  `(untrusted)`, and shows it without its sensitive settings.
+
+### Removing trust
+
+To stop applying a config's sensitive settings, remove its trust with
+[`proto untrust`](../commands/untrust.mdx). It accepts the same paths as
+[`proto trust`](../commands/trust.mdx), but the path doesn't need to exist, so you can remove
+records for deleted directories.
+
+```shell
+# Untrust the current directory
+$ proto untrust
+
+# Untrust a single config file
+$ proto untrust packages/web/.prototools
+
+# Remove records for paths that no longer exist
+$ proto clean trust
+```
+
+[`proto untrust`](../commands/untrust.mdx) removes the record for exactly that path. Untrusting a
+file doesn't untrust a directory that contains it, and vice versa. When a config is still trusted
+through a parent directory, `PROTO_TRUSTED_PATHS`, or CI, proto says so, including which
+[`proto untrust`](../commands/untrust.mdx) to run for a parent directory.
+
 ## Automatically trusted
+
+Some configs are trusted without running [`proto trust`](../commands/trust.mdx):
+
+- **Configs you own** - The [`.prototools`](./config.mdx) in your home directory (the user config) and in proto's
+  home directory (the global config, `~/.proto/.prototools`), and their environment configs, are
+  always trusted. See [locations](./config.mdx#locations).
+- **Settings you add with proto** - When a proto command writes to a config, like
+  [`proto pin`](../commands/pin.mdx) or [`proto plugin add`](../commands/plugin/add.mdx), and the
+  config had no security-sensitive settings before but does after, proto trusts that file, as you
+  added them yourself. Only that file is trusted, not its directory. A config that already had
+  untrusted settings stays untrusted, so running a command in a cloned repository never trusts
+  settings you haven't reviewed.
+- **CI** - When proto detects CI, from a `CI` environment variable with any value other than
+  `false`, or a CI provider's own variables, every config is trusted. In CI, the checked out
+  repository is the code being built, and there's no one around to run
+  [`proto trust`](../commands/trust.mdx). See [trust in CI](../guides/ci.mdx#trust-in-ci).
+- **Trusted paths** - Every config within a directory listed in the `PROTO_TRUSTED_PATHS`
+  environment variable is trusted. Separate directories with `:` (or `;` on Windows), and use
+  absolute paths. See [environment variables](../advanced/env-vars.mdx#trust).
+
+```shell
+# In your shell profile
+export PROTO_TRUSTED_PATHS="$HOME/work:/workspaces"
+```
+
+Neither `CI` nor `PROTO_TRUSTED_PATHS` counts when it was set by proto's shell activation, from a
+config's [`[env]`](./config.mdx#env). Otherwise, a trusted config could trust every directory you
+change into after it.
+
+Automatic trust trades safety for convenience, so use it deliberately. `PROTO_TRUSTED_PATHS` suits
+directories where every repository comes from a source you already trust, like your company's
+repositories, or a dev container whose workspace is the code it builds. Avoid broad directories like
+`~` or `~/Projects`, where you also clone repositories to try them out.
+
+<Callout type="warning">
+  If a `CI` variable leaks into your interactive shell, for example from your
+  shell profile, every config on your machine is trusted, including those in
+  cloned repositories. [`proto diagnose`](../commands/diagnose.mdx) warns when
+  it detects CI in an interactive terminal. Remove the variable, or set
+  `CI=false` to turn off detection.
+</Callout>
