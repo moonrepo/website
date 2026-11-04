@@ -171,9 +171,10 @@ async fn registers_metadata() {
 }
 ```
 
-To pass configuration to the plugin, as if it were configured in `.prototools`, use
-`create_plugin_with_config` and the `tool_config` method (or `backend_config` for backends).
-Configuration is serialized, so pass your plugin's own config struct.
+To pass configuration to the plugin, as if it were configured in
+[`.prototools`](<../../proto/docs/(fundamentals)/config.mdx>), use `create_plugin_with_config` and
+the `tool_config` method (or `backend_config` for backends). Configuration is serialized, so pass
+your plugin's own config struct.
 
 ```rust
 use example_tool::ExampleToolConfig;

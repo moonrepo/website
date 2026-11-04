@@ -261,8 +261,10 @@ CI machine gets the exact same version, without installing anything themselves.
 Without a `version`, moon uses the tool's binary on your `PATH` instead, which must already be
 installed.
 
-If your repository already pins versions in a `.prototools` file, you can leave `version` out of
-`.moon/toolchains.config`, as moon inherits versions from `.prototools` by default:
+If your repository already pins versions in a
+[`.prototools`](<../../../proto/docs/(fundamentals)/config.mdx>) file, you can leave `version` out
+of `.moon/toolchains.config`, as moon inherits versions from
+[`.prototools`](<../../../proto/docs/(fundamentals)/config.mdx>) by default:
 
 ```toml title=".prototools"
 node = "24.12.0"

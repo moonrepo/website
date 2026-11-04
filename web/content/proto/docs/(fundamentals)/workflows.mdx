@@ -225,9 +225,10 @@ A few things to keep in mind:
   warns about an untrusted file once per shell session.
 
 For a one-off session instead, [`proto shell`](../commands/shell.mdx) starts a new interactive shell
-with the configured tools (or the ones you list, like `proto shell node@20`) on `PATH` and their
-environment variables applied, without registering a hook. Versions stay fixed for the life of that
-shell, and exiting it returns you to the original session. To run a single command this way, use
+with the configured tools (or the ones you list, like
+[`proto shell node@20`](../commands/shell.mdx)) on `PATH` and their environment variables applied,
+without registering a hook. Versions stay fixed for the life of that shell, and exiting it returns
+you to the original session. To run a single command this way, use
 [`proto exec`](../commands/exec.mdx).
 
 ### Setup

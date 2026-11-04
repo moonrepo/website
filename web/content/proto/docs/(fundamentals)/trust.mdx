@@ -7,7 +7,7 @@ A [`.prototools`](./config.mdx) file can do much more than pin versions. It can 
 variables and shell aliases, load plugins from any URL, and change where tools are downloaded from.
 That's useful in a file you wrote, and risky in one you didn't. Without a safeguard, cloning a
 repository and changing into it with [shell activation](./workflows.mdx#shell-activation) enabled
-would let its `.prototools` run code on your machine before you'd even read it.
+would let its [`.prototools`](./config.mdx) run code on your machine before you'd even read it.
 
 So proto ignores the security-sensitive settings of a local [`.prototools`](./config.mdx) until you
 explicitly trust its file or directory with [`proto trust`](../commands/trust.mdx), much like
@@ -51,9 +51,10 @@ few consequences:
   itself a symlink isn't followed, so it can't borrow the trust of the config it points to.
 
 A record outlives the directory it points to. If you delete a trusted repository, then clone a
-different one to the same path, the new one would be trusted too. [`proto clean`](../commands/clean.mdx)
-removes records whose path no longer exists (`proto clean trust` cleans only those), and a record
-that can't be read is treated as untrusted.
+different one to the same path, the new one would be trusted too.
+[`proto clean`](../commands/clean.mdx) removes records whose path no longer exists
+([`proto clean trust`](../commands/clean.mdx) cleans only those), and a record that can't be read is
+treated as untrusted.
 
 ## Security-sensitive settings
 

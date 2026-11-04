@@ -382,8 +382,8 @@ through [proto](../../../../proto/docs/index.mdx), by downloading it from the np
 - The `pnpm` and `pnpx` executables are made available, with `pnpm` as the primary executable. pnpm
   v11 and later also provide `pn` and `pnx`.
 - To download from a private registry or mirror, configure `registry-url` under `[tools.pnpm]` in
-  `.prototools`. Credentials for the registry are read from `.npmrc` files in the workspace and your
-  home directory.
+  [`.prototools`](<../../../../proto/docs/(fundamentals)/config.mdx>). Credentials for the registry
+  are read from `.npmrc` files in the workspace and your home directory.
 
 For tasks that use the pnpm toolchain, moon also prepends pnpm's global binaries directory
 (`$PNPM_HOME`, or pnpm's default location for your operating system) to `PATH`, so packages

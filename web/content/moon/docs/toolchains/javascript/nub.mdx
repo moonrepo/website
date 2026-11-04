@@ -369,7 +369,8 @@ already installed are reused.
 - Installing is supported on Linux, macOS, and Windows, on x64 and arm64 machines.
 - The `nub` and `nubx` executables are made available, with `nub` as the primary executable.
 - Nub is installed into proto's store under the stable `nub` identifier (for example
-  `~/.proto/tools/nub/0.7.4`), and is shared with `proto install nub`.
+  `~/.proto/tools/nub/0.7.4`), and is shared with
+  [`proto install nub`](../../../../proto/docs/commands/install.mdx).
 
 Nub shares pnpm's directories for global packages (there's no `NUB_HOME`), so globally installed
 binaries are looked up in `PNPM_HOME`, or pnpm's default location for your operating system.
@@ -396,7 +397,8 @@ $ moon bin nub
   `scratch`. Configure [`docker.file.image`](/moon/api/DockerFileConfig#image), or choose an image
   when prompted.
 - **Some places use the stable `nub` identifier.** The JavaScript toolchain's `packageManager`
-  value, the root `.prototools` entry, the `PROTO_NUB_VERSION` environment variable,
+  value, the root [`.prototools`](<../../../../proto/docs/(fundamentals)/config.mdx>) entry, the
+  `PROTO_NUB_VERSION` environment variable,
   [`inheritedBy.toolchains`](/moon/api/InheritedByConfig#toolchains) conditions, and
   [`moon bin`](../../commands/bin.mdx) all use `nub`, not `unstable_nub`.
 - **Not every lockfile marks a dependencies root.** `bun.lockb` (Bun's binary lockfile) and

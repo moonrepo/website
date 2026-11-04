@@ -31,26 +31,26 @@ tool: [`native_install`](#native_install), [`download_prebuilt`](#download_prebu
 [`build_instructions`](#build_instructions). proto checks whether each of the other functions exists
 before calling it. The following table lists when each function is called.
 
-| Function                                        | Called when                                                                                       |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| [`register_tool`](#register_tool)               | The tool is loaded, for any command that uses it                                                  |
-| [`define_tool_config`](#define_tool_config)     | Never, as proto doesn't use the schema yet                                                        |
-| [`detect_version_files`](#detect_version_files) | Detecting a version from the current directory and its parents                                    |
-| [`parse_version_file`](#parse_version_file)     | A file from `detect_version_files` is found while detecting a version                             |
-| [`load_versions`](#load_versions)               | Resolving a version, unless it's fully qualified and only being run, and running `proto versions` |
-| [`resolve_version`](#resolve_version)           | Resolving any version, before versions are loaded                                                 |
-| [`native_install`](#native_install)             | Installing a version, before any other strategy                                                   |
-| [`native_uninstall`](#native_uninstall)         | Uninstalling a version, before its directory is deleted                                           |
-| [`download_prebuilt`](#download_prebuilt)       | Installing a version from a prebuilt archive, which is the default strategy                       |
-| [`build_instructions`](#build_instructions)     | Installing a version by building it from source                                                   |
-| [`unpack_archive`](#unpack_archive)             | After a prebuilt archive has been downloaded and verified                                         |
-| [`verify_checksum`](#verify_checksum)           | After a prebuilt archive and its checksum file have been downloaded                               |
-| [`locate_executables`](#locate_executables)     | Installing a version (to create bins and shims), and running the tool                             |
-| [`activate_environment`](#activate_environment) | Running the tool with `proto run` or a shim, `proto exec`, and `proto activate`                   |
-| [`pin_version`](#pin_version)                   | Running `proto pin --tool-native`                                                                 |
-| [`unpin_version`](#unpin_version)               | Running `proto unpin --tool-native`                                                               |
-| [`sync_manifest`](#sync_manifest)               | After installing or uninstalling a version, and running `proto clean`                             |
-| [`sync_shell_profile`](#sync_shell_profile)     | After proto installs a version, including auto-installs                                           |
+| Function                                        | Called when                                                                                                                                                                                          |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`register_tool`](#register_tool)               | The tool is loaded, for any command that uses it                                                                                                                                                     |
+| [`define_tool_config`](#define_tool_config)     | Never, as proto doesn't use the schema yet                                                                                                                                                           |
+| [`detect_version_files`](#detect_version_files) | Detecting a version from the current directory and its parents                                                                                                                                       |
+| [`parse_version_file`](#parse_version_file)     | A file from `detect_version_files` is found while detecting a version                                                                                                                                |
+| [`load_versions`](#load_versions)               | Resolving a version, unless it's fully qualified and only being run, and running [`proto versions`](../../proto/docs/commands/versions.mdx)                                                          |
+| [`resolve_version`](#resolve_version)           | Resolving any version, before versions are loaded                                                                                                                                                    |
+| [`native_install`](#native_install)             | Installing a version, before any other strategy                                                                                                                                                      |
+| [`native_uninstall`](#native_uninstall)         | Uninstalling a version, before its directory is deleted                                                                                                                                              |
+| [`download_prebuilt`](#download_prebuilt)       | Installing a version from a prebuilt archive, which is the default strategy                                                                                                                          |
+| [`build_instructions`](#build_instructions)     | Installing a version by building it from source                                                                                                                                                      |
+| [`unpack_archive`](#unpack_archive)             | After a prebuilt archive has been downloaded and verified                                                                                                                                            |
+| [`verify_checksum`](#verify_checksum)           | After a prebuilt archive and its checksum file have been downloaded                                                                                                                                  |
+| [`locate_executables`](#locate_executables)     | Installing a version (to create bins and shims), and running the tool                                                                                                                                |
+| [`activate_environment`](#activate_environment) | Running the tool with [`proto run`](../../proto/docs/commands/run.mdx) or a shim, [`proto exec`](../../proto/docs/commands/exec.mdx), and [`proto activate`](../../proto/docs/commands/activate.mdx) |
+| [`pin_version`](#pin_version)                   | Running [`proto pin --tool-native`](../../proto/docs/commands/pin.mdx)                                                                                                                               |
+| [`unpin_version`](#unpin_version)               | Running [`proto unpin --tool-native`](../../proto/docs/commands/unpin.mdx)                                                                                                                           |
+| [`sync_manifest`](#sync_manifest)               | After installing or uninstalling a version, and running [`proto clean`](../../proto/docs/commands/clean.mdx)                                                                                         |
+| [`sync_shell_profile`](#sync_shell_profile)     | After proto installs a version, including auto-installs                                                                                                                                              |
 
 ### Context
 
@@ -108,12 +108,13 @@ with the `default_install_strategy` returned from [`register_tool`](#register_to
 
 ## Configuration
 
-Users configure a tool in the `[tools.<id>]` table of a `.prototools` file. Except for the settings
-that proto handles itself (`aliases`, `env`, and `plugin`), every setting is passed through to the
-plugin when it's loaded, and can be read from any function with
+Users configure a tool in the `[tools.<id>]` table of a
+[`.prototools`](<../../proto/docs/(fundamentals)/config.mdx>) file. Except for the settings that
+proto handles itself (`aliases`, `env`, and `plugin`), every setting is passed through to the plugin
+when it's loaded, and can be read from any function with
 [`get_tool_config`](https://docs.rs/proto_pdk/latest/proto_pdk/fn.get_tool_config.html). Settings
-are merged from every `.prototools` file that proto loads, with files closer to the current
-directory taking precedence.
+are merged from every [`.prototools`](<../../proto/docs/(fundamentals)/config.mdx>) file that proto
+loads, with files closer to the current directory taking precedence.
 
 ```toml title=".prototools"
 [tools.example]
@@ -136,8 +137,8 @@ let config = get_tool_config::<ExampleToolConfig>()?;
 ```
 
 When the tool is part of a moon toolchain, moon reads the same `[tools.<id>]` settings from
-`.prototools`, using the toolchain's ID. To test with settings, see
-[testing proto plugins](./testing.mdx#proto).
+[`.prototools`](<../../proto/docs/(fundamentals)/config.mdx>), using the toolchain's ID. To test
+with settings, see [testing proto plugins](./testing.mdx#proto).
 
 ## APIs
 
@@ -222,8 +223,9 @@ schematic = { version = "0.20", default-features = false, features = ["schema"] 
 
 Resolution turns what a user asked for into a version to install or run. When no version was
 provided explicitly, proto first detects one from the current directory, from either a
-`.prototools` file, or a file from the tool's ecosystem, like `.nvmrc`. It then resolves that
-version, which may be an alias or a requirement, against the versions that are available.
+[`.prototools`](<../../proto/docs/(fundamentals)/config.mdx>) file, or a file from the tool's
+ecosystem, like `.nvmrc`. It then resolves that version, which may be an alias or a requirement,
+against the versions that are available.
 
 ### `detect_version_files`
 
@@ -234,9 +236,10 @@ version, which may be an alias or a requirement, against the versions that are a
 Returns a list of files from the tool's ecosystem that may contain a version, like `.nvmrc` or
 `package.json`. When detecting a version, proto checks each directory from the current directory
 upwards, and within each directory, checks the files in order, using the first version it finds.
-Empty files are skipped. Whether these files are checked before or after `.prototools` files, if
-at all, depends on proto's `detect-strategy` setting, and a `PROTO_<ID>_VERSION` environment
-variable takes precedence over both.
+Empty files are skipped. Whether these files are checked before or after
+[`.prototools`](<../../proto/docs/(fundamentals)/config.mdx>) files, if at all, depends on proto's
+`detect-strategy` setting, and a `PROTO_<ID>_VERSION` environment variable takes precedence over
+both.
 
 The output can also list patterns to `ignore`, and a directory is skipped when its path contains
 one of them, like `node_modules`. moon also uses this function when a toolchain is added with
@@ -302,10 +305,11 @@ or when [`resolve_version`](#resolve_version) returns a version explicitly. The 
 version being resolved (`initial`), which is mainly useful for its [scope](#versions).
 
 Versions are typically loaded from the network, so proto caches the output on disk for 12 hours,
-except when installing with `proto install`, which always loads the latest list. When loading fails, proto falls back to
-a previously cached list, if there is one. Most tools load versions from Git tags with
-[`load_git_tags`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.load_git_tags.html), or from
-a JSON index with [`fetch_json`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.fetch_json.html).
+except when installing with [`proto install`](../../proto/docs/commands/install.mdx), which always
+loads the latest list. When loading fails, proto falls back to a previously cached list, if there is
+one. Most tools load versions from Git tags with
+[`load_git_tags`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.load_git_tags.html), or from a
+JSON index with [`fetch_json`](https://docs.rs/warpgate_pdk/latest/warpgate_pdk/fn.fetch_json.html).
 [`LoadVersionsOutput::from`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.LoadVersionsOutput.html#method.from)
 creates the output from a list of strings, with the highest stable version as `latest`.
 
@@ -351,7 +355,8 @@ resolved, before [`load_versions`](#load_versions), and can return either of the
   versions that can't be part of the list, like Rust's `beta` and `nightly` channels.
 
 Return neither to resolve the initial version as normal. Aliases configured by the user in
-`.prototools` take precedence over the aliases from [`load_versions`](#load_versions).
+[`.prototools`](<../../proto/docs/(fundamentals)/config.mdx>) take precedence over the aliases from
+[`load_versions`](#load_versions).
 
 ```rust
 #[plugin_fn]
@@ -376,8 +381,9 @@ proto installs a version into its own directory, `~/.proto/tools/<id>/<version>`
 these functions as the `install_dir` virtual path. If the plugin implements
 [`native_install`](#native_install), it takes precedence over everything else. Otherwise, proto
 downloads a prebuilt with [`download_prebuilt`](#download_prebuilt), or builds from source with
-[`build_instructions`](#build_instructions) when running `proto install --build`, or when it's the
-tool's `default_install_strategy`.
+[`build_instructions`](#build_instructions) when running
+[`proto install --build`](../../proto/docs/commands/install.mdx), or when it's the tool's
+`default_install_strategy`.
 
 After installing, proto creates bins and shims from [`locate_executables`](#locate_executables), and
 calls [`sync_manifest`](#sync_manifest). Versions that are already installed are skipped, unless
@@ -537,8 +543,9 @@ doesn't exist.
 | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | -------- | -------- |
 | [`BuildInstructionsInput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.BuildInstructionsInput.html) | [`BuildInstructionsOutput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.BuildInstructionsOutput.html) | No       | Yes      |
 
-Returns how to build the tool from source, for when a user runs `proto install --build`, or when
-the tool's `default_install_strategy` is
+Returns how to build the tool from source, for when a user runs
+[`proto install --build`](../../proto/docs/commands/install.mdx), or when the tool's
+`default_install_strategy` is
 [`BuildFromSource`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/enum.InstallStrategy.html),
 like Ruby. proto then builds the tool in the following order:
 
@@ -651,7 +658,7 @@ pub fn verify_checksum(
 
 Once a version is installed, proto needs to know which executables to expose, and the environment
 to run them in. These functions are used whenever the tool runs, whether through a shim, a bin,
-`proto run`, or moon.
+[`proto run`](../../proto/docs/commands/run.mdx), or moon.
 
 ### `locate_executables`
 
@@ -713,9 +720,11 @@ pub fn locate_executables(
 | [`ActivateEnvironmentInput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.ActivateEnvironmentInput.html) | [`ActivateEnvironmentOutput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.ActivateEnvironmentOutput.html) | No       | No       |
 
 Sets up the environment for tools that need more than an executable on `PATH`, like Java expecting
-`JAVA_HOME`. It's called for installed versions when running the tool with `proto run` or a shim,
-with `proto exec`, and when activating proto in a shell with `proto activate`. moon also calls it
-before running commands for [tier 3](./toolchain.mdx#tier-3) toolchains.
+`JAVA_HOME`. It's called for installed versions when running the tool with
+[`proto run`](../../proto/docs/commands/run.mdx) or a shim, with
+[`proto exec`](../../proto/docs/commands/exec.mdx), and when activating proto in a shell with
+[`proto activate`](../../proto/docs/commands/activate.mdx). moon also calls it before running
+commands for [tier 3](./toolchain.mdx#tier-3) toolchains.
 
 Return environment variables to set as `env`, which overwrite existing variables, and directories to
 prepend to `PATH` as `paths`. The tool's executable and globals directories are added to `PATH`
@@ -749,10 +758,11 @@ version files, or the user's shell profile.
 | [`PinVersionInput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.PinVersionInput.html) | [`PinVersionOutput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.PinVersionOutput.html) | No       | No       |
 
 Pins a version to one of the tool's native files, like `.nvmrc` or `package.json`, instead of
-`.prototools`. It's only called when running `proto pin --tool-native`, which fails for tools that
-don't implement it. The input contains the `version` to pin, and the directory to pin it in (`dir`),
-based on the `--to` option. Return the `file` that was written and `pinned`, otherwise the command
-fails with the `error` message.
+[`.prototools`](<../../proto/docs/(fundamentals)/config.mdx>). It's only called when running
+[`proto pin --tool-native`](../../proto/docs/commands/pin.mdx), which fails for tools that don't
+implement it. The input contains the `version` to pin, and the directory to pin it in (`dir`), based
+on the `--to` option. Return the `file` that was written and `pinned`, otherwise the command fails
+with the `error` message.
 
 Pin to a file that [`detect_version_files`](#detect_version_files) returns, so that the version is
 detected afterwards.
@@ -778,10 +788,11 @@ pub fn pin_version(Json(input): Json<PinVersionInput>) -> FnResult<Json<PinVersi
 | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | -------- | -------- |
 | [`UnpinVersionInput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.UnpinVersionInput.html) | [`UnpinVersionOutput`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.UnpinVersionOutput.html) | No       | No       |
 
-The reverse of [`pin_version`](#pin_version), called when running `proto unpin --tool-native`.
-Remove the version from the tool's native file in the directory (`dir`), and return the `file`,
-`unpinned`, and the `version` that was removed, which is displayed to the user. Otherwise the
-command fails with the `error` message.
+The reverse of [`pin_version`](#pin_version), called when running
+[`proto unpin --tool-native`](../../proto/docs/commands/unpin.mdx). Remove the version from the
+tool's native file in the directory (`dir`), and return the `file`, `unpinned`, and the `version`
+that was removed, which is displayed to the user. Otherwise the command fails with the `error`
+message.
 
 ```rust
 #[plugin_fn]
@@ -813,9 +824,10 @@ pub fn unpin_version(Json(input): Json<UnpinVersionInput>) -> FnResult<Json<Unpi
 
 Syncs proto's list of installed versions (the tool's manifest) with versions that were installed
 outside of proto, for tools that manage their own versions, like Rust with rustup. It's called after
-a version is installed or uninstalled, when running `proto clean`, and after moon installs a
-toolchain's tool. Return the installed `versions`, which replace the list in the manifest, or nothing (or
-`skip_sync`) to leave it unchanged.
+a version is installed or uninstalled, when running
+[`proto clean`](../../proto/docs/commands/clean.mdx), and after moon installs a toolchain's tool.
+Return the installed `versions`, which replace the list in the manifest, or nothing (or `skip_sync`)
+to leave it unchanged.
 
 ```rust
 #[plugin_fn]

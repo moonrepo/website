@@ -344,7 +344,9 @@ downloading a prebuilt archive. Versions that are already installed are reused.
 - **Versions** - Fully-qualified versions (`3.4.7`), partial versions (`3.4`), and the `latest` alias are resolved against Ruby's releases (from the `ruby/ruby` repository's git tags), and the pre-built Ruby builds listed in moonrepo's registry. Pre-releases like `4.0.0-preview.2` are supported (Ruby's own `4.0.0-preview2` format is accepted too), and a build suffix like `3.4.5+4` pins a specific pre-built.
 - **Platforms** - Pre-built Ruby is available for Linux (x64 and arm64) and macOS on Apple Silicon. Intel macOS and Windows aren't supported, and setup fails when no pre-built exists for the version and platform.
 - **Executables** - `ruby`, `bundle`, `gem`, `rake`, and `irb`, from the installation's `bin` directory.
-- **Store** - Ruby is installed into proto's store under the `ruby` tool identifier (for example `~/.proto/tools/ruby/3.4.7`). This store is shared with proto, so a version previously installed with `proto install ruby` is reused as-is.
+- **Store** - Ruby is installed into proto's store under the `ruby` tool identifier (for example
+  `~/.proto/tools/ruby/3.4.7`). This store is shared with proto, so a version previously installed
+  with [`proto install ruby`](../../../proto/docs/commands/install.mdx) is reused as-is.
 
 ## Caveats
 
@@ -355,4 +357,8 @@ downloading a prebuilt archive. Versions that are already installed are reused.
 - **Vendor directories aren't pruned.** The Ruby toolchain doesn't clean up `bundlePath` directories during [`moon docker prune`](../commands/docker/prune.mdx), so [`docker.prune.deleteVendorDirectories`](/moon/api/DockerPruneConfig#deletevendordirectories) has no effect for Ruby.
 - **`Gemfile` scanning is best-effort.** Dynamic paths (like `File.expand_path(...)`), `git:` gems, and the `gemspec` directive are ignored, and the project graph only scans files named `Gemfile`, not `gems.rb`. Use [`dependsOn`](/moon/api/ProjectConfig#dependson) for anything moon can't infer.
 - **Frozen mode persists.** With `frozen` enabled, the setting is written to `.bundle/config`, so it also applies to `bundle` commands you run manually in that root.
-- **Limited platforms for managed Ruby.** On platforms without a pre-built Ruby (see [installing with proto](#installing-with-proto)), either leave `version` unset and install Ruby yourself, or build it ahead of time with proto (`proto install ruby 3.4.7 --build`, not available on Windows), which moon then reuses.
+- **Limited platforms for managed Ruby.** On platforms without a pre-built Ruby (see
+  [installing with proto](#installing-with-proto)), either leave `version` unset and install Ruby
+  yourself, or build it ahead of time with proto
+  ([`proto install ruby 3.4.7 --build`](../../../proto/docs/commands/install.mdx), not available on
+  Windows), which moon then reuses.

@@ -231,9 +231,11 @@ This also applies to custom `Dockerfile` templates, configured with
 
 ## Toolchains
 
-- `.prototools` files within the workspace are always trusted by proto, while other local files,
-  like one in a parent directory, must be trusted with `proto trust` before their security-sensitive
-  settings are applied (see [installing with proto](<../../(fundamentals)/toolchain.mdx#installing-with-proto>)).
+- [`.prototools`](<../../../../proto/docs/(fundamentals)/config.mdx>) files within the workspace are
+  always trusted by proto, while other local files, like one in a parent directory, must be trusted
+  with [`proto trust`](../../../../proto/docs/commands/trust.mdx) before their security-sensitive
+  settings are applied (see
+  [installing with proto](<../../(fundamentals)/toolchain.mdx#installing-with-proto>)).
 - Disabling dependency installs, with [`pipeline.installDependencies`](/moon/api/PipelineConfig#installdependencies)
   or a toolchain's [`installDependencies`](/moon/api/ToolchainPluginConfig#installdependencies)
   setting, no longer stops the toolchain from being set up before tasks.
