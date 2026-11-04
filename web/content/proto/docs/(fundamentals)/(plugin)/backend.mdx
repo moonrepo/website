@@ -26,9 +26,9 @@ Backends cover the long tail.
 - **Ecosystem versions** - Available versions come from the ecosystem itself, like the npm registry,
   crates.io, or an asdf plugin's scripts, along with any aliases it defines, like npm's dist-tags.
 - **Native installs** - The ecosystem's own tooling installs the tool, like `npm install` or
-  `cargo install`, into proto's [store](../store.mdx). proto doesn't download the files itself, so it
-  doesn't verify [checksums](../../advanced/checksums.mdx), and backend installs aren't recorded in the
-  [lockfile](../../advanced/lockfile.mdx).
+  `cargo install`, into proto's [store](../store.mdx). proto doesn't download the files itself, so
+  it doesn't verify [checksums](../../advanced/checksums.mdx), and backend installs aren't recorded
+  in the [lockfile](../../advanced/lockfile.mdx).
 - **Required tools** - A backend may run on other tools, which must have a version configured
   before installing: the npm backend runs on `node` and `npm`, and the cargo backend on `rust`.
 - **Platform limits** - A backend only works where its ecosystem does. The asdf backend runs Bash
@@ -36,99 +36,19 @@ Backends cover the long tail.
 - **Unstable** - The built-in backends are marked as unstable, and proto prints a warning when
   installing a tool with one.
 
-## How backends work
-
-proto splits an identifier at its first `:`. The part before it is the backend's identifier, and the
-part after it is the tool's, so `npm:@biomejs/biome` is the `@biomejs/biome` tool of the `npm`
-backend. An identifier without a colon is a regular tool.
-
-### Loading the plugin
-
-proto finds the backend's plugin in your configuration first (the `plugin` setting of
-[`[backends.<id>]`](../config.mdx#backends-plugin), then [`[plugins.backends]`](../config.mdx#plugins)), and
-otherwise uses the [built-in backend](#built-in-backends) with that identifier, or a
-[default registry](./plugin.mdx#registries) if you've configured one. Unlike tools, backends aren't
-looked up in the community registry. The plugin is downloaded and cached like any other plugin,
-and then loaded for each tool, with the tool's identifier and the
-settings from both [`[backends.<id>]`](../config.mdx#backends) and
-[`[tools."<backend>:<id>"]`](../config.mdx#tools).
-
-Some backends need more than the plugin. When an asdf tool is loaded, the backend clones the asdf
-plugin's repository into `~/.proto/backends/asdf/<name>`, and pulls updates at most once every 7
-days.
-
-### Resolving and installing
-
-Each backend lists the available versions from its ecosystem, and proto resolves your
-[version specification](../version-spec.mdx) against them, like it does for any tool. When the
-ecosystem doesn't name a latest version, the highest one is used as `latest`.
-
-Instead of downloading and unpacking a prebuilt archive, a backend installs the tool _natively_, by
-running the ecosystem's tooling against the version's directory in the store:
-
-| Backend | Lists versions with                                 | Installs with                                                     |
-| ------- | --------------------------------------------------- | ----------------------------------------------------------------- |
-| `asdf`  | The plugin's `bin/list-all` script                  | The plugin's `bin/download` and `bin/install` scripts             |
-| `cargo` | The crates.io API, excluding yanked versions        | `cargo binstall` when available, otherwise `cargo install --root` |
-| `npm`   | `npm view`, with dist-tags (like `next`) as aliases | `npm install --global --prefix`                                   |
-
-Backend tools are stored in the [store's](../store.mdx#directory-layout) `tools` directory like any
-other tool. The npm and cargo backends prefix the directory with the backend, so that a package
-can't clash with a tool of the same name: `npm:prettier` is installed into
-`~/.proto/tools/npm__prettier/<version>`, and `npm:@biomejs/biome` into
-`~/.proto/tools/npm__biomejs_biome/<version>`.
-
-### Locating executables
-
-Once installed, the backend locates the tool's executables. Shims and [binaries](../workflows.mdx#binary-linking) are named after the executables, not the tool,
-so `cargo:ripgrep` provides `rg`, and `npm:typescript` provides `tsc` and `tsserver`. Each shim
-remembers the backend tool it belongs to, so running `prettier` runs `npm:prettier` with the version
-detected for the current directory. When running a backend tool, proto also adds the tools it
-requires, like `node`, to the environment, using their detected versions.
-
-Executable names are shared by every tool, so if two tools provide the same executable, like `zig`
-and `asdf:zig`, only one of them owns its shim and binary.
-[`proto diagnose`](../../commands/diagnose.mdx) warns when configured tools collide like this.
-
-### Detecting versions
-
-Backend tools are [detected](../detection.mdx) in the same order as any other tool. The
-[environment variable](../detection.mdx#2-environment-variable) is named after the tool's identifier,
-without the backend, like `PROTO_PRETTIER_VERSION` for `npm:prettier`. Of the built-in backends,
-only asdf supports [ecosystem files](../detection.mdx#4-ecosystem-files): `.tool-versions`, and any
-other files the asdf plugin reports.
-
-## Built-in backends
-
-proto ships with the following backends, and knows where to find their plugins, so using one only
-requires its prefix. Refer to each backend's page for its settings.
-
-| Backend                           | Identifier      | Installs                                                                                        | Requires                                                    |
-| --------------------------------- | --------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| [asdf](../../backends/asdf.mdx)   | `asdf:<plugin>` | Any tool with an [asdf plugin](https://github.com/asdf-vm/asdf-plugins), by running its scripts | Bash and Git; macOS and Linux only                          |
-| [Cargo](../../backends/cargo.mdx) | `cargo:<crate>` | Binary crates from [crates.io](https://crates.io)                                               | A configured `rust` version                                 |
-| [npm](../../backends/npm.mdx)     | `npm:<package>` | Packages with executables from the [npm registry](https://www.npmjs.com)                        | Configured `node` and `npm` versions (or `bun`, if enabled) |
-
-Built-in backends are enabled by default. To limit them, set the
-[`builtin-backends`](../config.mdx#builtin-backends) setting to `false` to disable all of them, or to a list of the
-backends to keep:
-
-```toml title=".prototools"
-[settings]
-builtin-backends = ["npm"]
-```
-
 ## Using a backend
 
 Backend tools work with every command that accepts a tool, like
 [`proto install`](../../commands/install.mdx), [`proto pin`](../../commands/pin.mdx),
-[`proto versions`](../../commands/versions.mdx), and [`proto uninstall`](../../commands/uninstall.mdx).
-Pin them in [`.prototools`](../config.mdx#versions) alongside the tools they require. TOML only
-allows letters, digits, `-`, and `_` in bare keys, so backend identifiers must be quoted (which
+[`proto versions`](../../commands/versions.mdx), and
+[`proto uninstall`](../../commands/uninstall.mdx). Pin them in
+[`.prototools`](../config.mdx#versions) alongside the tools they require. TOML only allows letters,
+digits, `-`, and `_` in bare keys, so backend identifiers must be quoted (which
 [`proto pin`](../../commands/pin.mdx) does for you):
 
 ```toml title=".prototools"
 node = "24.11.0"
+# The npm version that ships with Node.js
 npm = "bundled"
 "npm:prettier" = "3.6.2"
 "npm:@biomejs/biome" = "2.3.2"
@@ -168,6 +88,79 @@ $ proto run npm:typescript --exe tsserver
 $ proto exec npm:prettier@3.6.2 -- prettier --version
 ```
 
+## Built-in backends
+
+proto ships with plugins for the following backends, developed in the
+[moonrepo/plugins](https://github.com/moonrepo/plugins) repository, so using one only requires its
+prefix. Like [built-in tools](./tool.mdx#built-in-tools), each proto release pins a version of every
+built-in plugin, and upgrading proto with [`proto upgrade`](../../commands/upgrade.mdx) is how you
+get newer versions of them. Refer to each backend's page for its settings.
+
+| Backend                           | Identifier      | Installs                                                                                        | Requires                                                                        |
+| --------------------------------- | --------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| [asdf](../../backends/asdf.mdx)   | `asdf:<plugin>` | Any tool with an [asdf plugin](https://github.com/asdf-vm/asdf-plugins), by running its scripts | Bash and Git; macOS and Linux only                                              |
+| [Cargo](../../backends/cargo.mdx) | `cargo:<crate>` | Binary crates from [crates.io](https://crates.io)                                               | A configured `rust` version                                                     |
+| [npm](../../backends/npm.mdx)     | `npm:<package>` | Packages with executables from the [npm registry](https://www.npmjs.com)                        | Configured `node` and `npm` versions, or `bun` with the backend's `bun` setting |
+
+### Overriding built-in backends
+
+To replace a built-in backend, like to use a fork, or a different release of its plugin, configure a
+plugin for its ID. Configured plugins take precedence over built-in ones:
+
+```toml title=".prototools"
+[plugins.backends]
+npm = "registry://ghcr.io/moonrepo/npm_backend:0.1.4"
+```
+
+To limit which built-in backends are available, use the
+[`builtin-backends`](../config.mdx#builtin-backends) setting. `false` disables all of them, and a
+list enables only the IDs in it.
+
+```toml title=".prototools"
+[settings]
+builtin-backends = ["npm"]
+```
+
+A disabled backend is then located like any other (see
+[resolution order](./plugin.mdx#resolution-order)). Backends aren't looked up in the community
+registry, so it needs a configured plugin, or an image in a
+[default registry](./plugin.mdx#registries).
+
+## Third-party backends
+
+Any other backend can be used through a plugin of its own, published by its authors, or one you
+create yourself. Backends must be WASM plugins, so see the
+[backend API](../../../../wasm/docs/backend.mdx) to create one. Unlike tools, backends aren't listed
+in proto's community or third-party registries, so
+[`proto plugin search`](../../commands/plugin/search.mdx) won't find them. Instead, register the
+plugin under an ID of your choosing, with a [locator](../../../../wasm/docs/plugin-locators.mdx)
+that tells proto where to download it from. The ID then works as a prefix:
+
+```shell
+# Register a backend, then install a tool with it
+$ proto plugin add example "https://example.com/plugins/example_backend.wasm" --type backend
+$ proto install example:some-tool
+```
+
+[`proto plugin add`](../../commands/plugin/add.mdx) writes the locator to the backend's
+[`plugin`](../config.mdx#backends-plugin) setting, or to
+[`[plugins.backends]`](../config.mdx#plugins) when the file already has a `[plugins]` table. You can
+write either by hand too:
+
+```toml title=".prototools"
+"example:some-tool" = "1.0.0"
+
+[backends.example]
+plugin = "https://example.com/plugins/example_backend.wasm"
+```
+
+<Callout type="warning">
+  Plugins are executable code, so a backend locator in a project's
+  [`.prototools`](../config.mdx) is ignored until that configuration is
+  [trusted](../trust.mdx). Until then, tools from the backend fail to load,
+  instead of falling back to a different plugin.
+</Callout>
+
 ## Configuration
 
 Backends are configured in [`.prototools`](../config.mdx). Settings shared by every tool from a
@@ -178,7 +171,66 @@ quoted identifier as its version, like `[tools."cargo:ripgrep"]`. The backend's 
 both, and decides how they combine, like the [cargo backend](../../backends/cargo.mdx#configuration)
 preferring a tool's `registry` over the backend's.
 
-To use a backend that proto doesn't ship with, or to override a built-in one, register its plugin in
-[`[plugins.backends]`](../config.mdx#plugins), as described in
-[enabling plugins](./plugin.mdx#enabling-plugins). Backends must be WASM plugins, so see the
-[backend API](../../../../wasm/docs/backend.mdx) to create one.
+## How backends work
+
+proto splits an identifier at its `:`, of which there can only be one. The part before it is the
+backend's identifier, and the part after it is the tool's, so `npm:@biomejs/biome` is the
+`@biomejs/biome` tool of the `npm` backend. An identifier without a colon is a regular tool.
+
+### Loading the plugin
+
+proto finds a backend's plugin like any other plugin, using the backend's identifier, like `npm`
+(see [resolution order](./plugin.mdx#resolution-order)). Unlike tools, backends aren't looked up in
+the community registry. The plugin is downloaded and cached once, and then loaded for each tool:
+
+- With the tool's identifier, like `prettier` in `npm:prettier`.
+- With the settings from both [`[backends.<id>]`](../config.mdx#backends) and
+  [`[tools."<backend>:<id>"]`](../config.mdx#tools).
+
+Some backends need more than the plugin. When an asdf tool is loaded, the backend clones the asdf
+plugin's repository into `~/.proto/backends/asdf/<name>`, and pulls updates at most once every 7
+days.
+
+### Resolving and installing
+
+Each backend lists the available versions from its ecosystem, and proto resolves your
+[version specification](../version-spec.mdx) against them, like it does for any tool. When the
+ecosystem doesn't name a latest version, the highest one is used as `latest`.
+
+Instead of downloading and unpacking a prebuilt archive, a backend installs the tool _natively_, by
+running the ecosystem's tooling against the version's directory in the store:
+
+| Backend | Lists versions with                                 | Installs with                                                     |
+| ------- | --------------------------------------------------- | ----------------------------------------------------------------- |
+| `asdf`  | The plugin's `bin/list-all` script                  | The plugin's `bin/download` and `bin/install` scripts             |
+| `cargo` | The crates.io API, excluding yanked versions        | `cargo binstall` when available, otherwise `cargo install --root` |
+| `npm`   | `npm view`, with dist-tags (like `next`) as aliases | `npm install --global --prefix`                                   |
+
+Backend tools are stored in the [store's](../store.mdx#directory-layout) `tools` directory like any
+other tool. The npm and cargo backends prefix the directory with the backend, so that a package
+can't clash with a tool of the same name: `npm:prettier` is installed into
+`~/.proto/tools/npm__prettier/<version>`, and `npm:@biomejs/biome` into
+`~/.proto/tools/npm__biomejs_biome/<version>`.
+
+### Locating executables
+
+Once installed, the backend locates the tool's executables. Shims and
+[binaries](../workflows.mdx#binary-linking) are named after the executables, not the tool, so
+`cargo:ripgrep` provides `rg`, and `npm:typescript` provides `tsc` and `tsserver`. Each shim
+remembers the backend tool it belongs to, so running `prettier` runs `npm:prettier` with the version
+detected for the current directory. When running a backend tool, proto also adds the tools it
+requires, like `node`, to the environment, using their detected versions.
+
+Executable names are shared by every tool, so if two tools provide the same executable, only one of
+them owns its shim and binary: the tool whose identifier matches the name, or otherwise the one
+installed first. So with both `zig` and `asdf:zig`, the `zig` shim runs the `zig` tool, and you run
+the other with [`proto run asdf:zig`](../../commands/run.mdx).
+[`proto diagnose`](../../commands/diagnose.mdx) warns when configured tools collide like this.
+
+### Detecting versions
+
+Backend tools are [detected](../detection.mdx) in the same order as any other tool. The
+[environment variable](../detection.mdx#2-environment-variable) is named after the tool's
+identifier, without the backend, like `PROTO_PRETTIER_VERSION` for `npm:prettier`. Of the built-in
+backends, only asdf supports [ecosystem files](../detection.mdx#4-ecosystem-files):
+`.tool-versions`, and any other files the asdf plugin reports.
