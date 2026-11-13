@@ -50,9 +50,7 @@ it again when it's needed.
 
 When it's done, proto prints how many items were removed of each type, along with the disk space
 freed by plugins, temporary files, and cache files. With the global `--json` option (see
-[output formats](./overview.mdx#output-formats)), it prints what was removed instead: an object with
-`cache`, `plugins`, and `temp` lists of `{ file, size }` (size in bytes), a `tools` list of
-`{ dir, id, version }`, and a `trust` list of paths.
+[output formats](./overview.mdx#output-formats)), it prints what was removed instead.
 
 ```shell
 # Clean everything that hasn't been used in 30 days

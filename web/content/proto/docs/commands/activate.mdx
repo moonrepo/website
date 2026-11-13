@@ -145,10 +145,7 @@ sets `NODE_ENV` in [`[env]`](<../(fundamentals)/config.mdx#env>):
 
 ## Arguments
 
-- `[SHELL]` - The shell to activate for: `ash`, `bash`, `dash`, `elvish` (or `elv`), `fish`,
-  `murex`, `nu` (or `nushell`), `powershell` (Windows PowerShell 5.1), `pwsh` (PowerShell 6 and
-  later), `sh`, `xonsh`, or `zsh`. `ion` is recognized, but it has no hooks, so it can't be
-  activated. When omitted, the shell is detected from `$SHELL`, and then from the parent process,
+- `[SHELL]` - The shell to activate for. When omitted, the shell is detected from `$SHELL`, and then from the parent process,
   and the command fails if neither is a known shell. In your profile, pass the shell explicitly.
   `$SHELL` is your login shell, which isn't always the shell that's evaluating the profile, and the
   hook keeps whichever shell it was generated for.
@@ -160,7 +157,7 @@ sets `NODE_ENV` in [`[env]`](<../(fundamentals)/config.mdx#env>):
   precedence over JSON output.
 - `--no-bin` - Don't append `~/.proto/bin` to `PATH` after the activated tools. If your profile adds
   it to `PATH` itself, it stays where it is.
-- `--no-init` - Don't activate when the hook is evaluated. Wait for the first trigger instead, like
+- `--no-init` - Don't activate when the hook is evaluated in your shell profile. Wait for the first trigger instead, like
   the next prompt or directory change (in POSIX shells, the next `cd`). Only applies to the hook.
 - `--no-shim` - Don't append `~/.proto/shims` to `PATH` after the activated tools. If your profile
   adds it to `PATH` itself, it stays where it is, so tools that weren't activated still resolve

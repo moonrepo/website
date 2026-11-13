@@ -75,7 +75,7 @@ $ proto alias npm:prettier legacy 2.8.8 --to user
 ## Arguments
 
 - `<CONTEXT>` - The [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>) of the tool to
-  add the alias to, like `node`, or a backend-prefixed one, like `npm:prettier`.
+  add the alias to, or a backend-prefixed one.
 - `<ALIAS>` - Name of the alias. It must start with a letter, followed by letters, digits, `-`, `_`,
   `.`, `/`, or `\`, so a name like `1.2.3` is rejected. Avoid names that look like versions, like
   `v2`, as they're accepted but never resolved as aliases (see
@@ -88,7 +88,4 @@ $ proto alias npm:prettier legacy 2.8.8 --to user
 
 - `--to` <TypeLabel type="closest | global | local | user" /> - The
   [location](<../(fundamentals)/config.mdx#writing-to-a-file>) of the
-  [`.prototools`](<../(fundamentals)/config.mdx>) to write to: the closest file (`closest`, the
-  default), `./.prototools` in the current directory (`local`), `~/.prototools` (`user`), or
-  `~/.proto/.prototools` (`global`). `cwd`, `home`, and `store` are accepted as aliases of `local`,
-  `user`, and `global`.
+  [`.prototools`](<../(fundamentals)/config.mdx>) to write to.

@@ -15,14 +15,6 @@ structured reporter enabled through the [global options](./overview.mdx#global-o
 usual check for a new proto version is skipped. That makes the output safe to redirect into a file,
 or to evaluate directly from your shell's profile. proto doesn't install the script anywhere itself.
 
-When `--shell` is omitted, proto detects your shell from the `$SHELL` environment variable (using
-the binary's name, ignoring extensions like `.exe` and the leading `-` of login shells), and
-otherwise walks up the parent processes until it finds a known shell. If neither works, the command
-fails with an error. Keep in mind that `$SHELL` holds your _login_ shell, which isn't necessarily the
-one you're typing in: if your login shell is Zsh and you start Fish from it, proto still generates
-Zsh completions. Pass `--shell` explicitly when writing to a file or a profile, so the result doesn't
-depend on where it runs.
-
 ```shell
 # Print completions for the detected shell
 $ proto completions
@@ -33,50 +25,24 @@ $ proto completions --shell fish > ~/.config/fish/completions/proto.fish
 
 To enable completions, load the script from a place your shell reads on startup:
 
-<Tabs groupId="shell" items={["Bash", "Zsh", "Fish", "Nushell", "Pwsh", "Elvish"]}>
+<Tabs groupId="shell" items={["Bash", "Zsh", "Fish", "Nushell"]}>
 <Tab>
 
-With [bash-completion](https://github.com/scop/bash-completion) installed, write the script to its
-user directory, where it's loaded the first time you complete a `proto` command:
-
 ```shell
-$ mkdir -p ~/.local/share/bash-completion/completions
-$ proto completions --shell bash > ~/.local/share/bash-completion/completions/proto
-```
-
-Without bash-completion, evaluate the script from your profile instead:
-
-```shell title="~/.bashrc"
-eval "$(proto completions --shell bash)"
+$ mkdir -p ~/.bash_completion.d
+$ proto completions --shell bash > ~/.bash_completion.d/proto
 ```
 
 </Tab>
 <Tab>
 
-Zsh loads completion functions from the directories on its `fpath`, and the file must be named
-`_proto`:
-
 ```shell
-$ mkdir -p ~/.zsh/completions
-$ proto completions --shell zsh > ~/.zsh/completions/_proto
+$ mkdir -p ~/.oh-my-zsh/completions
+$ proto completions --shell zsh > ~/.oh-my-zsh/completions/_proto
 ```
-
-Then add the directory to `fpath` before `compinit` runs:
-
-```shell title="~/.zshrc"
-fpath=(~/.zsh/completions $fpath)
-autoload -Uz compinit && compinit
-```
-
-With [oh-my-zsh](https://ohmyz.sh), which runs `compinit` for you, write the file to
-`~/.oh-my-zsh/completions/_proto` instead. If completions don't show up in a new terminal, delete
-the `~/.zcompdump*` cache files and try again.
 
 </Tab>
 <Tab>
-
-Fish loads completions from its completions directory on demand, the first time you complete a
-`proto` command:
 
 ```shell
 $ mkdir -p ~/.config/fish/completions
@@ -99,36 +65,15 @@ source proto-completions.nu
 ```
 
 </Tab>
-<Tab>
-
-For PowerShell 6 and later (`pwsh.exe`):
-
-```powershell title="$PROFILE"
-proto completions --shell pwsh | Out-String | Invoke-Expression
-```
-
-</Tab>
-<Tab>
-
-```shell title="~/.config/elvish/rc.elv"
-eval (proto completions --shell elvish | slurp)
-```
-
-</Tab>
 </Tabs>
 
 The script describes the version of proto that generated it. When you evaluate it from your
 profile, it's regenerated in every new shell. When you write it to a file, run the command again
 after [`proto upgrade`](./upgrade.mdx) to pick up new commands and options.
 
-Completions are supported in Bash, Zsh, Fish, Nushell, PowerShell 6+, and Elvish. proto recognizes
-other shells too, like `sh`, `ash`, `dash`, `ion`, `murex`, `xonsh`, and Windows PowerShell 5.1
-(`powershell`), but can't generate completions for them. When one of these is passed or detected,
-proto prints a notice and exits with code `1`, without writing anything to stdout.
-
 ## Options
 
 - `--shell` <TypeLabel type="bash | elvish | fish | nu | pwsh | zsh" /> - The shell to generate
-  completions for. `elv` and `nushell` are also accepted, as aliases of `elvish` and `nu`. Defaults
+  completions for. Defaults
   to detecting the current shell, as described above. Unsupported shells exit with code `1`, and
   unknown names fail before anything is generated.

@@ -74,8 +74,8 @@ A few more things to know:
 - **The process is replaced.** On macOS and Linux, proto replaces its own process with the tool's,
   so signals like `Ctrl+C` go straight to the tool, and the exit code is the tool's. On Windows,
   where that isn't possible, proto waits for the tool and exits with its exit code.
-- **stdout belongs to the tool.** Everything proto prints, errors included, goes to stderr, and only
-  warnings and errors are logged by default. Pass `--log debug` (see
+- **stdout belongs to the tool.** Everything proto prints, errors included, goes to stderr. Pass
+  `--log debug` (see
   [global options](./overview.mdx#global-options)) to see what was detected and executed.
 - **It stays quiet.** As scripts and editors run shims constantly, it skips proto's new version
   check, and doesn't warn about [untrusted configs](<../(fundamentals)/trust.mdx#untrusted-configurations>),

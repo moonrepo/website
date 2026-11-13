@@ -8,6 +8,27 @@ keeps resolving to the highest 24.x release you've installed (see
 [checking for updates](../start/versions.mdx#checking-for-updates)), so run this command every so
 often, or before an upgrade, to see what's new. It's also available as `proto o`.
 
+```shell
+# Check the tools pinned for the current directory
+$ proto outdated
+
+# Also check the versions pinned in the global config
+$ proto outdated --config-mode upwards-global
+
+# Update pins to the newest version they allow, then install them
+$ proto outdated --update
+$ proto install
+
+# Update pins to the latest version, even across major versions
+$ proto outdated --update --latest
+
+# Update the versions pinned in the global config
+$ proto outdated --config-mode global --update
+
+# Print the results as JSON, for scripts
+$ proto outdated --json
+```
+
 Every tool that proto can load is checked, as long as a version is
 [detected](<../(fundamentals)/detection.mdx>) for it in the current directory, whether that's from
 a [`.prototools`](<../(fundamentals)/config.mdx>) file, an
@@ -70,12 +91,7 @@ Each tool is reported on its own row, sorted by name:
   [environment](<../(fundamentals)/config.mdx#environment-mode>) file like `.prototools.production`,
   or an ecosystem file. `N/A` when the version came from an environment variable.
 
-With the global `--json` option (see [output formats](./overview.mdx#output-formats)), proto prints
-an object keyed by tool instead of the table. Each tool has a `config_source` (the file, or `null`),
-the `config_version` as pinned, the `current_version`, `locked_version` (or `null`),
-`newest_version`, and `latest_version`, along with an `is_outdated` boolean (Newest or Latest is
-newer than Current), and an `is_latest` boolean (Current is Latest), which are handy for checks in
-scripts and CI.
+## Updating configs
 
 To update the pins, pass `--update`. proto writes each tool's Newest version, or its Latest version
 with `--latest`, to the file it was detected from, so in a monorepo, a package that pins its own
@@ -112,27 +128,6 @@ leaves every file unchanged. There's no prompt with the global `--yes` option (s
 those cases, passing `--update` is the confirmation, and the files are written right away. Updating
 only changes configuration, so run [`proto install`](./install.mdx) afterwards to install the new
 versions.
-
-```shell
-# Check the tools pinned for the current directory
-$ proto outdated
-
-# Also check the versions pinned in the global config
-$ proto outdated --config-mode upwards-global
-
-# Update pins to the newest version they allow, then install them
-$ proto outdated --update
-$ proto install
-
-# Update pins to the latest version, even across major versions
-$ proto outdated --update --latest
-
-# Update the versions pinned in the global config
-$ proto outdated --config-mode global --update
-
-# Print the results as JSON, for scripts
-$ proto outdated --json
-```
 
 ## Options
 

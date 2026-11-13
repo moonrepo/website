@@ -41,8 +41,7 @@ When the requested one doesn't exist, proto ignores the flag, and prints the exe
 instead.
 
 With `--dir`, proto prints a directory instead of a file: `exes` for the directories that hold the
-version's executables, and `globals` for where the executables of globally installed packages go,
-like those from `npm install -g` or `go install`. These are the directories that
+version's executables, and `globals` for where the executables of globally installed packages go. These are the directories that
 [`proto run`](./run.mdx) and shims add to `PATH`, so they're handy for adding a tool to `PATH`
 yourself, or for finding a secondary executable, as `proto bin` only prints the primary one (to list
 them all, use [`proto plugin info`](./plugin/info.mdx)). A tool can have several of each, and only
@@ -86,8 +85,8 @@ $ "$(proto bin node)" ./script.mjs
 ## Arguments
 
 - `<CONTEXT>` - The [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>) of the tool
-  to locate, like `node`, or a [backend-prefixed](<../(fundamentals)/(plugin)/tool.mdx#backend-prefixed>)
-  one like `npm:prettier`.
+  to locate, or a [backend-prefixed](<../(fundamentals)/(plugin)/tool.mdx#backend-prefixed>)
+  one.
 - `[SPEC]` - The [version specification](<../(fundamentals)/version-spec.mdx>) to locate, like
   `22.14.0`, `22`, or `lts`. Defaults to the [detected](<../(fundamentals)/detection.mdx>) version,
   or the highest installed version when nothing is detected.
@@ -97,13 +96,12 @@ $ "$(proto bin node)" ./script.mjs
 - `--all` - Print every path, one per line, instead of only the first. Only affects `--dir`, as the
   other lookups always print a single path.
 - `--bin` - Print the path to the tool's unversioned
-  [linked binary](<../(fundamentals)/workflows.mdx#binary-linking>), like `~/.proto/bin/node`. Takes
+  [linked binary](<../(fundamentals)/workflows.mdx#binary-linking>). Takes
   precedence over `--shim` and `--dir`. When the tool has no binary, the other options apply as if
   it wasn't passed.
 - `--dir` <TypeLabel type="exes | globals" /> - Print directories instead of the executable's path.
   - `exes` - The directories within the installed version that contain the tool's executables.
   - `globals` - The directories that the executables of globally installed packages are installed
     to, in the order the tool looks them up.
-- `--shim` - Print the path to the tool's [shim](<../(fundamentals)/workflows.mdx#shims>), like
-  `~/.proto/shims/node`. Takes precedence over `--dir`. When the tool has no shim, the other options
+- `--shim` - Print the path to the tool's [shim](<../(fundamentals)/workflows.mdx#shims>). Takes precedence over `--dir`. When the tool has no shim, the other options
   apply as if it wasn't passed.
