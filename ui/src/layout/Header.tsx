@@ -7,7 +7,12 @@ import {
 	drawerSeparatorClass,
 } from '../components/Drawer';
 import { Kbd } from '../components/Kbd';
-import { NavMenu, type NavMenuItem, navLinkClass } from '../components/NavMenu';
+import {
+	NavMenu,
+	type NavMenuItem,
+	navIconTileClass,
+	navLinkClass,
+} from '../components/NavMenu';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { cn } from '../utils/cn';
 
@@ -34,10 +39,6 @@ function isActive(pathname: string, href: string) {
 	return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-// Matches the icon plates in the docs sidebar's project/section dropdowns
-const iconTileClass =
-	'flex size-9 shrink-0 rounded-[4px] border border-olive/40 bg-olive/5 p-1.5 text-olive dark:border-tangerine/40 dark:bg-tangerine/5 dark:text-tangerine [&_svg]:size-full!';
-
 function MobileNavLink({
 	description,
 	href,
@@ -57,7 +58,9 @@ function MobileNavLink({
 			data-active={isActive(pathname, href)}
 			href={href}
 		>
-			{icon && <span className={cn(description && iconTileClass)}>{icon}</span>}
+			{icon && (
+				<span className={cn(description && navIconTileClass)}>{icon}</span>
+			)}
 			<span className="flex flex-col">
 				{label}
 				{description && (

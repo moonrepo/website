@@ -1,7 +1,7 @@
-import type { NavMenuItem } from '@moonrepo/ui/components/NavMenu';
+import type { NavMenuItem, NavMenuLink } from '@moonrepo/ui/components/NavMenu';
 import type { FooterProps } from '@moonrepo/ui/layout/Footer';
 import type { HeaderProps } from '@moonrepo/ui/layout/Header';
-import { Newspaper } from 'lucide-react';
+import { BookOpen, Braces, Newspaper, ScrollText } from 'lucide-react';
 import { siDiscord, siGithub, siRss, siX } from 'simple-icons';
 import { BrandIcon } from '@/components/BrandIcon';
 import { PRODUCTS, type Product } from '@/lib/products';
@@ -11,24 +11,58 @@ const DISCORD_URL = 'https://discord.gg/qCh9MEynv2';
 const GITHUB_URL = 'https://github.com/moonrepo';
 const X_URL = 'https://x.com/tothemoonrepo';
 
-function productItems(ids: Product[]): NavMenuItem[] {
-	return ids.map((id) => {
-		const product = PRODUCTS[id];
+const SECTIONS = {
+	docs: {
+		description: 'Concepts, references, and more',
+		icon: BookOpen,
+		label: 'Documentation',
+	},
+	api: {
+		description: 'Configuration types and settings',
+		icon: Braces,
+		label: 'API reference',
+	},
+	changelog: {
+		description: 'Latest releases and changes',
+		icon: ScrollText,
+		label: 'Changelog',
+	},
+};
 
-		return {
-			description: product.description,
-			href: `/${id}`,
-			icon: <product.icon />,
-			label: product.title,
-		};
+type Section = keyof typeof SECTIONS;
+
+function sectionLinks(id: Product, sections: Section[]): NavMenuLink[] {
+	return sections.map((section) => {
+		const { icon: Icon, ...rest } = SECTIONS[section];
+
+		return { ...rest, href: `/${id}/${section}`, icon: <Icon /> };
 	});
+}
+
+function productItem(id: Product, sections?: Section[]): NavMenuItem {
+	const product = PRODUCTS[id];
+
+	return {
+		description: product.description,
+		href: `/${id}`,
+		icon: <product.icon />,
+		label: product.title,
+		links: sections && sectionLinks(id, sections),
+	};
 }
 
 export const headerProps: Omit<HeaderProps, 'onSearch'> = {
 	logoHref: '/',
 	nav: [
-		{ label: 'Tools', items: productItems(['moon', 'proto', 'wasm']) },
-		{ label: 'Packages', items: productItems(['schematic']) },
+		{
+			label: 'Tools',
+			items: [
+				productItem('moon', ['docs', 'api', 'changelog']),
+				productItem('proto', ['docs', 'changelog']),
+				productItem('wasm', ['docs']),
+			],
+		},
+		{ label: 'Packages', items: [productItem('schematic', ['docs'])] },
 		{ href: '/blog', icon: <Newspaper />, label: 'Blog' },
 		{
 			href: GITHUB_URL,
