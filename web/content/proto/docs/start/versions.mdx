@@ -3,10 +3,176 @@ title: Pin versions
 icon: Pin
 ---
 
+Installing a tool makes a version available. Pinning decides which version runs. A pin is an entry
+in a [`.prototools`](<../(fundamentals)/config.mdx>) file, and applies to the directory it's in and
+every directory beneath it. Each time a tool runs, proto [detects](<../(fundamentals)/detection.mdx>)
+the pin for the current directory, so every project runs the version it was written for, and
+changing into another project switches versions without you doing anything.
+
 ## Pinning a version
+
+From a project's directory, pin a version with [`proto pin`](../commands/pin.mdx):
+
+```shell
+$ cd ~/projects/app
+$ proto pin node 24.11.0
+$ proto pin pnpm 10
+```
+
+This creates a [`.prototools`](<../(fundamentals)/config.mdx>) in the current directory (or updates
+the one it's already configured by), with a key for each tool:
+
+```toml title=".prototools"
+node = "24.11.0"
+pnpm = "10"
+```
+
+Within `~/projects/app` and its sub-directories, `node` now runs Node.js 24.11.0, and `pnpm` the
+highest installed pnpm 10 release. Anywhere else, they keep running whatever's pinned there.
+
+```shell
+$ node --version
+v24.11.0
+```
+
+A pin is any [version specification](<../(fundamentals)/version-spec.mdx>). If you want the
+convenience of a partial version or alias, but the predictability of an exact one, pass
+`--resolve`, which pins the version it currently resolves to:
+
+```shell
+# Pins the current LTS release, like 24.11.0, instead of "stable"
+$ proto pin node stable --resolve
+```
+
+A few more ways to manage pins:
+
+- **While installing** - [`proto install node 24 --pin`](../commands/install.mdx) installs a version
+  and pins the version it resolved to, in one step.
+- **By hand** - [`.prototools`](<../(fundamentals)/config.mdx>) is a plain TOML file, so you can
+  edit it directly. Commands that write to it preserve your formatting and comments.
+- **Removing a pin** - [`proto unpin node`](../commands/unpin.mdx) removes the `node` key.
+
+When a pinned version isn't installed yet, running the tool fails with the
+[`proto install`](../commands/install.mdx) command to run, rather than silently using something
+else. To install missing versions automatically instead, enable the
+[`auto-install`](<../(fundamentals)/config.mdx#auto-install>) setting in your user
+[`~/.prototools`](<../(fundamentals)/config.mdx>):
+
+```toml title="~/.prototools"
+[settings]
+auto-install = true
+```
 
 ## Where versions are pinned
 
+proto loads every [`.prototools`](<../(fundamentals)/config.mdx>) between the current directory and
+your home directory, plus your global one, and the closest pin for each tool wins. That lets you
+layer pins: a default for your machine, a version for a repository, and an override for a single
+directory within it.
+
+[`proto pin`](../commands/pin.mdx) picks the file to write with `--to`:
+
+- `closest` - The closest [`.prototools`](<../(fundamentals)/config.mdx>), walking up from the
+  current directory, or a new one in the current directory if none exist. This is the default, so
+  running [`proto pin`](../commands/pin.mdx) deep within a repository updates the file at its root.
+- `local` - `./.prototools` in the current directory, even when a parent directory has one. Use it to
+  override a version for one directory, like a package in a monorepo.
+- `global` - `~/.proto/.prototools`, which holds your fallback versions, used in any directory that
+  doesn't pin its own.
+- `user` - `~/.prototools`, in your home directory, which is better suited to
+  [personal settings](<../(fundamentals)/config.mdx#where-to-configure>) than versions.
+
+Pin a global fallback for every tool you install, so its shim runs your preferred version
+everywhere, not only in projects that pin one:
+
+```shell
+$ proto pin node 24 --to global
+$ proto pin python 3.13 --to global
+```
+
+<Callout>
+  Global pins are fallbacks for running tools. Commands that act on what a
+  project needs, like [`proto install`](../commands/install.mdx) without
+  arguments, [`proto status`](../commands/status.mdx),
+  [`proto outdated`](../commands/outdated.mdx), and [shell
+  activation](<../(fundamentals)/workflows.mdx#shell-activation>), leave them
+  out. Pass `--config-mode upwards-global` to include them.
+</Callout>
+
 ## How versions are detected
 
+When a tool runs, proto checks the following sources, in order, and uses the first one with a
+version:
+
+1. **A command line argument**, like [`proto run node 22`](../commands/run.mdx).
+2. **An environment variable**, like `PROTO_NODE_VERSION=22`, for overriding the version of a shim
+   for one command or one session.
+3. **The closest pin or version file**, walking up from the current directory through each parent.
+   In each directory, proto checks [`.prototools`](<../(fundamentals)/config.mdx>), then the files
+   that the tool's own ecosystem uses, like `.nvmrc` or the `engines` field in `package.json` for
+   Node.js, `.python-version` for Python, `go.mod` for Go, or `rust-toolchain.toml` for Rust.
+4. **Your global pins**, in `~/.proto/.prototools`.
+
+If nothing has a version, the shim runs another executable with the same name on your `PATH`, like
+a system install, or fails with an error suggesting that you pin one.
+
+Because of step 3, a project that declares its versions in its ecosystem's files works with proto
+as-is, and you can adopt proto without your teammates switching too. If you'd rather
+[`.prototools`](<../(fundamentals)/config.mdx>) always take priority over those files, change the
+[`detect-strategy`](<../(fundamentals)/config.mdx#detect-strategy>) setting.
+
+To see which version each tool resolves to in the current directory, and which file it was detected
+from, run [`proto status`](../commands/status.mdx):
+
+```shell
+# Show every tool with a detected version, and where it came from
+$ proto status
+
+# Override a version for a single command
+$ PROTO_NODE_VERSION=22 node --version
+v22.21.1
+```
+
+See [version detection](<../(fundamentals)/detection.mdx>) for every rule, and a worked example.
+
 ## Checking for updates
+
+A pin doesn't change by itself. Even a partial pin, like `node = "24"`, keeps running the highest
+24.x release you've installed until you install a newer one, which
+[`proto install node`](../commands/install.mdx) does when run in that directory. To find out what's
+newer, run [`proto outdated`](../commands/outdated.mdx):
+
+```shell
+$ proto outdated
+```
+
+It lists every tool with a version configured for the current directory, with the version it
+currently resolves to, the newest version that the pin allows (an exact version, like `24.11.0`,
+allows anything within its major version), and the latest version overall. To update the pins
+themselves, pass `--update`, which asks for confirmation, then writes the newest versions as exact
+versions to the [`.prototools`](<../(fundamentals)/config.mdx>) they came from. Add `--latest` to
+jump to the latest version instead, even across major versions.
+
+```shell
+# Update pins to the newest version that they allow
+$ proto outdated --update
+
+# Update pins to the latest version
+$ proto outdated --update --latest
+
+# Then install the new versions
+$ proto install
+```
+
+Pins that are aliases, like `stable`, and versions detected from ecosystem files, like `.nvmrc`,
+are left as-is.
+
+## Next steps
+
+<Cards>
+  <Card
+    title="Set up your shell"
+    description="Decide how tools are made available: shims, shell activation, or directly."
+    href="./shell.mdx"
+  />
+</Cards>

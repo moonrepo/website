@@ -3,12 +3,209 @@ title: Share with your team
 icon: Users
 ---
 
+So far, everything has been set up for you alone. The real payoff comes when a repository's
+[`.prototools`](<../(fundamentals)/config.mdx>) is committed: "which versions do I need?" becomes a
+single command, every teammate runs the same versions, and CI matches what you run locally. This
+step turns your pins into a setup the whole team shares.
+
 ## Committing `.prototools`
+
+Pin every tool the repository needs in a [`.prototools`](<../(fundamentals)/config.mdx>) at its
+root, and commit it. Prefer exact versions here, so every machine resolves the same thing:
+
+```shell
+$ proto pin node 24.11.0
+$ proto pin pnpm 10.24.0
+```
+
+```toml title=".prototools"
+node = "24.11.0"
+pnpm = "10.24.0"
+```
+
+```shell
+$ git add .prototools
+$ git commit -m "Pin tool versions with proto"
+```
+
+A few guidelines for what goes in the shared file:
+
+- **Pins and project-wide settings** - Versions, [`[env]`](<../(fundamentals)/config.mdx#env>)
+  variables the project relies on, [plugins](<../(fundamentals)/(plugin)/plugin.mdx>) for tools
+  that aren't built in, and settings like [`lockfile`](<../(fundamentals)/config.mdx#lockfile>).
+- **Not personal preferences** - Settings like [`auto-install`](<../(fundamentals)/config.mdx#auto-install>),
+  or [HTTP proxies](<../(fundamentals)/config.mdx#settingshttp>) for your network, belong in your
+  own `~/.prototools`, which is loaded for every repository you work in. See
+  [where to configure](<../(fundamentals)/config.mdx#where-to-configure>).
+- **Overrides where they're needed** - A directory within the repository, like a package in a
+  monorepo, can have its own [`.prototools`](<../(fundamentals)/config.mdx>) that overrides
+  individual pins. Everything else is inherited from the root.
+
+If the repository already declares versions in ecosystem files, like `.nvmrc` or
+`rust-toolchain.toml`, proto uses those too, so you don't have to duplicate them. Moving them into
+[`.prototools`](<../(fundamentals)/config.mdx>) puts every tool in one place, alongside the rest of
+its configuration.
+
+To keep everyone on the same version of proto itself, which matters because its behavior changes
+between releases, pin it with the reserved `proto` key. That pin requires
+[trust](#trusting-the-repository), and only takes effect with
+[shell activation](./shell.mdx#activating-your-shell), as described in
+[pinning proto](<../(fundamentals)/config.mdx#pinning-proto>).
 
 ## Installing every tool
 
+After cloning the repository, a teammate runs [`proto install`](../commands/install.mdx) without
+arguments from anywhere within it:
+
+```shell
+$ proto install
+```
+
+This installs every tool with a version configured for the current directory, whether it's pinned in
+a [`.prototools`](<../(fundamentals)/config.mdx>) or declared in an ecosystem file. Tools are
+installed in parallel, and tools that others require, like Node.js for pnpm, are installed first.
+Versions that are already installed are skipped, so it's safe to run again whenever the pins
+change, like after pulling.
+
+Your global pins aren't included, so the command installs exactly what the repository needs, and
+nothing else. That makes it a natural first step in a project's setup instructions:
+
+```shell
+# Install proto, then every tool this repository needs
+$ bash <(curl -fsSL https://moonrepo.dev/install/proto.sh)
+$ proto install
+```
+
 ## Locking versions
+
+Exact pins are predictable, but every one has to be bumped by hand. Partial pins and requirements,
+like `node = "24"`, are easier to maintain, but resolve to whatever's newest when each person
+installs. A [lockfile](../advanced/lockfile.mdx) gives you both: write the pins you like, and lock
+the versions they resolved to, along with a checksum of every download. Enable it in the
+repository's [`.prototools`](<../(fundamentals)/config.mdx>):
+
+```toml title=".prototools"
+node = "24"
+pnpm = "10"
+
+[settings]
+lockfile = true
+```
+
+The next [`proto install`](../commands/install.mdx) writes a
+[`.protolock`](../advanced/lockfile.mdx) file next to it, which
+records, for each pin, the version it resolved to, and for your operating system and architecture,
+the checksum of what was downloaded. Commit it alongside [`.prototools`](<../(fundamentals)/config.mdx>).
+From then on:
+
+- Installs, and the tools that shims run, use the locked version instead of the newest match, so
+  `node = "24"` keeps meaning the same release on every machine.
+- Downloads are verified against the locked checksum, and the install fails if they don't match.
+- When a teammate installs on a different platform, like Linux instead of macOS, they get the same
+  version, and a record with their platform's checksum is added. Commit that change too.
+
+To move a lock forward, change the pin with [`proto pin`](../commands/pin.mdx) or
+[`proto outdated --update`](../commands/outdated.mdx), which update the lockfile with it, then run
+[`proto install`](../commands/install.mdx). Or keep the pin, and re-resolve it to the newest
+matching release:
+
+```shell
+# Re-resolve node = "24" to the newest 24.x release, and update its record
+$ proto install node --update-lockfile
+```
 
 ## Trusting the repository
 
+A [`.prototools`](<../(fundamentals)/config.mdx>) can do more than pin versions: it can set
+environment variables, define shell aliases, and load plugins from any URL. To protect you from
+repositories you've just cloned, proto ignores these
+[security-sensitive settings](<../(fundamentals)/trust.mdx#security-sensitive-settings>) until you
+[trust](<../(fundamentals)/trust.mdx>) the configuration, and warns about what it skipped.
+
+Safe settings still apply, so a file that only pins built-in tools, like the examples on this page,
+works right away. Settings that require trust include:
+
+- [`[env]`](<../(fundamentals)/config.mdx#env>) variables, and [shell
+  aliases](<../(fundamentals)/workflows.mdx#shell-aliases>).
+- [Plugins](<../(fundamentals)/config.mdx#plugins>), and pins for tools that aren't built in, like
+  [community tools](<../(fundamentals)/(plugin)/tool.mdx#community-tools>).
+- Most [`[settings]`](<../(fundamentals)/config.mdx#settings>), like `auto-install`, and settings
+  for individual tools and backends.
+- Pins for proto itself.
+
+When proto warns about a repository's configuration, read its
+[`.prototools`](<../(fundamentals)/config.mdx>) files, then trust the repository once, from its root:
+
+```shell
+$ proto trust
+```
+
+Trusting a directory trusts every configuration within it, including ones added later. Trust is
+tied to the location, not the content, so review changes to
+[`.prototools`](<../(fundamentals)/config.mdx>) in pull requests like any other code that runs on
+your machine. If your repository relies on sensitive settings, mention
+[`proto trust`](../commands/trust.mdx) in its setup instructions.
+
 ## Running in CI
+
+CI machines need the same tools as everyone else, and the same [`.prototools`](<../(fundamentals)/config.mdx>)
+gets them there. Configurations are [trusted automatically](<../(fundamentals)/trust.mdx#automatically-trusted>)
+in CI, as there's no one around to run [`proto trust`](../commands/trust.mdx).
+
+On GitHub Actions, the [`moonrepo/setup-toolchain`](https://github.com/moonrepo/setup-toolchain)
+action installs proto, puts it on `PATH`, and caches the store between runs. With `auto-install`
+enabled, it also runs [`proto install`](../commands/install.mdx):
+
+```yaml title=".github/workflows/ci.yml"
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: moonrepo/setup-toolchain@v0
+        with:
+          auto-install: true
+      - run: pnpm install
+      - run: pnpm test
+```
+
+With other providers, install proto with the install script, add its directories to `PATH`, and
+install the tools:
+
+```shell
+$ bash <(curl -fsSL https://moonrepo.dev/install/proto.sh) --yes
+$ export PATH="$HOME/.proto/shims:$HOME/.proto/bin:$PATH"
+$ proto install
+```
+
+If you've enabled the lockfile, pass `--immutable-lockfile` (or set `PROTO_IMMUTABLE_LOCKFILE`), so
+the install fails when the lockfile is missing a record or would change, instead of quietly
+resolving a different version than the one you committed. See the [CI guide](../guides/ci.mdx) for
+caching and more.
+
+## Next steps
+
+You've now got a setup that installs the same tools on every machine. To go deeper:
+
+<Cards>
+  <Card
+    title="Configuration"
+    description="Every .prototools setting, and how files are located and merged."
+    href="../(fundamentals)/config.mdx"
+  />
+  <Card
+    title="Version detection"
+    description="Exactly how proto decides which version runs, and how to change it."
+    href="../(fundamentals)/detection.mdx"
+  />
+  <Card
+    title="Shell workflows"
+    description="How shims, binaries, and shell activation work, and how to combine them."
+    href="../(fundamentals)/workflows.mdx"
+  />
+  <Card
+    title="Trust & safety"
+    description="Which settings require trust, and how trust is recorded."
+    href="../(fundamentals)/trust.mdx"
+  />
+</Cards>

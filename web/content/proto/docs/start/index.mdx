@@ -2,8 +2,85 @@
 title: Getting started
 ---
 
+This guide walks through using proto day to day: installing tools, pinning the versions each
+project needs, making them available in your shell, and sharing that setup with your team. Each step
+builds on the previous one and only takes a few minutes. By the end, changing into a project gives
+you the right version of every tool it uses, on your machine and in CI.
+
 ## Before you begin
+
+- **Install proto** - Follow the [installation instructions](../index.mdx), and confirm it works with
+  `proto --version`.
+- **Open a new terminal** - The install script runs [`proto setup`](../commands/setup.mdx), which
+  adds `~/.proto/shims` and `~/.proto/bin` to your `PATH` in your shell profile, so tools that proto
+  installs can be found. That change only applies to new terminals. If something seems off, run
+  [`proto diagnose`](../commands/diagnose.mdx).
+- **Keep your version files** - proto reads the files your projects already use to declare
+  versions, like `.nvmrc`, `.python-version`, or `rust-toolchain.toml`, so there's nothing to
+  convert before you start. Other version managers, like nvm or pyenv, can stay installed while you
+  try proto, but whichever comes first on your `PATH` wins, so make sure `~/.proto/shims` comes
+  before theirs.
 
 ## How proto fits together
 
+You'll meet a handful of concepts along the way. Here's how they relate:
+
+- **[Tools](<../(fundamentals)/(plugin)/tool.mdx>)** - Anything proto installs and runs, like
+  Node.js, Python, pnpm, or Go. Each is powered by a [plugin](<../(fundamentals)/(plugin)/plugin.mdx>),
+  and identified by a short ID, like `node`.
+- **[The store](<../(fundamentals)/store.mdx>)** - proto's home directory, `~/.proto`. Every
+  version of a tool is installed into its own directory there, like `~/.proto/tools/node/24.11.0`, so
+  any number of versions live side by side.
+- **[Version specifications](<../(fundamentals)/version-spec.mdx>)** - How you say which version
+  you want: an exact version like `24.11.0`, a partial version like `24`, a range like `^24.1`, or an
+  alias like `latest`.
+- **[Configuration](<../(fundamentals)/config.mdx>)** - [`.prototools`](<../(fundamentals)/config.mdx>)
+  files, which pin versions of tools for a directory and everything beneath it, alongside other
+  settings.
+- **[Version detection](<../(fundamentals)/detection.mdx>)** - How proto decides which version to
+  run, from the current directory, every time a tool runs.
+- **[Shell workflows](<../(fundamentals)/workflows.mdx>)** - How installed tools end up on your
+  `PATH`: through shims, linked binaries, or shell activation.
+
+Put together, when you type `node`, a shim asks proto to detect the version pinned for the current
+directory, and runs that version from the store. A session looks like this:
+
+```shell
+# Install a version into the store
+$ proto install node 24
+
+# Pin it for the current directory
+$ proto pin node 24
+
+# Run it, through the node shim
+$ node --version
+v24.11.0
+```
+
 ## Steps
+
+<Cards>
+  <Card
+    title="1. Install tools"
+    description="Find the tools you need, and install one or more versions of each."
+    href="./tools.mdx"
+  />
+  <Card
+    title="2. Pin versions"
+    description="Choose which version runs in each project, and keep it up to date."
+    href="./versions.mdx"
+  />
+  <Card
+    title="3. Set up your shell"
+    description="Decide how tools are made available: shims, shell activation, or directly."
+    href="./shell.mdx"
+  />
+  <Card
+    title="4. Share with your team"
+    description="Commit your configuration, lock versions, and install the same tools in CI."
+    href="./team.mdx"
+  />
+</Cards>
+
+Prefer to learn the concepts first? Start with [tools](<../(fundamentals)/(plugin)/tool.mdx>), and
+follow the fundamentals from there.

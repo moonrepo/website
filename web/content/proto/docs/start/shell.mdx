@@ -3,10 +3,172 @@ title: Set up your shell
 icon: SquareTerminal
 ---
 
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
+
+Tools are installed into the [store](<../(fundamentals)/store.mdx>), like
+`~/.proto/tools/node/24.11.0`, which your shell doesn't know about. Something has to put them on your
+`PATH`, and pick the pinned version when you type `node`. The install script already set that up
+for you, so tools work as soon as they're installed and pinned. This step explains what it set up,
+and whether to add more.
+
 ## Choosing a workflow
+
+proto offers three [shell workflows](<../(fundamentals)/workflows.mdx>), designed to be combined:
+
+- **[Shims](#using-shims)** - Small executables in `~/.proto/shims` that hand every call to proto,
+  which detects the version for the current directory and runs it. This is the default.
+- **[Binaries](<../(fundamentals)/workflows.mdx#binary-linking>)** - Links in `~/.proto/bin` to the
+  highest installed version of each tool, plus versioned links like `node-22`. They fill in behind
+  shims, and `proto` itself lives there too.
+- **[Shell activation](#activating-your-shell)** - A hook in your shell profile that updates `PATH`
+  and environment variables each time you change directories. It's opt-in.
+
+Which to use:
+
+- **Stick with the default** if you're not sure. Shims and binaries work everywhere: in your
+  terminal, scripts, editors, and CI.
+- **Add shell activation** for your interactive shell, when you want the
+  [`[env]`](<../(fundamentals)/config.mdx#env>) variables and
+  [shell aliases](<../(fundamentals)/workflows.mdx#shell-aliases>) from
+  [`.prototools`](<../(fundamentals)/config.mdx>) in your session, executables from globally
+  installed packages on your `PATH`, or no overhead when calling a tool. Keep shims underneath it,
+  for everything that doesn't run in an activated shell.
+
+See the [comparison](<../(fundamentals)/workflows.mdx#comparison>) for every trade-off.
 
 ## Using shims
 
+A shim is named after an executable, like `node`, `npm`, or `npx`, so it's what runs when you type
+that name. Instead of running the tool directly, it runs [`proto run`](../commands/run.mdx), which
+detects the version for the directory you're in, and then runs it. That's how one `node` runs
+different versions in different projects:
+
+```shell
+$ which node
+/Users/you/.proto/shims/node
+
+$ cd ~/projects/client && node --version
+v22.21.1
+
+$ cd ~/projects/server && node --version
+v24.11.0
+```
+
+Shims are created and removed for you, as you install and uninstall tools. For them to work,
+`~/.proto/shims` must be on your `PATH`, before `~/.proto/bin`, which is what
+[`proto setup`](../commands/setup.mdx) adds to your shell profile:
+
+```shell
+export PROTO_HOME="$HOME/.proto"
+export PATH="$PROTO_HOME/shims:$PROTO_HOME/bin:$PATH"
+```
+
+A few things to keep in mind:
+
+- **Pin a default version** for each tool with [`proto pin --to global`](../commands/pin.mdx), as
+  described in [where versions are pinned](./versions.mdx#where-versions-are-pinned). Otherwise, a
+  shim only runs proto's version in directories that pin one.
+- **Each call runs proto first**, to detect the version, which adds a little overhead. It's rarely
+  noticeable for commands you type, but adds up in a script that calls a tool thousands of times.
+- **If a shim is missing or broken**, regenerate them with [`proto regen`](../commands/regen.mdx),
+  or run [`proto diagnose`](../commands/diagnose.mdx), which also catches a `PATH` in the wrong
+  order.
+
 ## Activating your shell
 
+With shell activation, proto changes your shell session itself. Add the hook for your shell near the
+end of its profile, after the `PATH` lines that [`proto setup`](../commands/setup.mdx) added, and
+open a new terminal:
+
+<Tabs groupId="shell" items={["Bash", "Zsh", "Fish", "PowerShell"]}>
+<Tab>
+
+```shell title="~/.bashrc"
+eval "$(proto activate bash)"
+```
+
+</Tab>
+<Tab>
+
+```shell title="~/.zshrc"
+eval "$(proto activate zsh)"
+```
+
+</Tab>
+<Tab>
+
+```fish title="~/.config/fish/config.fish"
+proto activate fish | source
+```
+
+</Tab>
+<Tab>
+
+For PowerShell 6 and later (`pwsh.exe`):
+
+```powershell title="$PROFILE"
+proto activate pwsh | Out-String | Invoke-Expression
+```
+
+</Tab>
+</Tabs>
+
+Using another shell, like Nushell, Elvish, or PowerShell 5.1? See
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>) for the hook of every
+[supported shell](<../(fundamentals)/workflows.mdx#supported-shells>).
+
+Now, each time the prompt is drawn or you change directories, the hook runs
+[`proto activate`](../commands/activate.mdx), which puts the executable directories of the
+versions pinned for the current directory at the front of `PATH`, exports its `[env]` variables, and
+defines its shell aliases. When you leave the directory, they're removed again. Tools resolve
+straight to the store, without a shim in between:
+
+```shell
+$ cd ~/projects/server
+$ which node
+/Users/you/.proto/tools/node/24.11.0/bin/node
+```
+
+Activation is deliberately conservative, so keep shims on your `PATH` to cover what it skips.
+
 ## Running tools directly
+
+You don't need shims or activation to use a tool. These commands run tools on demand, which is
+handy for one-off commands, trying out a version, or scripts that need to be explicit:
+
+- [`proto run`](../commands/run.mdx) runs a single tool, with the detected version, or the version
+  you pass it. Arguments for the tool go after `--`.
+- [`proto exec`](../commands/exec.mdx) runs any command with one or more tools on its `PATH`, so the
+  command, and every process it spawns, uses those versions.
+- [`proto shell`](../commands/shell.mdx) starts a new interactive shell with the configured tools,
+  or the ones you list, on its `PATH`. Exit it to return to your original session.
+- [`proto bin`](../commands/bin.mdx) prints the absolute path to a tool's executable, for
+  configuring an editor or another program that needs one.
+
+```shell
+# Run a script with Node.js 22, whatever is pinned
+$ proto run node 22 -- ./script.mjs
+
+# Run a command with specific versions of Node.js and pnpm
+$ proto exec node@24 pnpm@10 -- pnpm install
+
+# Start a shell with Node.js 22 to try something out
+$ proto shell node@22
+
+# Print the path to the executable of the detected version
+$ proto bin node
+```
+
+Tools passed to [`proto exec`](../commands/exec.mdx) and [`proto shell`](../commands/shell.mdx) must
+already be installed, as they're left off the `PATH` otherwise. See
+[running tools](<../(fundamentals)/(plugin)/tool.mdx#running-tools>) for more.
+
+## Next steps
+
+<Cards>
+  <Card
+    title="Share with your team"
+    description="Commit your configuration, lock versions, and install the same tools in CI."
+    href="./team.mdx"
+  />
+</Cards>

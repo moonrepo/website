@@ -3,10 +3,157 @@ title: Install tools
 icon: PackagePlus
 ---
 
+A fresh proto installation doesn't include any tools. You install each one yourself, in whichever
+versions you need, and proto keeps every version in its own directory in the
+[store](<../(fundamentals)/store.mdx>). Nothing is installed globally in the traditional sense, so
+installing Node.js 24 never replaces Node.js 22, and removing one never breaks another.
+
 ## Finding a tool
+
+Every [tool](<../(fundamentals)/(plugin)/tool.mdx>) is identified by an ID, and how you get one
+depends on where its plugin comes from:
+
+- **Built-in tools** - proto ships with plugins for popular languages and package managers, like
+  `node`, `pnpm`, `bun`, `deno`, `go`, `python`, `uv`, `rust`, and `moon`. They work by ID, with no
+  configuration. See [built-in tools](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>) for the
+  full list.
+- **Community tools** - Plugins maintained by the community, for tools like `just`, `ruff`, and
+  `shellcheck`, also work by ID. proto looks them up in its
+  [community registry](<../(fundamentals)/(plugin)/tool.mdx#community-tools>) the first time you use
+  them.
+- **Packages from another ecosystem** - [Backends](<../(fundamentals)/(plugin)/backend.mdx>) install
+  packages from a package registry as tools, with a prefixed ID, like `npm:prettier` for npm
+  packages, `cargo:ripgrep` for Rust crates, or `asdf:terraform` for anything with an asdf plugin.
+- **Anything else** - Search for a third-party plugin with
+  [`proto plugin search`](../commands/plugin/search.mdx), and register it with
+  [`proto plugin add`](../commands/plugin/add.mdx), using the locator from the search results.
+
+```shell
+# Search the third-party registry by ID, name, or description
+$ proto plugin search lint
+
+# Register a plugin from the results, under an ID of your choosing
+$ proto plugin add example github://org/proto-example-tool
+```
+
+Not sure whether a tool is built in or comes from the community? Try installing it by ID first. If
+proto can't find a plugin for it, the install fails without changing anything.
 
 ## Installing a tool
 
+Install a tool with [`proto install`](../commands/install.mdx), passing its ID and the version to
+install:
+
+```shell
+$ proto install node 24
+```
+
+proto resolves `24` to the newest Node.js 24 release, downloads the prebuilt archive for your
+operating system and architecture, verifies it against the checksum that Node.js publishes, and
+unpacks it into `~/.proto/tools/node/<version>`. It then creates a
+[shim](<../(fundamentals)/workflows.mdx#shims>) in `~/.proto/shims` and a
+[binary](<../(fundamentals)/workflows.mdx#binary-linking>) in `~/.proto/bin` for each of the tool's
+executables, which is how they end up on your `PATH`.
+
+Install as many versions as you like. Each one is independent, and already installed versions are
+skipped (pass `--force` to reinstall one):
+
+```shell
+# Install Node.js 22 alongside 24
+$ proto install node 22
+
+# Install tools from other ecosystems
+$ proto install python 3.13
+$ proto install go
+```
+
+[`proto install`](../commands/install.mdx) installs one tool at a time. To install everything a
+project needs in one go, see [installing every tool](./team.mdx#installing-every-tool).
+
+### Tools that require other tools
+
+Some tools run on top of another, like npm, pnpm, and Yarn on Node.js, Poetry on Python, and tools
+from the `npm` and `cargo` backends on Node.js and Rust. Before installing one, the tool it requires
+must have a version configured, or the install fails with an error saying so. Installing a version
+doesn't configure it, so pin one as you install it, with `--pin`:
+
+```shell
+# Install Node.js, and pin it as your default version
+$ proto install node 24 --pin global
+
+# Then install tools that run on it
+$ proto install pnpm 10
+```
+
+You'll learn more about pinning, and where pins are written, in the [next step](./versions.mdx).
+
 ## Choosing a version
 
+The version you pass to [`proto install`](../commands/install.mdx) is a
+[version specification](<../(fundamentals)/version-spec.mdx>), which proto resolves to a single
+version before installing it:
+
+- **An exact version**, like `24.11.0`, installs exactly that version.
+- **A partial version or requirement**, like `24`, `24.11`, `^24.1`, or `~3.13`, installs the
+  newest release that matches.
+- **An alias**, like `latest`, or `stable` for the current Node.js LTS release, installs the version
+  that it currently points to. Which aliases exist depends on the tool.
+- **No version** installs the version pinned for the current directory, if there is one, or
+  `latest` otherwise.
+
+To see what's available before installing, list a tool's versions with
+[`proto versions`](../commands/versions.mdx). Pass a specification to filter the list, which is also
+a quick way to check what a requirement matches:
+
+```shell
+# List every available version
+$ proto versions node
+
+# Only list versions that match a requirement
+$ proto versions node "^22 || ^24"
+
+# Include aliases, and what they point to
+$ proto versions node --aliases
+```
+
+For installing on your machine, a partial version, like `24`, is usually all you need. Pins that
+are shared with a team have different needs, which [choosing a
+spec](<../(fundamentals)/version-spec.mdx#choosing-a-spec>) explains.
+
 ## Verifying the installation
+
+Typing `node` runs its shim, and a shim only runs a version that's pinned, either for the current
+directory or as your default, which you'll do in the [next step](./versions.mdx). Until then, it
+falls back to another `node` on your `PATH`, like one from Homebrew, or fails with an error
+suggesting that you pin a version. To check the installation itself, ask proto directly:
+
+```shell
+# Run a specific installed version
+$ proto run node 24 -- --version
+v24.11.0
+
+# Print the path to the installed executable
+$ proto bin node
+/Users/you/.proto/tools/node/24.11.0/bin/node
+
+# List installed versions only
+$ proto versions node --installed
+```
+
+To see every executable that a tool provides, and the shims and binaries proto created for them, run
+[`proto plugin info node`](../commands/plugin/info.mdx). And if an installed tool can't be found at
+all, run [`proto diagnose`](../commands/diagnose.mdx), which checks your `PATH` for common problems.
+
+To remove a version you no longer need, run [`proto uninstall`](../commands/uninstall.mdx), like
+[`proto uninstall node 22`](../commands/uninstall.mdx). See
+[uninstalling](<../(fundamentals)/store.mdx#uninstalling>) for what else it cleans up.
+
+## Next steps
+
+<Cards>
+  <Card
+    title="Pin versions"
+    description="Choose which version runs in each project, and keep it up to date."
+    href="./versions.mdx"
+  />
+</Cards>
