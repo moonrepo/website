@@ -1,27 +1,34 @@
+import type { NavMenuItem } from '@moonrepo/ui/components/NavMenu';
 import type { FooterProps } from '@moonrepo/ui/layout/Footer';
 import type { HeaderProps } from '@moonrepo/ui/layout/Header';
 import { Newspaper } from 'lucide-react';
 import { siDiscord, siGithub, siRss, siX } from 'simple-icons';
 import { BrandIcon } from '@/components/BrandIcon';
-import { PRODUCTS } from '@/lib/products';
+import { PRODUCTS, type Product } from '@/lib/products';
 import { BLOG_FEED_PATH } from '@/lib/rss';
 
 const DISCORD_URL = 'https://discord.gg/qCh9MEynv2';
 const GITHUB_URL = 'https://github.com/moonrepo';
 const X_URL = 'https://x.com/tothemoonrepo';
 
+function productItems(ids: Product[]): NavMenuItem[] {
+	return ids.map((id) => {
+		const product = PRODUCTS[id];
+
+		return {
+			description: product.description,
+			href: `/${id}`,
+			icon: <product.icon />,
+			label: product.title,
+		};
+	});
+}
+
 export const headerProps: Omit<HeaderProps, 'onSearch'> = {
 	logoHref: '/',
 	nav: [
-		{
-			label: 'Projects',
-			items: Object.entries(PRODUCTS).map(([id, product]) => ({
-				description: product.description,
-				href: `/${id}`,
-				icon: <product.icon />,
-				label: product.title,
-			})),
-		},
+		{ label: 'Tools', items: productItems(['moon', 'proto', 'wasm']) },
+		{ label: 'Packages', items: productItems(['schematic']) },
 		{ href: '/blog', icon: <Newspaper />, label: 'Blog' },
 		{
 			href: GITHUB_URL,
