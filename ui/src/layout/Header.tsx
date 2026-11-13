@@ -1,14 +1,24 @@
 import { MenuIcon, Search } from 'lucide-react';
-import { Drawer } from '../components/Drawer';
+import { Fragment, type ReactNode, useEffect, useState } from 'react';
+import {
+	Drawer,
+	drawerIconButtonClass,
+	drawerItemClass,
+	drawerSeparatorClass,
+} from '../components/Drawer';
 import { Kbd } from '../components/Kbd';
-import { NavMenu, type NavMenuItem, navLinkClass } from '../components/NavMenu';
+import {
+	NavMenu,
+	type NavMenuItem,
+	navIconTileClass,
+	navLinkClass,
+} from '../components/NavMenu';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { cn } from '../utils/cn';
-import { caps, capsSm } from './styles';
 
 /** A plain link, or a dropdown menu of links. */
 export type HeaderNavItem =
-	| { href: string; label: string }
+	| { href: string; icon?: ReactNode; label: string }
 	| { items: NavMenuItem[]; label: string };
 
 export interface HeaderProps {
@@ -25,12 +35,59 @@ const iconButtonClass = cn(
 	'focus-visible:outline-2 focus-visible:outline-olive focus-visible:outline-offset-2 dark:focus-visible:outline-tangerine',
 );
 
-const mobileLinkClass =
-	'-mx-3 block rounded-md px-3 py-2 outline-hidden hover:bg-paper-200 focus-visible:bg-paper-200 dark:focus-visible:bg-graphite-surface dark:hover:bg-graphite-surface';
+function isActive(pathname: string, href: string) {
+	return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function MobileNavLink({
+	description,
+	href,
+	icon,
+	label,
+	pathname,
+}: {
+	description?: string;
+	href: string;
+	icon?: ReactNode;
+	label: string;
+	pathname: string;
+}) {
+	return (
+		<a
+			className={cn(drawerItemClass, description && 'gap-3')}
+			data-active={isActive(pathname, href)}
+			href={href}
+		>
+			{icon && (
+				<span className={cn(description && navIconTileClass)}>{icon}</span>
+			)}
+			<span className="flex flex-col">
+				{label}
+				{description && (
+					<span className="text-[0.8125rem] opacity-80">{description}</span>
+				)}
+			</span>
+		</a>
+	);
+}
 
 function MobileNav({ nav }: { nav: HeaderNavItem[] }) {
+	const [pathname, setPathname] = useState('');
+
+	useEffect(() => {
+		setPathname(window.location.pathname);
+	}, []);
+
 	return (
 		<Drawer
+			actions={
+				<ThemeToggle
+					className={cn(
+						drawerIconButtonClass,
+						'size-auto rounded-md border-0 bg-transparent shadow-none dark:bg-transparent [&_svg]:size-4.5',
+					)}
+				/>
+			}
 			title="Menu"
 			trigger={
 				<>
@@ -40,58 +97,23 @@ function MobileNav({ nav }: { nav: HeaderNavItem[] }) {
 			}
 			triggerClassName={cn(iconButtonClass, 'lg:hidden')}
 		>
-			<nav aria-label="Mobile" className="flex flex-col gap-8">
+			<nav aria-label="Mobile" className="flex flex-col gap-0.5">
 				{nav.map((item) =>
-					'items' in item ? (
-						<div key={item.label}>
-							<p className={cn(capsSm, 'text-olive dark:text-tangerine')}>
-								{item.label}
-							</p>
-							<ul className="mt-3 flex flex-col gap-1">
-								{item.items.map((link) => (
-									<li key={link.label}>
-										<a className={mobileLinkClass} href={link.href}>
-											<span className="block font-display text-base text-graphite-800 dark:text-paper-50">
-												{link.label}
-											</span>
-											{link.description && (
-												<span className="block text-graphite-500 text-sm dark:text-sand">
-													{link.description}
-												</span>
-											)}
-										</a>
-									</li>
-								))}
-							</ul>
-						</div>
-					) : null,
+					'items' in item ? null : (
+						<MobileNavLink key={item.label} pathname={pathname} {...item} />
+					),
 				)}
 
-				<ul className="flex flex-col gap-1 border-olive border-t border-dashed pt-6">
-					{nav.map((item) =>
-						'items' in item ? null : (
-							<li key={item.label}>
-								<a
-									className={cn(
-										mobileLinkClass,
-										caps,
-										'text-graphite-800 dark:text-paper-50',
-									)}
-									href={item.href}
-								>
-									{item.label}
-								</a>
-							</li>
-						),
-					)}
-				</ul>
-
-				<div className="flex items-center justify-between border-olive border-t border-dashed pt-6">
-					<span className={cn(capsSm, 'text-olive dark:text-tangerine')}>
-						Theme
-					</span>
-					<ThemeToggle />
-				</div>
+				{nav.map((item) =>
+					'items' in item ? (
+						<Fragment key={item.label}>
+							<p className={drawerSeparatorClass}>{item.label}</p>
+							{item.items.map((link) => (
+								<MobileNavLink key={link.label} pathname={pathname} {...link} />
+							))}
+						</Fragment>
+					) : null,
+				)}
 			</nav>
 		</Drawer>
 	);

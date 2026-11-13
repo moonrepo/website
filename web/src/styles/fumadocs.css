@@ -155,6 +155,11 @@
 		linear-gradient(var(--c), var(--c)) bottom right / 1px var(--l) no-repeat;
 }
 
+/* Match the docs sidebar's project/section dropdown popups to their triggers. */
+:has(> .docs-tab) {
+	@apply rounded-md;
+}
+
 /*
  * Callouts: a tinted card with a solid left bar, colored per type. The hues
  * are fixed (not remapped by product themes) so types read the same everywhere.
