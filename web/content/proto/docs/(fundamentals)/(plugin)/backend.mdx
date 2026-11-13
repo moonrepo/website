@@ -3,6 +3,8 @@ title: Backends
 icon: ToyBrick
 ---
 
+import { VersionLabel } from "@/components/VersionLabel";
+
 A **backend** is a [plugin](./plugin.mdx) that installs tools from an existing ecosystem, instead of
 from a single vendor's releases. Rather than needing a dedicated plugin for every CLI published to
 npm or crates.io, or for every tool that already has an asdf plugin, one backend knows how to list,
@@ -195,7 +197,8 @@ days.
 
 Each backend lists the available versions from its ecosystem, and proto resolves your
 [version specification](../version-spec.mdx) against them, like it does for any tool. When the
-ecosystem doesn't name a latest version, the highest one is used as `latest`.
+ecosystem doesn't name a latest version, the highest one that isn't a pre-release is used as
+`latest`.
 
 Instead of downloading and unpacking a prebuilt archive, a backend installs the tool _natively_, by
 running the ecosystem's tooling against the version's directory in the store:
@@ -219,7 +222,20 @@ Once installed, the backend locates the tool's executables. Shims and
 `cargo:ripgrep` provides `rg`, and `npm:typescript` provides `tsc` and `tsserver`. Each shim
 remembers the backend tool it belongs to, so running `prettier` runs `npm:prettier` with the version
 detected for the current directory. When running a backend tool, proto also adds the tools it
-requires, like `node`, to the environment, using their detected versions.
+requires, like `node`, to the environment, using their detected versions. If a package needs a
+tool that its backend doesn't know about, add it with the
+[`requires`](../config.mdx#tools-requires) setting <VersionLabel version="0.64.0" />. For example,
+the npm backend knows that Tauri's CLI needs Node.js, but not that it also runs `cargo`:
+
+```toml title=".prototools"
+node = "24.11.0"
+npm = "bundled"
+rust = "1.91.0"
+"npm:@tauri-apps/cli" = "2.9.2"
+
+[tools."npm:@tauri-apps/cli"]
+requires = ["rust"]
+```
 
 Executable names are shared by every tool, so if two tools provide the same executable, only one of
 them owns its shim and binary: the tool whose identifier matches the name, or otherwise the one

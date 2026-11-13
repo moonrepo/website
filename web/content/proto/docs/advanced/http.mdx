@@ -4,6 +4,7 @@ icon: Globe
 ---
 
 import { TypeLabel } from "@/components/TypeLabel";
+import { VersionLabel } from "@/components/VersionLabel";
 
 proto talks to the network whenever it needs something it doesn't have yet: a
 [plugin](<../(fundamentals)/(plugin)/plugin.mdx>), the list of a tool's available versions, a tool's
@@ -142,8 +143,10 @@ Rewrites apply to the URLs of files that proto downloads itself:
 They don't apply to requests that plugins make to load available versions, to `github://` and
 `registry://` locators, or to `git ls-remote`. A mirror usually needs those to be reachable too, or
 mirrored through other means, like a [registry](<../(fundamentals)/(plugin)/plugin.mdx#mirroring-built-in-plugins>)
-for built-in plugins. To check that a rewrite matches, run the install with `--log trace`, which logs
-every URL that proto downloads.
+for built-in plugins. To list a tool's versions from a mirror as well <VersionLabel version="0.64.0" />,
+point its [`versions-source`](<../(fundamentals)/config.mdx#tools-versions-source>) at a mirrored
+Git repository or index. To check that a rewrite matches, run the install with `--log trace`, which
+logs every URL that proto downloads.
 
 ## GitHub authentication
 
@@ -176,7 +179,10 @@ proto caches what it downloads, so that repeat commands don't hit the network:
 - **HTTP responses** - Responses to `GET` and `HEAD` requests are cached in
   `~/.proto/cache/requests-v2`, following the caching headers that servers send, like
   `Cache-Control` and `ETag`, for up to 7 days. This includes the requests that plugins make to load
-  available versions. The cache is disabled inside Docker containers.
+  available versions. The cache is disabled inside Docker containers, and
+  [`proto install --force`](../commands/install.mdx) and [`proto lock --force`](../commands/lock.mdx)
+  skip it <VersionLabel version="0.64.0" /> for tool archives and their checksum files, so they're
+  verified as they currently exist upstream.
 - **Available versions** - Each tool's list of available versions is cached for 12 hours, in
   `~/.proto/tools/<id>/remote-versions.json`. When loading the list fails, proto falls back to the
   cached list, even when it's older. Set `PROTO_CACHE=off` to ignore the cache, and load the list

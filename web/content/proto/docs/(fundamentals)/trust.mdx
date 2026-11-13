@@ -3,6 +3,8 @@ title: Trust & safety
 icon: ShieldCheck
 ---
 
+import { VersionLabel } from "@/components/VersionLabel";
+
 A [`.prototools`](./config.mdx) file can do much more than pin versions. It can set environment
 variables and shell aliases, load plugins from any URL, and change where tools are downloaded from.
 That's useful in a file you wrote, and risky in one you didn't. Without a safeguard, cloning a
@@ -102,7 +104,9 @@ Everything else **requires trust**:
 - **[`[plugins]`](./config.mdx#plugins)** - Plugins are downloaded from any URL or file, and
   executed by proto.
 - **[`[tools.*]`](./config.mdx#tools)** - Everything except `aliases`: a tool's `plugin`, its `env`,
-  and the settings passed to its plugin, like a custom URL to download the tool from.
+  the tools it [`requires`](./config.mdx#tools-requires), where it loads its
+  [`versions-source`](./config.mdx#tools-versions-source) from, and the settings passed to its
+  plugin, like a custom URL to download the tool from.
 - **[`[backends.*]`](./config.mdx#backends)** - A backend's plugin, environment variables, and
   settings, like the Git repository an asdf plugin is cloned from.
 - **[`[settings]`](./config.mdx#settings)** - Everything except the 4 safe settings. For example,
@@ -159,7 +163,9 @@ apply as usual. In practice:
 - Tools pinned with a sensitive pin aren't configured by it, so
   [`proto install`](../commands/install.mdx) doesn't install them.
 - Plugins it configures aren't loaded:
-  - A built-in tool falls back to its built-in plugin.
+  - A built-in tool falls back to its built-in plugin. <VersionLabel version="0.64.0" /> The tool
+    still works, so proto warns that the override wasn't used, with the plugin, the config it's in,
+    and the [`proto trust`](../commands/trust.mdx) command to run.
   - Any other tool isn't looked up in the community registry instead, as that could load a different
     plugin than the one configured.
   - Commands that use such a tool fail with an error that names the config and the
@@ -182,12 +188,16 @@ proto tells you when it ignored settings, without getting in the way of your too
   removes.
 - Tool commands, [`proto run`](../commands/run.mdx), [`proto exec`](../commands/exec.mdx),
   [`proto bin`](../commands/bin.mdx), and [`proto shell`](../commands/shell.mdx), and therefore
-  shims, stay quiet, as scripts and editors run them constantly. They only fail when the tool itself
-  is affected, as described above.
+  shims, stay quiet, as scripts and editors run them constantly. They only speak up when the tool
+  itself is affected, as described above: they fail when its plugin can't be loaded, or warn when
+  its plugin override was ignored.
 - [`proto status`](../commands/status.mdx) lists untrusted configs in their own section, which also
   explains tools that seem to be missing. [`proto diagnose`](../commands/diagnose.mdx) reports them
   as warnings, and [`proto debug config`](../commands/debug/config.mdx) marks each one as
   `(untrusted)`, and shows it without its sensitive settings.
+- [`proto plugin info`](../commands/plugin/info.mdx) <VersionLabel version="0.64.0" /> shows a
+  tool's ignored plugin override, and [`proto diagnose`](../commands/diagnose.mdx) lists the
+  ignored overrides of each untrusted config.
 
 ## Automatically trusted
 

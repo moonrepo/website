@@ -3,6 +3,8 @@ title: Version specification
 icon: Tag
 ---
 
+import { VersionLabel } from "@/components/VersionLabel";
+
 A **version specification**, or spec, is how you tell proto which version of a
 [tool](<./(plugin)/tool.mdx>) to use. It can be an exact version like `20.11.0`, a partial version
 or requirement like `20` or `^20.11`, a range like `>=18 <21`, or an alias like `latest`. Specs are
@@ -64,17 +66,18 @@ pnpm = ">=9 <10"
 
 ### Syntax
 
-| Operator      | Meaning                                      | Example   | Matches                  | Doesn't match    |
-| ------------- | -------------------------------------------- | --------- | ------------------------ | ---------------- |
-| _none_        | A partial version, the same as `~`           | `1.2`     | `1.2.0`, `1.2.9`         | `1.1.9`, `1.3.0` |
-| `=`, `==`     | Exactly, ignoring build metadata             | `=1.2.3`  | `1.2.3`, `1.2.3+build.5` | `1.2.2`, `1.2.4` |
-| `>`           | Greater than                                 | `>1.2.3`  | `1.2.4`, `2.0.0`         | `1.2.2`, `1.2.3` |
-| `>=`          | Greater than or equal to                     | `>=1.2.3` | `1.2.3`, `2.0.0`         | `0.9.0`, `1.2.2` |
-| `<`           | Less than                                    | `<1.2.3`  | `0.9.0`, `1.2.2`         | `1.2.3`, `2.0.0` |
-| `<=`          | Less than or equal to                        | `<=1.2.3` | `1.2.2`, `1.2.3`         | `1.2.4`, `2.0.0` |
-| `~`           | At least this version, within the same minor | `~1.2.3`  | `1.2.3`, `1.2.9`         | `1.2.2`, `1.3.0` |
-| `^`           | At least this version, within the same major | `^1.2.3`  | `1.2.3`, `1.9.0`         | `1.2.2`, `2.0.0` |
-| `*`, `x`, `X` | Any value for a part, or any version alone   | `1.x`     | `1.0.0`, `1.9.9`         | `0.9.9`, `2.0.0` |
+| Operator      | Meaning                                           | Example   | Matches                  | Doesn't match    |
+| ------------- | ------------------------------------------------- | --------- | ------------------------ | ---------------- |
+| _none_        | A partial version, the same as `~`                | `1.2`     | `1.2.0`, `1.2.9`         | `1.1.9`, `1.3.0` |
+| `=`, `==`     | Exactly, ignoring build metadata                  | `=1.2.3`  | `1.2.3`, `1.2.3+build.5` | `1.2.2`, `1.2.4` |
+| `!=`          | Anything except <VersionLabel version="0.64.0" /> | `!=1.2.3` | `1.2.2`, `1.2.4`         | `1.2.3`          |
+| `>`           | Greater than                                      | `>1.2.3`  | `1.2.4`, `2.0.0`         | `1.2.2`, `1.2.3` |
+| `>=`          | Greater than or equal to                          | `>=1.2.3` | `1.2.3`, `2.0.0`         | `0.9.0`, `1.2.2` |
+| `<`           | Less than                                         | `<1.2.3`  | `0.9.0`, `1.2.2`         | `1.2.3`, `2.0.0` |
+| `<=`          | Less than or equal to                             | `<=1.2.3` | `1.2.2`, `1.2.3`         | `1.2.4`, `2.0.0` |
+| `~`           | At least this version, within the same minor      | `~1.2.3`  | `1.2.3`, `1.2.9`         | `1.2.2`, `1.3.0` |
+| `^`           | At least this version, within the same major      | `^1.2.3`  | `1.2.3`, `1.9.0`         | `1.2.2`, `2.0.0` |
+| `*`, `x`, `X` | Any value for a part, or any version alone        | `1.x`     | `1.0.0`, `1.9.9`         | `0.9.9`, `2.0.0` |
 
 A few operators depend on which parts you define:
 
@@ -86,6 +89,10 @@ A few operators depend on which parts you define:
   `>=0.2.3 <0.3.0`, and `^0.0.3` matches only `0.0.3`.
 - **Wildcard parts** - `1.*` and `1.2.x` match any value for the wildcard part, and a wildcard can't
   be followed by a number, so `1.*.3` is invalid. A lone `*` matches any version.
+- **Not equal** - <VersionLabel version="0.64.0" /> `!=` excludes every version with the parts you
+  define, so `!=1.2` excludes every `1.2.x` release. On its own, it matches nearly everything, so
+  combine it with another requirement, like `^1.2, !=1.2.3`, to skip a broken release while still
+  following a release line.
 
 [Calendar](#calendar-versions) requirements use the same operators, with the year, month, and day
 in place of the major, minor, and patch: `~2024-02` matches any day in February 2024, `^2024-02`
@@ -114,8 +121,8 @@ requirements combined with and, or a bounded range:
   and.
 
 Whitespace is allowed after an operator, like `>= 1.2`, but not within a version. Build metadata is
-accepted but ignored, so `=1.2.3+build` is the same as `=1.2.3`. The `!=` and `=>` operators, and
-`|` or `or` as separators, aren't supported.
+accepted but ignored, so `=1.2.3+build` is the same as `=1.2.3`. The `=>` operator, and `|` or `or`
+as separators, aren't supported.
 
 ### Guidelines
 
@@ -142,7 +149,8 @@ accepted but ignored, so `=1.2.3+build` is the same as `=1.2.3`. The `!=` and `=
 
 - **Pre-releases must be opted into.** A requirement only matches a pre-release when it includes a
   pre-release with the same major, minor, and patch. `>=1.2.3-alpha` matches `1.2.3-beta` and
-  `1.2.4`, but not `1.2.4-beta`, while `*` and `>=20` never match `21.0.0-rc.1`. To use a
+  `1.2.4`, but not `1.2.4-beta`, while `*` and `>=20` never match `21.0.0-rc.1`. A `!=` requirement
+  never opts in, so excluding `!=1.2.3-rc.1` doesn't let its sibling `1.2.3-rc.2` through. To use a
   pre-release, pin it as a full version.
 - **Lockfiles freeze the result.** With the [lockfile](../advanced/lockfile.mdx) enabled, a
   requirement resolves to the version locked for it, so every machine uses the same version until
@@ -165,17 +173,19 @@ node = "20.11.0"
 
 ### Syntax
 
-| Format                                  | Example                                         |
-| --------------------------------------- | ----------------------------------------------- |
-| `<major>.<minor>.<patch>`               | `1.2.3`                                         |
-| `<major>.<minor>.<patch>-<pre>`         | `1.2.3-alpha.1`, `1.2.3-rc.0`                   |
-| `<major>.<minor>.<patch>+<build>`       | `1.2.3+build.5`                                 |
-| `<major>.<minor>.<patch>-<pre>+<build>` | `1.2.3-beta.1+exp.sha.5114f85`                  |
-| `v<major>.<minor>.<patch>`              | `v1.2.3`, the same as `1.2.3`                   |
-| `<scope>-<major>.<minor>.<patch>`       | `temurin-21.0.2`, see [scopes](#version-scopes) |
+| Format                                  | Example                                                                   |
+| --------------------------------------- | ------------------------------------------------------------------------- |
+| `<major>.<minor>.<patch>`               | `1.2.3`                                                                   |
+| `<major>.<minor>.<patch>.<revision>`    | `18.0.2.1`, see [revisions](#revisions) <VersionLabel version="0.64.0" /> |
+| `<major>.<minor>.<patch>-<pre>`         | `1.2.3-alpha.1`, `1.2.3-rc.0`                                             |
+| `<major>.<minor>.<patch>+<build>`       | `1.2.3+build.5`                                                           |
+| `<major>.<minor>.<patch>-<pre>+<build>` | `1.2.3-beta.1+exp.sha.5114f85`                                            |
+| `v<major>.<minor>.<patch>`              | `v1.2.3`, the same as `1.2.3`                                             |
+| `<scope>-<major>.<minor>.<patch>`       | `temurin-21.0.2`, see [scopes](#version-scopes)                           |
 
-- **Numbers** - Major, minor, and patch are all required, and are whole numbers without leading
-  zeros. `1.02.3` and `1.2.3.4` are invalid.
+- **Numbers** - Major, minor, and patch are all required, and can be followed by an optional 4th
+  number, the [revision](#revisions). All of them are whole numbers without leading zeros, so
+  `1.02.3` and `1.2.3.4.5` are invalid.
 - **Pre-release** - Starts with `-`, followed by `.` separated identifiers made of letters, digits,
   `-`, and `_`, like `alpha.1` or `rc-2`.
 - **Build metadata** - Starts with `+`, followed by identifiers in the same format, like `build.5`.
@@ -198,6 +208,30 @@ node = "20.11.0"
   plugin, so the version you write may differ from the tool's own. For example, Python's `3.13.0rc1`
   is `3.13.0-rc.1` in proto. When unsure, list the tool's versions with
   [`proto versions`](../commands/versions.mdx).
+
+### Revisions
+
+<VersionLabel version="0.64.0" /> Some tools put a 4th number on the end of a version, like Java's
+`18.0.2.1`. proto calls it the _revision_, and supports it in versions, requirements, and ranges,
+like `18.0.2.1`, `>=18.0.2.1`, and `18.0.2.*`.
+
+```toml title=".prototools"
+java = "~18.0.2"
+```
+
+A revision is optional, and works like a more specific patch:
+
+- **Omitted means 0, for ordering** - `1.2.3` matches and orders like `1.2.3.0`, but the two aren't
+  equal, so each is kept exactly as written.
+- **Requirements match any revision** - A requirement without a revision matches every revision of
+  that version, so `=18.0.2`, `~18.0.2`, and `<=18.0.2` all match `18.0.2.1`, while `>18.0.2`
+  doesn't. Define the revision to be specific, like `>18.0.2.1`.
+- **Versions are still exact** - A full version like `18.0.2` only resolves to `18.0.2`. To resolve
+  the latest revision, use a requirement, like `~18.0.2` or `18.0.2.*`.
+- **Caret with zeros** - When the major, minor, and patch are all `0`, `^` locks the revision too:
+  `^0.0.0.4` only matches `0.0.0.4`, while `^0.0.3` matches `0.0.3.7`.
+
+[Calendar versions](#calendar-versions) don't support a revision.
 
 ## Calendar versions
 
@@ -271,10 +305,11 @@ $ proto versions node --aliases
 proto itself handles 2 aliases, for every tool:
 
 - **`latest`** - The newest stable release, as reported by the tool's plugin. This is usually the
-  highest version that isn't a pre-release. When a plugin doesn't report one, the highest available
-  version is used. It's also what [`proto install <tool>`](../commands/install.mdx) installs when no
-  version is configured or detected, and the [`pin-latest`](./config.mdx#pin-latest) setting pins
-  the version it resolved to when installing it.
+  highest version that isn't a pre-release. When a plugin doesn't report one, proto uses the highest
+  available version that isn't a pre-release. It's also what
+  [`proto install <tool>`](../commands/install.mdx) installs when no version is configured or
+  detected, and the [`pin-latest`](./config.mdx#pin-latest) setting pins the version it resolved to
+  when installing it.
 - **`canary`** - A special spec that's never looked up or matched against the available versions.
   It's passed to the tool's plugin, which installs its latest unreleased build, typically a nightly.
   Not every tool supports it, and those that don't fail with an error. Once installed, select it
@@ -378,8 +413,8 @@ or `>=temurin-17 <temurin-22`.
 
 - **Only use scopes that the tool supports.** Each tool's plugin decides what its scopes mean, and
   most tools don't use them. [Java](../tools/java.mdx) uses the scope for the distribution, and adds
-  its default distribution (`openjdk`) to unscoped versions, so `java = "21"` is the same as
-  `java = "openjdk-21"`.
+  its default distribution (`temurin`) to unscoped versions, so `java = "21"` is the same as
+  `java = "temurin-21"`.
 - **Scoped requirements stay in their scope.** `temurin-21` only matches versions scoped to
   `temurin`, never `zulu-21.0.2` or an unscoped `21.0.2`. An unscoped requirement, like `21`,
   matches versions in any scope.

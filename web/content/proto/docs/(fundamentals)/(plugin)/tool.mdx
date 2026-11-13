@@ -3,6 +3,8 @@ title: Tools
 icon: Wrench
 ---
 
+import { VersionLabel } from "@/components/VersionLabel";
+
 A **tool** is anything proto installs, versions, and runs: a programming language like Node.js or
 Python, a package manager like pnpm or uv, or a command-line program like moon. proto itself doesn't
 know how any of them work. Each tool is powered by a [plugin](./plugin.mdx), which tells proto where
@@ -44,6 +46,8 @@ Every tool, built-in or not, goes through the same lifecycle:
 - **Composable** - A tool can require another to function, like npm requires Node.js, and Poetry
   requires Python. The required tool must have a version configured too, so pinning `npm` needs a
   `node` pin alongside it. It's installed first, and added to the environment when the tool runs.
+  When a plugin doesn't know about a requirement, declare it yourself with the
+  [`requires`](../config.mdx#tools-requires) setting <VersionLabel version="0.64.0" />.
 - **Configurable** - Tools accept their own [settings](#configuration), environment variables, and
   version aliases in [`.prototools`](../config.mdx).
 
@@ -148,8 +152,12 @@ A few things to know about [`proto run`](../../commands/run.mdx), and the shims 
   once the tool that provides them is installed.
 - If proto doesn't know the tool, or can't detect a version for it, it falls back to an executable
   with the same name on your `PATH`, outside of proto.
-- A tool's own self-upgrade command, like `bun upgrade`, is blocked, as it would conflict with
-  proto.
+- A tool's own self-upgrade command, like `bun upgrade`, is blocked, as it would replace a version
+  that proto manages. <VersionLabel version="0.64.0" /> In an interactive terminal, proto offers to
+  upgrade it for you instead: it installs the `latest` version, and pins it to the
+  [`.prototools`](../config.mdx) that the current version was detected from, or to the one in the
+  current directory. Elsewhere, like in CI, it fails with the
+  [`proto install`](../../commands/install.mdx) command to run.
 
 To run any command with one or more tools available, use [`proto exec`](../../commands/exec.mdx). It
 adds each tool's executable directories and environment variables to the command's environment,

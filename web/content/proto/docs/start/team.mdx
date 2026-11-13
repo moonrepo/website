@@ -3,6 +3,8 @@ title: Share with your team
 icon: Users
 ---
 
+import { VersionLabel } from "@/components/VersionLabel";
+
 So far, everything has been set up for you alone. The real payoff comes when a repository's
 [`.prototools`](<../(fundamentals)/config.mdx>) is committed: "which versions do I need?" becomes a
 single command, every teammate runs the same versions, and CI matches what you run locally. This
@@ -104,6 +106,16 @@ From then on:
 - When a teammate installs on a different platform, like Linux instead of macOS, they get the same
   version, and a record with their platform's checksum is added. Commit that change too.
 
+<VersionLabel version="0.64.0" /> Rather than wait for each platform to show up,
+you can lock all of them from your own machine, without installing anything,
+with [`proto lock`](../commands/lock.mdx). It downloads each tool for the
+platforms you list, verifies it, and records its checksum:
+
+```shell
+# Lock every pinned tool for the platforms your team and CI use
+$ proto lock --platform arm64-macos,x64-linux,x64-windows
+```
+
 To move a lock forward, change the pin with [`proto pin`](../commands/pin.mdx) or
 [`proto outdated --update`](../commands/outdated.mdx), which update the lockfile with it, then run
 [`proto install`](../commands/install.mdx). Or keep the pin, and re-resolve it to the newest
@@ -180,8 +192,9 @@ $ proto install
 
 If you've enabled the lockfile, pass `--immutable-lockfile` (or set `PROTO_IMMUTABLE_LOCKFILE`), so
 the install fails when the lockfile is missing a record or would change, instead of quietly
-resolving a different version than the one you committed. See the [CI guide](../guides/ci.mdx) for
-caching and more.
+resolving a different version than the one you committed. Make sure CI's platform is locked first,
+like with [`proto lock --platform x64-linux`](../commands/lock.mdx). See the
+[CI guide](../guides/ci.mdx) for caching and more.
 
 ## Next steps
 

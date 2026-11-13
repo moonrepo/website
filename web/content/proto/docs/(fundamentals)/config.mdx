@@ -4,6 +4,7 @@ icon: Settings
 ---
 
 import { TypeLabel } from "@/components/TypeLabel";
+import { VersionLabel } from "@/components/VersionLabel";
 
 proto is configured with `.prototools` files, written in [TOML](https://toml.io/en/). A single file
 can pin the [versions](#versions) of tools, set [environment variables](#env), register
@@ -913,6 +914,84 @@ A [plugin locator](../../../wasm/docs/plugin-locators.mdx) for the tool, which t
 [tools.my-tool]
 plugin = "github://my-org/my-tool-plugin@v1.0.0"
 ```
+
+#### `requires` [#tools-requires]
+
+<TypeLabel type="string[]" /> <VersionLabel version="0.64.0" />
+
+Other tools that this tool depends on, in addition to the ones its plugin already requires. Each item is a tool [identifier](<./(plugin)/tool.mdx#tool-identifiers>). This is useful when a tool needs another at runtime, but
+its plugin doesn't know that, like a CLI that's written in JavaScript and shells out to `node`.
+
+```toml title=".prototools"
+node = "24.11.0"
+my-cli = "2.1.0"
+
+[tools.my-cli]
+# my-cli is a Node.js script, so it needs node to run
+requires = ["node"]
+```
+
+A requirement works exactly like one from the plugin:
+
+- **Installing** - [`proto install`](../commands/install.mdx) installs the required tools first, and
+  fails if one of them doesn't have a version configured, either pinned in a `.prototools` or set
+  with a `PROTO_<TOOL>_VERSION` environment variable.
+- **Running** - When the tool runs, through a shim, [`proto run`](../commands/run.mdx), or
+  [`proto exec`](../commands/exec.mdx), the required tools are added to its environment too: their
+  executable directories are put on `PATH`, and their versions are exported as
+  `PROTO_<TOOL>_VERSION`, so child processes use them. They use their
+  [detected](./detection.mdx) versions, and must already be installed.
+
+Unlike other settings, lists from every loaded file are combined, without duplicates, instead of the
+closest file replacing them. A tool can't require itself, and requirements that form a cycle, like
+`a` requiring `b` and `b` requiring `a`, fail instead of waiting forever.
+[`proto diagnose`](../commands/diagnose.mdx) warns about both, and about requirements without a
+configured version. [`proto plugin info`](../commands/plugin/info.mdx) lists every requirement of a
+tool, from its plugin and this setting. As it changes what's installed and run, it requires
+[trust](./trust.mdx).
+
+#### `versions-source` [#tools-versions-source]
+
+<TypeLabel type="object" /> <VersionLabel version="0.64.0" />
+
+Where the tool's plugin loads its available versions from, instead of the Git repository or JSON
+index it uses by default. This is how you list versions from an internal mirror, when your network
+can't reach the public source, or narrow down which versions are listed at all. It supports the
+following settings:
+
+- `git-url` <TypeLabel type="string" /> - A Git repository to list tags from, with
+  `git ls-remote`.
+- `git-tag-pattern` <TypeLabel type="string" /> - A
+  [regular expression](https://docs.rs/regex/latest/regex/#syntax) that tags must match to be
+  listed, which replaces the plugin's own pattern. Defaults to `version-pattern`.
+- `index-url` <TypeLabel type="string" /> - A URL to a JSON index to list versions from.
+- `index-version-key` <TypeLabel type="string" /> - The [JSONPath](https://www.rfc-editor.org/info/rfc9535/) that holds the version in each object of
+  the index. Defaults to the key the plugin uses for its own index, otherwise `version`.
+- `version-pattern` <TypeLabel type="string" /> - A regular expression that versions must match to
+  be listed, from either source.
+
+```toml title=".prototools"
+[tools.go.versions-source]
+# List tags from a mirror of github.com/golang/go
+git-url = "https://git.corp.internal/mirrors/go.git"
+# Only list Go 1.24 and 1.25 releases
+version-pattern = '^go1\.(24|25)\.'
+```
+
+A source is either a Git repository or an index, so `git-url` and `index-url` can't both be set. Set
+either one to switch sources, like listing versions from an index for a plugin that uses Git, or set
+only a pattern to keep the plugin's own source and filter it.
+
+The plugin then processes the listed entries as if they came from its own source, so a mirror must
+list them in the same format. Go's plugin expects tags like `go1.25.4`, for example. The headers
+that a plugin sends to its own index aren't sent to a configured one, and neither is anything the
+plugin reads from its index besides versions, like the LTS aliases of Node.js.
+
+The setting only applies to plugins that load versions through proto, which most built-in tools
+(except Java) and [schema plugins](../schema.mdx) do. It changes where versions are listed from,
+not where they're downloaded from, so pair it with
+[`url-rewrites`](#url-rewrites), or the tool's own settings, to download from the mirror too. Like
+other tool settings, it requires [trust](./trust.mdx).
 
 ## Backend settings
 

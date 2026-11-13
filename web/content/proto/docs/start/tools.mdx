@@ -3,6 +3,8 @@ title: Install tools
 icon: PackagePlus
 ---
 
+import { VersionLabel } from "@/components/VersionLabel";
+
 A fresh proto installation doesn't include any tools. You install each one yourself, in whichever
 versions you need, and proto keeps every version in its own directory in the
 [store](<../(fundamentals)/store.mdx>). Nothing is installed globally in the traditional sense, so
@@ -84,6 +86,10 @@ $ proto install node 24 --pin global
 # Then install tools that run on it
 $ proto install pnpm 10
 ```
+
+Plugins declare these requirements for you. <VersionLabel version="0.64.0" /> If a tool needs
+another that its plugin doesn't know about, declare it with the
+[`requires`](<../(fundamentals)/config.mdx#tools-requires>) setting.
 
 You'll learn more about pinning, and where pins are written, in the [next step](./versions.mdx).
 

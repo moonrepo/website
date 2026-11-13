@@ -4,6 +4,7 @@ icon: Plug
 ---
 
 import { TypeLabel } from "@/components/TypeLabel";
+import { VersionLabel } from "@/components/VersionLabel";
 
 proto doesn't know how to install Node.js, Python, or any other tool by itself. Every
 [tool](./tool.mdx) and [backend](./backend.mdx) is powered by a **plugin**, which teaches proto
@@ -191,7 +192,8 @@ $ proto plugin add my-backend "registry://ghcr.io/my-org/my_backend:0.1.0" --typ
 
 To see which plugin each tool uses, and where it's located, run
 [`proto plugin list`](../../commands/plugin/list.mdx), or
-[`proto plugin info`](../../commands/plugin/info.mdx) for a single tool.
+[`proto plugin info`](../../commands/plugin/info.mdx) for a single tool, including tools from a
+backend, like `asdf:golang`.
 
 <Callout type="warning">
   Plugin locators are a [security-sensitive
@@ -199,8 +201,8 @@ To see which plugin each tool uses, and where it's located, run
   on your machine. Plugins configured in a project's
   [`.prototools`](../config.mdx) aren't loaded until the file is trusted with
   [`proto trust`](../../commands/trust.mdx). Until then, built-in tools keep
-  using their built-in plugin, and other tools aren't loaded. Your user and
-  global configs are [trusted
+  using their built-in plugin, with a warning that the override wasn't used, and
+  other tools aren't loaded. Your user and global configs are [trusted
   automatically](../trust.mdx#automatically-trusted).
 </Callout>
 
