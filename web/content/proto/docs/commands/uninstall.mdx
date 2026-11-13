@@ -2,6 +2,108 @@
 title: proto uninstall
 ---
 
+The `proto uninstall` (or `proto ui`) command removes installed versions of a
+[tool](<../(fundamentals)/(plugin)/tool.mdx>) from the [store](<../(fundamentals)/store.mdx>). Pass
+a version to remove just that one, or leave it out to remove every version of the tool, along with
+its entire [inventory](<../(fundamentals)/store.mdx#inventory>). Reach for it when you're done with
+a version, like an old major after your projects have upgraded, or with a tool altogether. To
+reclaim disk space from versions you haven't used in a while, without touching your configuration,
+use [`proto clean`](./clean.mdx) instead.
+
+A version is resolved to exactly one installed version, the same way proto resolves it to run a
+tool: from a [lockfile](../advanced/lockfile.mdx) record when one matches, otherwise the highest
+installed version that matches (see
+[requirements and ranges](<../(fundamentals)/version-spec.mdx#requirements-and-ranges>)). So with
+20.10.0 and 20.11.0 installed, `proto uninstall node 20` only removes 20.11.0. To see exactly what's
+installed, run [`proto versions node --installed`](./versions.mdx). If the version, or the tool
+when no version is passed, isn't installed, proto prints a warning and exits with code `1`, without
+changing anything.
+
+Uninstalling also cleans up everything that points at what it removes, which is why it's better than
+deleting a directory by hand:
+
+- **Inventory** - The version's directory and its [manifest](<../(fundamentals)/store.mdx#manifest>)
+  entry are removed, along with the tool's leftover temporary downloads. When the tool's plugin has
+  its own uninstall step, like Rust's, which runs `rustup toolchain uninstall`, it runs first.
+  Without a version, the whole inventory directory is deleted, including the manifest and the cache
+  of available versions, and so is the tool's directory in `~/.proto/temp`.
+- **Binaries** - [Linked binaries](<../(fundamentals)/workflows.mdx#binary-linking>) in
+  `~/.proto/bin` that point at the version, like `node` or `node-20`, are re-pointed to the highest
+  remaining version in their range, or removed when no installed version is left in it.
+- **Shims** - [Shims](<../(fundamentals)/workflows.mdx#shims>) are kept while any version of the
+  tool is installed, as they pick a version on every call. Uninstalling the last version removes
+  them, along with all of the tool's binaries.
+- **Pins** - Pins are removed from every [`.prototools`](<../(fundamentals)/config.mdx>) that proto
+  loads where you run the command: those in the current directory and its parents (including your
+  user `~/.prototools` when you're within your home directory, and any
+  [environment files](<../(fundamentals)/config.mdx#environment-mode>) when an environment is
+  active), and the global `~/.proto/.prototools`. Without a version, the tool's pin is removed from
+  each of them, whatever its value. With a version, a pin is only removed when its value is that
+  version, as proto normalizes it. So `proto uninstall node 20.11.0` removes `node = "20.11.0"`, and
+  `proto uninstall node 20` removes `node = "~20"`, which is what
+  [`proto pin node 20`](./pin.mdx) writes, but neither removes a hand-written `node = "20"`. A pin
+  that's kept still applies, so the next time the tool runs there, proto resolves it again, to
+  another installed version or one it has to install.
+- **Lockfiles** - The [lockfiles](../advanced/lockfile.mdx) of those same files are updated. With a
+  version, its records for the current platform are removed when it was pinned as that exact
+  version. Records of a requirement that resolved to it, like `~20`, are kept, so the next
+  [`proto install`](./install.mdx) installs the same locked version again. Without a version, every
+  record of the tool is removed, for every platform. Afterwards,
+  [orphaned records](../advanced/lockfile.mdx#orphaned-records) are pruned.
+
+Configuration files outside the current directory's parents, like those of another repository,
+aren't loaded, so their pins and lockfiles are left alone. That's also how to remove a version from
+your machine while keeping a repository's committed pin: run the command from outside the
+repository. The tool's plugin is never touched either: its entry in
+[`[plugins]`](<../(fundamentals)/config.mdx#plugins>) and its `[tools.*]` settings stay, and the
+downloaded plugin stays in `~/.proto/plugins` until [`proto clean`](./clean.mdx) removes it. To
+remove a third-party tool entirely, follow up with [`proto plugin remove`](./plugin/remove.mdx).
+
+<Callout type="warning">
+  For a tool whose inventory lives
+  [outside the store](<../(fundamentals)/store.mdx#custom-locations>),
+  uninstalling without a version deletes that directory as a whole. For Rust,
+  that's `~/.rustup/toolchains`, including toolchains that you installed with
+  rustup directly, not through proto.
+</Callout>
+
+Before removing anything, proto asks for confirmation, showing the version (or the number of
+versions) and the directory it deletes. Declining exits without any changes. The prompt is skipped,
+and the uninstall goes ahead, when the global `--yes` option is passed (see
+[prompts](./overview.mdx#prompts)), or in a CI or deployment environment. When the output isn't a
+terminal, like in a script or a pipe, the prompt can't be shown and nothing is uninstalled, so
+always pass `--yes` in scripts.
+
+```shell
+# Uninstall a specific version
+$ proto uninstall node 20.11.0
+
+# Uninstall the highest installed 20.x version
+$ proto uninstall node 20
+
+# Uninstall every version of Node.js, and unpin it
+$ proto uninstall node
+
+# Uninstall every version of a backend tool, without prompting
+$ proto uninstall npm:prettier --yes
+
+# Uninstall in a script, without prompts or progress output
+$ proto ui go 1.25.0 --yes --quiet
+```
+
 ## Arguments
 
+- `<CONTEXT>` - The [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>) of the tool
+  to uninstall, like `node`, or a
+  [backend-prefixed](<../(fundamentals)/(plugin)/tool.mdx#backend-prefixed>) one, like
+  `npm:prettier`. proto loads the tool through its plugin, so a third-party tool's plugin must still
+  be configured.
+- `[SPEC]` - The [version specification](<../(fundamentals)/version-spec.mdx>) to uninstall, like
+  `20.11.0`, `20`, or `lts`, which resolves to a single installed version. When omitted, every
+  installed version of the tool is uninstalled.
+
 ## Options
+
+- `--quiet` - Hide the progress output, the success message, and the warning printed when the
+  version isn't installed. Errors are still printed, and the exit code doesn't change. The
+  confirmation prompt is still shown, so pair it with `--yes` in scripts.

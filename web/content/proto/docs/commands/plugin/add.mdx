@@ -2,6 +2,126 @@
 title: proto plugin add
 ---
 
+import { TypeLabel } from "@/components/TypeLabel";
+
+Register a [plugin](<../../(fundamentals)/(plugin)/plugin.mdx>) for a tool or backend in a
+[`.prototools`](<../../(fundamentals)/config.mdx>) file, under an ID of your choosing, instead of
+[enabling the plugin](<../../(fundamentals)/(plugin)/plugin.mdx#enabling-plugins>) by hand. Reach
+for it to bring in a [third-party tool](<../../(fundamentals)/(plugin)/tool.mdx#third-party-tools>)
+or [backend](<../../(fundamentals)/(plugin)/backend.mdx#third-party-backends>) that proto doesn't
+support out of the box, or to
+[override a built-in tool](<../../(fundamentals)/(plugin)/tool.mdx#overriding-built-in-tools>),
+like to use a specific release of its plugin, or a local build while developing one. Built-in and
+[community tools](<../../(fundamentals)/(plugin)/tool.mdx#community-tools>) work by ID without any
+setup, so they don't need to be added. To find a third-party plugin and its locator, use
+[`proto plugin search`](./search.mdx).
+
+The plugin is given as a [plugin locator](../../../../wasm/docs/plugin-locators.mdx), a
+`<protocol>://<location>` string that tells proto where to load the plugin from, using one of the
+following protocols:
+
+- `file://` - A path on the local file system to a
+  [WASM or schema](<../../(fundamentals)/(plugin)/plugin.mdx#plugin-formats>) plugin, like
+  `file://./plugins/my_tool.wasm`. Local plugins are read from disk on every use instead of being
+  cached, which suits plugins you're developing.
+- `https://` - A URL to a WASM or schema plugin, or to an archive (like `.tar.gz` or `.zip`) that
+  contains one. Non-secure `http://` URLs aren't supported.
+- `github://` - An asset from a release of a GitHub repository, like
+  `github://my-org/my-tool-plugin`. The latest release is used by default, so append a tag, like
+  `@v1.0.0`, to make every machine load the same plugin.
+- `registry://` - An image in an OCI registry, like `registry://ghcr.io/my-org/my_tool:1.0.0`.
+  Without a host, the image is searched for in your configured
+  [registries](<../../(fundamentals)/(plugin)/plugin.mdx#registries>). The tag defaults to `latest`.
+
+The locator is parsed before any file is changed, so a locator without a protocol, with an unknown
+protocol, or a `github://` location without an owner fails immediately. It's then written in its
+normalized form, so `registry://my_tool` is written as `registry://my_tool:latest`.
+
+```shell
+# Add a tool plugin from a GitHub release, to the closest .prototools
+$ proto plugin add my-tool "github://my-org/my-tool-plugin@v1.0.0"
+
+# Override the built-in Node.js plugin with a local build
+$ proto plugin add node "file://./target/wasm32-wasip1/release/node_tool.wasm"
+
+# Add a schema plugin from a URL, to the .prototools in the current directory
+$ proto plugin add example "https://example.com/plugins/example.toml" --to local
+
+# Add a backend plugin from an OCI registry, to your user config
+$ proto plugin add my-backend "registry://ghcr.io/my-org/my_backend:0.1.0" --type backend --to user
+```
+
+By default, the plugin is added to the [closest](<../../(fundamentals)/config.mdx#closest>)
+[`.prototools`](<../../(fundamentals)/config.mdx>), the first one found walking upwards from the
+current directory, or a new one in the current directory when there is none. Use `--to` to pick
+another [location](<../../(fundamentals)/config.mdx#writing-to-a-file>). The file is edited in
+place, preserving its formatting and comments, and the path of the updated file is printed once
+done. Where the locator goes depends on what the file already contains:
+
+- Without a [`[plugins]`](<../../(fundamentals)/config.mdx#plugins>) table, it's written to the
+  tool's [`plugin`](<../../(fundamentals)/config.mdx#tools-plugin>) setting, in a `[tools.<id>]`
+  table, or with `--type backend`, to the backend's
+  [`plugin`](<../../(fundamentals)/config.mdx#backends-plugin>) setting, in a `[backends.<id>]`
+  table.
+- With a `[plugins]` table, it's written to `[plugins.tools]` or `[plugins.backends]` instead, so
+  every plugin stays in one place. A legacy `[plugins]` table, with tool plugins directly in it, is
+  first moved to `[plugins.tools]`.
+
+For example, adding a tool and a backend to a file without a `[plugins]` table writes:
+
+```toml title=".prototools"
+[tools.my-tool]
+plugin = "github://my-org/my-tool-plugin@v1.0.0"
+
+[backends.my-backend]
+plugin = "registry://ghcr.io/my-org/my_backend:0.1.0"
+```
+
+Running the command again for the same ID overwrites the locator, like to bump a plugin to a new
+release. To use a plugin in every project, add it to your user config with `--to user`, rather than
+`--to global`, as the global config isn't loaded by commands that act on a project, like
+[`proto install`](../install.mdx) (see
+[where to configure](<../../(fundamentals)/config.mdx#where-to-configure>)).
+
+Once the file is written, proto loads the plugin to verify that it works: it downloads the plugin
+and caches it in the [store](<../../(fundamentals)/store.mdx#directory-layout>) (unless it's a local
+file), then registers it, which fails if the plugin can't be found, isn't a valid plugin, or
+requires a newer version of proto. Any deprecations reported by the plugin are printed as well. As
+the file is written first, an entry that fails to load stays in the file, so fix the locator and run
+the command again, or remove the entry with [`proto plugin remove`](./remove.mdx).
+
+<Callout type="warning">
+  A relative `file://` path is written as-is, and proto resolves it from the
+  directory of the [`.prototools`](<../../(fundamentals)/config.mdx>) it's
+  written to, while the verification resolves it from the current directory.
+  Run the command from that file's directory, or use an absolute path, so both
+  agree.
+</Callout>
+
+Plugins are a [security-sensitive setting](<../../(fundamentals)/trust.mdx#security-sensitive-settings>),
+as they execute code on your machine. If the file had no security-sensitive settings before the
+plugin was added, proto [trusts it automatically](<../../(fundamentals)/trust.mdx#automatically-trusted>),
+since you added the plugin yourself. A project config that already had untrusted settings, like one
+in a repository you just cloned, stays untrusted: the verification still succeeds, but other
+commands ignore the plugin until you review the file and run [`proto trust`](../trust.mdx). Your
+user and global configs are always trusted.
+
 ## Arguments
 
+- `<ID>` - The ID to register the plugin under. A tool is referenced by this ID everywhere in proto,
+  like in version pins, commands, and environment variables, while a backend's ID is the prefix of
+  its tools, like `my-backend` in `my-backend:some-tool`. Using the ID of a built-in tool or backend
+  overrides its built-in plugin.
+- `<PLUGIN>` - The [plugin locator](../../../../wasm/docs/plugin-locators.mdx) to load the plugin
+  from, like `github://my-org/my-tool-plugin@v1.0.0`.
+
 ## Options
+
+- `--to` <TypeLabel type="closest | global | local | user" /> - The
+  [location](<../../(fundamentals)/config.mdx#writing-to-a-file>) of the
+  [`.prototools`](<../../(fundamentals)/config.mdx>) to add the plugin to. Defaults to `closest`.
+  Also accepts `cwd`, `home`, and `store`, as aliases of `local`, `user`, and `global`.
+- `--type` <TypeLabel type="backend | tool" /> - The
+  [type of plugin](<../../(fundamentals)/(plugin)/plugin.mdx#plugin-types>) to add, which decides
+  whether it's written as a tool or backend plugin. Defaults to `tool`. Backends must be
+  [WASM](<../../(fundamentals)/(plugin)/plugin.mdx#wasm>) plugins.

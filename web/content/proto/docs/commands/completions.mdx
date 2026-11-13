@@ -2,4 +2,133 @@
 title: proto completions
 ---
 
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
+import { TypeLabel } from "@/components/TypeLabel";
+
+Generate a tab-completion script for proto's command line, so your shell can complete `proto`
+commands, sub-commands, options, and the values of options that accept a fixed set (like
+`--config-mode` and `--log`). The script is generated from proto's own command definitions, so it
+covers proto itself, not the tools it manages: tool names, versions, and aliases aren't completed.
+
+The script is written to stdout, and nothing else is. Logs and notices go to stderr, even with a
+structured reporter enabled through the [global options](./overview.mdx#global-options), and the
+usual check for a new proto version is skipped. That makes the output safe to redirect into a file,
+or to evaluate directly from your shell's profile. proto doesn't install the script anywhere itself.
+
+When `--shell` is omitted, proto detects your shell from the `$SHELL` environment variable (using
+the binary's name, ignoring extensions like `.exe` and the leading `-` of login shells), and
+otherwise walks up the parent processes until it finds a known shell. If neither works, the command
+fails with an error. Keep in mind that `$SHELL` holds your _login_ shell, which isn't necessarily the
+one you're typing in: if your login shell is Zsh and you start Fish from it, proto still generates
+Zsh completions. Pass `--shell` explicitly when writing to a file or a profile, so the result doesn't
+depend on where it runs.
+
+```shell
+# Print completions for the detected shell
+$ proto completions
+
+# Write Fish completions to Fish's completions directory
+$ proto completions --shell fish > ~/.config/fish/completions/proto.fish
+```
+
+To enable completions, load the script from a place your shell reads on startup:
+
+<Tabs groupId="shell" items={["Bash", "Zsh", "Fish", "Nushell", "Pwsh", "Elvish"]}>
+<Tab>
+
+With [bash-completion](https://github.com/scop/bash-completion) installed, write the script to its
+user directory, where it's loaded the first time you complete a `proto` command:
+
+```shell
+$ mkdir -p ~/.local/share/bash-completion/completions
+$ proto completions --shell bash > ~/.local/share/bash-completion/completions/proto
+```
+
+Without bash-completion, evaluate the script from your profile instead:
+
+```shell title="~/.bashrc"
+eval "$(proto completions --shell bash)"
+```
+
+</Tab>
+<Tab>
+
+Zsh loads completion functions from the directories on its `fpath`, and the file must be named
+`_proto`:
+
+```shell
+$ mkdir -p ~/.zsh/completions
+$ proto completions --shell zsh > ~/.zsh/completions/_proto
+```
+
+Then add the directory to `fpath` before `compinit` runs:
+
+```shell title="~/.zshrc"
+fpath=(~/.zsh/completions $fpath)
+autoload -Uz compinit && compinit
+```
+
+With [oh-my-zsh](https://ohmyz.sh), which runs `compinit` for you, write the file to
+`~/.oh-my-zsh/completions/_proto` instead. If completions don't show up in a new terminal, delete
+the `~/.zcompdump*` cache files and try again.
+
+</Tab>
+<Tab>
+
+Fish loads completions from its completions directory on demand, the first time you complete a
+`proto` command:
+
+```shell
+$ mkdir -p ~/.config/fish/completions
+$ proto completions --shell fish > ~/.config/fish/completions/proto.fish
+```
+
+</Tab>
+<Tab>
+
+Nushell can't evaluate generated code at runtime, so save the completions to a file:
+
+```shell
+$ proto completions --shell nu | save --force ($nu.default-config-dir | path join "proto-completions.nu")
+```
+
+Then source it from your configuration:
+
+```nushell title="config.nu"
+source proto-completions.nu
+```
+
+</Tab>
+<Tab>
+
+For PowerShell 6 and later (`pwsh.exe`):
+
+```powershell title="$PROFILE"
+proto completions --shell pwsh | Out-String | Invoke-Expression
+```
+
+</Tab>
+<Tab>
+
+```shell title="~/.config/elvish/rc.elv"
+eval (proto completions --shell elvish | slurp)
+```
+
+</Tab>
+</Tabs>
+
+The script describes the version of proto that generated it. When you evaluate it from your
+profile, it's regenerated in every new shell. When you write it to a file, run the command again
+after [`proto upgrade`](./upgrade.mdx) to pick up new commands and options.
+
+Completions are supported in Bash, Zsh, Fish, Nushell, PowerShell 6+, and Elvish. proto recognizes
+other shells too, like `sh`, `ash`, `dash`, `ion`, `murex`, `xonsh`, and Windows PowerShell 5.1
+(`powershell`), but can't generate completions for them. When one of these is passed or detected,
+proto prints a notice and exits with code `1`, without writing anything to stdout.
+
 ## Options
+
+- `--shell` <TypeLabel type="bash | elvish | fish | nu | pwsh | zsh" /> - The shell to generate
+  completions for. `elv` and `nushell` are also accepted, as aliases of `elvish` and `nu`. Defaults
+  to detecting the current shell, as described above. Unsupported shells exit with code `1`, and
+  unknown names fail before anything is generated.

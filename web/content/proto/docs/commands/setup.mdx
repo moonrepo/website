@@ -2,4 +2,135 @@
 title: proto setup
 ---
 
+import { TypeLabel } from "@/components/TypeLabel";
+
+Configures your environment so that proto, and the tools it installs, can be found. It puts the
+`shims` and `bin` directories of the [store](<../(fundamentals)/store.mdx>) on your `PATH`, which
+is all that [shims](<../(fundamentals)/workflows.mdx#shims>) and
+[binary linking](<../(fundamentals)/workflows.mdx#binary-linking>) need to work. It does this by
+appending a few lines to your shell profile, and on Windows, by also updating the `Path` of your
+user account. [Shell activation](<../(fundamentals)/workflows.mdx#shell-activation>) is separate and
+opt-in, and isn't configured by this command (see [`proto activate`](./activate.mdx)).
+
+You rarely need to run it by hand. The [Bash install script](../index.mdx#macos-linux-and-wsl) runs
+it as its last step, and passes any options you give the script through to it. The
+[PowerShell install script](../index.mdx#windows) doesn't, as prompts can't read your input in a
+piped command, so run it yourself after installing on Windows. Do the same after installing proto
+any other way, like with [Nix](../index.mdx#nix) or a [manual download](../index.mdx#manual-download).
+
+```shell
+# Set up the detected shell, choosing the profile to update from a prompt
+$ proto setup
+
+# Set up Fish, using the defaults instead of prompting
+$ proto setup --shell fish --yes
+
+# Print the lines to add to a profile, without changing anything
+$ proto setup --no-modify-profile --no-modify-path
+```
+
+Before anything else, proto checks the `PATH` of the current process. If the store's `shims` or
+`bin` directory is already on it, proto is considered set up: it prints where the `proto` binary is
+installed and exits, without touching your profile or, on Windows, your user `Path`. That makes the
+command safe to run again, but it also means it only configures a shell that doesn't have proto
+yet. A shell you start from one that's set up inherits its `PATH`, so to add proto to another shell,
+like Fish started from Zsh, add the lines below to that shell's profile yourself. Otherwise, proto:
+
+1. **Determines the shell** - From `--shell`, or else from the `$SHELL` environment variable, and
+   then by walking up the parent processes until it finds a known shell. `$SHELL` holds your
+   _login_ shell, so pass `--shell` when you're running a different one. When no shell is
+   detected, proto asks you to pick one. Without prompts, it falls back to Bash (or `sh` when `bash`
+   isn't on `PATH`), and on Windows to PowerShell 7 (or Windows PowerShell when `pwsh` isn't on
+   `PATH`).
+2. **Generates the exports** - In the shell's syntax, it sets `PROTO_HOME`, and prepends
+   `$PROTO_HOME/shims` and then `$PROTO_HOME/bin` to `PATH`. Shims come first, so that a tool's
+   name runs its shim, which [detects](<../(fundamentals)/detection.mdx>) the version for the
+   current directory, instead of the highest installed version in `bin`. When `PROTO_HOME` is set
+   while you run setup, its value is written as is, so a
+   [custom store location](<../(fundamentals)/store.mdx#store-location>) carries over. Otherwise,
+   it's written as `$XDG_DATA_HOME/proto` when `XDG_DATA_HOME` is set, or `$HOME/.proto`, which your
+   shell expands on startup.
+3. **Updates a shell profile** - Unless `--no-modify-profile` is passed, proto appends the exports to
+   a profile, as described below.
+4. **Updates the Windows `Path`** - Unless `--no-modify-path` is passed, proto prepends the `shims`
+   and `bin` directories to the `Path` of your user account, as described below. This step only
+   applies to Windows.
+
+For Bash and Zsh, the appended lines look like this:
+
+```shell title="~/.zshrc"
+# proto
+export PROTO_HOME="$HOME/.proto";
+export PATH="$PROTO_HOME/shims:$PROTO_HOME/bin:$PATH";
+```
+
+**Choosing the profile.** proto lists the profile files for your shell, from the table below, and
+asks which one to update. It also offers **Other**, to enter an absolute path of your own, and
+**None**, to leave every profile untouched. Without prompts, it picks the first file in the list
+that exists, and when none exist, creates the file in the last column. Set the
+[`PROTO_SHELL_PROFILE`](../advanced/env-vars.mdx#installation) environment variable to replace the
+list with a single file. Without prompts, that file is only used if it already exists.
+
+| Shell                                     | Profiles, in order                                                                                            | Created when none exist                                          |
+| :---------------------------------------- | :------------------------------------------------------------------------------------------------------------ | :--------------------------------------------------------------- |
+| Bash (`bash`)                             | `~/.bash_profile` (only if it exists), `~/.bashrc`, `~/.profile`                                              | `~/.profile`                                                     |
+| Zsh (`zsh`)                               | `~/.zshrc`, `~/.zprofile`, `~/.zshenv`                                                                        | `~/.zshenv`                                                      |
+| Fish (`fish`)                             | `~/.config/fish/config.fish`                                                                                  | `~/.config/fish/config.fish`                                     |
+| Nushell (`nu`)                            | `~/.config/nushell/config.nu`, `~/.config/nushell/env.nu`                                                     | `~/.config/nushell/env.nu`                                       |
+| PowerShell 7 (`pwsh`), on Windows         | `~\Documents\PowerShell\Profile.ps1`, `~\Documents\PowerShell\Microsoft.PowerShell_profile.ps1`               | `~\Documents\PowerShell\Microsoft.PowerShell_profile.ps1`        |
+| PowerShell 7 (`pwsh`), on macOS and Linux | `~/.config/powershell/profile.ps1`, `~/.config/powershell/Microsoft.PowerShell_profile.ps1`                   | `~/.config/powershell/Microsoft.PowerShell_profile.ps1`          |
+| Windows PowerShell (`powershell`)         | `~\Documents\WindowsPowerShell\Profile.ps1`, `~\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1` | `~\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1` |
+| Elvish (`elvish`)                         | `~/.config/elvish/rc.elv`, `~/.elvish/rc.elv`                                                                 | `~/.config/elvish/rc.elv`                                        |
+| Xonsh (`xonsh`)                           | `~/.config/xonsh/rc.xsh`, `~/.xonshrc`                                                                        | `~/.config/xonsh/rc.xsh`                                         |
+| Ion (`ion`)                               | `~/.config/ion/initrc`                                                                                        | `~/.config/ion/initrc`                                           |
+| Murex (`murex`)                           | `~/.murex_profile`, `~/.murex_preload`                                                                        | `~/.murex_preload`                                               |
+| Ash (`ash`)                               | `~/.ashrc`, `~/.profile`                                                                                      | `~/.ashrc`                                                       |
+| Dash and sh (`dash`, `sh`)                | `~/.profile`                                                                                                  | `~/.profile`                                                     |
+
+A few details apply to these paths:
+
+- When `XDG_CONFIG_HOME` is set to an absolute path, the files under it are listed ahead of those in
+  `~/.config`, and created there. Zsh's files are in `$ZDOTDIR` instead of `~` when it's set.
+- `~/.bash_profile` is only listed when it exists, because a Bash login shell skips `~/.profile`
+  once `~/.bash_profile` exists, so creating it could stop your existing `~/.profile` from loading.
+- On Windows, Elvish and Nushell also list their files in `~\AppData\Roaming`.
+- Both PowerShells also list the file in the `PROFILE` environment variable, last, when it's set.
+
+proto only appends to the profile when no line in it mentions `PROTO_HOME`, so running setup again
+never duplicates the lines. That also means a profile that already sets `PROTO_HOME`, like for a
+custom store location, is left as is, so add the `PATH` line to it yourself. A file or directory
+that doesn't exist yet is created. proto remembers the profile it chose in the store's
+[`profile`](<../(fundamentals)/store.mdx#directory-layout>) file: when a tool needs environment
+variables or `PATH` entries after it's installed, proto adds them to the same profile, and
+[`proto diagnose`](./diagnose.mdx) reports it.
+
+**Updating the Windows `Path`.** On Windows, proto also prepends the absolute `shims` and `bin`
+directories, like `C:\Users\you\.proto\shims`, to the `Path` of your user account, stored in the
+registry under `HKEY_CURRENT_USER\Environment`. It's your account's own setting, so no administrator
+access is required, and it isn't tied to a shell, so it also covers programs that don't load your
+profile. Directories that are already in it are skipped.
+
+**Prompts.** proto prompts when it can't detect your shell, and to choose the profile. Pass the
+global `--yes` option (see [prompts](./overview.mdx#prompts)) to skip them and use the defaults
+described above. They're also skipped in CI. In scripts, always pass `--yes`: when the output isn't
+a terminal, like in a pipe, the prompts can't be shown, and their first option is selected, which
+may be a profile that doesn't exist yet.
+
+When it's done, proto prints where the `proto` binary is installed, and the profile it chose. Your
+current terminal isn't affected, so open a new one for the changes to take effect. With both
+`--no-modify-*` options, nothing is changed, and proto prints the lines to add to your profile
+yourself instead. To undo the setup, remove the lines from your profile, and on Windows the
+directories from your user `Path`, as described in [uninstalling](../index.mdx#uninstalling).
+
 ## Options
+
+- `--shell` <TypeLabel type="ash | bash | dash | elvish | fish | ion | murex | nu | powershell | pwsh | sh | xonsh | zsh" /> -
+  The shell to set up, which determines the syntax of the exports and the profiles to choose from.
+  `elv`, `nushell`, `powershell_ise`, and `xon.sh` are also accepted, as aliases. Defaults to
+  detecting the current shell, as described above.
+- `--no-modify-profile` - Don't append the exports to a shell profile, like in a Docker image or CI
+  job where you manage `PATH` yourself. Also available as `--no-profile`, or by setting the
+  `PROTO_NO_MODIFY_PROFILE` environment variable to `true`.
+- `--no-modify-path` - Don't add proto's directories to the `Path` of your user account. Only has an
+  effect on Windows. Can also be set with the `PROTO_NO_MODIFY_PATH` environment variable, set to
+  `true`.

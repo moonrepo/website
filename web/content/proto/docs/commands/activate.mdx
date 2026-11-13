@@ -2,6 +2,166 @@
 title: proto activate
 ---
 
+Activates proto for the current shell session, so the tools pinned for the directory you're in
+resolve straight to their installed executables, instead of going through
+[shims](<../(fundamentals)/workflows.mdx#shims>). It's the command behind
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>): you evaluate its output once,
+in your shell profile, and from then on a hook re-activates the session whenever the prompt is drawn
+or the directory changes (depending on the [shell](<../(fundamentals)/workflows.mdx#supported-shells>)).
+Each activation updates `PATH`, exports the [`[env]`](<../(fundamentals)/config.mdx#env>) variables
+of your [`.prototools`](<../(fundamentals)/config.mdx>), and defines its
+[shell aliases](<../(fundamentals)/workflows.mdx#shell-aliases>), then removes them again when you
+leave the directory.
+
+Use it when you want those variables and aliases in your interactive shell, executables from
+globally installed packages on `PATH`, a [pinned proto version](<../(fundamentals)/config.mdx#pinning-proto>),
+or no proto overhead on each call. Activation is opt-in, and it's meant to sit on top of shims and
+[binaries](<../(fundamentals)/workflows.mdx#binary-linking>), which still cover scripts, editors, and
+CI (see [choosing a workflow](../start/shell.mdx#choosing-a-workflow)). Add the hook near the end of
+your profile, after `PATH` is configured, because the hook runs `proto` and needs to find it. See
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>) for the hook of every
+supported shell:
+
+```shell title="~/.zshrc"
+eval "$(proto activate zsh)"
+```
+
+Depending on its options, the command prints one of three things:
+
+- **The hook** (by default) - Shell code that defines two functions, `proto_activate` and
+  `proto_deactivate`. It registers `proto_activate` with the shell's prompt or directory change
+  events (POSIX shells have no such events, so it wraps `cd` instead), and then calls it once, so
+  tools are available before you type anything. `proto_activate` runs `proto activate <shell> --export`
+  and evaluates the output. You can also call it yourself to re-activate in place.
+  `proto_deactivate` turns activation off again through
+  [`proto deactivate`](./deactivate.mdx) (see
+  [deactivating](<../(fundamentals)/workflows.mdx#deactivating>)). Printing the hook doesn't load
+  any tools, so it adds little to shell startup.
+- **Exports** (`--export`) - The statements for a single activation of the current directory, in
+  the shell's syntax. Every run of the hook evaluates exactly this, so it's also how you see what
+  activation applies where you are.
+- **JSON** (the global `--json` option, or `--reporter json` or `ndjson`, see
+  [output formats](./overview.mdx#output-formats)) - The same activation as data, for tooling that
+  can't evaluate shell syntax.
+
+```shell
+# Print the hook for Zsh, to evaluate in ~/.zshrc
+$ proto activate zsh
+
+# Also activate the versions pinned in ~/.proto/.prototools
+$ proto activate zsh --config-mode upwards-global
+
+# Activate without appending shims and binaries to PATH
+$ proto activate zsh --no-shim --no-bin
+
+# Print what activation applies in the current directory
+$ proto activate zsh --export
+
+# Debug a single activation
+$ proto activate zsh --export --log debug
+
+# Print the same activation as JSON
+$ proto activate zsh --json
+
+# Re-activate the current session in place
+$ proto_activate
+```
+
+Each activation starts by undoing the previous one. It then loads the
+[`.prototools`](<../(fundamentals)/config.mdx>) files in the current directory and its parents, using
+the [`upwards`](<../(fundamentals)/config.mdx#upwards>) resolution mode. That means versions pinned
+only in the global [`~/.proto/.prototools`](<../(fundamentals)/config.mdx>) aren't activated, and
+still resolve through shims. For each tool with a pinned version, proto
+[detects](<../(fundamentals)/detection.mdx>) the version. When that version is installed, proto
+prepends its executable and globals directories to `PATH`, along with any variables and directories
+that the tool's plugin adds. A version that isn't installed is skipped, because activation never
+installs anything. Activation then exports [`[env]`](<../(fundamentals)/config.mdx#env>) and
+[`[tools.*.env]`](<../(fundamentals)/config.mdx#tools-env>) variables and defines shell aliases. It
+also puts a pinned proto version on `PATH` and sets `PROTO_VERSION` to it (or unsets
+`PROTO_VERSION` when proto isn't pinned), sets `PROTO_HOME` when it isn't already set, and appends
+`~/.proto/shims` and `~/.proto/bin`. Each activated version is marked as
+[last used](<../(fundamentals)/store.mdx#last-used>), so [cleaning](<../(fundamentals)/store.mdx#cleaning>)
+doesn't remove versions that you only run through activation. See
+[how activation works](<../(fundamentals)/workflows.mdx#how-activation-works>) for the full
+sequence.
+
+Activation only removes what it added to `PATH`. Its own entries sit between two marker entries,
+`~/.proto/activate-start` and `~/.proto/activate-stop`, which don't exist on disk, so you'll see them
+when you print `PATH`. The next activation, or [`proto deactivate`](./deactivate.mdx), removes
+everything between the markers and leaves the rest of `PATH` as it was, including the entries from
+your profile. The variables and aliases that activation applies are recorded in `_PROTO_ACTIVATED_*`
+variables for the same reason (see
+[environment variables](../advanced/env-vars.mdx#within-shell-activation)).
+
+The hook passes the shell name and the `--config-mode` (see
+[configuration mode](./overview.mdx#configuration-mode)), `--no-bin`, and `--no-shim` options to
+every run, so you only set them in your profile. Other global options, like `--log`, aren't carried
+over, so to debug, run the export yourself, as shown above. After changing the options, open a new
+terminal. In Nushell, which loads the hook from a saved file, generate the file again first.
+
+A few things to keep in mind:
+
+- When a config hasn't been [trusted](<../(fundamentals)/trust.mdx>), activation skips its
+  [security-sensitive settings](<../(fundamentals)/trust.mdx#security-sensitive-settings>), like
+  [`[env]`](<../(fundamentals)/config.mdx#env>) variables, shell aliases, and a pinned proto
+  version. It warns about each untrusted config
+  once per shell session, instead of on every prompt (see
+  [warnings](<../(fundamentals)/trust.mdx#warnings>)).
+- With the [`auto-clean`](<../(fundamentals)/config.mdx#auto-clean>) setting enabled, proto cleans
+  the store after every activation. That's as often as the hook runs, which can be every prompt.
+- On Windows, when Bash, Zsh, Fish, Murex, or Elvish run in MSYS2, Git Bash, or Cygwin, `PATH`
+  entries are converted to POSIX form, like `/c/Users/you/.proto/shims`.
+
+The JSON output is an object with two fields. `env` maps each variable to its value, and `null`
+means the variable should be unset. `paths` is the complete `PATH` to apply, as a list in order,
+including the markers and the entries inherited from the current `PATH`. Shell aliases aren't
+included, because they aren't environment variables. With `--reporter ndjson`, the object is
+printed on a single line as the `data` of a `{ "type": "data" }` event. If `--export` is also
+passed, it takes precedence over both. For example, in a directory that pins `node = "24.11.0"` and
+sets `NODE_ENV` in [`[env]`](<../(fundamentals)/config.mdx#env>):
+
+```json
+{
+  "env": {
+    "NODE_ENV": "development",
+    "PROTO_VERSION": null,
+    "_PROTO_ACTIVATED_ENV": "NODE_ENV",
+    "_PROTO_ACTIVATED_PATH": "/Users/you/.proto/tools/node/24.11.0/bin:/Users/you/.proto/shims:/Users/you/.proto/bin"
+  },
+  "paths": [
+    "/Users/you/.proto/activate-start",
+    "/Users/you/.proto/tools/node/24.11.0/bin",
+    "/Users/you/.proto/shims",
+    "/Users/you/.proto/bin",
+    "/Users/you/.proto/activate-stop",
+    "/Users/you/.proto/shims",
+    "/Users/you/.proto/bin",
+    "/usr/local/bin",
+    "/usr/bin",
+    "/bin"
+  ]
+}
+```
+
 ## Arguments
 
+- `[SHELL]` - The shell to activate for: `ash`, `bash`, `dash`, `elvish` (or `elv`), `fish`,
+  `murex`, `nu` (or `nushell`), `powershell` (Windows PowerShell 5.1), `pwsh` (PowerShell 6 and
+  later), `sh`, `xonsh`, or `zsh`. `ion` is recognized, but it has no hooks, so it can't be
+  activated. When omitted, the shell is detected from `$SHELL`, and then from the parent process,
+  and the command fails if neither is a known shell. In your profile, pass the shell explicitly.
+  `$SHELL` is your login shell, which isn't always the shell that's evaluating the profile, and the
+  hook keeps whichever shell it was generated for.
+
 ## Options
+
+- `--export` - Print the statements for a single activation of the current directory, in the
+  shell's syntax, instead of the hook. This is what every run of the hook evaluates. Takes
+  precedence over JSON output.
+- `--no-bin` - Don't append `~/.proto/bin` to `PATH` after the activated tools. If your profile adds
+  it to `PATH` itself, it stays where it is.
+- `--no-init` - Don't activate when the hook is evaluated. Wait for the first trigger instead, like
+  the next prompt or directory change (in POSIX shells, the next `cd`). Only applies to the hook.
+- `--no-shim` - Don't append `~/.proto/shims` to `PATH` after the activated tools. If your profile
+  adds it to `PATH` itself, it stays where it is, so tools that weren't activated still resolve
+  through shims.

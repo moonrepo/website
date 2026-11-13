@@ -2,6 +2,108 @@
 title: proto bin
 ---
 
+import { TypeLabel } from "@/components/TypeLabel";
+
+Print the absolute path to a [tool's](<../(fundamentals)/(plugin)/tool.mdx>) primary
+[executable](<../(fundamentals)/(plugin)/tool.mdx#executables>), within an installed version in the
+[store](<../(fundamentals)/store.mdx>). Reach for it whenever something outside of proto needs a real
+file to run: an editor setting that asks for the path to `node` or `python`, a script that calls an
+executable directly instead of going through its shim, or simply checking which installed version a
+directory resolves to.
+
+When you pass a version, it's used instead of detection, and any
+[version specification](<../(fundamentals)/version-spec.mdx>) works, like `22.14.0`, `22`, or `lts`.
+Anything less than a full version is resolved first, preferring a
+[lockfile record](../advanced/lockfile.mdx#version-resolution), then the installed versions, so `22`
+typically locates the highest installed 22.x. Without a version, proto
+[detects](<../(fundamentals)/detection.mdx#detection-order>) one from the environment and the
+current directory, including your global [`.prototools`](<../(fundamentals)/config.mdx>), and falls
+back to the highest installed version when nothing is detected (see
+[detection by command](<../(fundamentals)/detection.mdx#detection-by-command>)).
+
+The resolved version must already be installed. `proto bin` never installs anything, even with
+[`auto-install`](<../(fundamentals)/config.mdx#auto-install>) enabled, and fails with an error naming
+the file it expected when the version is missing. Install it first with
+[`proto install`](./install.mdx).
+
+The executable's path contains its version, so it changes whenever the version does. When you need
+a path that stays the same, like an editor setting you don't want to update after every upgrade,
+print one of proto's own executables instead:
+
+- `--shim` - The tool's [shim](<../(fundamentals)/workflows.mdx#shims>) in `~/.proto/shims`, which
+  detects the version every time it runs, so it follows each project's pin.
+- `--bin` - The tool's [linked binary](<../(fundamentals)/workflows.mdx#binary-linking>) in
+  `~/.proto/bin`, which runs the highest installed version, without detection. This is always the
+  unversioned binary, like `~/.proto/bin/node`, whichever version you pass or proto detects.
+
+Not every tool has both, as plugins can opt executables out: npm has no binary, and Rust has neither.
+When the requested one doesn't exist, proto ignores the flag, and prints the executable's path
+instead.
+
+With `--dir`, proto prints a directory instead of a file: `exes` for the directories that hold the
+version's executables, and `globals` for where the executables of globally installed packages go,
+like those from `npm install -g` or `go install`. These are the directories that
+[`proto run`](./run.mdx) and shims add to `PATH`, so they're handy for adding a tool to `PATH`
+yourself, or for finding a secondary executable, as `proto bin` only prints the primary one (to list
+them all, use [`proto plugin info`](./plugin/info.mdx)). A tool can have several of each, and only
+the first is printed unless you pass `--all`. Globals directories that depend on an environment
+variable that isn't set, like Go's `$GOBIN`, are left out.
+
+Only the executable's path is checked for existence. Shims, binaries, and directories are printed
+where proto expects them to be, so a globals directory, for example, may not exist until you install
+a package globally.
+
+As scripts and editors call it constantly, `proto bin` keeps its output to the path alone: it skips
+proto's new version check, doesn't warn about
+[untrusted configs](<../(fundamentals)/trust.mdx>), and only logs warnings and errors.
+
+```shell
+# Print the primary executable of the detected version
+$ proto bin node
+/Users/you/.proto/tools/node/24.11.0/bin/node
+
+# Print the executable of an exact version, or of the highest installed 22.x
+$ proto bin node 22.14.0
+$ proto bin node 22
+
+# Print a path that doesn't change between versions, for an editor setting
+$ proto bin node --shim
+/Users/you/.proto/shims/node
+$ proto bin node --bin
+/Users/you/.proto/bin/node
+
+# Print the directory that contains the executables
+$ proto bin node --dir exes
+/Users/you/.proto/tools/node/24.11.0/bin
+
+# Print every directory that global Go packages may be installed to
+$ proto bin go --dir globals --all
+
+# Run the executable directly, without a shim
+$ "$(proto bin node)" ./script.mjs
+```
+
 ## Arguments
 
+- `<CONTEXT>` - The [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>) of the tool
+  to locate, like `node`, or a [backend-prefixed](<../(fundamentals)/(plugin)/tool.mdx#backend-prefixed>)
+  one like `npm:prettier`.
+- `[SPEC]` - The [version specification](<../(fundamentals)/version-spec.mdx>) to locate, like
+  `22.14.0`, `22`, or `lts`. Defaults to the [detected](<../(fundamentals)/detection.mdx>) version,
+  or the highest installed version when nothing is detected.
+
 ## Options
+
+- `--all` - Print every path, one per line, instead of only the first. Only affects `--dir`, as the
+  other lookups always print a single path.
+- `--bin` - Print the path to the tool's unversioned
+  [linked binary](<../(fundamentals)/workflows.mdx#binary-linking>), like `~/.proto/bin/node`. Takes
+  precedence over `--shim` and `--dir`. When the tool has no binary, the other options apply as if
+  it wasn't passed.
+- `--dir` <TypeLabel type="exes | globals" /> - Print directories instead of the executable's path.
+  - `exes` - The directories within the installed version that contain the tool's executables.
+  - `globals` - The directories that the executables of globally installed packages are installed
+    to, in the order the tool looks them up.
+- `--shim` - Print the path to the tool's [shim](<../(fundamentals)/workflows.mdx#shims>), like
+  `~/.proto/shims/node`. Takes precedence over `--dir`. When the tool has no shim, the other options
+  apply as if it wasn't passed.

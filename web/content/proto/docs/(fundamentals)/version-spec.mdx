@@ -345,15 +345,15 @@ legacy = "16.20.2"
 
 Instead of editing the file, you can manage aliases with [`proto alias`](../commands/alias.mdx) and
 [`proto unalias`](../commands/unalias.mdx). Both update the closest [`.prototools`](./config.mdx)
-by default, and accept a location, like `global` for [`~/.proto/.prototools`](./config.mdx), to
-make an alias available in every directory.
+by default, and accept a [location](./config.mdx#writing-to-a-file), like `user` for
+`~/.prototools`, to make an alias available in every directory under your home directory.
 
 ```shell
 # Add an alias to the closest .prototools
 $ proto alias node work "^20.11"
 
-# Add an alias to the global .prototools
-$ proto alias node work "^20.11" --to global
+# Add an alias to the .prototools in your home directory
+$ proto alias node work "^20.11" --to user
 
 # Remove an alias
 $ proto unalias node work
@@ -365,8 +365,13 @@ $ proto unalias node work
   same name, like `stable`, takes its place.
 - **Chaining** - An alias can map to another alias, like `ci = "work"`.
 - **Merging** - Aliases from every loaded [`.prototools`](./config.mdx) are merged, like other
-  [`[tools.<id>]`](./config.mdx#tools) settings, so an alias in the global config is available
-  everywhere.
+  [`[tools.<id>]`](./config.mdx#tools) settings, so an alias in a parent directory's config
+  applies to every directory below it. An alias in the global
+  [`~/.proto/.prototools`](./config.mdx) is only merged in the
+  [`upwards-global`](./config.mdx#upwards-global) and [`global`](./config.mdx#global) modes, so
+  commands that run in [`upwards`](./config.mdx#upwards) mode by default, like
+  [`proto install`](../commands/install.mdx) and [`proto status`](../commands/status.mdx), can't
+  resolve it.
 - **Trust** - Aliases aren't security-sensitive, so they're applied even from configs that aren't
   [trusted](./trust.mdx).
 

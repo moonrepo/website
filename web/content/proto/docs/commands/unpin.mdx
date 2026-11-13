@@ -2,6 +2,104 @@
 title: proto unpin
 ---
 
+import { TypeLabel } from "@/components/TypeLabel";
+
+The `proto unpin` (or `proto uv`) command removes a tool's version pin from a
+[`.prototools`](<../(fundamentals)/config.mdx>), undoing [`proto pin`](./pin.mdx). It deletes the
+tool's top-level key, like `node = "24"`, and edits the file in place, preserving its formatting and
+comments. proto then prints the version it removed, and the path of the file it updated.
+
+Use it when a directory should stop pinning its own version of a tool, like a package in a monorepo
+that no longer needs an override, or a project that no longer uses a tool. Once the pin is gone,
+proto [detects](<../(fundamentals)/detection.mdx>) the version from the next source it finds while
+walking up, like an [ecosystem file](<../(fundamentals)/detection.mdx#4-ecosystem-files>) such as
+`.nvmrc`, or a pin in a parent directory, and falls back to your
+[global pin](<../(fundamentals)/detection.mdx#5-global-configuration>). For example, in a monorepo
+where one package pins an older Node.js:
+
+```text
+monorepo/
+├── .prototools          # node = "24"
+└── packages/
+    └── legacy/
+        └── .prototools  # node = "20"
+```
+
+Running `proto unpin node` in `packages/legacy` removes `node = "20"`, so the package runs Node.js 24
+from the root [`.prototools`](<../(fundamentals)/config.mdx>), like the rest of the repository.
+
+By default, the pin is removed from the closest [`.prototools`](<../(fundamentals)/config.mdx>): the
+first one found walking up from the current directory (see
+[closest](<../(fundamentals)/config.mdx#closest>)). Pass `--from` to pick another file, like
+`--from global` to remove a fallback version. A few things to know when unpinning:
+
+- **Only one file is checked.** proto doesn't keep walking up when the file it picked doesn't pin the
+  tool. If `packages/legacy/.prototools` above only pinned other tools, `proto unpin node` would
+  report that nothing is pinned there, and leave the root file alone. To remove the root's pin, run
+  it from the root.
+- **The identifier must match the key.** The key is removed exactly as you write the tool, so a tool
+  from a [backend](<../(fundamentals)/(plugin)/backend.mdx>) pinned as `"npm:typescript"` is unpinned
+  with `proto unpin npm:typescript`, not `typescript`.
+- **Only the pin is removed.** The tool's other settings, like its
+  [aliases](<../(fundamentals)/config.mdx#tools-aliases>), stay in the file, and installed versions
+  stay in the [store](<../(fundamentals)/store.mdx>). To remove those, use
+  [`proto unalias`](./unalias.mdx) and [`proto uninstall`](./uninstall.mdx).
+- **Environment files aren't changed.** proto always edits a base
+  [`.prototools`](<../(fundamentals)/config.mdx>), so remove pins from an
+  [environment file](<../(fundamentals)/config.mdx#environment-mode>), like
+  `.prototools.production`, by hand.
+- **The tool must exist.** proto loads the tool's plugin first, downloading it when it isn't cached
+  yet, so an unknown tool fails with an error. The tool doesn't need to be installed.
+- **Nothing to remove is a failure.** When the file doesn't pin the tool, proto prints a warning and
+  exits with code `1`, so scripts can tell that nothing changed.
+
+When the [`.prototools`](<../(fundamentals)/config.mdx>) being changed enables a
+[lockfile](../advanced/lockfile.mdx), proto also removes the records of the unpinned specification
+from the `.protolock` beside it, for every platform, so the lockfile doesn't keep records that
+nothing pins anymore. Only that file's lockfile is changed, regardless of which file decides the
+tool's version (see [scope](../advanced/lockfile.mdx#scope)).
+
+With `--tool-native`, proto asks the tool's [plugin](<../(fundamentals)/(plugin)/plugin.mdx>) to remove
+the version from the tool's own ecosystem file instead. For Node.js, Deno, and the package managers,
+this removes the tool's entry from `devEngines` in `package.json`, while Bun deletes its
+`.bun-version` file when there's one, and edits `devEngines` otherwise. Keep in mind that:
+
+- The plugin looks in the directory that `--from` points to, which by default is the directory of the
+  closest [`.prototools`](<../(fundamentals)/config.mdx>), or the current directory when there isn't
+  one, not the closest `package.json`.
+- The lockfile isn't changed, as the pin wasn't in a [`.prototools`](<../(fundamentals)/config.mdx>).
+- proto exits with code `1` when the plugin doesn't support native files, or there's nothing to
+  remove, like when the directory has no `package.json`.
+
+```shell
+# Remove the Node.js pin from the closest .prototools
+$ proto unpin node
+
+# Remove a fallback version from the global .prototools
+$ proto unpin go --from global
+
+# Remove a backend tool's pin from ./.prototools in the current directory
+$ proto unpin npm:typescript --from local
+
+# Remove the Node.js version from devEngines in package.json
+$ proto unpin node --tool-native
+```
+
 ## Arguments
 
+- `<CONTEXT>` - The [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>) of the tool to
+  unpin, like `node`, or a backend-prefixed one, like `npm:typescript`. It must match the tool's key
+  in the [`.prototools`](<../(fundamentals)/config.mdx>).
+
 ## Options
+
+- `--from` <TypeLabel type="closest | global | local | user" /> - The
+  [location](<../(fundamentals)/config.mdx#writing-to-a-file>) of the
+  [`.prototools`](<../(fundamentals)/config.mdx>) to remove the pin from: the closest file
+  (`closest`, the default), `./.prototools` in the current directory (`local`), `~/.prototools`
+  (`user`), or `~/.proto/.prototools` (`global`). `cwd`, `home`, and `store` are accepted as aliases
+  of `local`, `user`, and `global`. With `--tool-native`, it picks the directory that the plugin
+  looks in instead.
+- `--tool-native` - Remove the version from the tool's ecosystem file, like `devEngines` in
+  `package.json`, instead of a [`.prototools`](<../(fundamentals)/config.mdx>). Only supported by
+  tools whose plugin implements it.

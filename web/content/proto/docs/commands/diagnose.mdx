@@ -2,4 +2,124 @@
 title: proto diagnose
 ---
 
+import { TypeLabel } from "@/components/TypeLabel";
+
+Checks your proto installation, and the environment of the shell you run it from, for problems that
+make proto behave in surprising ways: a tool that runs the wrong version, a tool that can't be found
+at all, or settings in a [`.prototools`](<../(fundamentals)/config.mdx>) that seem to be ignored.
+Run it after installing proto or editing your shell profile, and whenever something doesn't work as
+expected, before digging any deeper. It's also available as `proto doctor`.
+
+proto inspects three things:
+
+- **Your `PATH`** - The `PATH` of the current shell, not what your shell profile says, so after
+  editing the profile, open a new terminal before running the command again. The shims and bin
+  directories are compared against the [store](<../(fundamentals)/store.mdx#store-location>) that
+  proto resolved, so when `PROTO_HOME` points somewhere other than the directories on your `PATH`,
+  both are reported as missing.
+- **Your configuration** - The [`.prototools`](<../(fundamentals)/config.mdx>) files that apply in
+  the current directory, which are those found upwards from it, plus the global one (the
+  [`upwards-global`](<../(fundamentals)/config.mdx#upwards-global>) mode), along with their
+  [lockfiles](../advanced/lockfile.mdx). Run it inside a repository to check that repository's
+  configs.
+- **proto itself** - The latest proto release, which is fetched from GitHub. The command fails when
+  GitHub can't be reached, so it needs a network connection.
+
+Each problem is reported as an issue, along with how to resolve it, and sometimes a comment that
+explains why it matters. Above the issues, proto prints the shell it detected, and the profile to
+edit: the one that [`proto setup`](./setup.mdx) wrote to, or otherwise the shell's default profile.
+
+```shell
+$ proto diagnose
+Shell: zsh
+Shell profile: /Users/you/.zshrc
+
+Errors ──────────────────────────
+
+  - Issue: Bin directory /Users/you/.proto/bin was found BEFORE the shims directory /Users/you/.proto/shims on PATH
+    Resolution: Ensure the shims path comes before the bin path in your shell
+    Comment: Runtime version detection will not work correctly unless shims take priority
+```
+
+Issues are either errors, which break how proto works and must be fixed, or warnings, which may or
+may not matter, depending on how you use proto. There's one error:
+
+- **The bin directory comes before the shims directory on `PATH`** - Both `~/.proto/shims` and
+  `~/.proto/bin` contain an executable for most tools, like `node`, and the first one on `PATH`
+  wins. When `~/.proto/bin` comes first, `node` always runs the highest installed version, and
+  [version detection](<../(fundamentals)/detection.mdx>) never happens. Move the shims directory
+  before the bin directory in your shell profile (see
+  [shims setup](<../(fundamentals)/workflows.mdx#setup>)).
+
+And the following warnings:
+
+- **proto is outdated** - A newer release of proto is available. Run
+  [`proto upgrade`](./upgrade.mdx) to update.
+- **`PROTO_HOME` isn't set** - proto falls back to `$XDG_DATA_HOME/proto`, or `~/.proto`, but every
+  process that runs proto, like your editor and each shim, must resolve the same store, so export
+  `PROTO_HOME="$HOME/.proto"` (or your custom location) from your shell profile. See
+  [store and paths](../advanced/env-vars.mdx#store-and-paths).
+- **The shims directory isn't on `PATH`** - Add `$PROTO_HOME/shims` to `PATH`, so that running a
+  tool detects the version for the current directory. If you don't use
+  [shims](<../(fundamentals)/workflows.mdx#shims>) on purpose, ignore this warning.
+- **The bin directory isn't on `PATH`** - Add `$PROTO_HOME/bin` to `PATH`. Besides
+  [linked binaries](<../(fundamentals)/workflows.mdx#binary-linking>), it's where the `proto` and
+  `proto-shim` executables live, unless you installed proto elsewhere.
+- **Configured tools collide** - Two or more configured tools share an identifier through different
+  backends, like `zig` and `asdf:zig`. Shims and binaries are named after the executable, so only
+  one of them owns the `zig` shim and binary, and the other is silently shadowed (see
+  [locating executables](<../(fundamentals)/(plugin)/backend.mdx#locating-executables>)). Keep only
+  one of them in your configuration.
+- **Lockfile records are unhealthy** - For each [`.prototools`](<../(fundamentals)/config.mdx>) with
+  the [`lockfile`](<../(fundamentals)/config.mdx#lockfile>) setting enabled, proto checks the
+  [records](../advanced/lockfile.mdx#records) in its `.protolock`:
+  - A record without a resolved version. Run [`proto install`](./install.mdx) to resolve it again.
+  - A record whose specification no longer matches what the
+    [`.prototools`](<../(fundamentals)/config.mdx>) pins for its tool, like a `~24` record after the
+    pin changed to `25`. It's [orphaned](../advanced/lockfile.mdx#orphaned-records), and will never
+    be used. Run [`proto install`](./install.mdx) to prune it, or pin the version again. Records for
+    tools that the [`.prototools`](<../(fundamentals)/config.mdx>) doesn't pin, like ad-hoc
+    installs, aren't checked.
+  - Duplicate records for the same specification, backend, and platform. Remove the extra records
+    from the `.protolock` by hand.
+- **A config isn't trusted** - A [`.prototools`](<../(fundamentals)/config.mdx>) with
+  [security-sensitive settings](<../(fundamentals)/trust.mdx#security-sensitive-settings>) hasn't
+  been trusted, so those settings are ignored, and the warning lists them (see
+  [untrusted configurations](<../(fundamentals)/trust.mdx#untrusted-configurations>)). Review the
+  config, then trust it with [`proto trust <path>`](./trust.mdx).
+- **CI is detected in an interactive terminal** - In CI, every config is
+  [trusted automatically](<../(fundamentals)/trust.mdx#automatically-trusted>), including those in
+  cloned repositories, which can then execute code on your machine. Seeing this in your own terminal
+  usually means a `CI` variable leaked into your shell, like from your profile, so remove it, or the
+  CI provider's variables. It's only reported when the output is a terminal.
+
+When any warning is reported, other than the trust warnings, proto also suggests running
+[`proto setup`](./setup.mdx). It only updates your shell profile when neither directory is on
+`PATH`, though, so fix a wrong order, or a single missing directory, in your profile by hand.
+
+When nothing is wrong, proto prints a success message instead. The command exits with `1` when it
+reports an error, and `0` when there are only warnings, so it can gate a script or CI step. With the
+global `--json` option (see [output formats](./overview.mdx#output-formats)), it prints an object
+with `shell` and `shell_profile`, `errors` and `warnings` lists of `{ issue, resolution, comment }`,
+and a `tips` list of strings, and always exits with `0`, so check the `errors` list instead. For
+problems these checks don't catch, see [troubleshooting](../guides/troubleshooting.mdx).
+
+```shell
+# Check your installation and shell
+$ proto diagnose
+$ proto doctor
+
+# Report the profile for a specific shell, when it isn't detected
+$ proto diagnose --shell fish
+
+# Print the issues as JSON, for scripts
+$ proto diagnose --json
+```
+
 ## Options
+
+- `--shell` <TypeLabel type="ash | bash | dash | elvish | fish | ion | murex | nu | powershell | pwsh | sh | xonsh | zsh" /> -
+  The shell to report, which also decides the default profile that's shown when
+  [`proto setup`](./setup.mdx) hasn't recorded one. It doesn't change the checks, which always
+  inspect the current `PATH`. Defaults to detecting the shell from the `SHELL` environment variable,
+  then the parent processes, and the command fails when no shell is detected.

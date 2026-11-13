@@ -2,4 +2,88 @@
 title: proto debug config
 ---
 
+When a pinned version, setting, or plugin doesn't seem to apply, this command shows you exactly
+what proto read. It prints every [`.prototools`](<../../(fundamentals)/config.mdx>) that proto found
+from the current directory, each as a block of TOML titled with its path, followed by the final
+configuration that they [merge](<../../(fundamentals)/config.mdx#merging-strategy>) into. Between the
+two, you can tell whether a file was found at all, what proto made of it, and which value won.
+
+Files are printed from lowest to highest precedence, so reading from top to bottom follows the order
+in which they're merged. The global `~/.proto/.prototools` comes first, then the user
+`~/.prototools` (when you're working within your home directory), then the project files in each
+parent directory, down to the current directory (see
+[locations](<../../(fundamentals)/config.mdx#locations>)). Directories without a file are skipped.
+In [environment mode](<../../(fundamentals)/config.mdx#environment-mode>), each directory's
+environment file, like `.prototools.production`, is printed right after its base
+[`.prototools`](<../../(fundamentals)/config.mdx>). For example, from `~/Projects/app`:
+
+```text
+~/.proto/.prototools
+~/.prototools
+~/Projects/.prototools
+~/Projects/app/.prototools
+Final configuration
+```
+
+Each file is shown as proto parsed it, rather than as it's written: comments and formatting are
+gone, and versions are normalized, so `node = "22"` is shown as `node = "~22"`. A `proto` pin in the
+user or global file is left out, as it's [ignored there](<../../(fundamentals)/config.mdx#pinning-proto>).
+If a file can't be parsed, like when it has a TOML syntax error or an unknown key in `[settings]`,
+the command fails with an error that points to the line in the file, like every other command does.
+
+A project file whose security-sensitive settings were ignored, because it hasn't been
+[trusted](<../../(fundamentals)/trust.mdx#untrusted-configurations>), is labeled `(untrusted)` and
+printed without them, so the output matches what's actually applied. proto also logs a warning
+that lists the ignored settings, and the [`proto trust`](../trust.mdx) command to run. When a
+project file enables a [`lockfile`](<../../(fundamentals)/config.mdx#lockfile>), the `.protolock` it
+owns (or `.protolock.<env>`, for an environment file) is printed right after it, which shows the
+records that are locked, and which file they belong to (see
+[scope](../../advanced/lockfile.mdx#scope)).
+
+The final configuration includes every default, the locators of the built-in plugins, and any
+settings overridden by environment variables, like `PROTO_AUTO_INSTALL`. It's a quick way to check
+which plugin a tool loads, or which value a setting ended up with. Unlike the list of files, it
+depends on the [resolution mode](<../../(fundamentals)/config.mdx#resolution-modes>): it's merged in
+[`upwards-global`](<../../(fundamentals)/config.mdx#upwards-global>) mode by default, the same as
+[`proto run`](../run.mdx) and shims. Pass the global `--config-mode` option to see what a command in
+another mode sees, like [`proto install`](../install.mdx) in
+[`upwards`](<../../(fundamentals)/config.mdx#upwards>) mode. Every file found is still printed, but
+only the files that the mode loads are merged.
+
+With the global `--json` option (see [output formats](../overview.mdx#output-formats)), the same
+information is printed as a single object: `config` is the final configuration, `files` maps each
+file's path to its contents, and `locks` maps each lockfile's path to its records. Unlike the text
+output, `files` is sorted by path instead of precedence, includes every path proto checked, even
+when no file exists there (as an empty object), and doesn't mark untrusted files, though their
+sensitive settings are still left out.
+
+```shell
+# Print each .prototools, and the configuration they merge into
+$ proto debug config
+
+# Show the configuration that proto install and shell activation see
+$ proto debug config --config-mode upwards
+
+# Include environment files, like .prototools.production
+$ PROTO_ENV=production proto debug config
+
+# Print the same information as JSON, for scripts
+$ proto debug config --json
+
+# Dump proto's internal data structures to a file, to attach to a bug report
+$ proto debug config --raw 2> config.txt
+```
+
+For a shorter list of the files that were found, alongside the store paths and `PROTO_*` variables,
+run [`proto debug env`](./env.mdx). See
+[debugging configuration](<../../(fundamentals)/config.mdx#debugging-configuration>) and
+[inspecting configuration](../../guides/troubleshooting.mdx#inspecting-configuration) for more ways
+to track down a problem.
+
 ## Options
+
+- `--raw` - Dump proto's internal data structures, in Rust's debug format, instead of TOML. This
+  includes every directory that proto traversed, and for each config file, whether it exists, its
+  trust state and security-sensitive settings, and whether its lockfile is enabled, followed by the
+  final configuration. It's printed to stderr, and takes precedence over `--json`. It's verbose and
+  mostly useful when reporting a bug, so redirect it to a file.

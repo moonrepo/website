@@ -2,4 +2,54 @@
 title: proto mcp
 ---
 
+Starts a [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server, so that AI agents
+and editors like Claude Code, Cursor, and VS Code can manage your toolchain through proto. The server
+exposes MCP tools for installing and uninstalling versions of a [tool](<../(fundamentals)/(plugin)/tool.mdx>),
+listing a tool's available versions, and reading configuration, along with read-only resources that
+describe the configuration, environment, and installed tools. They're structured equivalents of
+[`proto install`](./install.mdx), [`proto uninstall`](./uninstall.mdx),
+[`proto versions`](./versions.mdx), [`proto debug config`](./debug/config.mdx), and
+[`proto debug env`](./debug/env.mdx), so an agent gets
+JSON back instead of parsing terminal output. The MCP guide describes every
+[tool](../guides/mcp.mdx#available-tools) and [resource](../guides/mcp.mdx#available-resources).
+
+You rarely run this command yourself. An MCP client spawns `proto mcp` as a child process, and the
+two exchange JSON-RPC messages over stdin and stdout until the client closes the connection (see
+[setup](../guides/mcp.mdx#setup) for registering it with your client). Because stdout carries the
+protocol, proto writes its logs and messages to stderr, and skips its usual check for a new proto
+version, so nothing corrupts the stream. Started by hand, it prints nothing and waits for a client
+to send messages on stdin.
+
+Requests are handled non-interactively, so proto never prompts. When a request fails, like an
+unknown tool or a failed download, the error is returned to the client for that request, and the
+server keeps running.
+
+Configuration is loaded relative to the directory the server was started in, which the client
+decides (usually the open project), in the [`upwards-global`](<../(fundamentals)/config.mdx#upwards-global>)
+resolution mode unless you pass [`--config-mode`](./overview.mdx#configuration-mode). It's loaded once
+at startup and reused for every request, so changes to a [`.prototools`](<../(fundamentals)/config.mdx>),
+including a version pinned through the server itself, aren't visible to the agent until the client
+restarts the server.
+
+```shell
+# Start the server (normally spawned by your MCP client)
+$ proto mcp
+
+# Print the server's information, tools, and resources, then exit
+$ proto mcp --info
+
+# Print the same information as JSON
+$ proto mcp --info --json
+
+# Start the server, and write debug logs to a file
+$ proto mcp --log debug --log-file ./proto-mcp.log
+```
+
 ## Options
+
+- `--info` - Print information about the server and exit, instead of starting it: its instructions
+  for agents, the proto version, the MCP protocol versions it can negotiate (the default, used when a
+  client requests a version proto doesn't support, is marked), and every MCP tool and resource it
+  exposes. Use it to check what an agent will have access to, without connecting a client. With
+  [`--json`](./overview.mdx#output-formats), prints an object with `info`, `protocol_versions`,
+  `tools` (including each tool's input schema), and `resources` fields.

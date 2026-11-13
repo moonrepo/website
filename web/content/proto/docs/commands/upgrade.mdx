@@ -2,6 +2,113 @@
 title: proto upgrade
 ---
 
+Upgrade proto itself, the `proto` and `proto-shim` executables in `~/.proto/bin`, to the latest
+release, or to an exact version you pass. proto checks for a newer release in the background, at
+most once every 12 hours, and when one is out, its notice points you to this command (see
+[upgrading](../index.mdx#upgrading)). Passing a version is also how you downgrade, like rolling
+back after a release causes problems in your setup. The command is also available as `proto up`.
+
+Which version to install, and whether there's anything to do, depends on the version argument:
+
+- **Without a version**, proto compares the version you're running against the latest release
+  published on GitHub. When the latest isn't newer, it prints that you're already on the current
+  version and exits without changes. It never downgrades on its own, even when you're running a
+  version newer than the latest release.
+- **With a version**, proto installs exactly that version, whether it's newer or older than the one
+  you're running, and only does nothing when it's the same version. It must be a fully-qualified
+  version, like `0.62.0`. Partial versions, ranges, and aliases like `latest` aren't accepted.
+
+Either way, proto looks up the latest release first, so upgrading needs to reach GitHub, even for an
+explicit version. When you're [offline](../guides/offline-mode.mdx), the command fails right away,
+and it fails with an error when GitHub can't be reached. Set `PROTO_GITHUB_TOKEN` to authenticate
+this request, if you're hitting the GitHub API's rate limit (see
+[GitHub authentication](../advanced/http.mdx#github-authentication)).
+
+The target version is installed as the `proto` tool, into the
+[store](<../(fundamentals)/store.mdx>) at `~/.proto/tools/proto/<version>`, the same way
+[`proto install`](./install.mdx) installs any tool: proto downloads the release archive for your
+platform, and [verifies its checksum](../advanced/checksums.mdx). A version that's already in the
+store, like one you've [pinned](<../(fundamentals)/config.mdx#pinning-proto>) and installed before,
+is reused instead. proto then copies `proto` and `proto-shim` from that version into
+`~/.proto/bin`. When the proto you ran lives outside the store, like a binary you placed in another
+directory on your `PATH`, the executables in that directory are replaced too, so the proto you run
+is the one that's upgraded. If you installed proto with a package manager, like Nix, upgrade it with
+that package manager instead.
+
+An executable that already exists isn't overwritten in place. It's renamed to `<name>.backup` first,
+and the new one is copied to its original path, which lets the process that's running the upgrade
+(and any other process using the old executable) keep running. The next proto command deletes the
+backups in `~/.proto/bin`. Each version installed this way stays in `~/.proto/tools/proto`, until
+[`proto clean`](./clean.mdx) removes it once it's unused. Upgrading never changes your
+[`.prototools`](<../(fundamentals)/config.mdx>) files or [lockfiles](../advanced/lockfile.mdx).
+
+Before replacing anything, proto checks whether another proto process is running, as replacing its
+executables may interrupt it. If one is, proto prints its process ID, and asks whether to continue.
+The prompt is skipped, and the upgrade continues, when the global `--yes` option is passed (see
+[prompts](./overview.mdx#prompts)) or in a CI environment. When the output isn't a terminal, the
+prompt can't be shown, and proto exits without upgrading.
+
+```shell
+# Upgrade to the latest release
+$ proto upgrade
+$ proto up
+
+# Upgrade, or downgrade, to an exact version
+$ proto upgrade 0.62.0
+
+# Upgrade without asking, even if another proto process is running
+$ proto upgrade --yes
+```
+
+### Pinned versions of proto
+
+This command upgrades the proto you installed, not a version of proto that a repository
+[pins](<../(fundamentals)/config.mdx#pinning-proto>) in its
+[`.prototools`](<../(fundamentals)/config.mdx>). Within a directory that pins proto,
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>) puts the pinned version on
+your `PATH`, so `proto` runs that version, and the command compares the latest release against the
+pin, not against the proto in `~/.proto/bin`. If the pin is already the latest release, it reports
+that you're up to date, even when your installed proto is older. When it does upgrade, it still only
+replaces the executables in `~/.proto/bin`, and the directory keeps using its pinned version.
+
+So run `proto upgrade` outside of directories that pin proto, like your home directory. To move a
+repository to a new version of proto, update its pin instead, with
+[`proto pin proto 0.63.2`](./pin.mdx), then run [`proto install`](./install.mdx).
+
+### Checking for a new version
+
+With `--check`, proto prints how the version you're running compares to the target version, and
+exits without installing anything. With the global `--json` option (see
+[output formats](./overview.mdx#output-formats)), it prints the comparison as an object instead,
+where `available` is whether running the command would install a different version. JSON output
+never upgrades, even without `--check`. That includes the `ndjson` reporter, which is the default
+when an AI agent runs proto (see [AI agents and bots](../guides/reporting.mdx#ai-agents-and-bots)),
+so pass `--reporter text` to upgrade from an agent.
+
+The command exits with `0` whether or not there's anything to upgrade, so scripts should read
+`available` from the JSON output, rather than the exit code.
+
+```shell
+# Check whether a newer release is available, without upgrading
+$ proto upgrade --check
+
+# Print the comparison as JSON, for scripts
+$ proto upgrade --json
+{
+  "available": true,
+  "current_version": "0.62.0",
+  "latest_version": "0.63.2",
+  "target_version": "0.63.2"
+}
+```
+
 ## Arguments
 
+- `[TARGET]` - The exact version of proto to upgrade or downgrade to, like `0.62.0`. Defaults to
+  the latest release, in which case nothing is installed unless it's newer than the version you're
+  running.
+
 ## Options
+
+- `--check` - Print how the version you're running compares to the target version, without
+  upgrading. Works with an explicit `[TARGET]` too.

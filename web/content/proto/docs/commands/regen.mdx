@@ -2,4 +2,76 @@
 title: proto regen
 ---
 
+Rebuilds the [shims](<../(fundamentals)/workflows.mdx#shims>) in `~/.proto/shims` from scratch, and
+with `--bin`, the [linked binaries](<../(fundamentals)/workflows.mdx#binary-linking>) in
+`~/.proto/bin` too. proto keeps both up to date as you install and uninstall tools, so you rarely
+need this command. Reach for it when they've drifted out of sync with what's installed:
+
+- A shim is missing or fails to run, for example after files in `~/.proto/shims` were deleted or
+  edited by hand.
+- A binary in `~/.proto/bin` is broken, or points to the wrong version.
+- You've [moved the store](<../(fundamentals)/store.mdx#moving-the-store>). Binaries are symlinks to
+  absolute paths, so they keep pointing to the old location until you relink them with `--bin`.
+- You've upgraded proto, and want every shim replaced with a copy of the new `proto-shim` at once.
+
+```shell
+# Regenerate every shim
+$ proto regen
+
+# Regenerate every shim, and relink every binary
+$ proto regen --bin
+
+# Pin a tool globally first, so it's regenerated from any directory
+$ proto pin bun 1 --to global
+$ proto regen
+```
+
+Nothing is repaired in place. proto deletes the existing files and creates new ones, in this order:
+
+1. Deletes the whole `~/.proto/shims` directory, including `registry.json`, which tells `proto-shim`
+   which tool each shim belongs to.
+2. With `--bin`, deletes every file in `~/.proto/bin` except `proto` and `proto-shim` (`proto.exe`
+   and `proto-shim.exe` on Windows), whether proto created it or not. Don't keep your own
+   executables in there.
+3. Loads the [`.prototools`](<../(fundamentals)/config.mdx>) files that apply to the current
+   directory, those found upwards from it plus the global `~/.proto/.prototools` (the
+   [`upwards-global`](<../(fundamentals)/config.mdx#upwards-global>) mode), and every tool that has
+   a version configured in them.
+4. For each of those tools, resolves its configured version, and creates a shim for each executable
+   that the tool's plugin exposes, recording it in a new `registry.json`.
+5. With `--bin`, links the tool's binaries for every installed version, not just the configured
+   one, so `node`, `node-<major>`, `node-<major>.<minor>`, and `node-canary` each point to the
+   highest installed version in their range again.
+
+It never installs, uninstalls, or pins anything, so the versions in `~/.proto/tools` and your
+[`.prototools`](<../(fundamentals)/config.mdx>) files are left as they are.
+
+<Callout type="warning">
+  Both directories are emptied for every tool, but only refilled for the tools configured where you
+  run the command. Any other tool loses its shims (and with `--bin`, its binaries) until you install
+  it again, or run `proto regen` in a directory where it's configured. So run it from a directory
+  where every tool you use is configured, or pin each one globally first with
+  [`proto pin --to global`](./pin.mdx).
+</Callout>
+
+To see which tools will be covered, run [`proto debug config`](./debug/config.mdx) in the same
+directory, as it loads configuration the same way. A tool whose plugin is configured in an
+[untrusted](<../(fundamentals)/trust.mdx#untrusted-configurations>)
+[`.prototools`](<../(fundamentals)/config.mdx>) is skipped, so run
+[`proto trust`](./trust.mdx) in that directory first.
+
+The files are deleted before any configuration or tool is loaded. If loading fails afterwards, for
+example on a malformed [`.prototools`](<../(fundamentals)/config.mdx>), a plugin that can't be
+downloaded, or a version that can't be resolved, the command stops with an error, and the tools
+that weren't reached are left without shims. Fix the problem, and run it again.
+
+When the [`auto-clean`](<../(fundamentals)/config.mdx#auto-clean>) setting is enabled, proto also
+[cleans the store](<../(fundamentals)/store.mdx#automatic-cleaning>) once the shims and binaries
+have been regenerated.
+
 ## Options
+
+- `--bin` - Also rebuild [binary links](<../(fundamentals)/workflows.mdx#binary-linking>): delete
+  every file in `~/.proto/bin` except `proto` and `proto-shim`, then relink the binaries of each
+  tool with a configured version, for all of its installed versions. Without it, `~/.proto/bin` is
+  left untouched.

@@ -2,6 +2,106 @@
 title: proto pin
 ---
 
+import { TypeLabel } from "@/components/TypeLabel";
+
+Pins a version of a tool by writing it to a [`.prototools`](<../(fundamentals)/config.mdx>) file,
+where it becomes the version that proto [detects](<../(fundamentals)/detection.mdx>) for the tool,
+in that file's directory and every directory beneath it. It's how a project declares the versions
+it needs, and how you choose fallback versions for your machine. The command is also available as
+`proto p`. New to pinning? Start with [pin versions](../start/versions.mdx).
+
+The version specification is written under the tool's identifier, replacing the tool's previous
+pin, if any, while the rest of the file, including its formatting and comments, is left as-is.
+Partial versions are written with their operator, so `24` is written as `~24`, which
+[means the same thing](<../(fundamentals)/version-spec.mdx#requirements-and-ranges>). Pinning
+doesn't install anything, and without `--resolve` the spec isn't checked against the tool's
+available versions, so run [`proto install`](./install.mdx) afterwards (or enable
+[`auto-install`](<../(fundamentals)/config.mdx#auto-install>)) to make it available. To pin the
+exact version that a requirement or alias resolves to right now, like `stable` to `24.11.0`, pass
+`--resolve`, so every machine runs the same version. To install and pin in one step, run
+[`proto install --pin`](./install.mdx), and to remove a pin, run [`proto unpin`](./unpin.mdx).
+
+By default, the [closest](<../(fundamentals)/config.mdx#closest>)
+[`.prototools`](<../(fundamentals)/config.mdx>) is written: proto walks up from the current
+directory and updates the first one it finds, or creates `./.prototools` if there are none. That
+way, pinning from anywhere within a repository updates the file at its root, instead of scattering
+new files around. Pass `--to local` to override a version for just the current directory, like a
+package in a monorepo, or `--to global` to pin a fallback version, used anywhere that doesn't pin
+its own. Pins are always written to a base [`.prototools`](<../(fundamentals)/config.mdx>), never
+to an [environment file](<../(fundamentals)/config.mdx#environment-mode>) like
+`.prototools.production`.
+
+When the written [`.prototools`](<../(fundamentals)/config.mdx>) enables a
+[lockfile](../advanced/lockfile.mdx), its `.protolock` is kept in sync. Without `--resolve`, the
+records of the previously pinned spec are removed, and the next [`proto install`](./install.mdx)
+records the new one. With `--resolve`, the records of the previous spec, and of the spec you passed,
+are migrated to the pinned version instead, and their checksums are dropped if the version changed.
+Only the lockfile of the file that was written is updated, even when another file takes precedence
+for the tool.
+
+Pins for tools without a built-in plugin, like community tools and tools from the `asdf` backend,
+and for proto itself, are
+[security-sensitive](<../(fundamentals)/trust.mdx#security-sensitive-settings>). When a pin is the
+first security-sensitive setting in a file, proto
+[trusts that file](<../(fundamentals)/trust.mdx#automatically-trusted>), as you added the setting
+yourself, while a file that already had untrusted settings stays untrusted. The reserved `proto`
+identifier [pins proto itself](<../(fundamentals)/config.mdx#pinning-proto>): pin a
+fully-qualified version in a project file, as the pin is ignored in your user and global files.
+
+```shell
+# Pin a version to the closest .prototools
+$ proto pin node 24
+
+# Pin the exact version that an alias currently resolves to, like 24.11.0
+$ proto pin node stable --resolve
+
+# Pin a fallback version, used in any directory that doesn't pin its own
+$ proto pin go 1.25 --to global
+
+# Override a version for the current directory only
+$ proto pin node 22 --to local
+
+# Pin a tool from a backend
+$ proto pin npm:prettier 3
+
+# Pin to devEngines in package.json, instead of .prototools
+$ proto pin pnpm latest --resolve --tool-native
+```
+
 ## Arguments
 
+- `<CONTEXT>` - The tool to pin, by its
+  [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>), like `node`, or a
+  [backend](<../(fundamentals)/(plugin)/backend.mdx>) prefixed identifier, like `npm:prettier`. It's
+  used as the key in [`.prototools`](<../(fundamentals)/config.mdx>). The tool must be one that
+  proto can load: a built-in or community tool, or one with a registered plugin.
+- `<SPEC>` - The [version specification](<../(fundamentals)/version-spec.mdx>) to pin: a version,
+  partial version, requirement, range, or alias. Quote specs that contain spaces or shell operators,
+  like `">=20 <23"`.
+
 ## Options
+
+- `--resolve` - Resolve the spec to a fully-qualified version, and pin that version instead. proto
+  resolves it like it does for an install: a matching
+  [lockfile record](../advanced/lockfile.mdx#version-resolution) comes first, then the highest
+  matching installed version, then the highest available version. Fails if no version matches,
+  including a version that doesn't exist. It needs the tool's available versions, so it only works
+  [offline](../guides/offline-mode.mdx) when they've been cached.
+- `--to` <TypeLabel type="closest | global | local | user" /> - The
+  [location](<../(fundamentals)/config.mdx#writing-to-a-file>) of the
+  [`.prototools`](<../(fundamentals)/config.mdx>) to write. `closest` (the default) is the closest
+  file to the current directory, `local` is `./.prototools`, `user` is `~/.prototools`, and `global`
+  is `~/.proto/.prototools`. `cwd`, `home`, and `store` are accepted as aliases of `local`, `user`,
+  and `global`. With `--tool-native`, it picks the directory of the ecosystem file instead.
+- `--tool-native` - Pin the version in the tool's own
+  [ecosystem file](<../(fundamentals)/detection.mdx#4-ecosystem-files>), through its plugin,
+  instead of a [`.prototools`](<../(fundamentals)/config.mdx>), so tooling outside of proto sees
+  the same version. Of the built-in tools, [Node.js](../tools/node.mdx), [Bun](../tools/bun.mdx),
+  and [Deno](../tools/deno.mdx) write to `devEngines.runtime` in `package.json`, and
+  [npm](../tools/npm.mdx), [pnpm](../tools/pnpm.mdx), and [Yarn](../tools/yarn.mdx) write to
+  `devEngines.packageManager`. Bun writes to an existing `.bumrc` or `.bun-version` first. The
+  `package.json` must already exist in the directory picked by `--to`, which by default is the
+  directory of the closest [`.prototools`](<../(fundamentals)/config.mdx>) (or the current
+  directory), so pass `--to local` to use the one in the current directory. `devEngines` doesn't
+  support aliases, so pass `--resolve` to pin one. No lockfile is updated. When the plugin doesn't
+  support native pinning, or can't pin the version, proto prints why and exits with code `1`.

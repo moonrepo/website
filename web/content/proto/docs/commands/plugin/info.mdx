@@ -2,4 +2,113 @@
 title: proto plugin info
 ---
 
+Display everything proto knows about a single [tool](<../../(fundamentals)/(plugin)/tool.mdx>): the
+[plugin](<../../(fundamentals)/(plugin)/plugin.mdx>) that powers it and where it was loaded from, the
+version detected for the current directory, the tool's
+[inventory](<../../(fundamentals)/store.mdx#inventory>) in the store, the executables, shims, and
+binaries it provides, and the configuration that applies to it. Reach for it when a tool doesn't
+behave as you expect, like to confirm that a configured plugin actually
+[overrides a built-in one](<../../(fundamentals)/(plugin)/tool.mdx#overriding-built-in-tools>), to find
+the executable that runs in a directory, or to check when each installed version was last used. To
+see every plugin at once, use [`proto plugin list`](./list.mdx) instead.
+
+The plugin is found in the same
+[resolution order](<../../(fundamentals)/(plugin)/plugin.mdx#resolution-order>) as every other
+command, and downloaded if it isn't cached yet. Only tool IDs, like `node`, are supported. Tools from
+a [backend](<../../(fundamentals)/(plugin)/backend.mdx>), like `npm:typescript`, are rejected, as the
+ID can't contain a backend prefix.
+
+The tool must also be installed. proto [detects](<../../(fundamentals)/detection.mdx>) the tool's
+version for the current directory, including the fallback version in your global config, and
+resolves it to an exact version. When nothing is detected, it uses `*`, the highest installed
+version. The executable is located within that version, so when it isn't installed, the command
+fails with an error that the tool's executable doesn't exist. Install it with
+[`proto install`](../install.mdx) first.
+
+```shell
+# Show the plugin, inventory, and configuration of Node.js
+$ proto plugin info node
+
+# Inspect a specific installed version, instead of the detected one
+$ PROTO_NODE_VERSION=22 proto plugin info node
+
+# Print the details as JSON, for scripts
+$ proto plugin info node --json
+```
+
+The output is split into 3 sections. Optional entries are left out when they don't apply, and empty
+lists are shown as `—`.
+
+- **Plugin** - The tool's ID and name, its type (`Tool`), its category as reported by the plugin
+  (`Language`, `DependencyManager`, `CommandLine`, or `VersionManager`), and the plugin's own
+  version. Then where the plugin was loaded from, based on its
+  [locator](../../../../wasm/docs/plugin-locators.mdx): a `Source URL`, a `Source file`, a GitHub
+  `Repository` and `Tag`, or a `Registry image`. When the plugin declares them, it also lists the
+  tools it `Requires` (see [tools that require other tools](../../start/tools.mdx#tools-that-require-other-tools)),
+  and its `Deprecations`.
+- **Inventory** - Where the tool lives on disk, and what's installed.
+  - `Detected version` - The version detected for the current directory, resolved to an exact
+    version.
+  - `Fallback version` - The version pinned in the global
+    [`~/.proto/.prototools`](<../../(fundamentals)/config.mdx#locations>), as it's written there, if
+    there is one.
+  - `Store directory` - The tool's inventory directory, usually `~/.proto/tools/<id>`, unless its
+    plugin uses a [custom location](<../../(fundamentals)/store.mdx#custom-locations>).
+  - `Executable file` - The primary [executable](<../../(fundamentals)/(plugin)/tool.mdx#executables>)
+    of the detected version, the same path that [`proto bin`](../bin.mdx) prints.
+  - `Executables directories` - The directories of the detected version that contain its
+    executables, which [shell activation](<../../(fundamentals)/workflows.mdx#shell-activation>)
+    prepends to `PATH`.
+  - `Global packages prefix` and `Global packages directory` - For tools that install global
+    packages, like `npm install -g`, a prefix that the package executables are named with, and the
+    directory those executables are installed to. Of the directories the plugin reports, it's the
+    first that contains files, otherwise the last.
+  - `Shims` - The [shims](<../../(fundamentals)/workflows.mdx#shims>) for the tool's executables, in
+    `~/.proto/shims`.
+  - `Binaries` - The [binaries](<../../(fundamentals)/workflows.mdx#binary-linking>) for the tool's
+    executables in `~/.proto/bin`, across every installed version, like `node`, `node-22`, and
+    `node-22.14`.
+  - `Installed versions` - Every installed version, with when it was installed and
+    [last used](<../../(fundamentals)/store.mdx#last-used>). A version that equals the fallback
+    version is marked as the fallback version.
+  - `Remote aliases` - The [aliases](<../../(fundamentals)/version-spec.mdx#aliases>) that the plugin
+    provides, like `latest` and `stable`, and the versions they map to. They're loaded with the
+    tool's available versions, which are cached for 12 hours.
+- **Configuration** - The tool's settings, from its
+  [`[tools.*]`](<../../(fundamentals)/config.mdx#tools>) table, merged across every loaded
+  [`.prototools`](<../../(fundamentals)/config.mdx>) file.
+  - `Local aliases` - [Custom aliases](<../../(fundamentals)/version-spec.mdx#custom-aliases>), from
+    the [`aliases`](<../../(fundamentals)/config.mdx#tools-aliases>) table.
+  - `Environment variables` - Variables from the [`env`](<../../(fundamentals)/config.mdx#tools-env>)
+    table. A variable set to `false` is shown as `(removed)`.
+  - `Settings` - Any other settings in the table, which are passed to the tool's plugin.
+
+Shims and binaries are the paths proto creates for the executables that the plugin reports, not files
+found on disk, and executables that the plugin opts out of shims or binaries aren't listed. If one
+is missing, recreate them with [`proto regen`](../regen.mdx), and pass `--bin` to include binaries.
+
+With the global [`--json`](../overview.mdx#global-options) option, the details are printed as a
+single JSON object instead. It's built from the same data, but has a different shape:
+
+- `id` and `name` - The tool's ID and name.
+- `plugin` - The plugin's locator, as a string, like `registry://ghcr.io/moonrepo/node_tool:0.17.13`.
+- `metadata` - Everything the plugin registered about the tool, like its `type`, `plugin_version`,
+  `requires`, and `deprecations`.
+- `inventory_dir` - The store directory.
+- `manifest` - The inventory's [manifest](<../../(fundamentals)/store.mdx#manifest>), with every
+  installed version and when it was installed.
+- `exe_file` and `exes_dirs` - The executable file and directories of the detected version.
+- `globals_dirs` and `globals_prefix` - Every directory the plugin reports for global packages, not
+  just the one that's used, and their prefix.
+- `shims` and `bins` - The shims and binaries, each with its `name`, `path`, the executable `config`
+  reported by the plugin, and for binaries, the `version` it points to.
+- `config` - The tool's merged `[tools.*]` settings, including its `aliases` and `env`.
+
+The detected and fallback versions, last used dates, and remote aliases are only part of the text
+output. [`proto versions`](../versions.mdx) includes a tool's aliases in its JSON output.
+
 ## Arguments
+
+- `<ID>` - The ID of the tool to display, like `node`, as it's used in
+  [`.prototools`](<../../(fundamentals)/config.mdx>) and other commands. Tools from a backend, like
+  `npm:typescript`, aren't supported.

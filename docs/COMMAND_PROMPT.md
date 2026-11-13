@@ -1,4 +1,4 @@
-For each command documentation page at `web/content/moon/docs/commands`, spawn a sonnet subagent to generate and implement the content.
+For each command documentation page at `web/content/proto/docs/commands`, spawn a subagent to generate and implement the content.
 
 ## Requirements
 
@@ -10,7 +10,7 @@ The page should use the following structure:
 
 ```
 ---
-title: moon COMMAND
+title: proto COMMAND
 ---
 
 DESCRIPTION
@@ -26,20 +26,20 @@ DESCRIPTION
 
 ### Command
 
-The name of the command as it would appear on the command line, e.g., `moon exec`. This should match the name of the file.
+The name of the command as it would appear on the command line, e.g., `proto exec`. This should match the name of the file.
 
-If the command is in a directory, then it is a sub-command and should be referenced as `moon parent-command sub-command`, e.g., `moon query projects`.
+If the command is in a directory, then it is a sub-command and should be referenced as `proto parent-command sub-command`, e.g., `proto plugin info`.
 
 ### Description
 
-Generate a description of what the command does, by inspecting the source code at `/Users/miles/Projects/moon/crates/app/src/commands`.
+Generate a description of what the command does, by inspecting the source code at `/Users/miles/Projects/proto/crates/cli/src/commands`.
 
-DO NOT use the description from the `--help` output (those defined with Rust `clap`), as we want thorough documentation. Instead, analyze the source code to understand the command's functionality and provide a clear and concise explanation. Can also reference the `website/docs/commands` for additional context, but do not copy the content directly.
+DO NOT use the description from the `--help` output (those defined with Rust `clap`), as we want thorough documentation. Instead, analyze the source code to understand the command's functionality and provide a clear and concise explanation. Can also reference the `/Users/miles/Projects/moon/website/docs/proto/commands` for additional context, but do not copy the content directly.
 
 Include at least 1 reference command line usage, in the following format:
 
 ```shell
-$ moon COMMAND ARGUMENTS --OPTIONS
+$ proto COMMAND ARGUMENTS --OPTIONS
 ```
 
 ### Arguments

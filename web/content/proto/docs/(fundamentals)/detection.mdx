@@ -147,8 +147,9 @@ Plugins for other tools can support ecosystem files too, whether they're
 [schema plugins](../schema.mdx#detecting-versions).
 
 To pin a version in a tool's ecosystem file instead of [`.prototools`](./config.mdx), run
-[`proto pin`](../commands/pin.mdx) with `--tool-native`. For Node.js, Bun, Deno, and the package
-managers, this writes to `devEngines` in `package.json`.
+[`proto pin`](../commands/pin.mdx) with `--tool-native`. For Node.js, Deno, and the package
+managers, this writes to `devEngines` in `package.json`. Bun writes to its `.bumrc` or
+`.bun-version` file when one exists, as those are detected first, and to `devEngines` otherwise.
 
 ### 5. Global configuration
 

@@ -2,6 +2,153 @@
 title: proto versions
 ---
 
+The `proto versions` (or `proto vs`) command lists the versions of a
+[tool](<../(fundamentals)/(plugin)/tool.mdx>) that are available to install, and marks the ones you
+already have. Reach for it before installing or pinning, to see what a tool has released and how
+proto writes its versions, to check what a
+[version specification](<../(fundamentals)/version-spec.mdx>) matches, or to see which versions are
+installed on your machine. The tool doesn't need to be installed, but its plugin is loaded, and
+downloaded when it isn't cached yet, so an unknown tool fails with an error. Tools from a
+[backend](<../(fundamentals)/(plugin)/tool.mdx#backend-prefixed>), like `npm:prettier`, are
+supported too.
+
+The list always starts from the tool's available versions, which its plugin loads from where the
+tool publishes releases, like the Node.js distribution index, a package registry, or Git tags.
+proto caches them in the tool's [inventory](<../(fundamentals)/store.mdx#inventory>) for 12 hours,
+so a release from the last few hours may not show up yet (set `PROTO_CACHE=false` to load them
+again). When you're [offline](../guides/offline-mode.mdx), or the versions can't be loaded, the
+cache is used regardless of its age, and without one, the command fails. When the plugin reports no versions at all, proto prints an
+error and exits with a code of `1`.
+
+Versions are printed one per line, from oldest to newest, so the newest is at the bottom, right
+above your prompt. A version may be followed by labels:
+
+- `installed <date>` - The version is installed in the [store](<../(fundamentals)/store.mdx>), and
+  the date it was installed, as month/day/year in UTC, from the tool's
+  [manifest](<../(fundamentals)/store.mdx#manifest>).
+- `locked` - The [lockfile](../advanced/lockfile.mdx) that applies to the tool in the current
+  directory (see [scope](../advanced/lockfile.mdx#scope)) has a record for the version, from any
+  operating system or architecture.
+
+```shell
+$ proto versions node
+...
+24.10.0
+24.11.0 - installed 11/05/25, locked
+24.11.1
+25.0.0
+25.1.0 - installed 11/10/25
+```
+
+Pass a [version specification](<../(fundamentals)/version-spec.mdx>) as the second argument to
+narrow the list down. It's a quick way to check what a spec matches before you pin it:
+
+- A **requirement** or **range**, like `22` or `"^20 || ^22"`, lists every version that matches it.
+  The usual [matching rules](<../(fundamentals)/version-spec.mdx#requirements-and-ranges>) apply, so
+  pre-releases are only listed when the requirement opts into them.
+- A **full version**, like `22.14.0`, lists that version, but only when the tool has it exactly as
+  written, build metadata included. Use it to confirm that a version exists.
+- An **alias**, like `latest`, `stable`, or one of your
+  [custom aliases](<../(fundamentals)/version-spec.mdx#custom-aliases>), lists the single version it
+  resolves to. It's resolved the same way as when running the tool: custom aliases take precedence
+  over the tool's own, a [lockfile record](../advanced/lockfile.mdx#version-resolution) for the alias
+  is used when there's one, and an alias that maps to a requirement prefers the highest installed
+  match. An alias that isn't defined fails with an error.
+
+For tools with [version scopes](<../(fundamentals)/version-spec.mdx#version-scopes>), like Java, the
+filter's scope also decides which versions are loaded, so `proto versions java temurin-21` lists
+Temurin builds of Java 21. A filter that matches nothing prints no versions, and still succeeds.
+
+With `--installed`, only the versions you have installed are listed. As the list is still drawn from
+the available versions, an installed version that the plugin no longer reports isn't shown. To see
+everything in a tool's inventory, use [`proto plugin info`](./plugin/info.mdx).
+
+With `--aliases`, the tool's [aliases](<../(fundamentals)/version-spec.mdx#aliases>) are printed
+after the versions, as `<alias> → <spec>`: first the aliases that the plugin provides, like
+`latest`, then your [custom aliases](<../(fundamentals)/version-spec.mdx#custom-aliases>) from every
+loaded [`.prototools`](<../(fundamentals)/config.mdx>), including the global one. A custom alias with
+the same name as one of the tool's takes its place. Every alias is listed, even when a filter is
+passed, and none are listed when combined with `--installed`. Some plugins accept more aliases than
+they list, like Node.js's `lts`, which its plugin maps to `stable` while resolving.
+
+```shell
+$ proto versions node --aliases
+...
+25.1.0 - installed 11/10/25
+...
+latest → 25.1.0
+stable → 24.11.1
+work → ^20.11
+```
+
+For scripts, pass the global [`--json`](./overview.mdx#output-formats) option to print a JSON
+object instead. The filter, `--installed`, and `--no-builds` still apply to `versions`, while both
+alias maps are always included, without `--aliases`. Each version has a `locked` flag, and an
+`installed_at` Unix timestamp in milliseconds when it's installed. With `--reporter ndjson`, the
+same object is printed on a single line, wrapped as `{"type":"data","data":{...}}`.
+
+```json
+{
+  "versions": [
+    {
+      "installed_at": 1762300800000,
+      "locked": true,
+      "version": "24.11.0"
+    },
+    {
+      "locked": false,
+      "version": "24.11.1"
+    }
+  ],
+  "local_aliases": {
+    "work": "^20.11"
+  },
+  "remote_aliases": {
+    "latest": "25.1.0",
+    "stable": "24.11.1"
+  }
+}
+```
+
+```shell
+# List every available version of Node.js
+$ proto versions node
+
+# List the versions that a requirement or range matches
+$ proto versions node 22
+$ proto versions node "^20 || ^22"
+
+# Check which version an alias resolves to
+$ proto versions node stable
+
+# List installed versions only
+$ proto versions node --installed
+
+# Include aliases, and what they map to
+$ proto versions node --aliases
+
+# List Python releases, without the build-specific versions
+$ proto versions python 3.12 --no-builds
+
+# List the versions of a backend tool, as JSON
+$ proto versions npm:prettier --json
+```
+
 ## Arguments
 
+- `<CONTEXT>` - The [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>) of the tool
+  to list versions for, like `node`, or a backend-prefixed one, like `npm:prettier`.
+- `[FILTER]` - A [version specification](<../(fundamentals)/version-spec.mdx>) to filter the list
+  by: a requirement or range lists every match, a full version lists itself when it exists, and an
+  alias lists the version it resolves to. Quote specs that contain shell characters, like
+  `">=18 <21"`.
+
 ## Options
+
+- `--aliases` - Print the tool's aliases, and your custom aliases, after the versions, along with
+  the spec each one maps to. Ignored with `--installed`.
+- `--installed` - Only list versions that are installed in the
+  [store](<../(fundamentals)/store.mdx>), out of the available versions.
+- `--no-builds` - Exclude versions with build metadata (a trailing `+`), like `1.2.3+build.5`. Some
+  plugins list builds alongside the official releases, like Python and Ruby, whose pre-built
+  versions carry a build suffix, so this leaves only the release versions.
