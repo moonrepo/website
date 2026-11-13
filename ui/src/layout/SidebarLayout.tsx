@@ -54,7 +54,9 @@ export function SidebarLayout({
 					<div className="relative isolate px-6 pt-9 pb-9 md:px-12">
 						{blueprint && <BlueprintGrid className="-z-10" />}
 						<Drawer
+							side="right"
 							title={drawerTitle}
+							titleClassName="px-0"
 							trigger={
 								<>
 									<PanelLeft className="size-5" />

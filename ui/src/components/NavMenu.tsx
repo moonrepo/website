@@ -1,5 +1,6 @@
 import { Menu } from '@base-ui/react/menu';
 import { TriangleIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { cn } from '../utils/cn';
 
 export const navLinkClass = cn(
@@ -11,6 +12,8 @@ export const navLinkClass = cn(
 export interface NavMenuItem {
 	description?: string;
 	href: string;
+	/** Only shown in the mobile menu. */
+	icon?: ReactNode;
 	label: string;
 }
 

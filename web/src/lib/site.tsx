@@ -1,5 +1,6 @@
 import type { FooterProps } from '@moonrepo/ui/layout/Footer';
 import type { HeaderProps } from '@moonrepo/ui/layout/Header';
+import { Newspaper } from 'lucide-react';
 import { siDiscord, siGithub, siRss, siX } from 'simple-icons';
 import { BrandIcon } from '@/components/BrandIcon';
 import { PRODUCTS } from '@/lib/products';
@@ -17,11 +18,16 @@ export const headerProps: Omit<HeaderProps, 'onSearch'> = {
 			items: Object.entries(PRODUCTS).map(([id, product]) => ({
 				description: product.description,
 				href: `/${id}`,
+				icon: <product.icon />,
 				label: product.title,
 			})),
 		},
-		{ href: '/blog', label: 'Blog' },
-		{ href: GITHUB_URL, label: 'GitHub' },
+		{ href: '/blog', icon: <Newspaper />, label: 'Blog' },
+		{
+			href: GITHUB_URL,
+			icon: <BrandIcon icon={siGithub} />,
+			label: 'GitHub',
+		},
 	],
 };
 
