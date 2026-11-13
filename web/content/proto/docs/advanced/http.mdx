@@ -3,12 +3,193 @@ title: HTTP requests
 icon: Globe
 ---
 
+import { TypeLabel } from "@/components/TypeLabel";
+
+proto talks to the network whenever it needs something it doesn't have yet: a
+[plugin](<../(fundamentals)/(plugin)/plugin.mdx>), the list of a tool's available versions, a tool's
+archive and checksum, or the [registry](<../(fundamentals)/(plugin)/tool.mdx#community-tools>) of
+community tools. All of these requests go through a single HTTP client, which you can configure for
+your network with [`[settings.http]`](<../(fundamentals)/config.mdx#settingshttp>), like routing
+requests through a proxy, or trusting a corporate certificate.
+
+The client is designed to work out of the box:
+
+- **Retries** - Requests that fail with a transient error, like a timeout or a `503` response, are
+  retried 3 times, with an exponential backoff between attempts. Change the number with
+  [`retry-count`](<../(fundamentals)/config.mdx#retry-count>).
+- **Timeouts** - Connecting times out after 1 minute, and reading a response after 5 minutes without
+  receiving data. Set `WARPGATE_HTTP_NO_TIMEOUTS=true` to disable both, like on a very slow
+  connection.
+- **Credentials** - Logins in your [`.netrc`](https://everything.curl.dev/usingcurl/netrc.html) file
+  are sent as basic authentication to the hosts they're configured for, which is useful for a mirror
+  that requires a login.
+- **User agent** - Requests identify themselves as `warpgate@<version>`, proto's plugin and HTTP
+  layer. Override it with [`user-agent`](<../(fundamentals)/config.mdx#user-agent>), if your network
+  filters on it.
+
+Network settings usually depend on where you are, not on the project you're working on, so configure
+them in your user `~/.prototools`. In a project's [`.prototools`](<../(fundamentals)/config.mdx>),
+they require [trust](<../(fundamentals)/trust.mdx>). Unlike other settings,
+[`[settings.http]`](<../(fundamentals)/config.mdx#settingshttp>) isn't merged setting by setting: the
+closest file that defines the table replaces it entirely.
+
+```toml title="~/.prototools"
+[settings.http]
+secure-proxies = ["http://proxy.corp.internal:8080"]
+root-cert = "/etc/ssl/certs/corp-root.pem"
+retry-count = 5
+```
+
+<Callout>
+  A few requests don't go through this client. Tools that load their versions
+  from Git tags run `git ls-remote`, which uses Git's own network settings, like
+  `http.proxy` and `http.sslCAInfo`. And proto's own update check, used by
+  [`proto upgrade`](../commands/upgrade.mdx) and the background version check,
+  honors the proxy environment variables, but not `[settings.http]`.
+</Callout>
+
 ## Proxies
+
+Without any proxy settings, proto uses the standard proxy environment variables, in uppercase or
+lowercase: `HTTPS_PROXY` for HTTPS requests, `HTTP_PROXY` for plain HTTP requests, `ALL_PROXY` for
+both, and `NO_PROXY` for a comma-separated list of hosts to connect to directly. Proxies configured
+in your operating system's network settings aren't detected, so set the variables when you rely on
+those.
+
+```shell
+$ export HTTPS_PROXY="http://proxy.corp.internal:8080"
+$ export NO_PROXY="localhost,.corp.internal"
+```
+
+To configure proxies for proto alone, list them in `[settings.http]`. This replaces the environment
+variables, including `NO_PROXY`, so every request goes through the proxies you configure:
+
+- [`proxies`](<../(fundamentals)/config.mdx#proxies>) <TypeLabel type="string[]" /> - proto decides
+  which requests each proxy handles from the proxy's own URL. An `https:` URL, or an `http:` URL on
+  port `443`, handles HTTPS requests. Any other `http:` URL handles plain HTTP requests. URLs with any
+  other scheme are ignored, with a warning.
+- [`secure-proxies`](<../(fundamentals)/config.mdx#secure-proxies>) <TypeLabel type="string[]" /> -
+  Proxies that handle HTTPS requests, whatever their own URL.
+
+Nearly everything proto downloads is served over HTTPS, so which list a proxy belongs in matters.
+Corporate proxies are commonly reached over plain HTTP, on a port like `8080` or `3128`, and tunnel
+HTTPS traffic through it. In `proxies`, such a proxy would only handle plain HTTP requests, and HTTPS
+requests would bypass it, so put it in `secure-proxies`:
+
+```toml title="~/.prototools"
+[settings.http]
+# Handles HTTPS requests, even though the proxy itself is reached over HTTP
+secure-proxies = ["http://proxy.corp.internal:8080"]
+```
+
+A proxy that requires a login accepts it in the URL, like `http://user:password@proxy:8080`. Keep
+credentials out of committed files.
 
 ## Certificates
 
+proto verifies TLS certificates with your operating system's certificate verifier: the Keychain on
+macOS, the certificate store on Windows, and the system's CA bundle on Linux, or the files in
+`SSL_CERT_FILE` and `SSL_CERT_DIR` when they're set. So when your organization installs its root
+certificate system-wide, which is common with proxies that inspect HTTPS traffic, proto trusts it
+without any configuration.
+
+When the certificate isn't installed system-wide, point
+[`root-cert`](<../(fundamentals)/config.mdx#root-cert>) at it. It's trusted in addition to the system
+certificates, and must be a PEM (`.pem`) or DER (`.der`) file, as the format is detected from the
+extension. A file with any other extension is ignored, with a warning. Relative paths are resolved
+from the [`.prototools`](<../(fundamentals)/config.mdx>) that defines the setting.
+
+```toml title="~/.prototools"
+[settings.http]
+root-cert = "/etc/ssl/certs/corp-root.pem"
+```
+
+As a last resort, [`allow-invalid-certs`](<../(fundamentals)/config.mdx#allow-invalid-certs>) accepts
+any certificate, including expired, self-signed, and mismatched ones. This turns off the protection
+that HTTPS provides against someone intercepting your downloads, so only use it temporarily, while
+you sort out a proper certificate.
+
 ## URL rewrites
+
+[`url-rewrites`](<../(fundamentals)/config.mdx#url-rewrites>) changes where downloads come from,
+without changing any plugin. It maps [regular expressions](https://docs.rs/regex/latest/regex/#syntax)
+to replacements, which are applied to a URL before it's requested. This is how you point proto at an
+internal mirror, like Artifactory or Nexus, when your network can't reach the public internet, or
+your organization requires downloads to come from an approved source.
+
+```toml title="~/.prototools"
+[settings.url-rewrites]
+# Download Node.js from a mirror of nodejs.org/dist
+'^https://nodejs\.org/dist/' = "https://artifactory.corp.internal/nodejs/"
+
+# Download GitHub release assets through a mirror, with capture groups
+'^https://github\.com/([^/]+)/([^/]+)/releases/download/' = "https://mirror.corp.internal/github/$1/$2/"
+```
+
+Every entry is applied in order, and each one replaces every match, so a URL can be rewritten by
+more than one entry. Capture groups are referenced with `$1`, `$2`, and so on, or by name with
+`$name` for a group like `(?<name>...)`. Write patterns as single-quoted TOML strings, which are
+literal, so backslashes don't need to be escaped.
+
+Rewrites apply to the URLs of files that proto downloads itself:
+
+- Tool archives, and their checksum files.
+- Plugins with an `https://` [locator](../../../wasm/docs/plugin-locators.mdx), including built-in
+  plugins that are configured with one.
+- Source archives and scripts when [building from source](../guides/build-from-source.mdx), and the
+  sources of backends, like an asdf plugin's repository archive.
+
+They don't apply to requests that plugins make to load available versions, to `github://` and
+`registry://` locators, or to `git ls-remote`. A mirror usually needs those to be reachable too, or
+mirrored through other means, like a [registry](<../(fundamentals)/(plugin)/plugin.mdx#mirroring-built-in-plugins>)
+for built-in plugins. To check that a rewrite matches, run the install with `--log trace`, which logs
+every URL that proto downloads.
 
 ## GitHub authentication
 
+Plugins with a `github://` [locator](../../../wasm/docs/plugin-locators.mdx) are resolved through the
+GitHub API, which allows only 60 unauthenticated requests per hour from each IP address. That limit
+is easy to hit in CI, where many jobs share an address. To authenticate requests, and raise the
+limit, set a GitHub token in one of the following environment variables, checked in order:
+
+1. `PROTO_GITHUB_TOKEN`
+2. `GH_TOKEN`
+3. `GITHUB_TOKEN`
+
+```shell
+$ export GITHUB_TOKEN="$(gh auth token)"
+```
+
+The token is only sent to the GitHub API, as a bearer token, and needs no scopes for public
+repositories. On GitHub Actions, the `GITHUB_TOKEN` secret that every workflow receives works as-is.
+`PROTO_GITHUB_TOKEN` is also used by proto's own update check, which reads the latest release of
+proto from GitHub.
+
+Built-in tools don't use the token. Most load their versions with `git ls-remote`, which
+authenticates through Git's own credentials, and download from their project's own servers or
+GitHub release assets, which aren't subject to the API limit.
+
 ## Response caching
+
+proto caches what it downloads, so that repeat commands don't hit the network:
+
+- **HTTP responses** - Responses to `GET` and `HEAD` requests are cached in
+  `~/.proto/cache/requests-v2`, following the caching headers that servers send, like
+  `Cache-Control` and `ETag`, for up to 7 days. This includes the requests that plugins make to load
+  available versions. The cache is disabled inside Docker containers.
+- **Available versions** - Each tool's list of available versions is cached for 12 hours, in
+  `~/.proto/tools/<id>/remote-versions.json`. When loading the list fails, proto falls back to the
+  cached list, even when it's older. Set `PROTO_CACHE=off` to ignore the cache, and load the list
+  every time.
+- **Plugins** - Downloaded plugins are kept for the
+  [`cache-duration`](<../(fundamentals)/config.mdx#cache-duration>) setting, before they're
+  downloaded again.
+- **Registries** - The registries of
+  [community tools](<../(fundamentals)/(plugin)/tool.mdx#community-tools>) and third-party plugins,
+  used to look up tools by ID and by [`proto plugin search`](../commands/plugin/search.mdx), are
+  cached for 24 hours, in `~/.proto/cache/registry`.
+
+When you're offline, proto uses whatever it has cached, regardless of age. See
+[offline mode](../guides/offline-mode.mdx) for how it detects that. To remove cached responses,
+run [`proto clean cache`](../commands/clean.mdx), which deletes cache files that are older than 30
+days, or the number of days passed to `--days`.
