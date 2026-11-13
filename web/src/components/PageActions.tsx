@@ -5,10 +5,12 @@ import {
 } from 'fumadocs-ui/layouts/docs/page';
 import { cn } from '@/lib/cn';
 
-// Fumadocs' secondary buttons, restyled as our `xs` secondary button
+// Fumadocs' secondary buttons, restyled as our `xs` secondary button; the
+// hover overrides replace the `hover:bg-fd-accent hover:text-fd-accent-foreground`
+// it keeps after merging
 const actionClassName = buttonClassName({
 	className:
-		'hover:bg-paper-50 data-[popup-open]:bg-paper-200 data-[popup-open]:text-graphite-800 [&_svg]:text-current',
+		'hover:bg-paper-50 hover:text-graphite-500 data-[popup-open]:bg-paper-200 data-[popup-open]:text-graphite-800 [&_svg]:text-current',
 	size: 'xs',
 	variant: 'secondary',
 });
