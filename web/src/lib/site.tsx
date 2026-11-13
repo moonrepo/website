@@ -18,7 +18,7 @@ const SECTIONS = {
 		label: 'Documentation',
 	},
 	api: {
-		description: 'Configuration types and settings',
+		description: 'Configuration types',
 		icon: Braces,
 		label: 'API reference',
 	},

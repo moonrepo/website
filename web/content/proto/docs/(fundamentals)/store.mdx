@@ -3,6 +3,8 @@ title: Store & inventory
 icon: HardDrive
 ---
 
+import { VersionLabel } from "@/components/VersionLabel";
+
 The **store** is proto's home directory, `~/.proto` by default. Everything proto downloads or
 creates lives in it: the `proto` binaries themselves, every installed version of every
 [tool](<./(plugin)/tool.mdx>), the [shims](./workflows.mdx#shims) and binaries that put tools on
@@ -75,7 +77,7 @@ Directories are created when they're first needed, so a new store only contains 
   repository into `backends/asdf/<id>`.
 - `bin/` - The `proto` and `proto-shim` executables. With
   [binary linking](./workflows.mdx#binary-linking), it also holds symlinks to the executables of
-  installed tools (copies on Windows, where symlinks require administrator access).
+  installed tools (copies on Windows without Developer Mode or administrator privileges).
 - `builders/` - Git checkouts of the build tools a plugin needs when
   [building from source](../guides/build-from-source.mdx), like `ruby-build`.
 - `cache/` - Cached responses to HTTP requests (`requests-v2`, not used inside Docker containers),
@@ -85,12 +87,15 @@ Directories are created when they're first needed, so a new store only contains 
   for schema plugins. Each file is named after the plugin's ID and a hash of its
   [locator](../../../wasm/docs/plugin-locators.mdx), so different versions of a plugin are cached
   side by side. Plugins with a `file://` locator are loaded in place, and never copied here.
-- `shims/` - A [shim](./workflows.mdx#shims) for each executable of the tools you've installed, and
-  `registry.json`, which tells `proto-shim` which tool each shim belongs to, along with any
-  arguments or environment variables to apply.
-- `temp/` - In-progress downloads, staged in a directory per tool and version. The directory is
-  also a lock, so when multiple processes install the same version at once, only one downloads it.
-  It also holds plugin download locks, and the time of proto's last update check.
+- `shims/` - A [shim](./workflows.mdx#shims) for each executable of the tools you've installed, each
+  a hard link to `proto-shim` <VersionLabel version="0.64.0" />, and `registry.json`, which tells
+  `proto-shim` which tool each shim belongs to, along with any arguments or environment variables to
+  apply.
+- `temp/` - In-progress downloads, staged in a directory per tool and version, which is removed once
+  the install finishes. The directory is also a lock, so when multiple processes install the same
+  version at once, only one downloads it. It also holds the downloads of
+  [`proto lock`](../commands/lock.mdx), plugin download locks, and the time of proto's last update
+  check.
 - `tools/` - An [inventory](#inventory) for each tool. proto's own versions, installed by
   [`proto upgrade`](../commands/upgrade.mdx) or for a [pinned version](./config.mdx#pinning-proto),
   are in `tools/proto`.

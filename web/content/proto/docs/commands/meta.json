@@ -12,6 +12,7 @@
     "diagnose",
     "exec",
     "install",
+    "lock",
     "mcp",
     "outdated",
     "pin",

@@ -3,6 +3,8 @@ title: Version detection
 icon: ScanSearch
 ---
 
+import { VersionLabel } from "@/components/VersionLabel";
+
 Version detection is how proto decides which version of a [tool](<./(plugin)/tool.mdx>) to run when
 you haven't said. Whenever a tool runs through a [shim](./workflows.mdx#shims) or
 [`proto run`](../commands/run.mdx), or [shell activation](./workflows.mdx#shell-activation) builds
@@ -124,6 +126,18 @@ version wins. Files that are empty, or that don't declare a version for the tool
 `package.json` without the relevant fields, are skipped, while an invalid version is an error. A
 plugin can also ignore directories, such as anything within `node_modules` for the JavaScript
 tools, so that a dependency's `package.json` never decides which version you run.
+
+<VersionLabel version="0.64.0" /> Plain version files, like `.nvmrc` or
+`.python-version`, can contain comments, like other version managers allow. The
+version is read from the first line with content, skipping blank lines and
+comments, which is everything after a `#` or `//`. proto does this for plugins
+that don't parse their files themselves, and the built-in plugins follow the
+same rules. A file with nothing but comments is skipped, like an empty one.
+
+```text title=".nvmrc"
+# The current LTS, bump with the rest of the team
+24.11.0 # Krypton
+```
 
 Versions from ecosystem files are used everywhere a version is detected, except by shell
 activation (see [detection by command](#detection-by-command)).

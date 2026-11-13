@@ -4,6 +4,7 @@ icon: ListTree
 ---
 
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
+import { VersionLabel } from "@/components/VersionLabel";
 
 proto installs every version of a [tool](<./(plugin)/tool.mdx>) into its own directory in the
 [store](./store.mdx), like `~/.proto/tools/node/22.5.1`. Your shell doesn't look there, so something
@@ -24,7 +25,7 @@ linking for you. Shell activation is opt-in. Not sure which to use? See the
 ## Shims
 
 A shim is a tiny executable in `~/.proto/shims`, named after an executable that a tool provides,
-like `node`, `npm`, or `npx`. A shim isn't a link to the tool. Every shim is a copy of the
+like `node`, `npm`, or `npx`. A shim isn't a link to the tool. Every shim is the same
 `proto-shim` binary that ships with proto (with an `.exe` extension on Windows), which reads its own
 file name to determine the tool, and re-invokes proto with [`proto run`](../commands/run.mdx). These
 are equivalent:
@@ -40,6 +41,10 @@ $ proto run node -- --version
 $ which node
 ~/.proto/shims/node
 ```
+
+Shims are hard links to `proto-shim` <VersionLabel version="0.64.0" />, so however many you have,
+they take up the disk space of one. When a hard link can't be created, like when `~/.proto/shims`
+is on a different drive than `proto-shim`, the shim is a copy instead.
 
 Shims are the most flexible workflow: they pick the version for the directory you call them from,
 on every call, and work anywhere `~/.proto/shims` is on `PATH`, including scripts, editors, and CI.
@@ -68,7 +73,9 @@ On every call, [`proto run`](../commands/run.mdx) then:
    [order of precedence](./config.mdx#order-of-precedence)), prepends the tool's executable
    directories to `PATH`, along with its globals directories, where the executables of globally
    installed packages live, and sets `PROTO_NODE_VERSION` to the resolved version, so child
-   processes, like a script that spawns `node`, use the same version.
+   processes, like a script that spawns `node`, use the same version. Tools that it
+   [requires](./config.mdx#tools-requires), like Node.js for npm, are added to the environment the
+   same way.
 4. Runs the tool's executable with your arguments.
 
 On macOS and Linux, the shim and proto each replace their own process instead of spawning a child,
@@ -129,11 +136,14 @@ $ proto regen
 
 ## Binary linking
 
-Binary linking puts links in `~/.proto/bin` that point directly at a tool's executables, for a
-specific installed version. On macOS and Linux they're symlinks. On Windows, where creating
-symlinks requires administrator privileges, they're copies of the executables. Running one runs the
-tool itself: proto isn't involved, so there's no version detection, no `[env]` variables, and no
-overhead.
+Binary linking puts symlinks in `~/.proto/bin` that point directly at a tool's executables, for a
+specific installed version. Running one runs the tool itself: proto isn't involved, so there's no
+version detection, no `[env]` variables, and no overhead.
+
+On Windows, binaries are symlinks too <VersionLabel version="0.64.0" />. Creating them requires
+Developer Mode or administrator privileges, and without either, proto copies the executables
+instead, which works the same but uses more disk space.
+[`proto diagnose`](../commands/diagnose.mdx) warns when that's the case.
 
 A linked binary doesn't follow the version you pinned. Each one points at the highest installed
 version within its range, and proto links several of them per tool:

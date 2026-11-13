@@ -3,6 +3,8 @@ title: Lockfiles
 icon: Lock
 ---
 
+import { VersionLabel } from "@/components/VersionLabel";
+
 A lockfile records what each pinned [version specification](<../(fundamentals)/version-spec.mdx>)
 resolved to, along with a checksum of what was downloaded, in a `.protolock` file next to the
 [`.prototools`](<../(fundamentals)/config.mdx>) that pins it. Commit it, and every machine, including
@@ -128,6 +130,8 @@ checksum = "sha256:1f0c7b2e8d93..."
 - `checksum` - The checksum of the downloaded archive, prefixed with its algorithm, like `sha256:`
   or `sha512:`. For tools that publish signatures instead, it's the key that verified the download.
   See [checksum verification](./checksums.mdx).
+- `variant` <VersionLabel version="0.64.0" /> - The build that was downloaded, for tools that
+  publish more than one for the same platform. See [variants](#variants).
 - `backend` - The [backend](<../(fundamentals)/(plugin)/backend.mdx>), for tools that are installed
   through one.
 
@@ -140,6 +144,41 @@ the built-in `asdf`, `cargo`, and `npm` backends, which are installed by another
 The file is written by proto, so don't edit it by hand. Change the pins in
 [`.prototools`](<../(fundamentals)/config.mdx>) instead, and let the
 [lockfile-aware commands](#lockfile-aware-commands) update it.
+
+#### Variants
+
+<VersionLabel version="0.64.0" /> Some tools publish more than one build for the
+same platform, and their plugin picks the one that suits your machine. Bun, for
+example, has a `baseline` build for x64 CPUs without AVX2, and Swift publishes a
+toolchain per Linux distribution. Two machines with the same operating system
+and architecture can therefore download different archives, with different
+checksums.
+
+So each build gets a record of its own, with its name in `variant`. The default build has no
+variant, so most lockfiles never contain one.
+
+```toml title=".protolock"
+[[tools.bun]]
+os = "linux"
+arch = "x64"
+libc = "gnu"
+spec = "~1.3"
+version = "1.3.2"
+checksum = "sha256:3b8f6a2d71c0..."
+
+[[tools.bun]]
+os = "linux"
+arch = "x64"
+libc = "gnu"
+variant = "baseline"
+spec = "~1.3"
+version = "1.3.2"
+checksum = "sha256:c94e1d07ab52..."
+```
+
+When a machine downloads a build that hasn't been locked yet, its archive can't be compared to the
+other build's checksum, so proto adds a record for it instead of failing, like it does for
+[a new platform](#version-resolution). Commit that change too.
 
 ### Version resolution
 
@@ -167,7 +206,8 @@ Changing the pin itself updates the lockfile too. [`proto pin`](../commands/pin.
 records of the previous specification, or with `--resolve`, migrates them to the version it pinned,
 as does [`proto outdated --update`](../commands/outdated.mdx). When the version changes, the old
 checksums are dropped, and the next [`proto install`](../commands/install.mdx) on each platform
-records new ones.
+records new ones. Or record them all at once, without installing anything, with
+[`proto lock`](#locking-without-installing).
 
 ### Checksum verification
 
@@ -204,6 +244,59 @@ pruned, as nothing pins them.
 To check a lockfile for orphaned records, duplicates, and records without a resolved version, run
 [`proto diagnose`](../commands/diagnose.mdx).
 
+## Locking without installing
+
+<VersionLabel version="0.64.0" /> Installing is how records usually get into a
+lockfile, so a lockfile only knows about the platforms that someone has
+installed on. If your team develops on macOS and CI runs on Linux, the Linux
+records don't exist until a Linux machine installs, which is too late if CI is
+[immutable](#immutable-lockfiles).
+
+[`proto lock`](../commands/lock.mdx) fills in those records without installing anything. For each
+pinned tool, it resolves the version (from the lockfile first, like an install does), downloads the
+tool's prebuilt archive for the platform, verifies it against the checksum the tool publishes, and
+writes a record. Nothing is unpacked or installed, and each download is deleted once it's verified.
+
+```shell
+# Lock every pinned tool, for this platform and every platform already locked
+$ proto lock
+
+# Lock a single tool
+$ proto lock node
+
+# Lock macOS on Apple silicon and Linux on x64, from any machine
+$ proto lock --platform arm64-macos,x64-linux
+```
+
+Without `--platform`, proto locks the current platform, plus every platform that already has a
+record for the tool. That's the quick way to fill in the checksums that changing a pin drops, like
+after [`proto outdated --update`](../commands/outdated.mdx), as every platform moves to the new
+version in one go. With `--platform`, proto locks exactly the platforms you list, instead.
+
+A platform is written as `<arch>-<os>`, like `x64-linux` or `arm64-macos`, with an optional libc on
+Linux, like `x64-linux-musl`. The operating system can come first too, as in `linux-x64-musl`, and
+Rust target triples like `x86_64-unknown-linux-gnu` work as well. Every platform is locked to the
+same version, so they can't drift apart.
+
+A few things to know:
+
+- **Already locked is skipped** - A platform that already has a record with a checksum, for the same
+  version, isn't downloaded again. Pass `--force` to download it anyway, and verify it against the
+  locked checksum, which fails on a mismatch. It's a handy way to audit a lockfile.
+- **Some tools can't be locked** - Tools that install natively, like Rust and tools from
+  [backends](<../(fundamentals)/(plugin)/backend.mdx>), and tools that
+  [build from source](../guides/build-from-source.mdx), can only be verified by installing them, so
+  they're skipped. So are tools pinned in a [`.prototools`](<../(fundamentals)/config.mdx>) without a
+  lockfile.
+- **Other platforms get the default build** - A plugin can't inspect a machine it isn't running on,
+  so when locking another platform, it downloads the default [variant](#variants). A machine that
+  needs another build, like Bun's `baseline`, adds a record for it when it installs.
+- **It writes to the lockfile** - [Orphaned records](#orphaned-records) are pruned afterwards, like
+  after an install, and the command fails when `PROTO_IMMUTABLE_LOCKFILE` is set.
+
+The command prints a table of each tool and platform, with whether it was locked, already locked,
+skipped (and why), or failed. If any fail, it exits with a non-zero code.
+
 ## Immutable lockfiles
 
 In CI, the lockfile should be the source of truth, not something that the build updates. Pass
@@ -221,13 +314,17 @@ In this mode, proto never writes to the lockfile, and instead of adding a record
   the [`.prototools`](<../(fundamentals)/config.mdx>) that pins it.
 - Only other platforms have a record, so the download can't be verified against a checksum for this
   platform.
+- Only other [variants](#variants) <VersionLabel version="0.64.0" /> of the version have a record
+  for this platform, so the build this machine downloaded can't be verified. The error names the
+  build that's missing.
 
-Checksum mismatches fail as always. Both errors explain the fix: run
+Checksum mismatches fail as always. Each error explains the fix: run
 [`proto install`](../commands/install.mdx) without `--immutable-lockfile`, on the platform in
-question, and commit the changes. That second error is easy to hit when developers use macOS and CI
-runs on Linux, so install on Linux at least once, like in a container or a CI job that commits the
-result, before making CI immutable. `--immutable-lockfile` can't be combined with `--pin` or
-`--update-lockfile`, as both write to the lockfile.
+question, and commit the changes. The missing platform error is easy to hit when developers use
+macOS and CI runs on Linux, so before making CI immutable, lock Linux from your own machine with
+[`proto lock --platform x64-linux`](#locking-without-installing), and commit the result.
+`--immutable-lockfile` can't be combined with `--pin` or `--update-lockfile`, as both write to the
+lockfile.
 
 See the [CI guide](../guides/ci.mdx#immutable-lockfiles) for a complete setup.
 
@@ -240,6 +337,7 @@ The following commands read or update lockfiles:
 | [`proto install`](../commands/install.mdx)                                        | Resolves versions from records, verifies checksums, adds records, and prunes orphaned ones                                          |
 | [`proto install --update-lockfile`](../commands/install.mdx)                      | Re-resolves specifications, ignoring their records, and replaces them                                                               |
 | [`proto install --immutable-lockfile`](../commands/install.mdx)                   | Resolves and verifies from records only, and fails instead of writing                                                               |
+| [`proto lock`](../commands/lock.mdx) <VersionLabel version="0.64.0" />            | Resolves versions, and adds records for one or many platforms without installing, then prunes orphaned ones                         |
 | [`proto pin`](../commands/pin.mdx)                                                | Removes the records of the previous specification, or migrates them with `--resolve`                                                |
 | [`proto unpin`](../commands/unpin.mdx)                                            | Removes the records of the unpinned specification                                                                                   |
 | [`proto outdated`](../commands/outdated.mdx)                                      | Shows the locked version of each tool, and with `--update`, migrates records to the updated specifications                          |

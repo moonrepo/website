@@ -3,6 +3,8 @@ title: Checksum verification
 icon: FingerprintPattern
 ---
 
+import { VersionLabel } from "@/components/VersionLabel";
+
 proto downloads tools from the internet, and runs them on your machine, so it verifies every
 download before installing it. Most tools publish a checksum for each release, a hash of the archive
 that proves the download is complete and unmodified, and some sign their releases, which also proves
@@ -63,7 +65,11 @@ proto has nothing from the publisher to verify against:
   archives instead, so there's no prebuilt to verify.
 
 Reinstalling a version that's already installed, with [`proto install --force`](../commands/install.mdx),
-is compared against the checksum recorded when it was first installed, even without a lockfile.
+is compared against the checksum recorded when it was first installed, even without a lockfile. It
+also downloads the archive and its checksum file again <VersionLabel version="0.64.0" />, as they
+currently exist upstream, instead of reusing copies from the
+[HTTP cache](./http.mdx#response-caching). To check every locked checksum against upstream without
+installing anything, run [`proto lock --force`](./lockfile.mdx#locking-without-installing).
 
 ## SHA checksums
 
