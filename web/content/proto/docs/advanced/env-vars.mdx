@@ -3,26 +3,226 @@ title: Environment variables
 icon: GlobeCode
 ---
 
+proto interacts with environment variables in two directions:
+
+- **[Variables proto sets](#variables-proto-sets)** - Added to the environment of the tools it runs,
+  so they, and every process they spawn, use the same versions, and to your shell by
+  [activation](<../(fundamentals)/workflows.mdx#shell-activation>).
+- **[Variables proto reads](#variables-proto-reads)** - Read from your shell to configure proto
+  itself, like its [global options](#global-options), [settings](#settings), and the
+  [version of a tool](#version-overrides) to run.
+
 ## Variables proto sets
 
 ### Within tool processes
 
+When proto runs a tool, through a [shim](<../(fundamentals)/workflows.mdx#shims>),
+[`proto run`](../commands/run.mdx), [`proto exec`](../commands/exec.mdx), or
+[`proto shell`](../commands/shell.mdx), it adds the following to the tool's environment. Child
+processes inherit them, so a script that a tool runs, or a tool that spawns another, keeps using the
+same versions, even when it changes into a directory that pins another version.
+
+| Variable               | Description                                                                                                                                                                                                                                                                                                             |
+| :--------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PATH`                 | Prepended with the executable directories of the tool, and the directories where executables of its globally installed packages live. For [`proto exec`](../commands/exec.mdx) and [`proto shell`](../commands/shell.mdx), with the directories of every tool given.                                                    |
+| `PROTO_<TOOL>_VERSION` | The resolved version of the tool, and of every tool it requires. Running `npm` sets `PROTO_NPM_VERSION` and `PROTO_NODE_VERSION`, so `node` processes that npm spawns run the same Node.js version. See [version overrides](#version-overrides).                                                                        |
+| `PROTO_VERSION`        | The version of proto that ran the tool, so shims called by the tool run with the same proto.                                                                                                                                                                                                                            |
+| Configured variables   | The variables of [`[env]`](<../(fundamentals)/config.mdx#env>), [`[tools.*.env]`](<../(fundamentals)/config.mdx#tools-env>), and [`[backends.*.env]`](<../(fundamentals)/config.mdx#backends-env>), and any that the tool's plugin adds. See [order of precedence](<../(fundamentals)/config.mdx#order-of-precedence>). |
+| `NO_COLOR`             | Set to `1`, with `FORCE_COLOR` removed, when proto prints JSON or NDJSON output, which is the default when an AI agent runs proto. See [reporting](../guides/reporting.mdx).                                                                                                                                            |
+
 ### Within shims
+
+A shim runs [`proto run`](../commands/run.mdx), so tools that run through a shim receive everything
+[above](#within-tool-processes), plus the following:
+
+| Variable          | Description                                                                               |
+| :---------------- | :---------------------------------------------------------------------------------------- |
+| `PROTO_SHIM_NAME` | The name of the shim that was executed, like `npx`.                                       |
+| `PROTO_SHIM_PATH` | The absolute path to the shim, like `~/.proto/shims/npx`.                                 |
+| Plugin variables  | Variables that the tool's plugin defines for the shim, in `~/.proto/shims/registry.json`. |
+
+### Within shell activation
+
+[Shell activation](<../(fundamentals)/workflows.mdx#shell-activation>) exports variables into your
+shell session, and removes them again when you leave the directory, or
+[deactivate](<../(fundamentals)/workflows.mdx#deactivating>):
+
+| Variable                               | Description                                                                                                                                                                      |
+| :------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PATH`                                 | Prepended with the executable and globals directories of each activated tool, followed by `~/.proto/shims` and `~/.proto/bin`, unless `--no-shim` or `--no-bin` is passed.       |
+| Configured variables                   | The variables of [`[env]`](<../(fundamentals)/config.mdx#env>) and [`[tools.*.env]`](<../(fundamentals)/config.mdx#tools-env>), and any that the plugins of activated tools add. |
+| `PROTO_HOME`                           | The [store](<../(fundamentals)/store.mdx>) directory, when it isn't set already.                                                                                                 |
+| `PROTO_VERSION`, `PROTO_PROTO_VERSION` | The [pinned proto version](<../(fundamentals)/config.mdx#pinning-proto>), when there is one, so `proto` and every shim run that version. Otherwise, `PROTO_VERSION` is unset.    |
+| `_PROTO_ACTIVATED_*`                   | Bookkeeping of what the hook applied, so that the next run can undo it. Don't set or edit these.                                                                                 |
+
+Activation doesn't set `PROTO_<TOOL>_VERSION` for other tools, as tools resolve straight to their
+installed executables instead.
 
 ## Variables proto reads
 
+Boolean variables that mirror a command line flag, like `PROTO_YES` for `--yes`, only accept `true`
+or `false`, and any other value is an error. Every other boolean variable is enabled by `1`, `true`,
+`yes`, or `on`, in any case, and disabled by anything else, unless its description says otherwise.
+
 ### Global options
+
+The [global options](../commands/overview.mdx) of every command can also be set with an environment
+variable. A flag on the command line takes precedence.
+
+| Variable                  | Option                | Description                                                                                                                                                                                      |
+| :------------------------ | :-------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PROTO_CONFIG_MODE`       | `--config-mode`, `-c` | The [resolution mode](<../(fundamentals)/config.mdx#resolution-modes>) used to load configuration: `global`, `local`, `upwards`, or `upwards-global` (or `all`). Defaults to a mode per command. |
+| `PROTO_DUMP`              | `--dump`              | Write a trace profile of the command to the current directory. See [profiling](../guides/troubleshooting.mdx#profiling).                                                                         |
+| `PROTO_JSON`              | `--json`              | Print the output of commands that support it as JSON.                                                                                                                                            |
+| `PROTO_LOG`               | `--log`, `-l`         | The log level: `off`, `error`, `warn`, `info` (default), `debug`, `trace`, or `verbose`, which also logs spans. See [logging](../guides/troubleshooting.mdx#logging).                            |
+| `PROTO_LOG_FILE`          | `--log-file`          | A file to write logs to, in addition to the terminal.                                                                                                                                            |
+| `PROTO_OTEL`              | `--otel`              | Export traces and metrics with OpenTelemetry, configured with the standard `OTEL_*` variables. See [OpenTelemetry](../guides/opentelemetry.mdx).                                                 |
+| `PROTO_OTEL_LOGS`         | `--otel-logs`         | Also export logs with OpenTelemetry.                                                                                                                                                             |
+| `PROTO_OTEL_SERVICE_NAME` | `--otel-service-name` | The service name to export telemetry with, instead of `OTEL_SERVICE_NAME`.                                                                                                                       |
+| `PROTO_REPORTER`          | `--reporter`, `-r`    | How output is printed: `text`, `json`, or `ndjson`. Defaults to `ndjson` when an AI agent is detected, and `text` otherwise. See [reporting](../guides/reporting.mdx).                           |
+| `PROTO_THEME`             | `--theme`, `-t`       | The color theme of the output: `dark` (default) or `light`.                                                                                                                                      |
+| `PROTO_YES`               | `--yes`, `-y`         | Skip every prompt, and use its default. Prompts are also skipped in CI.                                                                                                                          |
+
+[`proto install`](../commands/install.mdx) also reads `PROTO_IMMUTABLE_LOCKFILE`, for its
+`--immutable-lockfile` option. See [immutable lockfiles](./lockfile.mdx#immutable-lockfiles).
 
 ### Settings
 
+Many [`[settings]`](<../(fundamentals)/config.mdx#settings>) can be set with an environment variable
+instead, which takes precedence over every [`.prototools`](<../(fundamentals)/config.mdx>). As the
+variable comes from your environment, not a file, it applies whether or not the configuration is
+[trusted](<../(fundamentals)/trust.mdx>). The variables for
+[`[settings.offline]`](<../(fundamentals)/config.mdx#settingsoffline>) are listed under
+[offline](#offline).
+
+| Variable                              | Setting                                                                                   | Values                                                       |
+| :------------------------------------ | :---------------------------------------------------------------------------------------- | :----------------------------------------------------------- |
+| `PROTO_AUTO_CLEAN`                    | [`auto-clean`](<../(fundamentals)/config.mdx#auto-clean>)                                 | Boolean                                                      |
+| `PROTO_AUTO_INSTALL`                  | [`auto-install`](<../(fundamentals)/config.mdx#auto-install>)                             | Boolean                                                      |
+| `PROTO_CACHE_DURATION`                | [`cache-duration`](<../(fundamentals)/config.mdx#cache-duration>)                         | Number of seconds                                            |
+| `PROTO_COMMUNITY_TOOLS`               | [`community-tools`](<../(fundamentals)/config.mdx#community-tools>)                       | Boolean                                                      |
+| `PROTO_DETECT_STRATEGY`               | [`detect-strategy`](<../(fundamentals)/config.mdx#detect-strategy>)                       | `first-available`, `prefer-prototools`, or `only-prototools` |
+| `PROTO_PIN_LATEST`                    | [`pin-latest`](<../(fundamentals)/config.mdx#pin-latest>)                                 | `closest`, `global`, `local`, or `user`                      |
+| `PROTO_TELEMETRY`                     | [`telemetry`](<../(fundamentals)/config.mdx#telemetry>)                                   | Boolean                                                      |
+| `PROTO_BUILD_EXCLUDE_PACKAGES`        | [`build.exclude-packages`](<../(fundamentals)/config.mdx#exclude-packages>)               | Comma-separated list of packages                             |
+| `PROTO_BUILD_INSTALL_SYSTEM_PACKAGES` | [`build.install-system-packages`](<../(fundamentals)/config.mdx#install-system-packages>) | Boolean                                                      |
+| `PROTO_BUILD_WRITE_LOG_FILE`          | [`build.write-log-file`](<../(fundamentals)/config.mdx#write-log-file>)                   | Boolean                                                      |
+
+Other settings, like [`[settings.http]`](<../(fundamentals)/config.mdx#settingshttp>),
+[`lockfile`](<../(fundamentals)/config.mdx#lockfile>), and
+[`url-rewrites`](<../(fundamentals)/config.mdx#url-rewrites>), can only be configured in a file.
+
 ### Version overrides
+
+`PROTO_<TOOL>_VERSION` overrides the [detected version](<../(fundamentals)/detection.mdx#2-environment-variable>)
+of a tool, for a single command or a whole session. It takes precedence over every
+[`.prototools`](<../(fundamentals)/config.mdx>) and ecosystem file, and only a version passed on the
+command line wins over it. The value is any
+[version specification](<../(fundamentals)/version-spec.mdx>), and an empty value is ignored.
+
+```shell
+# Run Node.js 20 for one command, through its shim
+$ PROTO_NODE_VERSION=20 node --version
+
+# Use Python 3.12 for the rest of the session
+$ export PROTO_PYTHON_VERSION=3.12
+```
+
+`<TOOL>` is the tool's [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>),
+uppercased, with dashes converted to underscores, and every other character that isn't a letter,
+number, or underscore removed. A [backend](<../(fundamentals)/(plugin)/backend.mdx>) prefix isn't
+included:
+
+| Tool                 | Variable                     |
+| :------------------- | :--------------------------- |
+| `node`               | `PROTO_NODE_VERSION`         |
+| `my-tool`            | `PROTO_MY_TOOL_VERSION`      |
+| `npm:typescript`     | `PROTO_TYPESCRIPT_VERSION`   |
+| `npm:@biomejs/biome` | `PROTO_BIOMEJSBIOME_VERSION` |
+| `proto`              | `PROTO_PROTO_VERSION`        |
+
+proto also [sets these variables](#within-tool-processes) for the tools it runs, so a value you see
+inside a tool's process may come from proto, not from you.
 
 ### Store and paths
 
+| Variable            | Description                                                                                                                                                                                                                                                               |
+| :------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `PROTO_HOME`        | The location of the [store](<../(fundamentals)/store.mdx#store-location>), where tools, plugins, shims, and the global [`.prototools`](<../(fundamentals)/config.mdx#locations>) live. Use an absolute path. Defaults to `$XDG_DATA_HOME/proto`, or `~/.proto` otherwise. |
+| `XDG_DATA_HOME`     | When `PROTO_HOME` isn't set, the store is located at `$XDG_DATA_HOME/proto`.                                                                                                                                                                                              |
+| `PROTO_TEMP_DIR`    | Replaces the store's `temp` directory, where downloads are staged.                                                                                                                                                                                                        |
+| `PROTO_PLUGINS_DIR` | Replaces the store's `plugins` directory, for example to share downloaded plugins between stores.                                                                                                                                                                         |
+| `PROTO_ENV`         | Enables [environment mode](<../(fundamentals)/config.mdx#environment-mode>), which also loads `.prototools.<env>` files, like `.prototools.production` when set to `production`.                                                                                          |
+
+Set these in your shell profile, so that every session, and every shim, resolves the same
+directories. See [moving the store](<../(fundamentals)/store.mdx#moving-the-store>).
+
 ### Trust
+
+| Variable              | Description                                                                                                                                                                                                                                                         |
+| :-------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `PROTO_TRUSTED_PATHS` | Directories whose configs are [trusted automatically](<../(fundamentals)/trust.mdx#automatically-trusted>), separated by `:` (or `;` on Windows). Use absolute paths.                                                                                               |
+| `CI`                  | When set to any value other than `false`, proto is running in CI, and every config is trusted. Variables of CI providers, like `GITHUB_ACTIONS` or `GITLAB_CI`, are detected too. In CI, prompts are also skipped. See [trust in CI](../guides/ci.mdx#trust-in-ci). |
+
+Neither variable has an effect when it was set by shell activation, from a config's
+[`[env]`](<../(fundamentals)/config.mdx#env>), so a config can't use them to trust itself.
+
+### Network
+
+| Variable                                                          | Description                                                                                                                                                                                                                                                                                              |
+| :---------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY`, `NO_PROXY`              | Standard proxy variables, in uppercase or lowercase, used when no proxies are configured in [`[settings.http]`](<../(fundamentals)/config.mdx#settingshttp>). See [proxies](./http.mdx#proxies).                                                                                                         |
+| `SSL_CERT_FILE`, `SSL_CERT_DIR`                                   | On Linux, certificates to trust instead of the system's CA bundle. See [certificates](./http.mdx#certificates).                                                                                                                                                                                          |
+| `NETRC`                                                           | The location of the `.netrc` file to read credentials from, instead of `~/.netrc`.                                                                                                                                                                                                                       |
+| `PROTO_GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_TOKEN`                  | A token to authenticate requests to the GitHub API, checked in that order. See [GitHub authentication](./http.mdx#github-authentication).                                                                                                                                                                |
+| `WARPGATE_HTTP_NO_TIMEOUTS`                                       | Disable the connect and read timeouts of HTTP requests. `WARPGATE_OCI_NO_TIMEOUTS` does the same for requests to OCI registries.                                                                                                                                                                         |
+| `PROTO_BUILTIN_REGISTRY_HOST`, `PROTO_BUILTIN_REGISTRY_NAMESPACE` | The OCI registry, and namespace within it, to download built-in plugins from, instead of `ghcr.io` and `moonrepo`. Set `PROTO_BUILTIN_REGISTRY_AUTH` to authenticate with your Docker credentials. See [mirroring built-in plugins](<../(fundamentals)/(plugin)/plugin.mdx#mirroring-built-in-plugins>). |
+| `PROTO_PLUGINS_USE_URL_DIST`                                      | Download built-in plugins from their GitHub releases, instead of an OCI registry.                                                                                                                                                                                                                        |
 
 ### Offline
 
+When proto is [offline](../guides/offline-mode.mdx), it uses cached versions and plugins, and skips
+requests it doesn't need. These variables control how it decides. Settings in
+[`[settings.offline]`](<../(fundamentals)/config.mdx#settingsoffline>) are applied through these
+variables too, so a variable that's already set takes precedence over them.
+
+| Variable                       | Setting                                                                           | Description                                                                                                           |
+| :----------------------------- | :-------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------- |
+| `PROTO_OFFLINE`                |                                                                                   | Skip detection: `true` or `1` forces offline mode, and `false` or `0` forces online mode. Any other value is ignored. |
+| `PROTO_OFFLINE_HOSTS`          | [`custom-hosts`](<../(fundamentals)/config.mdx#custom-hosts>)                     | Additional hosts to check, as a comma-separated list of `host:port`.                                                  |
+| `PROTO_OFFLINE_OVERRIDE_HOSTS` | [`override-default-hosts`](<../(fundamentals)/config.mdx#override-default-hosts>) | Only check the hosts in `PROTO_OFFLINE_HOSTS`, not the default hosts and DNS servers.                                 |
+| `PROTO_OFFLINE_TIMEOUT`        | [`timeout`](<../(fundamentals)/config.mdx#timeout>)                               | How long to wait for each check, in milliseconds. Defaults to `750`.                                                  |
+| `PROTO_OFFLINE_IP_VERSION`     |                                                                                   | Only check the default DNS servers over IPv4 (`4`) or IPv6 (`6`), instead of both.                                    |
+
+When an AI agent runs proto in a sandbox that reports its network policy, like one with networking
+disabled, proto follows that policy instead of running checks, unless `PROTO_OFFLINE` is set.
+
 ### Installation
 
+| Variable                         | Description                                                                                                                                                                                                              |
+| :------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PROTO_NO_MODIFY_PROFILE`        | Don't add proto to your shell profile, when running [`proto setup`](../commands/setup.mdx) or the install scripts. Only accepts `true` or `false`.                                                                       |
+| `PROTO_NO_MODIFY_PATH`           | Don't add proto to the `Path` of your user account, on Windows. Only accepts `true` or `false`.                                                                                                                          |
+| `PROTO_SHELL_PROFILE`            | The shell profile for [`proto setup`](../commands/setup.mdx) to update, instead of the default for your shell. When there are no prompts, it's only used if the file exists.                                             |
+| `PROTO_DEBUG`                    | When `true`, the install scripts print diagnostic information, to help with failed installs.                                                                                                                             |
+| `PROTO_NO_CLEAN`                 | Mark the versions that are installed while it's set, so that [`proto clean`](../commands/clean.mdx) never removes them as stale. See [cleaning](<../(fundamentals)/store.mdx#cleaning>).                                 |
+| `PROTO_AUTO_INSTALL_HIDE_OUTPUT` | Hide the progress output of [`auto-install`](<../(fundamentals)/config.mdx#auto-install>) when a shim installs a missing version. It's always hidden when the tool is run with `--version` or `--help`.                  |
+| `PROTO_SHELL`                    | The shell that plugins run commands in, like the scripts of a [build from source](../guides/build-from-source.mdx), when the plugin doesn't choose one, like `bash` or `pwsh`. By default, commands run without a shell. |
+
 ### Debugging
+
+The log level, log file, and profile are set with the [global options](#global-options), like
+`PROTO_LOG=trace`. These variables reveal more, or change what proto does in the background.
+
+| Variable                  | Description                                                                                                                                                                                            |
+| :------------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PROTO_DEBUG_SHIM`        | When set to any value, shims print each step to stderr, like how they located proto, before running the tool.                                                                                          |
+| `PROTO_DEBUG_COMMAND`     | When set to any value, the output of commands that plugins run is included in the trace logs. When set to `all` or `stream`, it's also streamed to the terminal as the commands run.                   |
+| `PROTO_DEBUG_WASM`        | Include the internal logs of the WASM runtime that plugins run in, not only the logs of the plugins themselves.                                                                                        |
+| `WARPGATE_DEBUG_CALL`     | Log the full input and output of plugin function calls at the trace level, instead of truncating large values.                                                                                         |
+| `PROTO_CACHE`             | When set to `off`, `false`, `no`, or `0`, ignore cached lists of available versions, and load them again. When offline, the cache is always used. See [response caching](./http.mdx#response-caching). |
+| `PROTO_VERSION_CHECK`     | When set to `false` or `0`, disable the check for a newer version of proto, which otherwise runs in the background at most every 12 hours.                                                             |
+| `NO_TTY`                  | Print progress as plain lines, instead of animated progress bars, like in a terminal that can't render them.                                                                                           |
+| `NO_COLOR`, `FORCE_COLOR` | Disable or force colored output, following the [`NO_COLOR`](https://no-color.org) and [`FORCE_COLOR`](https://force-color.org) conventions.                                                            |
+
+See [troubleshooting](../guides/troubleshooting.mdx) for how to put these to use.

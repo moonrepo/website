@@ -1,12 +1,123 @@
 ---
 title: Checksum verification
-icon: FileCheck
+icon: FingerprintPattern
 ---
+
+proto downloads tools from the internet, and runs them on your machine, so it verifies every
+download before installing it. Most tools publish a checksum for each release, a hash of the archive
+that proves the download is complete and unmodified, and some sign their releases, which also proves
+who published them. proto checks the download against whichever one the tool provides, and when it
+doesn't match, the install fails, and nothing is unpacked.
+
+Verification happens automatically. There's nothing to configure, and no external program, like
+`shasum` or `gpg`, needs to be installed, as proto verifies checksums and signatures itself. What
+proto verifies against is up to each tool's [plugin](<../(fundamentals)/(plugin)/plugin.mdx>).
 
 ## How verification works
 
+When installing a prebuilt archive, a tool's plugin tells proto where to download it from, and how
+to verify it, in one of two ways: the URL of a checksum or signature file, like `SHASUMS256.txt`, or
+the expected checksum itself. Signatures also come with the public key to verify them with. proto
+then:
+
+1. Downloads the archive, and the checksum file, into a temporary directory. Both URLs are
+   [rewritten](./http.mdx#url-rewrites) first, so a mirror can serve them.
+2. Detects the algorithm from the checksum file's extension, like `.sha256`, `.sha512`, `.minisig`,
+   or `.asc`, then from its name, like `SHASUMS256.txt` or `SHASUMS512.txt`, and finally from its
+   contents, by the length of the hashes in it. A file it can't identify fails the install with an
+   unknown algorithm error.
+3. Verifies the archive with that algorithm, as described in the sections below. A plugin can also
+   verify it with logic of its own, which proto uses instead.
+4. Records the verified checksum, in the tool's manifest in the [store](<../(fundamentals)/store.mdx>),
+   and in the [lockfile](./lockfile.mdx#checksum-verification), when one is enabled.
+
+When verification fails, the error names the archive, its checksum, and the file it was verified
+against:
+
+```text
+Checksum has failed for ~/.proto/temp/.../node-v24.11.0-darwin-arm64.tar.xz (sha256:9b1e...),
+which was verified against ~/.proto/temp/.../SHASUMS256.txt.
+```
+
+A failed checksum is rarely a glitch. If retrying fails too, check whether a proxy or mirror is
+serving a different file (see [HTTP requests](./http.mdx)) before suspecting the release itself.
+
+If you're writing a plugin, return a checksum URL, or a checksum, from the
+[`download_prebuilt`](../../../wasm/docs/tool.mdx#download_prebuilt) function of a WASM plugin, or
+with the `checksum-url` and `checksum-public-key` settings of a
+[schema plugin](../schema.mdx#downloading-and-installing). To verify downloads in a way proto doesn't
+support, implement [`verify_checksum`](../../../wasm/docs/tool.mdx#verify_checksum).
+
+### Tools without checksums
+
+Not every tool publishes checksums, and not every install downloads an archive. In those cases,
+proto has nothing from the publisher to verify against:
+
+- **No checksum published** - proto computes a SHA-256 checksum of the download, and records it. The
+  first download becomes the reference: with a [lockfile](./lockfile.mdx), every later install of
+  that version, on any machine with the same platform, must match it.
+- **Native installs** - Tools that install themselves, like Rust with rustup, are verified by their
+  own installer. A plugin may still report a checksum, which is recorded and compared like any
+  other.
+- **Builds from source** - [Building from source](../guides/build-from-source.mdx) downloads source
+  archives instead, so there's no prebuilt to verify.
+
+Reinstalling a version that's already installed, with [`proto install --force`](../commands/install.mdx),
+is compared against the checksum recorded when it was first installed, even without a lockfile.
+
 ## SHA checksums
+
+SHA-256 and SHA-512 checksums are the most common, like the `SHASUMS256.txt` file that Node.js
+publishes for each release, or the `.sha256` files of Go, uv, and moon. proto hashes the archive, and
+looks for a matching hash in the checksum file, which can contain one or many lines in any of the
+following formats:
+
+```text
+# Just the hash
+a6d3f2c9e4b0...
+
+# A hash and a file name, as written by sha256sum and shasum
+a6d3f2c9e4b0...  node-v24.11.0-linux-x64.tar.xz
+
+# A hash and a file name, in binary mode
+a6d3f2c9e4b0... *node-v24.11.0-linux-x64.tar.xz
+```
+
+When a line includes a file name, it must match the name of the downloaded archive exactly, so a
+single file that lists the checksum of every platform's archive verifies each one correctly. Hashes
+are compared case-insensitively, as some tools publish them in uppercase. The output of PowerShell's
+`Get-FileHash`, which some Windows releases publish instead, is supported too.
+
+A plugin can also provide the expected checksum directly, instead of a file, like one returned by a
+release API. It's verified the same way. Recorded SHA checksums are written with their algorithm,
+like `sha256:a6d3f2c9e4b0...`.
 
 ## Minisign signatures
 
+[Minisign](https://jedisct1.github.io/minisign/) is a simple tool for signing files, with small
+public keys. A signature proves that the archive was signed by the holder of a private key, which a
+checksum published next to the archive can't. If someone could replace the archive, they could
+replace its checksum as well, but not forge its signature.
+
+To verify a minisign signature, the plugin provides the URL of the signature file, with a `.minisig`
+or `.minisign` extension, and the publisher's public key, as a base64 string. proto then verifies
+the archive's signature with that key, and fails the install when it isn't valid. The recorded
+checksum is the public key, written as `minisign:<key>`.
+
 ## GPG signatures
+
+Some tools sign their releases with GPG (OpenPGP) instead, like Swift on Linux. The plugin provides
+the URL of a detached signature, with an `.asc` or `.sig` extension, and the publisher's public
+keys. proto verifies them without `gpg` installed, and supports:
+
+- **Signatures** in ASCII-armored or binary form, including files that contain multiple
+  signatures.
+- **Public keys** in ASCII-armored or binary form, including keyrings with multiple keys, and keys
+  that sign with a subkey. Each key's bindings are verified before it's used.
+
+The download is verified when any of the signatures is valid for any of the keys or their subkeys.
+Otherwise, the install fails.
+
+For signed tools, the recorded checksum identifies the key, not the archive itself. A
+[lockfile](./lockfile.mdx) then confirms that later downloads are signed by the same key, rather than
+that they're byte-for-byte identical.
