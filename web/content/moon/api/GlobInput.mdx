@@ -8,10 +8,22 @@ A glob pattern input.
 
 | Property | Type | Description |
 | --- | --- | --- |
+| [`affectedOnly`](#affectedonly) | `boolean` | Only use the glob to determine affected status, and exclude its files from the task's hash and affected files. |
 | [`cache`](#cache) | `boolean` | Cache the glob walking result for increased performance. |
 | [`glob`](#glob) | `string` | The glob pattern. |
 
 ## Properties
+
+### `affectedOnly`
+
+> **Optional**
+
+Only use the glob to determine affected status, and exclude
+its files from the task's hash and affected files.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
 
 ### `cache`
 

@@ -350,13 +350,8 @@ downloading a prebuilt archive. Versions that are already installed are reused.
 
 ## Caveats
 
-- **Gem versions aren't hashed.** Resolved gem versions don't contribute to task hashes. A task with default inputs already includes its own project's lockfile, but if the lockfile lives elsewhere (like a shared root) or you've configured explicit [`inputs`](/moon/api/TaskConfig#inputs), add the lockfile (for example `/Gemfile.lock`) to them.
-- **Projects under a shared root `Gemfile` aren't installed.** Environment setup and installs only happen for a project whose root _is_ the dependencies root. Run `bundle install` at the root yourself (for example, as a CI step), or give each project its own `Gemfile`. [`moon setup`](../commands/setup.mdx) configures Bundler when the dependencies root is the workspace root, but doesn't install gems.
 - **Project `bundlePath` overrides install on every run.** moon checks for installed gems in the workspace's `bundlePath`, so when a project overrides it, moon never finds them and reinstalls on every run. Configure `bundlePath` in [`.moon/toolchains.config`](<../(fundamentals)/toolchain.mdx>) only.
-- **Existing Bundler config wins.** Because environment setup is skipped when `.bundle/config` exists, `bundlePath` and `frozen` aren't applied to roots that already have one, including after you change these settings. Delete the `.bundle/config` file to let moon configure it again.
-- **Vendor directories aren't pruned.** The Ruby toolchain doesn't clean up `bundlePath` directories during [`moon docker prune`](../commands/docker/prune.mdx), so [`docker.prune.deleteVendorDirectories`](/moon/api/DockerPruneConfig#deletevendordirectories) has no effect for Ruby.
-- **`Gemfile` scanning is best-effort.** Dynamic paths (like `File.expand_path(...)`), `git:` gems, and the `gemspec` directive are ignored, and the project graph only scans files named `Gemfile`, not `gems.rb`. Use [`dependsOn`](/moon/api/ProjectConfig#dependson) for anything moon can't infer.
-- **Frozen mode persists.** With `frozen` enabled, the setting is written to `.bundle/config`, so it also applies to `bundle` commands you run manually in that root.
+- **`Gemfile` scanning is best-effort.** Dynamic paths (like `File.expand_path(...)`) and `git:` gems are ignored. Use [`dependsOn`](/moon/api/ProjectConfig#dependson) for anything moon can't infer.
 - **Limited platforms for managed Ruby.** On platforms without a pre-built Ruby (see
   [installing with proto](#installing-with-proto)), either leave `version` unset and install Ruby
   yourself, or build it ahead of time with proto

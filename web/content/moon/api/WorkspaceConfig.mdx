@@ -19,7 +19,7 @@ Docs: https://moonrepo.dev/docs/config/workspace
 | [`docker`](#docker) | [`DockerConfig`](./DockerConfig.mdx) | Configures Docker integration for the workspace. |
 | [`experiments`](#experiments) | [`ExperimentsConfig`](./ExperimentsConfig.mdx) | Configures experiments across the entire moon workspace. |
 | [`extends`](#extends) | [`ExtendsFrom`](./ExtendsFrom.mdx) | Extends one or many workspace configuration file. Supports a relative file path or a secure URL. |
-| [`hasher`](#hasher) | [`HasherConfig`](./HasherConfig.mdx) | Configures aspects of the content hashing engine. |
+| [`hasher`](#hasher) | [`HasherConfig`](./HasherConfig.mdx) | Configures aspects of the task hashing engine. |
 | [`notifier`](#notifier) | [`NotifierConfig`](./NotifierConfig.mdx) | Configures how and where notifications are sent. |
 | [`pipeline`](#pipeline) | [`PipelineConfig`](./PipelineConfig.mdx) | Configures aspects of the action pipeline. |
 | [`projects`](#projects) | [`WorkspaceProjects`](./WorkspaceProjects.mdx) | Configures all projects within the workspace to create a project graph. Accepts a list of globs, a mapping of projects to relative file paths, or both values. |
@@ -138,7 +138,7 @@ Supports a relative file path or a secure URL.
 
 > **Required**
 
-Configures aspects of the content hashing engine.
+Configures aspects of the task hashing engine.
 
 | Attribute | Value |
 | --- | --- |

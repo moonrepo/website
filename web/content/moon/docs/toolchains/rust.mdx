@@ -506,31 +506,17 @@ directory. As a result, `cargo` and `rustc` run through rustup's proxies, so rus
 
 ## Caveats
 
-- **Configuring `version` doesn't pin the toolchain that runs.** rustup's proxies choose the toolchain, so without a matching
-  `rust-toolchain.toml`, tasks run your default toolchain. This also applies to a project's `version` override. On a machine
-  where moon installed rustup (such as a fresh CI runner), there may be no default toolchain at all, in which case rustup
-  errors instead. Enable [`syncToolchainConfig`](#syncing-rust-toolchaintoml) to keep them aligned.
 - **Nested Cargo workspace roots aren't scaffolded unless they're projects.**
   [`moon docker scaffold`](../commands/docker/scaffold.mdx) only copies files from the workspace root and each project's
   root, so the `Cargo.toml` and `Cargo.lock` of a Cargo workspace like `tools` in the
   [nested layout](#nested-crates-and-workspaces) are left out. Map that directory to a project, or add its files to
   [`docker.scaffold.configsPhaseGlobs`](/moon/api/DockerScaffoldConfig#configsphaseglobs).
-- **Docker pruning only preserves `release` and `debug` binaries.** Binaries built with a custom profile or for an explicit
-  `--target` (like `target/x86_64-unknown-linux-musl/release`) are deleted along with the rest of `target`. A custom target
-  directory (`CARGO_TARGET_DIR` or `build.target-dir`) isn't pruned at all. Disable
-  [`docker.prune.deleteVendorDirectories`](/moon/api/DockerPruneConfig#deletevendordirectories) if you need these.
 - **Some dependencies aren't included in task hashes.** Dev and build dependencies that use `workspace = true`, dependencies
   in target-specific tables, and git dependencies without a `version` aren't resolved against `Cargo.lock`, so upgrading them
   doesn't invalidate the cache. Add the root `Cargo.lock` to the task's [inputs](<../(fundamentals)/task.mdx#inputs>) if
   these matter.
-- **Only direct `path` dependencies become project relationships.** Dependencies inherited from the workspace
-  (`utils = { workspace = true }`), even when `[workspace.dependencies]` declares a `path`, aren't linked. Neither are
-  dependencies in target-specific tables (`[target.'cfg(unix)'.dependencies]`), or renamed dependencies whose key doesn't
-  match the crate's `package.name`. Declare those relationships with [`dependsOn`](/moon/api/ProjectConfig#dependson).
 - **`moon teardown` affects rustup globally.** Toolchains live in rustup's shared directory, so tearing down removes that
   toolchain for every project on the machine, not only this workspace.
 - **Crates aren't pre-fetched.** Since installing dependencies only generates a lockfile, crates are downloaded by the first
   Cargo command that needs them. In a `Dockerfile`, run `cargo fetch` after
   [`moon docker setup`](../commands/docker/setup.mdx) if you want crates cached in their own layer.
-- **Installing `cargo-binstall` compiles from source.** The first environment setup with `bins` runs
-  `cargo install cargo-binstall`, which can take a few minutes. Pre-install `cargo-binstall` in CI images to avoid the delay.

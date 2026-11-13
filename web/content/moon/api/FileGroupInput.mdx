@@ -8,10 +8,22 @@ A file group input.
 
 | Property | Type | Description |
 | --- | --- | --- |
+| [`affectedOnly`](#affectedonly) | `boolean` | Only use the files and globs of the group to determine affected status, and exclude them from the task's hash and affected files. |
 | [`format`](#format) | [`FileGroupInputFormat`](./FileGroupInputFormat.mdx) | Format to resolve the file group into. |
 | [`group`](#group) | [`Id`](./Id.mdx) | The file group identifier. |
 
 ## Properties
+
+### `affectedOnly`
+
+> **Optional**
+
+Only use the files and globs of the group to determine affected
+status, and exclude them from the task's hash and affected files.
+
+| Attribute | Value |
+| --- | --- |
+| Type | `boolean` |
 
 ### `format`
 
