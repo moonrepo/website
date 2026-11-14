@@ -3,12 +3,233 @@ title: MCP integration
 icon: Bot
 ---
 
+import { TypeLabel } from "@/components/TypeLabel";
+
+The [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) is a standard way for AI agents
+and editors to call tools and read data from other programs. proto ships an MCP server,
+[`proto mcp`](../commands/mcp.mdx), that lets an agent manage your toolchain: install and uninstall
+versions of a [tool](<../(fundamentals)/(plugin)/tool.mdx>), look up the versions it can install,
+and read the configuration and environment of your project, all as structured JSON instead of
+terminal output.
+
+Agents that run shell commands can also use the proto CLI directly, which prints NDJSON when it
+detects an agent (see [AI agents and bots](./reporting.mdx#ai-agents-and-bots)). Reach for the MCP
+server when your client works better with tools than with shell commands, or when you'd rather give
+an agent a small set of well-defined actions than a whole shell.
+
 ## How it works
+
+Your client starts [`proto mcp`](../commands/mcp.mdx) as a child process, and talks to it over stdin
+and stdout. You don't run the server yourself: the client starts it when it needs it, and stops it
+when it's done.
+
+- **Configuration is loaded once** - When the server starts, it loads the
+  [`.prototools`](<../(fundamentals)/config.mdx>) files that apply to the directory the client starts
+  it in, usually the open project. It uses the
+  [`upwards-global`](<../(fundamentals)/config.mdx#upwards-global>) resolution mode, so your global
+  pins are included, unless you pass the global `--config-mode` option. Changes made while it runs,
+  including pins made through the server, aren't visible until the client restarts it.
+- **Trust applies as usual** - Security-sensitive settings in untrusted configs are ignored, like
+  they are for every other command. The server has no way to trust a config, so an agent can't
+  enable those settings on its own. Run [`proto trust`](../commands/trust.mdx) yourself (see
+  [trust](<../(fundamentals)/trust.mdx>)).
+- **Errors go back to the agent** - When a tool call fails, like when a version doesn't exist, the
+  agent receives proto's error message as the result, so it can correct the call and try again.
+
+[`install_tool`](#install_tool) and [`uninstall_tool`](#uninstall_tool) change what's installed on
+your machine, so consider keeping your client's approval prompt for them.
 
 ## Setup
 
+Register a stdio server in your client, with `proto` as the command and `mcp` as its only argument.
+Then restart or reload the client, and check that it lists the server's tools.
+
+The client has to find `proto` on its `PATH`. Editors launched from a desktop shortcut, instead of a
+terminal, often don't inherit the `PATH` from your shell profile. If the server fails to start, use
+the absolute path to proto as the command instead, like `/Users/me/.proto/bin/proto`. JSON files
+don't expand `~`, so write out the full path.
+
+Most clients also accept an `env` object for each server, to pass variables that the server
+wouldn't receive otherwise. For example, `PROTO_HOME` when you've
+[moved the store](<../(fundamentals)/store.mdx#moving-the-store>), or a `GITHUB_TOKEN` for
+[GitHub authentication](../advanced/http.mdx#github-authentication).
+
+### Claude Code
+
+Add the server with `claude mcp add`. By default, it's only available to you, in the current
+project. Pass `--scope project` to write it to a `.mcp.json` file at the root of the repository
+instead, which you can commit to share the server with your team.
+
+```shell
+# Add the server for yourself, in the current project
+$ claude mcp add proto -- proto mcp
+
+# Add the server to .mcp.json, to share with your team
+$ claude mcp add --scope project proto -- proto mcp
+```
+
+```json title=".mcp.json"
+{
+  "mcpServers": {
+    "proto": {
+      "command": "proto",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+### Cursor
+
+Add the server to `.cursor/mcp.json` in your project, or to `~/.cursor/mcp.json` to make it available
+in every project.
+
+```json title=".cursor/mcp.json"
+{
+  "mcpServers": {
+    "proto": {
+      "command": "proto",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+### VS Code
+
+Add the server to `.vscode/mcp.json` in your workspace. Unlike other clients, VS Code lists servers
+under a `servers` key, with a `type` for each.
+
+```json title=".vscode/mcp.json"
+{
+  "servers": {
+    "proto": {
+      "type": "stdio",
+      "command": "proto",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+### Other clients
+
+Most other clients accept the same `mcpServers` format as Claude Code and Cursor, though where the
+file lives varies, so check your client's documentation. A client that isn't tied to a project only
+sees the configuration of the directory it starts the server in, which may only be your user and
+global [`.prototools`](<../(fundamentals)/config.mdx>).
+
 ## Available tools
+
+The `tool` input of every tool is a tool's
+[identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>), like `node`, or a
+[backend-prefixed](<../(fundamentals)/(plugin)/tool.mdx#backend-prefixed>) one, like
+`npm:typescript`. Run [`proto mcp --info`](../commands/mcp.mdx) to list the tools of your proto
+version.
+
+### `get_config`
+
+Returns the merged configuration for the server's directory: every pin, setting, and plugin that
+applies, as [`proto debug config`](../commands/debug/config.mdx) shows it. It takes no inputs. Read
+the [`proto://config`](#available-resources) resource to also see which files it was merged from.
+
+### `install_tool`
+
+Installs a version of a tool, like [`proto install`](../commands/install.mdx) does for a single
+tool. A version that's already installed is skipped, and [lockfiles](../advanced/lockfile.mdx) are
+followed like they are for the command.
+
+- `tool` <TypeLabel type="string" /> - The tool to install. Required.
+- `spec` <TypeLabel type="string" /> - The [version specification](<../(fundamentals)/version-spec.mdx>)
+  to install, like `24`, `24.11.0`, or `lts`. Defaults to `latest`. Unlike
+  [`proto install`](../commands/install.mdx), the version configured for the directory isn't used,
+  so pass it explicitly.
+- `pin` <TypeLabel type="boolean" /> - Pin the resolved version, like `24.11.0`, to the
+  [closest](<../(fundamentals)/config.mdx#closest>) [`.prototools`](<../(fundamentals)/config.mdx>).
+  Defaults to `false`.
+- `force` <TypeLabel type="boolean" /> - Reinstall the version, even when it's already installed.
+  Defaults to `false`.
+
+The result contains `installed`, whether the version is now installed, and `spec`, the version that
+the specification resolved to. Like the command, a tool that
+[requires](<../(fundamentals)/config.mdx#tools-requires>) another fails to install unless that tool
+has a version pinned.
+
+### `list_tool_versions`
+
+Lists the versions of a tool that are available to install, and those that are installed, like
+[`proto versions`](../commands/versions.mdx).
+
+- `tool` <TypeLabel type="string" /> - The tool to list versions of. Required.
+- `filter` <TypeLabel type="string" /> - Only list available versions that match a
+  [requirement](<../(fundamentals)/version-spec.mdx#requirements-and-ranges>), like `^20` or `>=18`.
+  Ranges, like `^20 || ^22`, aren't supported.
+- `all` <TypeLabel type="boolean" /> - List every available version, instead of the newest 25.
+  Defaults to `false`.
+
+The result contains `versions`, newest first, `installedVersions`, and `aliases`, which maps each
+[alias](<../(fundamentals)/version-spec.mdx#aliases>) of the tool, like `lts`, to its version.
+
+### `uninstall_tool`
+
+Removes an installed version of a tool from the [store](<../(fundamentals)/store.mdx>), like
+[`proto uninstall`](../commands/uninstall.mdx) with a version.
+
+- `tool` <TypeLabel type="string" /> - The tool to uninstall. Required.
+- `spec` <TypeLabel type="string" /> - The [version specification](<../(fundamentals)/version-spec.mdx>)
+  to uninstall. A partial version, like `20`, resolves to the highest installed version that matches.
+  Required.
+
+The result contains `uninstalled`, which is `false` when the version wasn't installed, and `spec`,
+the version that the specification resolved to.
 
 ## Available resources
 
+Resources are read-only JSON documents that a client can add to an agent's context. Like the tools,
+they're loaded for the server's directory.
+
+| URI              | Name            | Contents                                                                                                                                                                                                                                                                                                                                 |
+| :--------------- | :-------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `proto://config` | Configuration   | The working directory, the [resolution mode](<../(fundamentals)/config.mdx#resolution-modes>), the [`.prototools`](<../(fundamentals)/config.mdx>) files that were loaded, and the configuration they merge into. Like [`proto debug config`](../commands/debug/config.mdx).                                                             |
+| `proto://env`    | Environment     | The working directory, the store directory, the [environment mode](<../(fundamentals)/config.mdx#environment-mode>), the variables of [`[env]`](<../(fundamentals)/config.mdx#env>) and the `.env` files it loads, the version of proto, and the operating system and architecture. Like [`proto debug env`](../commands/debug/env.mdx). |
+| `proto://tools`  | Installed tools | Every tool that has a version pinned, with its directory in the store, and its installed versions.                                                                                                                                                                                                                                       |
+
 ## Troubleshooting
+
+Start by checking what the server provides, without connecting a client.
+[`proto mcp --info`](../commands/mcp.mdx) prints its tools and resources, along with the proto
+version and MCP protocol versions it supports.
+
+```shell
+# List the tools and resources the server provides
+$ proto mcp --info
+```
+
+- **The server doesn't start** - The client most likely can't find `proto`, so use its absolute path
+  as the command (see [setup](#setup)). Running the same command in a terminal, from your project,
+  shows any error it fails with.
+- **The agent sees outdated configuration** - The server loads configuration once, so restart it
+  after editing a [`.prototools`](<../(fundamentals)/config.mdx>), or after pinning a version
+  through it. Most clients can restart a single server from their MCP settings.
+- **The agent sees the wrong configuration** - Read the [`proto://config`](#available-resources)
+  resource, whose `workingDir` and `configFiles` show where the server started, and which files it
+  loaded. If a file is loaded, but its settings are ignored, it's likely not trusted (see
+  [settings are ignored](./troubleshooting.mdx#settings-aliases-or-plugins-are-ignored)).
+- **A tool call fails** - The agent receives the error, but the details are in proto's logs. The
+  server writes them to stderr, which your client may hide, so write them to a file instead, by
+  adding the [logging options](./troubleshooting.mdx#logging) to the server's arguments. Use an
+  absolute path, as a relative one is resolved from the server's directory.
+
+```json title=".mcp.json"
+{
+  "mcpServers": {
+    "proto": {
+      "command": "proto",
+      "args": ["mcp", "--log", "debug", "--log-file", "/tmp/proto-mcp.log"]
+    }
+  }
+}
+```
+
+Installing a tool and listing its versions need a network connection, unless the versions are
+already cached. See [offline mode](./offline-mode.mdx) for how proto behaves without one.

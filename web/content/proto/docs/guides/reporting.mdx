@@ -3,8 +3,145 @@ title: Reporting
 icon: ScrollText
 ---
 
+Everything a proto command prints goes through a _reporter_, which decides what the output looks
+like: tables, colors, and progress bars for people, or JSON for scripts, CI pipelines, and AI agents.
+You choose one with the global [`--reporter`](../commands/overview.mdx#output-formats) option (or
+`PROTO_REPORTER`), and the same command then produces the same information in a different shape.
+
+```shell
+# Human-readable output, the default
+$ proto status
+
+# A single JSON document, for scripts
+$ proto status --json
+
+# A stream of JSON events, one per line
+$ proto status --reporter ndjson
+```
+
 ## Reporters
+
+- `text` _(default)_ - Human-readable output, with tables, colors, and progress bars. When stdout
+  isn't a terminal, like when piped to a file, or when `NO_TTY` is set, progress bars are printed as
+  plain lines instead. Also available as `human` and `user`.
+- `json` - The data of a command, as a single, pretty-printed JSON document. Use it in scripts that
+  read a command's result once it's done. `--json` is a shorthand. Also available as `data`.
+- `ndjson` - One JSON object per line, streamed as the command runs, including progress, notices,
+  and errors. Use it for programs that follow a command while it runs, like an AI agent or an editor
+  integration. Also available as `agent` and `bot`.
+
+When both `--json` and `--reporter` are passed, a JSON reporter wins, so `--json --reporter ndjson`
+prints NDJSON, and `--json --reporter text` prints JSON. The JSON reporters never include colors:
+proto sets `NO_COLOR=1`, and removes `FORCE_COLOR`, for itself and the tools it runs.
+
+Output goes to stdout, unless something else needs it:
+
+- [`proto run`](../commands/run.mdx), [`proto exec`](../commands/exec.mdx),
+  [`proto shell`](../commands/shell.mdx), and shims print to stderr, as stdout belongs to the tool.
+- [`proto activate`](../commands/activate.mdx) and [`proto deactivate`](../commands/deactivate.mdx)
+  print shell code for your shell to evaluate, unless you explicitly pass `--json` or
+  `--reporter json` (without `--export`).
+- [`proto mcp`](../commands/mcp.mdx) speaks the MCP protocol over stdout, unless you pass `--info`.
+
+Logs are always written to stderr, so they never mix with a command's output. With the `ndjson`
+reporter, logs are JSON objects too, one per line.
 
 ## JSON output
 
+The following commands print their data as JSON, with either JSON reporter. Each command's page
+describes what it contains:
+
+- [`proto activate`](../commands/activate.mdx) and [`proto deactivate`](../commands/deactivate.mdx)
+- [`proto clean`](../commands/clean.mdx)
+- [`proto debug config`](../commands/debug/config.mdx) and
+  [`proto debug env`](../commands/debug/env.mdx)
+- [`proto diagnose`](../commands/diagnose.mdx)
+- [`proto lock`](../commands/lock.mdx)
+- [`proto mcp --info`](../commands/mcp.mdx)
+- [`proto outdated`](../commands/outdated.mdx)
+- [`proto plugin info`](../commands/plugin/info.mdx),
+  [`proto plugin list`](../commands/plugin/list.mdx), and
+  [`proto plugin search`](../commands/plugin/search.mdx)
+- [`proto status`](../commands/status.mdx)
+- [`proto upgrade`](../commands/upgrade.mdx)
+- [`proto versions`](../commands/versions.mdx)
+
+```shell
+# List the tools that have a newer version available
+$ proto outdated --json | jq -r 'to_entries[] | select(.value.is_outdated) | .key'
+
+# Use the resolved configuration in a script
+$ proto debug config --json > config.json
+```
+
+Requesting JSON can change what a command does. For example,
+[`proto upgrade`](../commands/upgrade.mdx) only reports whether an upgrade is available, instead of
+upgrading. Commands without data, like [`proto install`](../commands/install.mdx), print their
+messages and notices as JSON instead.
+
+Always check the exit code, which is non-zero when a command fails. With the `json` reporter, the
+error itself is printed to stderr as text.
+
+### NDJSON events
+
+With the `ndjson` reporter, every line is an event with a `type` field. A command's data is wrapped
+in a `data` event, while the rest describe what the command does as it runs:
+
+| Type       | Fields                                  | Description                                                                                               |
+| :--------- | :-------------------------------------- | :-------------------------------------------------------------------------------------------------------- |
+| `data`     | `data`                                  | The data of a command, the same as with the `json` reporter.                                              |
+| `message`  | `message`                               | A line of output.                                                                                         |
+| `notice`   | `variant`, `title`, `messages`, `items` | A highlighted notice, where `variant` is `caution`, `failure`, `info`, `neutral`, or `success`.           |
+| `progress` | `id`, `message`                         | The progress of a long-running step, like an install. `id` identifies the tool, when several run at once. |
+| `table`    | `headers`, `cells`                      | A table, with `cells` as a list of rows.                                                                  |
+| `error`    | `code`, `message`                       | The error that the command failed with, and its code. Always the last event.                              |
+
+Fields without a value are left out, so read optional fields, like `title` and `code`,
+defensively.
+
+```json
+{
+  "type": "error",
+  "code": "proto::offline",
+  "message": "Internet connection required, unable to download, install, or run tools."
+}
+```
+
+```shell
+# Extract the data of a command from the stream
+$ proto status --reporter ndjson | jq -c 'select(.type == "data") | .data'
+```
+
 ## AI agents and bots
+
+When proto detects that it's run by an AI coding agent, it defaults to the `ndjson` reporter, so
+the agent receives structured output that it can parse reliably, without colors or progress bars
+that waste tokens. Agents are detected from the environment variables they set, like `CLAUDECODE`
+for Claude Code, and `CODEX_SANDBOX` for Codex, along with Cursor, Gemini CLI, GitHub Copilot,
+OpenCode, and more. Any other agent or bot can opt in by setting `AI_AGENT` to its name.
+
+```shell
+$ AI_AGENT=my-bot proto status
+{"type":"message","message":"Detected an AI agent environment, printing as NDJSON. Trace logs are written to stderr, while user-facing logs are written to stdout."}
+{"type":"data","data":{...}}
+```
+
+The first line tells the agent what's going on, so it knows where to look for logs. To get the
+human-readable output back, pass `--reporter text`, or set `PROTO_REPORTER=text`.
+
+<Callout>
+  Cursor's integrated terminal is detected as an agent, even when you type
+  commands yourself. Set `PROTO_REPORTER=text` in your shell profile to keep the
+  human-readable output there.
+</Callout>
+
+Detecting an agent changes a few other behaviors:
+
+- **Offline mode** - When the agent runs proto in a sandbox that reports its network policy, proto
+  follows that policy instead of checking for a connection. See
+  [how detection works](./offline-mode.mdx#how-detection-works).
+- **JSON-only behaviors** - As NDJSON is a JSON reporter, commands behave like they do with
+  `--json`, so [`proto upgrade`](../commands/upgrade.mdx) only reports instead of upgrading.
+
+For a deeper integration than the CLI, agents can manage tools through proto's
+[MCP server](./mcp.mdx) instead.

@@ -30,7 +30,8 @@ $ PROTO_LOG=debug proto install node
 - `--json` - Print the output as [JSON](#output-formats), for commands that support it. Also set
   with `PROTO_JSON`.
 - `-l`, `--log` <TypeLabel type="off | error | warn | info | debug | trace | verbose" /> - The
-  lowest [log level](#logging) to output. Defaults to `info`. Also set with `PROTO_LOG`.
+  lowest [log level](#logging) to output. Defaults to `info`, or `warn` for commands that run a
+  tool, like [`proto run`](./run.mdx). Also set with `PROTO_LOG`.
 - `--log-file` <TypeLabel type="string" /> - A file to [write logs to](#writing-logs-to-a-file).
   Also set with `PROTO_LOG_FILE`.
 - `--otel` - Export [traces and metrics](#opentelemetry) over OTLP. Also set with `PROTO_OTEL`.
@@ -138,8 +139,8 @@ $ proto install node --dump
 ## OpenTelemetry
 
 Pass `--otel` (or set `PROTO_OTEL`) to export [OpenTelemetry](https://opentelemetry.io/) traces and
-metrics over OTLP, to an observability backend, and
-`--otel-logs` to export logs too. Configure where the data is sent with the standard
+metrics over OTLP, to an observability backend, and `--otel-logs` (or set `PROTO_OTEL_LOGS`) to
+export logs, with or without `--otel`. Configure where the data is sent with the standard
 `OTEL_EXPORTER_OTLP_*` environment variables. See the [OpenTelemetry
 guide](../guides/opentelemetry.mdx) for more details.
 

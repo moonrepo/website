@@ -3,12 +3,235 @@ title: Continuous integration
 icon: Repeat
 ---
 
+import { TypeLabel } from "@/components/TypeLabel";
+
+CI machines need the same tools as your team, and the same
+[`.prototools`](<../(fundamentals)/config.mdx>) gets them there: install proto, run
+[`proto install`](../commands/install.mdx), and every tool the repository pins is installed at the
+versions you run locally. This guide builds on [running in CI](../start/team.mdx#running-in-ci),
+and covers setting proto up on GitHub Actions and other providers, caching the store between runs,
+and making the [lockfile](../advanced/lockfile.mdx) the source of truth.
+
+proto detects CI from the `CI` environment variable, set to any value other than `false`, or from a
+provider's own variables, like `GITHUB_ACTIONS`, `GITLAB_CI`, or `BUILDKITE`. Most providers set
+these for you, and when proto detects them:
+
+- Every configuration is [trusted](#trust-in-ci), so security-sensitive settings apply without
+  running [`proto trust`](../commands/trust.mdx).
+- [Prompts](../commands/overview.mdx#prompts) are skipped, and use their default answer. For
+  example, [`proto clean`](../commands/clean.mdx) removes stale versions without asking.
+
 ## GitHub Actions
+
+The [`moonrepo/setup-toolchain`](https://github.com/moonrepo/setup-toolchain) action installs proto,
+adds `~/.proto/shims` and `~/.proto/bin` to `PATH` for the rest of the job, and
+[caches the store](#caching-the-store) between runs. Enable `auto-install` to also run
+[`proto install`](../commands/install.mdx), so every pinned tool is ready for the steps that follow:
+
+```yaml title=".github/workflows/ci.yml"
+name: CI
+on: [push, pull_request]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: moonrepo/setup-toolchain@v0
+        with:
+          auto-install: true
+          proto-version: "0.64.0"
+      - run: pnpm install
+      - run: pnpm test
+```
+
+The action works on Linux, macOS, and Windows runners, and accepts the following inputs:
+
+- `auto-install` <TypeLabel type="boolean" /> - Run [`proto install`](../commands/install.mdx)
+  after installing proto and restoring the cache. Defaults to `false`.
+- `cache` <TypeLabel type="boolean" /> - Cache the store between runs. Defaults to `true`.
+- `cache-base` <TypeLabel type="string" /> - Only save the cache on branches that match this value,
+  like `master`. Other branches restore that cache, without saving their own, which keeps pull
+  requests from filling up your cache storage.
+- `cache-version` <TypeLabel type="string" /> - A value included in the cache key. Change it to
+  start over with an empty cache.
+- `proto-version` <TypeLabel type="string" /> - The version of proto to install. Defaults to
+  `latest`.
+- `workspace-root` <TypeLabel type="string" /> - The directory to run
+  [`proto install`](../commands/install.mdx) in, relative to the repository root, when the
+  repository's [`.prototools`](<../(fundamentals)/config.mdx>) isn't at its root.
+- `moon-version` and `auto-setup` - For repositories that use [moon](../../../moon/docs/index.mdx),
+  which the action also installs when it finds a `.moon` directory.
+
+Pin `proto-version`, so a new proto release doesn't change how CI behaves before you've tried it. If
+the repository [pins proto](<../(fundamentals)/config.mdx#pinning-proto>) in its
+[`.prototools`](<../(fundamentals)/config.mdx>), use the same version, as that pin only applies with
+shell activation, which CI doesn't use.
+
+Plugins with a `github://` locator are resolved through the GitHub API, whose limit of 60
+unauthenticated requests per hour is easy to hit in CI. Pass the workflow's token to proto to raise
+it (see [GitHub authentication](../advanced/http.mdx#github-authentication)):
+
+```yaml title=".github/workflows/ci.yml"
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    env:
+      PROTO_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
 
 ## Other providers
 
+Elsewhere, install proto with the [install script](../index.mdx#macos-linux-and-wsl), add its
+directories to `PATH`, and run [`proto install`](../commands/install.mdx). The machine needs `git`,
+`curl`, `tar`, and `xz`, as listed in the [requirements](../index.mdx#requirements).
+
+```shell
+# Install a specific version of proto, without editing a shell profile
+$ bash <(curl -fsSL https://moonrepo.dev/install/proto.sh) 0.64.0 --no-modify-profile
+
+# Make proto, and the tools it installs, available
+$ export PATH="$HOME/.proto/shims:$HOME/.proto/bin:$PATH"
+
+# Install every tool the repository pins
+$ proto install
+```
+
+Options after the version are passed to [`proto setup`](../commands/setup.mdx), and
+`--no-modify-profile` skips the shell profile, which CI steps rarely load. How `PATH` carries over
+to later commands depends on the provider. GitLab CI runs a job's `before_script` and `script` in a
+single shell, so exporting it once is enough, while CircleCI needs it appended to `$BASH_ENV`, and
+GitHub Actions without the action needs each directory appended to `$GITHUB_PATH`. On Windows, use
+the [PowerShell script](../index.mdx#windows), and add `~\.proto\shims` and `~\.proto\bin` to
+`PATH`.
+
+[`proto install`](../commands/install.mdx) installs what's configured for the directory it runs in,
+and the directories above it. In a monorepo where a package's own
+[`.prototools`](<../(fundamentals)/config.mdx>) pins a different version, also run it from that
+package, or set `PROTO_AUTO_INSTALL=true`, so that shims install a missing version the first time
+it runs (see [`auto-install`](<../(fundamentals)/config.mdx#auto-install>)).
+
 ## Caching the store
+
+Downloading tools is often the slowest part of a CI setup, so cache the
+[store](<../(fundamentals)/store.mdx>) between runs. `moonrepo/setup-toolchain` does this by default.
+With other providers, or your own cache steps, do the same:
+
+- **Cache `tools` and `plugins`** - These directories in `~/.proto` (or `PROTO_HOME`) hold the
+  installed versions and downloaded plugins. Leave out `bin` and `shims`, which the install script
+  and [`proto install`](../commands/install.mdx) recreate, and `temp` and `cache`, which only hold
+  short-lived files (see [directory layout](<../(fundamentals)/store.mdx#directory-layout>)).
+- **Key the cache on your pins** - Hash every [`.prototools`](<../(fundamentals)/config.mdx>) and
+  `.protolock`, and include the operating system and architecture, as an installed tool only runs on
+  the platform it was installed for. Including proto's version is a good idea too, as a new release
+  can change the store.
+- **Install after restoring** - [`proto install`](../commands/install.mdx) skips
+  versions that are already installed, but recreates their shims and bins, which aren't cached.
+- **Clean before saving** - A cache that's restored from an older key still contains versions that
+  are no longer pinned. Run [`proto clean --yes`](../commands/clean.mdx) before the cache is saved,
+  to remove versions that haven't run in 30 days (see [cleaning](<../(fundamentals)/store.mdx#cleaning>)).
+
+`moonrepo/setup-toolchain` keys its cache on the runner's operating system and architecture, the
+[`.prototools`](<../(fundamentals)/config.mdx>) and `.protolock` at the repository root, proto's
+major and minor version, and `cache-version`. Without an exact match, it restores the most recent
+cache for the same platform, then cleans the store and saves it under the new key at the end of the
+job. Nested [`.prototools`](<../(fundamentals)/config.mdx>) files aren't part of the key, so bump
+`cache-version` when only their pins change.
+
+Some providers can only cache paths within the project directory, like GitLab CI. Move the store
+there with `PROTO_HOME`, and make sure tools that scan the repository, like linters, ignore it:
+
+```yaml title=".gitlab-ci.yml"
+variables:
+  PROTO_HOME: "$CI_PROJECT_DIR/.proto"
+
+default:
+  cache:
+    key:
+      files:
+        - .prototools
+        - .protolock
+    paths:
+      - .proto/tools
+      - .proto/plugins
+  before_script:
+    - bash <(curl -fsSL https://moonrepo.dev/install/proto.sh) 0.64.0 --no-modify-profile
+    - export PATH="$PROTO_HOME/shims:$PROTO_HOME/bin:$PATH"
+    - proto install
+  after_script:
+    # Runs in a new shell, without the PATH from before_script
+    - $PROTO_HOME/bin/proto clean --yes
+
+test:
+  script:
+    - pnpm install
+    - pnpm test
+```
+
+Some tools keep their versions outside the store, like Rust, whose toolchains live in `~/.rustup`
+(see [custom locations](<../(fundamentals)/store.mdx#custom-locations>)). Cache those directories
+too, if you want to skip their downloads.
 
 ## Immutable lockfiles
 
+When the repository has a [lockfile](../advanced/lockfile.mdx), CI should install exactly what it
+records, rather than resolve a newer version, or add records that nobody commits. First, lock the
+platforms that CI runs on, from your own machine, and commit the result:
+
+```shell
+# Lock every pinned tool for Linux on x64, without installing anything
+$ proto lock --platform x64-linux
+$ git add .protolock
+```
+
+Then, in CI, pass `--immutable-lockfile` to [`proto install`](../commands/install.mdx), or set the
+`PROTO_IMMUTABLE_LOCKFILE` environment variable to `true`. The variable also applies to the install
+that `moonrepo/setup-toolchain` runs:
+
+```yaml title=".github/workflows/ci.yml"
+steps:
+  - uses: actions/checkout@v4
+  - uses: moonrepo/setup-toolchain@v0
+    with:
+      auto-install: true
+    env:
+      PROTO_IMMUTABLE_LOCKFILE: true
+```
+
+The install then never writes to the lockfile. When a pinned version has no record for CI's
+platform, or the lockfile is out of date with the [`.prototools`](<../(fundamentals)/config.mdx>),
+it fails instead, so a lockfile that someone forgot to update is caught before it's merged. The
+error explains the fix, which is usually to run [`proto lock`](../commands/lock.mdx) or
+[`proto install`](../commands/install.mdx) locally, and commit the changes. See
+[immutable lockfiles](../advanced/lockfile.mdx#immutable-lockfiles) for every failure.
+[`proto lock`](../commands/lock.mdx) refuses to run while the variable is set, so don't set it for a
+job that updates the lockfile.
+
 ## Trust in CI
+
+In CI, every configuration is
+[trusted automatically](<../(fundamentals)/trust.mdx#automatically-trusted>): the checked out
+repository is the code being built, and there's nobody around to run
+[`proto trust`](../commands/trust.mdx). So
+[security-sensitive settings](<../(fundamentals)/trust.mdx#security-sensitive-settings>), like
+[`[env]`](<../(fundamentals)/config.mdx#env>) variables, plugins, and pins for community tools,
+apply without any setup.
+
+The flip side is that a pull request that edits a [`.prototools`](<../(fundamentals)/config.mdx>)
+can register a plugin, or set environment variables, that run on your CI machine. That's no
+different from a pull request that edits a build script, but keep it in mind for workflows that run
+untrusted code with access to secrets, like GitHub's `pull_request_target`. To require explicit
+trust instead, set `CI=false`, which turns off CI detection (for other tools that read it too), and
+trust the directories you've reviewed with
+[`PROTO_TRUSTED_PATHS`](../advanced/env-vars.mdx#trust).
+
+Detection relies on environment variables, which don't reach a `docker build`, even when it runs in
+CI. So within a Dockerfile, configurations aren't trusted automatically, and security-sensitive
+settings are ignored. Trust the directory you copy the repository into:
+
+```dockerfile title="Dockerfile"
+WORKDIR /app
+COPY . .
+ENV PROTO_TRUSTED_PATHS=/app
+RUN proto install
+```

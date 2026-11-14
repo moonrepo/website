@@ -3,16 +3,209 @@ title: Building from source
 icon: Hammer
 ---
 
+Most tools are installed by downloading a prebuilt archive, which is fast, and verified against a
+[checksum](../advanced/checksums.mdx). Some tools can also be built from source instead: proto
+downloads the tool's source code, installs the system packages that the build needs, and compiles
+the tool on your machine. Build from source when there's no prebuilt for your platform, when you
+need a build that's compiled against your system's own libraries, or when your organization
+requires tools to be built from source.
+
+<Callout type="warning">
+  Building from source is unstable, and builds take a lot longer than downloads,
+  especially for large tools like Node.js and Deno. Report issues with proto to
+  [moonrepo/proto](https://github.com/moonrepo/proto/issues), and issues with a
+  tool's build to
+  [moonrepo/plugins](https://github.com/moonrepo/plugins/issues).
+</Callout>
+
 ## Supported tools
+
+The following built-in tools can be built from source. Every one of them downloads a prebuilt by
+default, so a build only happens when you ask for it.
+
+| Tool                                               | Platforms                                   | Needs                                                                                                                                                                        |
+| :------------------------------------------------- | :------------------------------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Deno](../tools/deno.mdx#building-from-source)     | Linux and macOS (x64, arm64), Windows (x64) | Rust (`cargo`), and Git 2.19.2 or later. On Windows, Git's `core.symlinks` set to `true`.                                                                                    |
+| [Go](../tools/go.mdx#building-from-source)         | Linux, macOS, Windows, FreeBSD              | An existing `go` on `PATH` to bootstrap the build, like a prebuilt installed with proto.                                                                                     |
+| [moon](../tools/moon.mdx#building-from-source)     | Linux and macOS (x64, arm64), Windows (x64) | Rust (`cargo`), and `protoc` for v2.2 and later.                                                                                                                             |
+| [Node.js](../tools/node.mdx#building-from-source)  | Linux, macOS, Windows                       | Python 3 (`python3`), `make`, and a C++ compiler. On Windows, the [Visual Studio prerequisites](https://github.com/nodejs/node/blob/main/BUILDING.md#windows-prerequisites). |
+| proto                                              | Linux and macOS (x64, arm64), Windows (x64) | Rust (`cargo`).                                                                                                                                                              |
+| [Python](../tools/python.mdx#building-from-source) | Every platform except Windows               | Git, to clone pyenv's [`python-build`](https://github.com/pyenv/pyenv/tree/master/plugins/python-build), which runs the build.                                               |
+| [Ruby](../tools/ruby.mdx#building-from-source)     | Every platform except Windows               | Git, to clone rbenv's [`ruby-build`](https://github.com/rbenv/ruby-build), which runs the build.                                                                             |
+
+On macOS, Deno, Node.js, Python, and Ruby also need the Xcode command line tools, which you install
+with `xcode-select --install`. Compilers and libraries that a tool lists as
+[system dependencies](#system-dependencies) are installed for you. On Windows, Deno and Node.js link
+to their own setup instructions, and ask you to confirm before the build continues.
+
+Third-party [tools](<../(fundamentals)/(plugin)/tool.mdx>) can support building from source too, when
+their plugin implements [`build_instructions`](../../../wasm/docs/tool.mdx#build_instructions). A tool
+that doesn't support it fails with an error.
 
 ## Installing from source
 
+Pass `--build` to [`proto install`](../commands/install.mdx):
+
+```shell
+# Build the detected version of Python
+$ proto install python --build
+
+# Build a specific version of Node.js
+$ proto install node 24.11.0 --build
+
+# Build every pinned tool that supports it, and skip the others
+$ proto install --build
+```
+
+proto then works through the build in steps, printing each one as it goes:
+
+1. **System dependencies** - Installs the packages that the build needs, after asking you (see
+   [installing system packages](#installing-system-packages)).
+2. **Requirements** - Checks that the commands the build needs exist, at the required versions, like
+   `cargo` or `git`. When anything is missing, the build stops, and lists what to install.
+3. **Source** - Downloads the tool's source archive, or clones its Git repository. Archive URLs go
+   through [`url-rewrites`](<../(fundamentals)/config.mdx#url-rewrites>), so they can come from a
+   [mirror](../advanced/http.mdx#url-rewrites).
+4. **Build** - Runs the tool's build commands, like `./configure` and `make`, in the version's
+   directory in the [store](<../(fundamentals)/store.mdx>).
+
+Once it's built, the version works like any other installed version. A few things to keep in mind:
+
+- **Installed versions aren't rebuilt** - If the version is already installed, like from a prebuilt,
+  `--build` does nothing. Add `--force`, as in
+  [`proto install node --build --force`](../commands/install.mdx), to replace it with a build.
+- **Only `--build` builds** - Every other install, including
+  [`auto-install`](<../(fundamentals)/config.mdx#auto-install>) and
+  [`proto install`](../commands/install.mdx) without `--build`, uses the tool's default, which is a
+  prebuilt for every built-in tool. For a third-party tool that builds by default, pass `--no-build`
+  to download a prebuilt instead.
+- **Builds aren't verified** - There's no prebuilt archive to compare, so a build isn't checked
+  against the checksum recorded in a [lockfile](../advanced/lockfile.mdx#checksum-verification).
+
 ## System dependencies
+
+Most builds need system packages, like a C compiler, or the headers of a library like OpenSSL. Each
+tool lists the packages it needs for each package manager, and before building, proto checks which
+of them are installed, and offers to install the rest with your system's package manager.
+
+You control this with [`[settings.build]`](<../(fundamentals)/config.mdx#settingsbuild>). As these
+settings depend on your machine, configure them in your user
+[`~/.prototools`](<../(fundamentals)/config.mdx#locations>). In a project's
+[`.prototools`](<../(fundamentals)/config.mdx>), they require [trust](<../(fundamentals)/trust.mdx>).
+All of them except [`system-package-manager`](#package-managers) can also be set with an
+[environment variable](../advanced/env-vars.mdx#settings), which is handy for a single command.
+
+```toml title="~/.prototools"
+[settings.build]
+exclude-packages = ["rustc"]
+write-log-file = true
+
+[settings.build.system-package-manager]
+linux = "dnf"
+```
 
 ### Installing system packages
 
+When packages are missing, proto lists them, and asks whether to install them:
+
+- **No, and stop building** - Cancel the install.
+- **No, but try building anyways** - Continue without them, like when you've installed them another
+  way.
+- **Yes, as current user** - Install them with the package manager, as you.
+- **Yes, with elevated privileges** - Install them with `sudo` (or `doas`), which package managers
+  like apt need when you aren't root. Only offered when either is on `PATH`, and not for Homebrew or
+  on Windows.
+
+proto first updates the package manager's index, like `apt update`, then installs every missing
+package with a single command, like `apt install --install-recommends <packages>`. After the prompt,
+these commands run in your terminal, so you can confirm them, and enter your password for `sudo`.
+
+The prompt is skipped when you pass [`--yes`](../commands/overview.mdx#prompts), and in CI, and its
+default is used: install as the current user, or in CI, with `sudo` (or `doas`) when either is
+available. The package manager is then told not to ask either, like with `apt install -y`.
+
+When installing several tools at once, like with [`proto install --build`](../commands/install.mdx),
+or with `--quiet`, there's no prompt at all. Missing packages are then only installed in CI, with
+`sudo` (or `doas`), and otherwise the build continues without them.
+
+To never install system packages, disable
+[`install-system-packages`](<../(fundamentals)/config.mdx#install-system-packages>). proto then
+skips straight to checking requirements. This suits Docker images where you install the build's
+dependencies yourself, and machines without root access.
+
+```toml title="~/.prototools"
+[settings.build]
+install-system-packages = false
+```
+
 ### Package managers
+
+proto detects your system's package manager:
+
+- **Linux** - From the `ID` in `/etc/os-release`: `apt` on Debian, Ubuntu, Linux Mint, Pop!\_OS,
+  Kali, and deepin, `dnf` on Fedora, `yum` on CentOS and RHEL, `pacman` on Arch and Manjaro, and
+  `apk` on Alpine.
+- **macOS** - `brew`, when Homebrew is on `PATH`.
+- **Windows** - `choco`, or else `scoop`, when on `PATH`.
+- **BSD** - `pkg`, or else `pkgin`, when on `PATH`.
+
+When none is detected, like on a distribution that isn't listed above, such as Rocky Linux or
+Amazon Linux, no system packages are installed. Choose one for your operating system with
+[`system-package-manager`](<../(fundamentals)/config.mdx#system-package-manager>), which also
+overrides a detected one:
+
+```toml title="~/.prototools"
+[settings.build.system-package-manager]
+linux = "dnf"
+```
+
+Tools list their packages per package manager, so if a tool lists none for yours, nothing is
+installed, and the [requirements](#installing-from-source) check tells you what's missing instead.
+For example, Node.js lists packages for apt, dnf, yum, and pacman, while macOS relies on the Xcode
+command line tools.
 
 ### Excluding packages
 
+[`exclude-packages`](<../(fundamentals)/config.mdx#exclude-packages>) lists packages to skip: they
+aren't checked, and never installed. Use the names that the package manager knows them by, as
+printed in the list of missing packages. Exclude a package when:
+
+- You've installed it another way, like Rust with rustup, instead of your distribution's `rustc`.
+- Your distribution doesn't provide a package by that name, which would fail the whole install
+  command.
+
+```toml title="~/.prototools"
+[settings.build]
+exclude-packages = ["rustc"]
+```
+
+Or for a single command, as a comma-separated list:
+
+```shell
+$ PROTO_BUILD_EXCLUDE_PACKAGES=rustc proto install ruby --build
+```
+
 ## Build logs
+
+A build can fail for reasons that proto can't check upfront, like a missing library or an outdated
+compiler. When a build fails, proto writes a log to `proto-<tool>-install.log` in the current
+directory, like `proto-python-install.log`. It's a Markdown file with every step of the install: the
+calls proto made to the tool's plugin, with their inputs and outputs, and every command it ran, with
+its working directory, exit code, and output. Attach it when you report an issue.
+
+Commands that print to your terminal as they run aren't captured in the log, so when you build a
+single tool, scroll back for the build's own output. When you install several tools at once, or pass
+`--quiet`, it's captured instead. Installing several tools at once also writes a log for every tool
+that fails, whether it was built or downloaded.
+
+To keep a log of successful builds too, enable
+[`write-log-file`](<../(fundamentals)/config.mdx#write-log-file>). Each build replaces the previous
+log for the same tool.
+
+```toml title="~/.prototools"
+[settings.build]
+write-log-file = true
+```
+
+For even more detail while the build runs, pass [`--log debug`](./troubleshooting.mdx#logging) or
+`--log trace`.

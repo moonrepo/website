@@ -3,16 +3,225 @@ title: OpenTelemetry
 icon: Activity
 ---
 
+proto can export [OpenTelemetry](https://opentelemetry.io/) traces, metrics, and logs over OTLP, to
+a collector or any observability backend that accepts OTLP, like Jaeger, Grafana, Honeycomb, or
+Datadog. Locally, [`--dump`](./troubleshooting.mdx#profiling) is the quickest way to see where a
+single command spends its time. OpenTelemetry pays off across many machines, like a fleet of CI
+jobs, where you want to know how long installs take, which tools fail to install, and whether
+plugins are being downloaded again and again.
+
+Nothing is exported unless you enable it. This is unrelated to the
+[`telemetry`](<../(fundamentals)/config.mdx#telemetry>) setting, which sends anonymous usage data to
+the proto team, and is configured separately.
+
 ## Enabling exports
+
+Each signal is enabled with a [global option](../commands/overview.mdx#global-options), or its
+[environment variable](../advanced/env-vars.mdx#global-options):
+
+- `--otel` (or `PROTO_OTEL=true`) - Export [traces](#traces) and [metrics](#metrics).
+- `--otel-logs` (or `PROTO_OTEL_LOGS=true`) - Export [logs](#logs). This is independent of
+  `--otel`, so pass both to export all three signals.
+
+```shell
+# Export traces and metrics for a single command
+$ proto install --otel
+
+# Export traces, metrics, and logs
+$ proto install --otel --otel-logs
+
+# Export from every proto command in the current environment
+$ export PROTO_OTEL=true
+```
+
+A flag only applies to the command it's passed to, while the variable applies to every proto
+command that inherits it, which makes it the better fit for CI. The variables only accept `true` or
+`false`. Avoid setting them in your shell profile, as
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>) runs
+[`proto activate`](../commands/activate.mdx) at every prompt, which would export a trace each time.
+
+```yaml title=".github/workflows/ci.yml"
+env:
+  PROTO_OTEL: true
+  OTEL_EXPORTER_OTLP_ENDPOINT: https://otlp.example.com
+  OTEL_EXPORTER_OTLP_HEADERS: x-api-key=${{ secrets.OTLP_API_KEY }}
+  OTEL_SERVICE_NAME: proto
+  OTEL_RESOURCE_ATTRIBUTES: cicd.pipeline.name=${{ github.workflow }},cicd.pipeline.run.id=${{ github.run_id }}
+```
+
+proto exports everything as the command exits.
+
+<Callout type="warning">
+  [`proto run`](../commands/run.mdx), [`proto exec`](../commands/exec.mdx),
+  [`proto shell`](../commands/shell.mdx), and
+  [shims](<../(fundamentals)/workflows.mdx#shims>) hand their process over to the tool they run,
+  so they never get the chance, and export nothing. To measure installs, run
+  [`proto install`](../commands/install.mdx) as its own step, instead of relying on
+  [`auto-install`](<../(fundamentals)/config.mdx#auto-install>).
+</Callout>
 
 ## Configuring the exporter
 
+Where and how data is sent is configured with the standard
+[OTLP exporter variables](https://opentelemetry.io/docs/specs/otel/protocol/exporter/), so the same
+configuration works for proto and the rest of your tooling. There's no
+[`.prototools`](<../(fundamentals)/config.mdx>) setting for it, and
+[`[settings.http]`](<../(fundamentals)/config.mdx#settingshttp>), like its proxies and certificates,
+doesn't apply to exports.
+
+| Variable                                            | Description                                                                                                                             |
+| :-------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------- |
+| `OTEL_EXPORTER_OTLP_ENDPOINT`                       | The collector's base URL. Defaults to `http://localhost:4318`, or `http://localhost:4317` for gRPC. See [transports](#transports).      |
+| `OTEL_EXPORTER_OTLP_PROTOCOL`                       | The transport: `http/protobuf` (default) or `grpc`.                                                                                     |
+| `OTEL_EXPORTER_OTLP_HEADERS`                        | Headers to send with every export, like an API key, as a comma-separated list of `key=value` pairs.                                     |
+| `OTEL_EXPORTER_OTLP_TIMEOUT`                        | How long to wait for each export, in milliseconds. Defaults to `10000`.                                                                 |
+| `OTEL_SERVICE_NAME`                                 | The service name to report, unless `--otel-service-name` (or `PROTO_OTEL_SERVICE_NAME`) is passed. Defaults to `unknown_service:proto`. |
+| `OTEL_RESOURCE_ATTRIBUTES`                          | Additional attributes for every signal, as a comma-separated list of `key=value` pairs, like `deployment.environment.name=ci`.          |
+| `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE` | `cumulative` (default) or `delta`. See [metrics](#metrics).                                                                             |
+
+The endpoint, protocol, headers, and timeout can also be set for a single signal, with
+`OTEL_EXPORTER_OTLP_TRACES_*`, `OTEL_EXPORTER_OTLP_METRICS_*`, and `OTEL_EXPORTER_OTLP_LOGS_*`
+variables, like `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT`, which take precedence over the general ones.
+
+Apart from the service name, proto doesn't add any resource attributes of its own, so add the ones
+you'll filter by, like the CI job or repository, with `OTEL_RESOURCE_ATTRIBUTES`. Set a service name
+too, so proto's telemetry doesn't show up as `unknown_service:proto`:
+
+```shell
+$ export OTEL_SERVICE_NAME="proto"
+$ export OTEL_RESOURCE_ATTRIBUTES="deployment.environment.name=ci,vcs.repository.name=app"
+```
+
+A collector that can't be reached never fails a command: the data is dropped, proto prints an error
+like `Failed to shut down OTLP metrics exporter` as it exits, and exiting can take a few seconds
+longer. An invalid configuration, like a malformed endpoint URL, does fail every command, so try it
+out before rolling it out to CI.
+
 ### Transports
+
+proto supports two OTLP transports, chosen with `OTEL_EXPORTER_OTLP_PROTOCOL`:
+
+- `http/protobuf` _(default)_ - Protobuf payloads sent over HTTP, to port `4318` by default. The
+  signal's path, like `/v1/traces`, is appended to `OTEL_EXPORTER_OTLP_ENDPOINT`, while a
+  per-signal endpoint, like `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, is used as-is.
+- `grpc` - OTLP over gRPC, to port `4317` by default. The endpoint is used as-is.
+
+`http/json` isn't supported, and falls back to `http/protobuf`. Compression isn't supported either,
+so `OTEL_EXPORTER_OTLP_COMPRESSION` is ignored. For TLS, use an `https://` endpoint, which is
+verified against your operating system's certificates.
+
+To try it out locally, run [Jaeger](https://www.jaegertracing.io/), which accepts traces on both
+ports, then open `http://localhost:16686` to browse them. Jaeger doesn't accept metrics, so they're
+[disabled](#disabling-signals) here:
+
+```shell
+# Start Jaeger
+$ docker run --rm -p 16686:16686 -p 4317:4317 -p 4318:4318 jaegertracing/jaeger:latest
+
+# Export over HTTP (the default)
+$ OTEL_METRICS_EXPORTER=none proto install --otel
+
+# Export over gRPC
+$ OTEL_EXPORTER_OTLP_PROTOCOL=grpc OTEL_METRICS_EXPORTER=none proto install --otel
+```
 
 ## Traces
 
+Every command exports one trace. Its root span covers the whole run, with child spans for the
+command itself, named after it, like `install` or `status`, and the work it does: loading
+plugins (`load_tool`), detecting and resolving versions (`detect_version`,
+`resolve_version`), downloading, verifying, and unpacking, and every call into a plugin (`call`,
+with the plugin function in its `func` attribute). Traces are the way to find out why a particular
+command was slow, like a plugin that's downloaded on every run.
+
+Spans are named after proto's internal functions, so they can change between releases. Build
+dashboards and alerts on [metrics](#metrics) instead.
+
+A few behaviors to keep in mind:
+
+- **Spans follow the log level** - Spans are exported at the default `info`
+  [log level](./troubleshooting.mdx#logging), or a more verbose one, but not at `warn`, `error`, or
+  `off`. [`proto bin`](../commands/bin.mdx) logs at `warn` by default, so pass `--log info` to
+  trace it.
+- **Each process is its own trace** - proto doesn't continue a trace from its parent process, so a
+  `proto install` run by a CI job, or another tool, starts a new trace instead of nesting under the
+  caller's.
+
 ## Metrics
+
+Metrics are recorded for tool installs and uninstalls, and plugin loads. Durations are histograms
+in milliseconds, and attempts are counters.
+
+| Metric                             | Attributes                             | Description                                                                |
+| :--------------------------------- | :------------------------------------- | :------------------------------------------------------------------------- |
+| `proto.tool.install.attempts`      | `tool`, `strategy`, `status`, `cache`  | Number of tool installs. Versions that are already installed are skipped.  |
+| `proto.tool.install.duration`      | `tool`, `strategy`, `status`, `cache`  | How long each install took.                                                |
+| `proto.tool.install.step.attempts` | `tool`, `step`, `status`               | Number of times each step of an install ran.                               |
+| `proto.tool.install.step.duration` | `tool`, `step`, `status`               | How long each step of an install took.                                     |
+| `proto.tool.uninstall.attempts`    | `tool`, `scope`, `status`, `cache`     | Number of tool uninstalls.                                                 |
+| `proto.tool.uninstall.duration`    | `tool`, `scope`, `status`, `cache`     | How long each uninstall took.                                              |
+| `proto.plugin.load.duration`       | `plugin`, `locator`, `status`, `cache` | How long it took to locate a plugin, and download it when it isn't cached. |
+| `proto.plugin.create.duration`     | `plugin`, `locator`, `status`          | How long it took to start a plugin, and load the tool from it.             |
+
+The attributes have the following values:
+
+- `tool`, `plugin` - The tool's [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>),
+  including its [backend](<../(fundamentals)/(plugin)/backend.mdx>) prefix, like `node` or
+  `npm:typescript`.
+- `status` - `success` or `error`, or `skipped` for an uninstall of a version that isn't installed.
+- `cache` - For installs, `miss` when the version was installed, and `hit` when another process
+  installed it first, while this one waited. For uninstalls, `hit` when the version was installed,
+  and `miss` when it wasn't. For plugin loads, `hit` when the plugin was already downloaded, and
+  `miss` when it was downloaded. In every case, `unknown` when the command failed before finding
+  out.
+- `strategy` - `download-prebuilt`, or `build-from-source` when
+  [building from source](./build-from-source.mdx).
+- `step` - `download_archive`, `download_checksum`, `verify_checksum`, `unpack_archive`, and other
+  steps of a download, or `install_system_dependencies`, `download_sources`,
+  `execute_instructions`, and other steps of a build from source.
+- `locator` - The kind of [plugin locator](../../../wasm/docs/plugin-locators.mdx): `file`, `github`,
+  `oci` (for `registry://` locators), `url`, or `data`.
+- `scope` - Always `version`.
+
+For example, as installed versions are skipped, `proto.tool.install.attempts` shows how often CI
+jobs install tools from scratch. When it grows with every job, the store usually isn't being
+[cached between runs](./ci.mdx#caching-the-store).
+
+Metrics are exported as proto exits, and aren't affected by the log level. Every command reports
+its own values, starting from zero, so if your backend expects deltas, like Datadog, set
+`OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta`.
 
 ## Logs
 
+With `--otel-logs`, proto exports its log messages as OTLP logs, with their level and fields. These
+are the same messages that are printed to stderr, so they follow the
+[`--log`](./troubleshooting.mdx#logging) level: at the default `info` level, there are only a few,
+so pass `--log debug` to export the details you'd use to debug a command.
+
+```shell
+$ proto install --otel-logs --log debug
+```
+
+Debug logs are verbose, which can add up across many CI jobs, so you may want to only enable them
+while investigating an issue.
+
 ## Disabling signals
+
+Signals are only ever enabled by `--otel` and `--otel-logs` (or their variables). The standard
+OpenTelemetry variables can then turn them off, which is useful when your backend only accepts some
+signals, or to temporarily stop exports without changing a CI configuration:
+
+- `OTEL_TRACES_EXPORTER=none` - Don't export traces.
+- `OTEL_METRICS_EXPORTER=none` - Don't export metrics.
+- `OTEL_LOGS_EXPORTER=none` - Don't export logs.
+- `OTEL_SDK_DISABLED=true` - Don't export anything.
+
+Only OTLP is supported, so any other value, like `console`, has no effect.
+
+```shell
+# Only export metrics
+$ OTEL_TRACES_EXPORTER=none proto install --otel
+```
+
+Since traces and logs follow the log level, `--log off` stops them too, but metrics are still
+exported.

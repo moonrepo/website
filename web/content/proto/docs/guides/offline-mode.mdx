@@ -3,10 +3,119 @@ title: Offline mode
 icon: WifiOff
 ---
 
+proto doesn't need a network connection to run the tools you've already installed. When it detects
+that you're offline, like on a plane, or on a network without internet access, it relies on what it
+has cached locally, and fails early on anything that needs a download. There's nothing to enable:
+proto checks for a connection automatically, the first time a command needs the network.
+
+To prepare for working offline, install the tools a project pins while you still have a connection.
+proto then has everything it needs to run them.
+
+```shell
+# Install every tool pinned in .prototools
+$ proto install
+```
+
 ## What's disabled when offline
+
+Installed tools run as usual, through [shims](<../(fundamentals)/workflows.mdx#shims>),
+[`proto run`](../commands/run.mdx), [`proto exec`](../commands/exec.mdx), or
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>). Everything that needs the
+network changes:
+
+- **Installing** - [`proto install`](../commands/install.mdx),
+  [`auto-install`](<../(fundamentals)/config.mdx#auto-install>), and
+  [`proto lock`](../commands/lock.mdx) fail with an error, as there's nothing to download from.
+  [`proto upgrade`](../commands/upgrade.mdx) fails too.
+- **Resolving versions** - A partial version, like `20`, or an alias, like `lts`, is resolved against
+  the tool's cached list of available versions, however old it is. A fully-qualified version, like
+  `20.10.0`, or a version recorded in a [lockfile](../advanced/lockfile.mdx), doesn't need the list
+  at all. When a tool's list has never been cached, resolving fails.
+- **Plugins** - Downloaded [plugins](<../(fundamentals)/(plugin)/plugin.mdx>) are used for as long as
+  you're offline, even once they're older than
+  [`cache-duration`](<../(fundamentals)/config.mdx#cache-duration>). A plugin that hasn't been
+  downloaded yet can't be loaded, unless it's a local file.
+- **Background requests** - The check for a newer version of proto, and
+  [telemetry](<../(fundamentals)/config.mdx#telemetry>), are skipped.
+
+When a version can't be resolved, pass a fully-qualified version with a
+[version override](../advanced/env-vars.mdx#version-overrides), or run the tool's executable from
+`~/.proto/bin` directly, which skips resolution.
+
+```shell
+$ PROTO_NODE_VERSION=20.10.0 node --version
+```
 
 ## How detection works
 
+proto checks for a connection the first time a command needs to know, and reuses the answer until
+the command exits. It decides in the following order:
+
+1. **`PROTO_OFFLINE`** - When set, proto uses it as-is, and skips the steps below. See
+   [forcing a mode](#forcing-a-mode).
+2. **AI agent sandboxes** - When an AI agent runs proto in a sandbox that reports its network
+   policy, proto follows it: offline when networking is disabled, like in a Codex sandbox, and online
+   when traffic is filtered through a proxy or firewall, like in the Claude Code sandbox or GitHub
+   Copilot's firewall.
+3. **Connection checks** - proto tries to connect to Cloudflare's and Google's public DNS servers,
+   like `1.1.1.1` and `8.8.8.8`, and when none respond, to `google.com`, `clients3.google.com`,
+   `detectportal.firefox.com`, and any [custom hosts](#customizing-detection). The checks run in
+   parallel, and proto is online as soon as one connects. Each waits up to 750 milliseconds.
+
+Since the checks only probe a few well-known hosts, a network that blocks them, like a corporate
+network that only allows an internal mirror, looks offline, even when proto could download from the
+mirror. Installs then fail with an "Internet connection required" error.
+[Customize detection](#customizing-detection) to check a host you can reach, or
+[force online mode](#forcing-a-mode).
+
 ## Forcing a mode
 
+Set `PROTO_OFFLINE` to skip detection: `true` or `1` forces offline mode, and `false` or `0` forces
+online mode. Any other value is ignored, and proto detects as usual. There's no setting for it, as
+it depends on your network, not on a project.
+
+```shell
+# No connection on this flight, so don't wait for checks to time out
+$ export PROTO_OFFLINE=true
+
+# The network blocks the default hosts, but downloads work
+$ PROTO_OFFLINE=false proto install
+```
+
+Force online mode when detection gets it wrong, like when installs fail with an "Internet connection
+required" error while your browser works fine. Force offline mode when you know you have no
+connection, so that commands don't wait for the checks to time out.
+
 ## Customizing detection
+
+When the default hosts are blocked, but proto can reach a host of your own, like an internal mirror,
+check that host with [`[settings.offline]`](<../(fundamentals)/config.mdx#settingsoffline>).
+Detection depends on your network, so configure it in your user
+[`~/.prototools`](<../(fundamentals)/config.mdx#locations>). In a project's
+[`.prototools`](<../(fundamentals)/config.mdx>), these settings require
+[trust](<../(fundamentals)/trust.mdx>).
+
+- [`custom-hosts`](<../(fundamentals)/config.mdx#custom-hosts>) - Hosts to check, as `host:port`,
+  after the default DNS servers and hosts.
+- [`override-default-hosts`](<../(fundamentals)/config.mdx#override-default-hosts>) - Only check
+  `custom-hosts`, and skip the default DNS servers and hosts, so you don't wait for blocked hosts to
+  time out. Always pair it with `custom-hosts`: with nothing to check, proto is always offline.
+- [`timeout`](<../(fundamentals)/config.mdx#timeout>) - How long each check waits, in milliseconds.
+  Defaults to `750`. Raise it on a slow network or VPN, where checks time out before they connect.
+
+```toml title="~/.prototools"
+[settings.offline]
+custom-hosts = ["artifactory.corp.internal:443"]
+override-default-hosts = true
+timeout = 1500
+```
+
+Each setting can also be set with an [environment variable](../advanced/env-vars.mdx#offline), which
+takes precedence over every [`.prototools`](<../(fundamentals)/config.mdx>):
+`PROTO_OFFLINE_HOSTS` (as a comma-separated list), `PROTO_OFFLINE_OVERRIDE_HOSTS`, and
+`PROTO_OFFLINE_TIMEOUT`.
+
+```shell
+$ export PROTO_OFFLINE_HOSTS="artifactory.corp.internal:443"
+$ export PROTO_OFFLINE_OVERRIDE_HOSTS=true
+```

@@ -36,7 +36,7 @@ record for every platform.
 
 Tools that can only be verified by installing them are skipped: Rust, tools from
 [backends](<../(fundamentals)/(plugin)/backend.mdx>), and tools that
-[build from source](../guides/build-from-source.mdx), so they're skipped, as are tools in a
+[build from source](../guides/build-from-source.mdx) by default. So are tools in a
 [`.prototools`](<../(fundamentals)/config.mdx>) that hasn't enabled the
 [`lockfile`](<../(fundamentals)/config.mdx#lockfile>) setting. The command prints whether each tool
 and platform was locked, already locked, skipped, or failed, and exits with a non-zero code if any
