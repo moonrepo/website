@@ -9,6 +9,7 @@
     "---General---",
     "clean",
     "completions",
+    "mcp",
     "regen",
     "setup",
     "upgrade",
@@ -33,7 +34,6 @@
     "untrust",
     "---Workflows---",
     "activate",
-    "deactivate",
-    "mcp"
+    "deactivate"
   ]
 }
