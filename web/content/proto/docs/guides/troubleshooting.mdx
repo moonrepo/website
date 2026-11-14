@@ -3,18 +3,302 @@ title: Troubleshooting
 icon: LifeBuoy
 ---
 
+When proto doesn't behave as you expect, the cause is usually one of a few things: proto's
+directories are missing from `PATH` (or are in the wrong order), a
+[`.prototools`](<../(fundamentals)/config.mdx>) wasn't loaded or hasn't been
+[trusted](<../(fundamentals)/trust.mdx>), or proto can't reach the network. This guide covers the
+commands that show you what proto sees, followed by fixes for the most common issues.
+
+Run these from the directory where the problem happens, and in the same context, like the terminal,
+editor, or CI job, as proto's behavior depends on both:
+
+```shell
+# Check your installation and shell for known problems
+$ proto diagnose
+
+# Show which versions are detected, and where they came from
+$ proto status
+
+# Show every .prototools that was found, and what they merge into
+$ proto debug config
+
+# Show the store, proto's version, and the PROTO_* variables that are set
+$ proto debug env
+```
+
 ## Diagnosing your installation
+
+Start with [`proto diagnose`](../commands/diagnose.mdx) (also available as
+[`proto doctor`](../commands/diagnose.mdx)) after installing proto, after editing your shell
+profile, and whenever a tool runs the wrong version or can't be found. It checks the current
+shell's `PATH`, the [`.prototools`](<../(fundamentals)/config.mdx>) files and
+[lockfiles](../advanced/lockfile.mdx) that apply in the current directory, and whether a newer proto
+is available, and reports each issue with how to resolve it:
+
+- **Errors** break how proto works, like `~/.proto/bin` coming before `~/.proto/shims` on `PATH`,
+  which stops shims from detecting versions.
+- **Warnings** may or may not matter, depending on how you use proto, like a shims directory that's
+  missing from `PATH` because you don't use [shims](<../(fundamentals)/workflows.mdx#shims>), or a
+  config that hasn't been [trusted](<../(fundamentals)/trust.mdx>).
+
+```shell
+$ proto diagnose
+```
+
+After changing your profile, open a new terminal before running it again, as it checks the `PATH` of
+the shell it runs in. It exits with a non-zero code when it reports an error, so you can also run it
+as a step in CI.
 
 ## Inspecting configuration
 
+When a version, setting, or plugin doesn't seem to apply, check what proto actually read with
+[`proto debug config`](../commands/debug/config.mdx). It prints each
+[`.prototools`](<../(fundamentals)/config.mdx>) that was found, from lowest to highest precedence,
+followed by the configuration they [merge](<../(fundamentals)/config.mdx#merging-strategy>) into,
+with every default and environment variable override applied.
+
+```shell
+# Print each .prototools, and the merged result
+$ proto debug config
+
+# Show what proto install, proto status, and shell activation see
+$ proto debug config --config-mode upwards
+```
+
+Read the output with these questions in mind:
+
+- **Is the file listed?** If not, check its name and location. Files named
+  [`.prototools.<env>`](<../(fundamentals)/config.mdx#environment-mode>) are only loaded when
+  `PROTO_ENV` is set.
+- **Is it marked `(untrusted)`?** Then it's printed without its
+  [security-sensitive settings](<../(fundamentals)/trust.mdx#security-sensitive-settings>), as
+  they aren't applied. See [settings are ignored](#settings-aliases-or-plugins-are-ignored).
+- **Does the merged result have the value you expect?** If a file has it, but the result doesn't, a
+  file with higher precedence, or an environment variable, overrides it.
+
+Not every command loads the same files. [`proto install`](../commands/install.mdx),
+[`proto status`](../commands/status.mdx), [`proto outdated`](../commands/outdated.mdx),
+[`proto lock`](../commands/lock.mdx), and [`proto activate`](../commands/activate.mdx) skip the
+global [`~/.proto/.prototools`](<../(fundamentals)/config.mdx#locations>), while
+[`proto run`](../commands/run.mdx) and shims include it (see
+[resolution modes](<../(fundamentals)/config.mdx#resolution-modes>)). Pass `--config-mode` to
+[`proto debug config`](../commands/debug/config.mdx) to see what a specific command sees.
+
+For versions, [`proto status`](../commands/status.mdx) is quicker: it lists each tool with a detected
+version, what it resolves to, whether it's installed, and the file it came from. See
+[debugging detection](<../(fundamentals)/detection.mdx#debugging-detection>).
+
 ## Inspecting the environment
+
+proto can behave differently in your terminal than in an editor, a script, or a CI job, as each one
+can have its own `PATH`, `PROTO_HOME`, and `PROTO_*` variables. For example, an editor that's
+launched from your desktop may not load your shell profile at all. To see what proto sees in a given
+context, run [`proto debug env`](../commands/debug/env.mdx) there, like in the editor's integrated
+terminal or as a step in the CI job.
+
+```shell
+$ proto debug env
+```
+
+It prints the [store](<../(fundamentals)/store.mdx#store-location>) location, the version of proto
+that's running, every [`.prototools`](<../(fundamentals)/config.mdx>) it found, and every `PROTO_*`
+variable that's set. Check that the store is where you expect, and look for variables that change
+proto's behavior, like a leftover `PROTO_NODE_VERSION` (see
+[version overrides](../advanced/env-vars.mdx#version-overrides)) or `PROTO_OFFLINE`. Values are
+printed as-is, so remove tokens and other secrets before sharing the output.
+
+To check which executable a tool resolves to, compare what your shell finds on `PATH` with what
+proto would run, using [`proto bin`](../commands/bin.mdx):
+
+```shell
+# What the shell runs: a shim, an activated version, or something else entirely
+$ which node
+
+# What proto resolves for the current directory
+$ proto bin node
+```
 
 ## Logging
 
+proto logs very little by default. Raise the level with the
+[`--log`](../commands/overview.mdx#logging) option (or `PROTO_LOG`) to see what's happening:
+`debug` reports which files were loaded, where each version was detected, and which plugins were
+used, and `trace` adds every directory checked, every request, and every plugin call. `verbose` also
+includes spans, which show the operation that each message belongs to.
+
+```shell
+# See which files and versions proto used
+$ proto install --log debug
+
+# See everything, and keep it in a file
+$ proto install --log trace --log-file proto.log
+```
+
+Logs are written to stderr, so they never mix with a command's output.
+[`proto run`](../commands/run.mdx), [`proto exec`](../commands/exec.mdx),
+[`proto shell`](../commands/shell.mdx), and [`proto bin`](../commands/bin.mdx) only log warnings by
+default, as their stderr belongs to the tool, or to the script that calls them. Shims pass every
+argument to the tool, so set the level for a shim with the variable instead:
+
+```shell
+$ PROTO_LOG=debug node --version
+```
+
+A few [debugging variables](../advanced/env-vars.mdx#debugging) reveal more for specific problems:
+
+- `PROTO_DEBUG_SHIM` - Shims print each step to stderr, like how they located proto, before proto
+  itself runs. Use it when a shim fails before any log is written.
+- `PROTO_DEBUG_COMMAND` - Include the output of commands that plugins run, like build scripts or
+  `git`, in the trace logs. Set it to `stream` to also stream them to the terminal.
+- `PROTO_DEBUG_WASM` - Include the logs of the WASM runtime that plugins run in.
+- `WARPGATE_DEBUG_CALL` - Log the full input and output of plugin function calls, instead of
+  truncating large values. Use it to see exactly what a plugin returned.
+
+```shell
+$ PROTO_DEBUG_COMMAND=stream proto install python --build --log trace
+```
+
 ## Profiling
+
+When a command is slow, pass [`--dump`](../commands/overview.mdx#profiling) (or set `PROTO_DUMP`) to
+record where it spends its time. proto writes a trace profile to a `dump-<timestamp>.json` file in
+the current directory, which you can open in [Perfetto](https://ui.perfetto.dev) or
+`chrome://tracing`, to see each operation, like loading plugins, resolving versions, and
+downloading, on a timeline.
+
+```shell
+$ proto install --dump
+```
+
+Profiles aren't written by [`proto run`](../commands/run.mdx), [`proto exec`](../commands/exec.mdx),
+[`proto shell`](../commands/shell.mdx), or shims, as proto hands its process over to the tool. To
+measure how much time a shim adds, compare it with running the executable directly, and use the
+timestamps in its debug logs to see where the time goes:
+
+```shell
+# Through the shim, and without it
+$ time node --version
+$ time "$(proto bin node)" --version
+
+# Timestamped logs of what the shim does
+$ PROTO_LOG=debug node --version
+```
+
+To collect timings across many runs, like every CI job, export traces with
+[OpenTelemetry](./opentelemetry.mdx) instead.
 
 ## Common issues
 
+If none of the following help, [open an issue](https://github.com/moonrepo/proto/issues) with the
+output of [`proto debug env`](../commands/debug/env.mdx), and a log of the failing command, written
+with `--log trace --log-file proto.log`. Remove tokens and other secrets first.
+
+### A tool runs the wrong version
+
+1. Run [`proto status`](../commands/status.mdx) to see which version proto detects, and the file it
+   comes from. A version from an ecosystem file, like `.nvmrc`, can win over a
+   [`.prototools`](<../(fundamentals)/config.mdx>) in a parent directory. If you'd rather it didn't,
+   change the [`detect-strategy`](<../(fundamentals)/config.mdx#detect-strategy>) (see
+   [detection strategies](<../(fundamentals)/detection.mdx#detection-strategies>)).
+2. Run `which node`. If it isn't in `~/.proto/shims`, or in `~/.proto/tools` when using shell
+   activation, something else comes first on `PATH`, like another version manager or a system
+   install. If it's in `~/.proto/bin`, that directory comes before the shims, so the highest
+   installed version always runs. [`proto diagnose`](../commands/diagnose.mdx) reports this order.
+3. Run [`proto debug env`](../commands/debug/env.mdx), and check for a `PROTO_<TOOL>_VERSION`
+   variable, which overrides every [`.prototools`](<../(fundamentals)/config.mdx>).
+4. If no version is detected at all, a shim falls back to an executable with the same name elsewhere
+   on `PATH`, without saying so. Pin a fallback version with
+   [`proto pin node 22 --to global`](../commands/pin.mdx).
+
+With [shell activation](<../(fundamentals)/workflows.mdx#shell-activation>), a version that isn't
+installed is skipped, and versions pinned in the global
+[`~/.proto/.prototools`](<../(fundamentals)/config.mdx#locations>) aren't activated. Those calls fall
+through to the shims instead. Run [`proto install`](../commands/install.mdx) to
+install the versions a project pins.
+
+### A command isn't found
+
+When your shell reports `command not found` for a tool you've installed:
+
+- Run [`proto diagnose`](../commands/diagnose.mdx) to check that `~/.proto/shims` and `~/.proto/bin`
+  are on `PATH`. If they aren't, run [`proto setup`](../commands/setup.mdx), or add them to your
+  profile by hand (see [shims](<../(fundamentals)/workflows.mdx#shims>)), then open a new terminal.
+- Check that the shim exists in `~/.proto/shims`. Shims are created when you install a tool, and
+  removed when you uninstall its last version. If they're missing or broken, recreate them with
+  [`proto regen`](../commands/regen.mdx), from a directory where all your tools are configured.
+
 ### Network requests keep failing
 
+Errors name the URL that failed, and `--log trace` shows every request, and how the HTTP client was
+configured, like its proxies and certificates. Most failures come down to one of the following:
+
+- **A proxy is required** - Set the standard `HTTPS_PROXY` variable, or configure proxies in
+  [`[settings.http]`](<../(fundamentals)/config.mdx#settingshttp>). A corporate proxy that's
+  reached over plain HTTP, but handles HTTPS traffic, belongs in
+  [`secure-proxies`](<../(fundamentals)/config.mdx#secure-proxies>). See
+  [proxies](../advanced/http.mdx#proxies).
+- **A certificate isn't trusted** - TLS errors behind a proxy that inspects HTTPS traffic mean its
+  root certificate isn't installed system-wide. Point
+  [`root-cert`](<../(fundamentals)/config.mdx#root-cert>) at it. See
+  [certificates](../advanced/http.mdx#certificates).
+- **GitHub limits requests** - Plugins with a `github://` locator are resolved through the GitHub
+  API, which limits unauthenticated requests, especially in CI. Set `GITHUB_TOKEN`. See
+  [GitHub authentication](../advanced/http.mdx#github-authentication).
+- **Downloads must come from a mirror** - Rewrite URLs with
+  [`url-rewrites`](<../(fundamentals)/config.mdx#url-rewrites>), and check with `--log trace` that
+  your patterns match. See [URL rewrites](../advanced/http.mdx#url-rewrites).
+- **proto thinks you're offline** - Errors saying that an internet connection is required, while
+  you're online, mean that proto's connectivity check failed, which is common behind a VPN or
+  firewall that blocks the default hosts. Add a host you can reach to
+  [`custom-hosts`](<../(fundamentals)/config.mdx#custom-hosts>), or set `PROTO_OFFLINE=false` to skip
+  the check. See [customizing detection](./offline-mode.mdx#customizing-detection).
+- **The connection is slow or unreliable** - Raise
+  [`retry-count`](<../(fundamentals)/config.mdx#retry-count>), or set
+  `WARPGATE_HTTP_NO_TIMEOUTS=true` to disable timeouts.
+
+If your network settings work in one repository but not another, check whether that repository's
+[`.prototools`](<../(fundamentals)/config.mdx>) defines
+[`[settings.http]`](<../(fundamentals)/config.mdx#settingshttp>). The table isn't merged, so a
+project that sets it replaces the proxies and certificate from your
+[`~/.prototools`](<../(fundamentals)/config.mdx#locations>) entirely.
+
 ### Settings, aliases, or plugins are ignored
+
+Run [`proto debug config`](../commands/debug/config.mdx) to see what proto read (see
+[inspecting configuration](#inspecting-configuration)), then check the following, in order:
+
+1. **The config isn't trusted** - Settings like [`[env]`](<../(fundamentals)/config.mdx#env>),
+   [`[plugins]`](<../(fundamentals)/config.mdx#plugins>),
+   [`[shell]`](<../(fundamentals)/config.mdx#shell>),
+   [`[tools.*]`](<../(fundamentals)/config.mdx#tools>), and most of
+   [`[settings]`](<../(fundamentals)/config.mdx#settings>) are only applied from a project's
+   [`.prototools`](<../(fundamentals)/config.mdx>) once you trust it. Untrusted configs are listed
+   by [`proto status`](../commands/status.mdx) and [`proto diagnose`](../commands/diagnose.mdx),
+   with the settings that were ignored. Review the file, then run
+   [`proto trust`](../commands/trust.mdx). See
+   [security-sensitive settings](<../(fundamentals)/trust.mdx#security-sensitive-settings>).
+2. **The command doesn't load the file** - Settings and plugins in the global
+   [`~/.proto/.prototools`](<../(fundamentals)/config.mdx#locations>) don't apply to
+   [`proto install`](../commands/install.mdx), [`proto activate`](../commands/activate.mdx), and
+   other commands in the [`upwards`](<../(fundamentals)/config.mdx#upwards>) mode. Configure them in
+   [`~/.prototools`](<../(fundamentals)/config.mdx#locations>) instead, which is loaded everywhere
+   within your home directory.
+3. **Something overrides it** - A closer [`.prototools`](<../(fundamentals)/config.mdx>) takes
+   precedence over a parent's, and an environment variable, like `PROTO_AUTO_INSTALL`, takes
+   precedence over every file (see [settings](../advanced/env-vars.mdx#settings)). The merged
+   result shows which value won.
+4. **A key is misspelled** - An unknown setting in `[settings]` fails with an error, but unknown
+   keys in [`[tools.*]`](<../(fundamentals)/config.mdx#tools>) and
+   [`[backends.*]`](<../(fundamentals)/config.mdx#backends>) are kept and passed to the plugin, as
+   plugins define their own settings, so a typo there can go unnoticed. Compare them against the
+   plugin's documentation.
+5. **It needs shell activation** - Shell aliases from
+   [`[shell.aliases]`](<../(fundamentals)/config.mdx#shell-aliases>) are only defined by
+   [shell activation](<../(fundamentals)/workflows.mdx#shell-aliases>), not by shims or
+   [`proto run`](../commands/run.mdx).
+
+When you've changed a plugin, but proto still uses the old one, it's because downloaded plugins are
+cached for [`cache-duration`](<../(fundamentals)/config.mdx#cache-duration>). Changing the locator
+downloads the new plugin, but a new release at the same locator isn't picked up until the cache
+expires. Remove the cached plugins with
+[`proto clean plugins --days 0`](../commands/clean.mdx) to download them again.
