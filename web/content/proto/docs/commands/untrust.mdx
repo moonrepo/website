@@ -23,8 +23,8 @@ This removes the record for exactly the path you pass, so other records that cov
 are kept:
 
 - Untrusting a directory doesn't untrust files within it that were trusted on their own. That
-  includes configs that proto trusted for you, when a command like
-  [`proto plugin add`](./plugin/add.mdx) added their first sensitive setting.
+  includes configs that proto [trusted for you](<../(fundamentals)/trust.mdx#automatically-trusted>)
+  when a command added their first sensitive setting.
 - Untrusting a file or a sub-directory doesn't untrust a parent directory that was trusted. You
   can't exclude a sub-directory from a trusted parent, so untrust the parent instead, then trust the
   directories or files you still want with [`proto trust`](./trust.mdx).

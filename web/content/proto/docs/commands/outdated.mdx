@@ -27,7 +27,7 @@ $ proto outdated --json
 
 Every tool with a version [detected](<../(fundamentals)/detection.mdx>) for the current directory is
 checked, whether it's pinned in a [`.prototools`](<../(fundamentals)/config.mdx>), an [ecosystem
-file](<../(fundamentals)/detection.mdx#4-ecosystem-files>) like `.nvmrc`, or a
+file](<../(fundamentals)/detection.mdx#4-ecosystem-files>), or a
 [`PROTO_<TOOL>_VERSION`](<../(fundamentals)/detection.mdx#2-environment-variable>) environment
 variable. Like [`proto install`](./install.mdx), versions that are only pinned in the global
 [`~/.proto/.prototools`](<../(fundamentals)/config.mdx#locations>) aren't checked by default, so
@@ -47,9 +47,9 @@ modes](<../(fundamentals)/config.mdx#resolution-modes>)). Each tool is reported 
 
 Pass `--update` to write each tool's Newest version, or its Latest with `--latest`, to the file it
 was detected from. The new version is always written as an exact version, so `pnpm = "^9"` becomes
-`pnpm = "9.15.9"`. Aliases like `stable`, and versions from ecosystem files or environment
-variables, are left as-is. When an updated [`.prototools`](<../(fundamentals)/config.mdx>) enables a
-lockfile, its `.protolock` is updated too.
+`pnpm = "9.15.9"`. Aliases, and versions from ecosystem files or environment variables, are left
+as-is. When an updated [`.prototools`](<../(fundamentals)/config.mdx>) enables a lockfile, its
+`.protolock` is updated too.
 
 In an interactive terminal, proto asks for confirmation before writing anything. There's no prompt
 with the global `--yes` option (see [prompts](./overview.mdx#prompts)), in CI, or with JSON output.

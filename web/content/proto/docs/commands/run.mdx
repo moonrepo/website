@@ -30,14 +30,14 @@ $ PROTO_AUTO_INSTALL=true proto run node 24 -- ./script.mjs
 
 <Callout type="warning">
   Arguments for the tool must come after `--`. Everything before it is parsed by
-  proto, so a flag like `--version` is treated as proto's own, and an argument
-  like `./script.mjs` as the version to run.
+  proto, so the tool's flags are treated as proto's own, and its first argument
+  as the version to run.
 </Callout>
 
 Without a version, proto [detects](<../(fundamentals)/detection.mdx#detection-order>) one from the
 environment, the closest [`.prototools`](<../(fundamentals)/config.mdx>) or ecosystem file, and
-finally your global [`~/.proto/.prototools`](<../(fundamentals)/config.mdx>). A partial version like
-`22` typically runs the highest 22.x you already have.
+finally your global [`~/.proto/.prototools`](<../(fundamentals)/config.mdx>). A partial version
+typically runs the highest matching version you already have.
 
 When that version isn't installed, proto installs it first if
 [`auto-install`](<../(fundamentals)/config.mdx#auto-install>) is enabled, without writing to a

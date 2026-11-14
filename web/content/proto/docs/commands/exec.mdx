@@ -34,9 +34,9 @@ $ proto exec node pnpm --raw -- 'pnpm build && pnpm test'
 
 Tools are passed by [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>), optionally
 with a [version specification](<../(fundamentals)/version-spec.mdx>) as `<id>@<spec>`, as in
-`node@22` or `npm:typescript@5`. proto doesn't [detect
-versions](<../(fundamentals)/detection.mdx#detection-by-command>), so ecosystem files like `.nvmrc`
-are ignored. To use the versions pinned in [`.prototools`](<../(fundamentals)/config.mdx>), pass
+`node@22` or `npm:typescript@5`. proto doesn't
+[detect versions](<../(fundamentals)/detection.mdx#detection-by-command>), so ecosystem files are
+ignored. To use the versions pinned in [`.prototools`](<../(fundamentals)/config.mdx>), pass
 `--tools-from-config`, and any tools you list take precedence over their pins.
 
 A few things to keep in mind:
@@ -55,7 +55,7 @@ A few things to keep in mind:
 The command goes after a `--` separator, and runs directly, without a shell. When it contains pipes
 (`|`), `&&`, or redirects, or runs a `.ps1`, `.cmd`, or `.bat` script, proto runs it through your
 current shell. Variables and globs alone don't count, so pass `--shell` when a command relies on
-them. Your own shell parses the command line first, so unquoted syntax like `&& pnpm test` runs
+them. Your own shell parses the command line first, so anything unquoted after `&&` or `|` runs
 outside the environment. Quote the whole script as one argument, and pass `--raw`, as shown above.
 `proto exec` exits with the command's exit code.
 

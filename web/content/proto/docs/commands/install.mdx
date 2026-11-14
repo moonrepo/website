@@ -15,7 +15,7 @@ installing one version never replaces another. The command is also available as 
   move a tool forward to its newest release.
 - **Every tool** - `proto install`, without arguments, installs every tool that has a version
   configured for the current directory, in a [`.prototools`](<../(fundamentals)/config.mdx>) or an
-  ecosystem file like `.nvmrc`, in parallel. Use it after cloning a repository (see
+  ecosystem file, in parallel. Use it after cloning a repository (see
   [installing every tool](../start/team.mdx#installing-every-tool)), and whenever its pins change.
 
 ```shell
@@ -42,7 +42,7 @@ $ proto install --immutable-lockfile
 
 Versions that are already installed are skipped, so the command is safe to run again and again
 (pass `--force` to reinstall them). The two modes treat a partial version differently: installing
-one tool resolves a requirement like `24` to the newest matching release, even when an older match
+one tool resolves a partial version to the newest matching release, even when an older match
 is installed, while installing every tool is satisfied by any matching version that's already
 installed. To move a tool forward, install it by name, or update its pin
 with [`proto outdated --update`](./outdated.mdx).

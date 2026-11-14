@@ -24,7 +24,7 @@ $ proto status --json | jq -r 'to_entries[] | select(.value.is_installed | not) 
 
 A tool is listed whenever proto [detects a version](<../(fundamentals)/detection.mdx>) for it,
 whether from a [`.prototools`](<../(fundamentals)/config.mdx>) pin, an
-[ecosystem file](<../(fundamentals)/detection.mdx#4-ecosystem-files>) like `.nvmrc`, or a
+[ecosystem file](<../(fundamentals)/detection.mdx#4-ecosystem-files>), or a
 [`PROTO_<TOOL>_VERSION`](<../(fundamentals)/detection.mdx#2-environment-variable>) environment
 variable, and that includes [built-in tools](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>)
 you haven't pinned. Tools without a version are skipped, and the command fails when no tool has one.

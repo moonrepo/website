@@ -44,9 +44,9 @@ repository's root directory instead when you want all of its configs applied.
 
 proto doesn't ask for confirmation, so read the config before you trust it. Once trusted, it prints
 the sensitive settings it will now apply. Check that it's what you expected, and if it isn't, run
-[`proto untrust`](./untrust.mdx). Trusting your home directory, or a directory above it like `/`,
-prints a warning, as it trusts every config within your home directory, including repositories you
-clone in the future.
+[`proto untrust`](./untrust.mdx). Trusting your home directory, or a directory above it, prints a
+warning, as it trusts every config within your home directory, including repositories you clone in
+the future.
 
 Trust follows the path, not the content, so edits to a trusted config are applied without trusting
 it again. Review changes to [`.prototools`](<../(fundamentals)/config.mdx>) in pull requests like
