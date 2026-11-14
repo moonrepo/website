@@ -9,34 +9,6 @@ The `proto unalias <tool> <alias>` (or `proto ua`) command removes a
 [`proto alias`](./alias.mdx), and is handy for cleaning up aliases that no project uses anymore, like
 a `legacy` alias after its last service has been upgraded.
 
-By default, the alias is removed from the closest [`.prototools`](<../(fundamentals)/config.mdx>):
-the first one found walking up from the current directory (see
-[closest](<../(fundamentals)/config.mdx#closest>)). Pass `--from` to pick another file. proto
-deletes the entry from the file's
-[`[tools.<tool>.aliases]`](<../(fundamentals)/config.mdx#tools-aliases>) table, and edits the file
-in place, preserving its formatting and comments. Tables that are left empty are removed too, first
-the `aliases` table, then `[tools.<tool>]`, then `[tools]`, so the file doesn't collect empty
-headers. On success, proto prints the spec that the alias mapped to, in case you want to add it back.
-
-A few things to know about how an alias is removed:
-
-- **Only one file is checked.** proto doesn't search other files for the alias. If the file it
-  checks doesn't define the alias, proto prints a warning naming that file, and exits with code 1.
-  This is common when the alias lives in your user or global file, or in a parent
-  [`.prototools`](<../(fundamentals)/config.mdx>) while a closer one exists, so pass `--from` to
-  target the file that defines it.
-- **Other files may still define it.** Aliases from every loaded
-  [`.prototools`](<../(fundamentals)/config.mdx>) are merged, so the name keeps resolving if another
-  file defines an alias with the same name. Removing a custom alias that overrides one of the tool's
-  own, like `stable`, restores the tool's alias. To see what's left, run
-  [`proto versions node --aliases`](./versions.mdx).
-- **Pins aren't updated.** A [`.prototools`](<../(fundamentals)/config.mdx>) that pins the alias,
-  like `node = "work"`, keeps that pin. Unless another file or the tool itself still defines the
-  alias, the pin then fails to resolve, so re-pin those tools with [`proto pin`](./pin.mdx) before
-  removing the alias.
-- **The tool must exist.** proto loads the tool's plugin first, downloading it when it isn't cached
-  yet, so an unknown tool fails with an error. The tool doesn't need to be installed.
-
 ```shell
 # Remove an alias from the closest .prototools
 $ proto unalias node work
@@ -48,6 +20,16 @@ $ proto unalias node work
 # Remove a personal alias for a backend tool, from ~/.prototools
 $ proto unalias npm:prettier legacy --from user
 ```
+
+By default, the alias is removed from the [closest](<../(fundamentals)/config.mdx#closest>)
+[`.prototools`](<../(fundamentals)/config.mdx>), and only that file is checked. If it doesn't define
+the alias, proto prints a warning naming the file and exits with a non-zero code, so pass `--from`
+to target the file that does, like your user file. On success, proto prints the spec that the alias
+mapped to, in case you want to add it back.
+
+Pins that use the alias, like `node = "work"`, aren't updated, and fail to resolve once the alias is
+gone, unless another file still defines it. Re-pin those tools with [`proto pin`](./pin.mdx) first.
+To see which aliases are left, run [`proto versions node --aliases`](./versions.mdx).
 
 ## Arguments
 
@@ -61,6 +43,5 @@ $ proto unalias npm:prettier legacy --from user
 - `--from` <TypeLabel type="closest | global | local | user" /> - The
   [location](<../(fundamentals)/config.mdx#writing-to-a-file>) of the
   [`.prototools`](<../(fundamentals)/config.mdx>) to remove the alias from: the closest file
-  (`closest`, the default), `./.prototools` in the current directory (`local`), `~/.prototools`
-  (`user`), or `~/.proto/.prototools` (`global`). `cwd`, `home`, and `store` are accepted as aliases
-  of `local`, `user`, and `global`.
+  (`closest`, the default), `./.prototools` (`local`), `~/.prototools` (`user`), or
+  `~/.proto/.prototools` (`global`).

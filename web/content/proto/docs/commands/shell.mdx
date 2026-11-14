@@ -5,13 +5,12 @@ title: proto shell
 import { TypeLabel } from "@/components/TypeLabel";
 
 Starts a new interactive shell session with [tools](<../(fundamentals)/(plugin)/tool.mdx>) ready to
-use. Each tool's executable directories, and the directories where executables of its globally
-installed packages live, are prepended to `PATH`, and its environment variables are set, for
-everything you run in the session. Reach for it when you want a temporary setup without changing
-your shell profile or any [`.prototools`](<../(fundamentals)/config.mdx>), like trying a project on
-another Node.js version, reproducing a bug with the versions CI uses, or working in a repository
-without [shell activation](<../(fundamentals)/workflows.mdx#shell-activation>). The command is also
-available as `proto sh` and `proto session`.
+use. Each tool's executables, and those of its globally installed packages, are put on `PATH`, and
+its environment variables are set, for everything you run in the session. Reach for it when you want
+a temporary setup without changing your shell profile or any
+[`.prototools`](<../(fundamentals)/config.mdx>), like trying a project on another Node.js version,
+or reproducing a bug with the versions CI uses. The command is also available as `proto sh` and
+`proto session`.
 
 ```shell
 # Start a shell with every tool pinned in .prototools
@@ -24,83 +23,44 @@ $ proto shell node@22 pnpm@10
 $ proto shell node@22 --shell fish
 ```
 
-Which tools are loaded depends on whether you list any:
+Without tools, every tool pinned in the [`.prototools`](<../(fundamentals)/config.mdx>) files that
+apply is loaded at its pinned version, including the global
+[`~/.proto/.prototools`](<../(fundamentals)/config.mdx>). Pass `--config-mode upwards` (a
+[global option](./overview.mdx#global-options)) to leave your global fallback versions out. With
+tools, only the ones you list are loaded, and a tool without a version uses the highest installed
+version, as this command doesn't
+[detect versions](<../(fundamentals)/detection.mdx#detection-by-command>) for the current directory.
 
-- **Without tools**, every tool with a version pinned in the
-  [`.prototools`](<../(fundamentals)/config.mdx>) files that apply is loaded, at its pinned version.
-  That includes the global `~/.proto/.prototools`, as the command uses the
-  [`upwards-global`](<../(fundamentals)/config.mdx#upwards-global>) resolution mode by default. Pass
-  `--config-mode upwards` (a [global option](./overview.mdx#global-options)) to leave your global
-  fallback versions out. If nothing
-  is pinned, the shell starts with only [`[env]`](<../(fundamentals)/config.mdx#env>) variables
-  applied.
-- **With tools**, only the tools you list are loaded, and versions pinned in
-  [`.prototools`](<../(fundamentals)/config.mdx>) aren't used. Pass each tool as `<id>@<version>`,
-  with any [version specification](<../(fundamentals)/version-spec.mdx>), like `node@22` or
-  `npm:prettier@3`. A tool without a version, like `node`, uses `*`, the highest installed version,
-  as this command doesn't [detect versions](<../(fundamentals)/detection.mdx#detection-by-command>)
-  for the current directory.
-
-Tools must already be installed. A version that isn't installed is left off `PATH` without an
-error, as this command never installs anything, even with
-[`auto-install`](<../(fundamentals)/config.mdx#auto-install>) enabled. Run
-[`proto install`](./install.mdx) first. The variables that the session receives, from
-[`[env]`](<../(fundamentals)/config.mdx#env>), [`[tools.*.env]`](<../(fundamentals)/config.mdx#tools-env>),
-and the tools' plugins, are listed in
-[variables within tool processes](../advanced/env-vars.mdx#within-tool-processes). Those from an
-untrusted [`.prototools`](<../(fundamentals)/config.mdx>) aren't set (see
+Tools must already be installed. A version that isn't installed is left off `PATH` without an error,
+even with [`auto-install`](<../(fundamentals)/config.mdx#auto-install>) enabled, so run
+[`proto install`](./install.mdx) first. Variables from an untrusted
+[`.prototools`](<../(fundamentals)/config.mdx>) aren't set (see
 [untrusted configurations](<../(fundamentals)/trust.mdx#untrusted-configurations>)), and
 [shell aliases](<../(fundamentals)/workflows.mdx#shell-aliases>) are never defined, as only
 activation does that.
 
-The new shell starts in interactive mode, not as a login shell, so it loads your interactive startup
-file, like `~/.bashrc` or `~/.zshrc`, as usual. Versions are resolved once, when the session starts,
-and stay fixed until you exit, even when you change into a project that pins another version. Each
-tool's resolved version is exported as `PROTO_<TOOL>_VERSION`, which takes precedence in
-[version detection](<../(fundamentals)/detection.mdx#2-environment-variable>), so even if your
-profile puts [shims](<../(fundamentals)/workflows.mdx#shims>) first on `PATH`, or activates proto,
-`node` still runs the version the session started with. Tools that weren't loaded keep resolving
-through shims or activation as usual.
+The new shell loads your interactive startup file, like `~/.zshrc`, as usual. Versions are resolved
+once, when the session starts, and stay fixed until you exit, even when you change into a project
+that pins another version, or your profile puts shims first or activates proto. Exit the shell (with
+`exit`, or `Ctrl+D`) to return to your original session, with its environment untouched.
 
-To leave, exit the shell (with `exit`, or `Ctrl+D`), which returns you to your original session,
-with its environment untouched. On macOS and Linux, proto replaces its own process with the shell,
-so nothing lingers in the background. On Windows, proto waits for the shell to exit. Either way,
-the command exits with the shell's exit code.
-
-How it compares to the other ways of putting tools on `PATH`:
-
-- [`proto activate`](./activate.mdx) changes the shell you're already in, through a hook in your
-  profile, and re-detects versions as you move between directories. It's the better fit for your
-  everyday shell. `proto shell` adds nothing to your profile, and starts a separate shell with
-  versions that don't change, which is what you want for a one-off session.
-- [`proto exec`](./exec.mdx) runs a single command with the tools, then exits, which suits scripts
-  and CI. `proto shell` is built on it: `proto shell node@22` is equivalent to
-  [`proto exec node@22 -- zsh --interactive`](./exec.mdx) in Zsh, and without tools, to
-  [`proto exec --tools-from-config -- zsh --interactive`](./exec.mdx). Use
-  [`proto exec`](./exec.mdx) directly to override one tool while keeping the rest that are pinned,
-  as it can combine both:
-
-```shell
-# A shell with Node.js 20, and every other tool at its pinned version
-$ proto exec node@20 --tools-from-config -- zsh --interactive
-```
-
-See the [workflows comparison](<../(fundamentals)/workflows.mdx#comparison>) for how these fit
-alongside shims and binary linking.
+Unlike [`proto activate`](./activate.mdx), which changes the shell you're already in and re-detects
+versions as you move between directories, `proto shell` adds nothing to your profile, which is what
+you want for a one-off session. To run a single command instead, use [`proto exec`](./exec.mdx). It
+can also override one tool while keeping the rest that are pinned, like
+[`proto exec node@20 --tools-from-config -- zsh --interactive`](./exec.mdx). See the
+[workflows comparison](<../(fundamentals)/workflows.mdx#comparison>) for how these fit alongside
+shims and binary linking.
 
 ## Arguments
 
-- `[TOOLS...]` - Tools to load into the session, as `<id>` or `<id>@<version>`, like `node@22`,
-  `pnpm`, or `npm:prettier@3`. A tool without a version uses the highest installed version. When
+- `[TOOLS...]` - Tools to load into the session, as `<id>` or `<id>@<version>`. A tool without a version uses the highest installed version. When
   omitted, every tool pinned in [`.prototools`](<../(fundamentals)/config.mdx>) is loaded, at its
   pinned version.
 
 ## Options
 
-- `--shell` <TypeLabel type="ash | bash | dash | elvish | fish | ion | murex | nu | pwsh | sh | xonsh | zsh" /> - The shell to start.
-  Defaults to the shell detected from the `SHELL` environment variable (your login shell, which may
-  not be the one you're currently in), and then from the parent process. If no shell is detected,
-  the command fails, so pass this option. `elv`, `nushell`, and `xon.sh` are accepted as aliases.
-  PowerShell 5.1 (`powershell`) isn't supported, as it can't be started as an interactive session,
-  so the command fails when it's passed or detected. Use PowerShell 6 and later with `--shell pwsh`
-  instead.
+- `--shell` <TypeLabel type="ash | bash | dash | elvish | fish | ion | murex | nu | pwsh | sh | xonsh | zsh" /> -
+  The shell to start. Defaults to the shell detected from `$SHELL`, and then from the parent process,
+  and the command fails if none is detected. PowerShell 5.1 (`powershell`) isn't supported, so use
+  `--shell pwsh` (PowerShell 6 and later) instead.

@@ -2,20 +2,13 @@
 title: proto untrust
 ---
 
-Removes trust from a [`.prototools`](<../(fundamentals)/config.mdx>) file, or a directory, that was
+Remove trust from a [`.prototools`](<../(fundamentals)/config.mdx>) file, or a directory, that was
 trusted with [`proto trust`](./trust.mdx). Once removed, proto ignores the
 [security-sensitive settings](<../(fundamentals)/trust.mdx#security-sensitive-settings>) of the
 affected configs again, like their environment variables, shell aliases, and plugins, while safe
 settings, like version pins for built-in tools, still apply. Use it when you no longer want a
 repository's config to run code on your machine, like a project you only cloned to try out, or to
 narrow trust from a whole repository down to a single file.
-
-The path is a directory or a config file, absolute or relative to the current directory, and
-defaults to the current directory. A path named [`.prototools`](<../(fundamentals)/config.mdx>) or
-`.prototools.<env>` is treated as a config file, and any other path as a directory. Unlike
-[`proto trust`](./trust.mdx), the path doesn't need to exist, so you can remove the record of a
-repository you've already deleted. An existing file that isn't a config is rejected, and proto exits
-with code 1.
 
 ```shell
 # Untrust the current directory
@@ -28,9 +21,8 @@ $ proto untrust ~/Projects/app
 $ proto untrust packages/web/.prototools
 ```
 
-Trust is recorded per path (see [how trust works](<../(fundamentals)/trust.mdx#how-trust-works>)),
-and this command removes the record for exactly the path you pass, after resolving relative
-components and symlinked directories. Other records that cover the same configs are kept:
+This removes the record for exactly the path you pass, so other records that cover the same configs
+are kept:
 
 - Untrusting a directory doesn't untrust files within it that were trusted on their own. That
   includes configs that proto trusted for you, when a command like
@@ -39,22 +31,16 @@ components and symlinked directories. Other records that cover the same configs 
   can't exclude a sub-directory from a trusted parent, so untrust the parent instead, then trust the
   directories or files you still want with [`proto trust`](./trust.mdx).
 
-After removing the record, proto checks whether the config file, or the configs directly within the
-directory, are still trusted some other way, and tells you why: another record, like a trusted
-parent directory (along with the command to untrust it), a directory listed in
-[`PROTO_TRUSTED_PATHS`](../advanced/env-vars.mdx#trust), or CI, where every config is
-[trusted automatically](<../(fundamentals)/trust.mdx#automatically-trusted>). If the path wasn't
-trusted to begin with, proto says so and still exits successfully. Configs you own, like
-`~/.prototools` and `~/.proto/.prototools`, are always trusted, so untrusting them has no effect.
+When a config is still trusted some other way, like through a trusted parent directory,
+[`PROTO_TRUSTED_PATHS`](../advanced/env-vars.mdx#trust), or CI, proto tells you why (see
+[automatically trusted](<../(fundamentals)/trust.mdx#automatically-trusted>)). The change applies to
+the next proto command or shim, and in a shell with
+[activation](<../(fundamentals)/workflows.mdx#shell-activation>), the next prompt unsets the config's
+environment variables and shell aliases.
 
-Trust isn't cached, so the change applies to the next proto command or shim. In a shell with
-[activation](<../(fundamentals)/workflows.mdx#shell-activation>), the next prompt unsets the
-config's environment variables and shell aliases. Processes that are already running keep the
-environment they started with.
-
-A record outlives the directory it points to, so a different repository cloned to a deleted
-repository's path would inherit its trust. Rather than untrusting deleted paths one at a time, run
-[`proto clean trust`](./clean.mdx) to remove the records of every path that no longer exists. See
+Unlike [`proto trust`](./trust.mdx), the path doesn't need to exist, so you can remove the record of
+a repository you've already deleted. To remove the records of every path that no longer exists at
+once, run [`proto clean trust`](./clean.mdx). See
 [removing trust](<../(fundamentals)/trust.mdx#removing-trust>) for more.
 
 ## Arguments

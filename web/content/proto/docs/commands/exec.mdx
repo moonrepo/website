@@ -5,93 +5,15 @@ title: proto exec
 import { TypeLabel } from "@/components/TypeLabel";
 
 Runs any command with one or more [tools](<../(fundamentals)/(plugin)/tool.mdx>) added to its
-environment. Before the command starts, proto prepares each tool: it prepends the tool's executable
-directories, and the directories where executables of its globally installed packages live, to
-`PATH`, sets `PROTO_<TOOL>_VERSION` to the resolved version, and applies the
-[`[env]`](<../(fundamentals)/config.mdx#env>), [`[tools.*.env]`](<../(fundamentals)/config.mdx#tools-env>),
-and [`[backends.*.env]`](<../(fundamentals)/config.mdx#backends-env>) variables of your
-[`.prototools`](<../(fundamentals)/config.mdx>), along with any that the tool's plugin adds (see
-[within tool processes](../advanced/env-vars.mdx#within-tool-processes)). The command, and every
-process it spawns, then uses those versions.
-
-The command can be anything, not only a tool's own executable: a package script, a `make` target,
-or a shell script that calls several tools. That makes `proto exec` (or its alias, `proto x`) a good
-fit for CI steps and scripts that should be explicit about their versions, and for trying a command
-against another version without changing your pins.
-
-Tools are passed by [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>),
-optionally followed by `@` and a [version specification](<../(fundamentals)/version-spec.mdx>), like
-`node@22`, `pnpm@^10`, or `node@lts`. [Backend](<../(fundamentals)/(plugin)/backend.mdx>) tools
-include their prefix, like `npm:typescript@5` or `npm:@biomejs/biome@2`. A requirement resolves to
-the version of a matching [lockfile record](../advanced/lockfile.mdx#version-resolution), when there
-is one, and otherwise to the highest installed version that matches. A tool without a version uses
-`*`, the highest installed version.
-
-`proto exec` doesn't [detect versions](<../(fundamentals)/detection.mdx#detection-by-command>), so
-ecosystem files like `.nvmrc`, and [`PROTO_<TOOL>_VERSION`](../advanced/env-vars.mdx#version-overrides)
-variables set in your shell, are ignored. To use the versions pinned in
-[`.prototools`](<../(fundamentals)/config.mdx>), pass `--tools-from-config`. It adds every tool pinned in the files that apply to the current directory,
-including the global [`~/.proto/.prototools`](<../(fundamentals)/config.mdx>), as this command
-loads configuration in the [`upwards-global`](<../(fundamentals)/config.mdx#upwards-global>) mode
-(pass `--config-mode upwards` to leave the global pins out). Tools you list take precedence over
-their pins, so `proto exec node@20 --tools-from-config` uses Node.js 20, and the pins for everything
-else. That's also true for a tool listed without a version, which uses `*` instead of its pin. With
-no tools, and without `--tools-from-config`, the command runs with only the
-[`[env]`](<../(fundamentals)/config.mdx#env>) variables applied.
-
-A few things to keep in mind:
-
-- **Nothing is installed.** A tool whose version isn't installed is left off `PATH`, without an
-  error, so the command still runs, and may pick up a [shim](<../(fundamentals)/workflows.mdx#shims>)
-  or a system install instead. Install the versions first with [`proto install`](./install.mdx).
-- **Only tools that proto can load are added.** These are the
-  [built-in tools](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>), tools registered in
-  [`[plugins]`](<../(fundamentals)/config.mdx#plugins>), and tools pinned in a
-  [`.prototools`](<../(fundamentals)/config.mdx>) that applies. A
-  [community tool](<../(fundamentals)/(plugin)/tool.mdx#community-tools>) or backend tool that isn't
-  pinned anywhere is skipped, also without an error.
-- **Requirements aren't added for you.** List every tool the command needs, like `node` alongside
-  `npm`. Tools are added to `PATH` in order of their requirements, with a tool's directories placed
-  before those of the tool it requires, so its executables take precedence.
-- **Configured variables win.** Unlike [`proto run`](./run.mdx), the
-  [`[tools.*.env]`](<../(fundamentals)/config.mdx#tools-env>) and
-  [`[backends.*.env]`](<../(fundamentals)/config.mdx#backends-env>) variables override ones already
-  set in your shell (see [order of precedence](<../(fundamentals)/config.mdx#order-of-precedence>)).
-  As everywhere, the variables of a local [`.prototools`](<../(fundamentals)/config.mdx>) are only
-  applied once it's [trusted](<../(fundamentals)/trust.mdx#security-sensitive-settings>).
-
-The command goes after a `--` separator, and is required. By default, it's executed directly,
-without a shell. When it needs one, because it contains shell syntax like pipes (`|`), `&&`, `||`,
-`;`, or redirects, or it runs a `.ps1`, `.cmd`, or `.bat` script, proto runs it through your current
-shell, detected from `$SHELL` and the parent processes. When no shell is detected, it falls back to
-Bash (or sh) on macOS and Linux, and to pwsh (or PowerShell) on Windows. Variables and globs alone,
-like `$HOME` or `*.js`, don't count, so when a command relies on them, pass `--shell` to always run
-it through a shell.
-
-Your own shell parses the command line before proto sees it, so unquoted shell syntax, like
-`&& pnpm test`, is run by your shell, outside of the environment. Instead, quote the whole script as
-one argument, and pass `--raw`. By default, proto quotes every argument that contains a space, so it
-stays a single argument; with `--raw`, the script is inserted as-is, for the shell to interpret.
-
-On macOS and Linux, proto replaces its own process with the command, so signals like `Ctrl+C` go
-straight to it, and its exit code becomes the exit code of `proto exec`. On Windows, proto waits for
-the command, passes `Ctrl+C` through to it, and exits with its exit code. Everything that proto
-prints itself, errors included, goes to stderr, so stdout belongs to the command, and is safe to pipe
-or redirect.
-
-How it compares to its siblings:
-
-- [`proto run`](./run.mdx) runs a single tool's executable. It
-  [detects](<../(fundamentals)/detection.mdx>) the version for the current directory, installs it
-  when [`auto-install`](<../(fundamentals)/config.mdx#auto-install>) is enabled, and falls back to an
-  executable elsewhere on `PATH`. It's what [shims](<../(fundamentals)/workflows.mdx#shims>) call, so
-  use it when a tool should behave exactly as if you'd typed its name.
-- `proto exec` runs any command, with any number of tools, at versions you pass or pin, and nothing
-  more: no detection, installs, or fallbacks. Use it when a command needs several tools, or specific
-  versions.
-- [`proto shell`](./shell.mdx) runs `proto exec` with an interactive shell as the command, and adds
-  the tools pinned in [`.prototools`](<../(fundamentals)/config.mdx>) when you don't list any. Use it
-  to work with a set of tools for a while. `proto exec node@22 -- bash` is the manual equivalent.
+environment. Each tool's executables, and those of its globally installed packages, are put on
+`PATH`, and the [`[env]`](<../(fundamentals)/config.mdx#env>) and
+[`[tools.*.env]`](<../(fundamentals)/config.mdx#tools-env>) variables of your
+[`.prototools`](<../(fundamentals)/config.mdx>) are applied (see
+[within tool processes](../advanced/env-vars.mdx#within-tool-processes)). The command can be
+anything, like a package script, a `make` target, or a shell script, and every process it spawns
+uses those versions. That makes `proto exec` (or its alias, `proto x`) a good fit for CI steps and
+scripts that should be explicit about their versions, and for trying a command against another
+version without changing your pins.
 
 ```shell
 # Run a command with Node.js 24 and pnpm 10
@@ -108,32 +30,56 @@ $ proto exec node@20 --tools-from-config -- npm test
 
 # Run a script that uses shell syntax, through the current shell
 $ proto exec node pnpm --raw -- 'pnpm build && pnpm test'
-
-# Run it through a specific shell
-$ proto exec node --shell bash --raw -- 'node --version > version.txt'
-
-# Start an interactive shell with Node.js 22
-$ proto exec node@22 -- bash
 ```
+
+Tools are passed by [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>), optionally
+with a [version specification](<../(fundamentals)/version-spec.mdx>), like `node@22`, `pnpm@^10`, or
+`npm:typescript@5` for a [backend](<../(fundamentals)/(plugin)/backend.mdx>) tool. proto doesn't
+[detect versions](<../(fundamentals)/detection.mdx#detection-by-command>), so ecosystem files like
+`.nvmrc` are ignored. To use the versions pinned in [`.prototools`](<../(fundamentals)/config.mdx>),
+pass `--tools-from-config`, and any tools you list take precedence over their pins.
+
+A few things to keep in mind:
+
+- **Nothing is installed.** A version that isn't installed is left off `PATH` without an error, so
+  the command may pick up a [shim](<../(fundamentals)/workflows.mdx#shims>) or a system install
+  instead. Run [`proto install`](./install.mdx) first.
+- **Requirements aren't added for you.** List every tool the command needs, like `node` alongside
+  `npm`.
+- **Unknown tools are skipped.** A
+  [community tool](<../(fundamentals)/(plugin)/tool.mdx#community-tools>) or backend tool that isn't
+  pinned in a [`.prototools`](<../(fundamentals)/config.mdx>) is skipped, also without an error.
+- **Configured variables win.** Unlike [`proto run`](./run.mdx), `[tools.*.env]` variables override
+  ones already set in your shell, once the [`.prototools`](<../(fundamentals)/config.mdx>) is
+  [trusted](<../(fundamentals)/trust.mdx#security-sensitive-settings>).
+
+The command goes after a `--` separator, and runs directly, without a shell. When it contains shell
+syntax, like pipes (`|`), `&&`, or redirects, or runs a `.ps1`, `.cmd`, or `.bat` script, proto runs
+it through your current shell. Variables and globs alone, like `$HOME` or `*.js`, don't count, so
+pass `--shell` when a command relies on them. Your own shell parses the command line first, so
+unquoted syntax like `&& pnpm test` runs outside the environment. Quote the whole script as one
+argument, and pass `--raw`, as shown above. `proto exec` exits with the command's exit code.
+
+Use [`proto run`](./run.mdx) instead when a tool should behave exactly as if you'd typed its name,
+with version detection and [`auto-install`](<../(fundamentals)/config.mdx#auto-install>). For an
+interactive session with a set of tools, use [`proto shell`](./shell.mdx).
 
 ## Arguments
 
-- `[TOOLS...]` - The tools to add to the environment, as `<id>` or `<id>@<version>`, like `node@22`
-  or `npm:typescript@5`. A tool without a version uses the highest installed version. Can be
+- `[TOOLS...]` - The tools to add to the environment, as `<id>` or `<id>@<version>`. A tool without a version uses the highest installed version. Can be
   combined with `--tools-from-config`, in which case these take precedence over the pins.
 - `-- <COMMAND...>` - The command to execute, followed by its arguments. Required, and must come
-  after a `--` separator. Executed directly, or through a shell when it needs one, as described
-  above.
+  after a `--` separator.
 
 ## Options
 
-- `--raw` - Insert the command and its arguments into the shell's command line as-is, instead of
-  quoting each argument that contains a space. Pass the whole script as a single quoted argument, so
-  that the shell interprets its syntax, like `&&` or `|`. Without it, a script passed as one argument
-  is treated as the name of a single executable.
+- `--raw` - Insert the command into the shell's command line as-is, instead of quoting each argument
+  that contains a space. Pass the whole script as a single quoted argument, so the shell interprets
+  its syntax, like `&&` or `|`.
 - `--shell` <TypeLabel type="ash | bash | dash | elvish | fish | ion | murex | nu | powershell | pwsh | sh | xonsh | zsh" /> -
   Always execute the command through this shell. Without it, the command only runs through a shell
   when it needs one, using the shell detected from your environment.
-- `--tools-from-config` - Also add every tool pinned in the [`.prototools`](<../(fundamentals)/config.mdx>)
-  files that apply to the current directory, including the global one, at its pinned version. Tools
-  passed as arguments take precedence over their pins.
+- `--tools-from-config` - Also add every tool pinned in the
+  [`.prototools`](<../(fundamentals)/config.mdx>) files that apply to the current directory,
+  including the global one, at its pinned version. Tools passed as arguments take precedence over
+  their pins.

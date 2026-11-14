@@ -2,51 +2,13 @@
 title: proto plugin search
 ---
 
-Search proto's third-party plugin registry for a plugin that provides a tool, and print the
-[locator](../../../../wasm/docs/plugin-locators.mdx) needed to enable it. Reach for this when a tool
-isn't [built in](<../../(fundamentals)/(plugin)/tool.mdx#built-in-tools>) or available as a
-[community tool](<../../(fundamentals)/(plugin)/tool.mdx#community-tools>). Before you write a
-[plugin](<../../(fundamentals)/(plugin)/plugin.mdx>) of your own, check whether someone has already
-published one.
-
-Only the [third-party registry](<../../(fundamentals)/(plugin)/tool.mdx#third-party-tools>) is
-searched. It's an index of plugins published by their authors and the community, kept in the proto
-repository as
-[`registry/data/third-party.json`](https://github.com/moonrepo/proto/blob/master/registry/data/third-party.json),
-and new plugins are added to it with a pull request. Built-in and community tools aren't searched,
-because they already work by ID, with no locator to look up. A few results are for tools that also
-work by ID, like `zig` (built in) or `just` (a community tool), and installing those by ID uses
-proto's own plugin unless you register a different one. The OCI registries in the
-[`registries`](<../../(fundamentals)/config.mdx#registries>) setting aren't searched either, as
-they're only used to download plugins with `registry://` locators.
-
-A plugin matches when its ID, name, or description contains the query, exactly as typed. Matching
-is case-sensitive, with no fuzzy matching or ranking, so `kubernetes` finds nothing, while
-`Kubernetes` finds every plugin whose description mentions it. Short queries work best, like part of
-a tool's name. Results are listed in registry order.
-
-Each result shows the plugin's name, author, [format](<../../(fundamentals)/(plugin)/plugin.mdx#plugin-formats>)
-(WASM, TOML, JSON, or YAML), description, and locator. The same tool can have more than one plugin,
-like `yq`, which has both a WASM and a TOML plugin from different authors, so compare the author and
-format before you pick one. Then register it with [`proto plugin add`](./add.mdx), using an ID and
-the locator from the results, and install it with [`proto install`](../install.mdx). Third-party
-plugins run code on your machine and are maintained by their authors, so check a plugin's source
-before you add it.
-
-When nothing matches, proto prints a notice and exits with code `1`. With the global
-[`--json`](../overview.mdx#global-options) option, it prints the full registry entry of each match
-instead, including fields that the table leaves out, like the executables the plugin provides
-(`bins`), and its `homepageUrl` and `repositoryUrl`. No matches then prints `[]`, and the command
-exits successfully.
-
-The registry is downloaded from GitHub the first time you search, and cached in the
-[store](<../../(fundamentals)/store.mdx#directory-layout>) at
-`~/.proto/cache/registry/external-plugins.json`. Searches within 24 hours of the download read the
-cached copy without a network request, so a newly published plugin can take up to a day to appear.
-Delete the file to fetch the latest registry on the next search. This cache is separate from the
-[`cache-duration`](<../../(fundamentals)/config.mdx#cache-duration>) setting, which only applies to
-downloaded plugins. When the cache is missing or older than 24 hours, and the registry can't be
-downloaded (like when you're offline), the command fails with an error.
+Search proto's [third-party plugin registry](<../../(fundamentals)/(plugin)/tool.mdx#third-party-tools>)
+for a plugin that provides a tool, and print the [locator](../../../../wasm/docs/plugin-locators.mdx)
+needed to enable it. Reach for this when a tool isn't
+[built in](<../../(fundamentals)/(plugin)/tool.mdx#built-in-tools>) or available as a
+[community tool](<../../(fundamentals)/(plugin)/tool.mdx#community-tools>), which already work by ID
+and aren't searched. Before you write a [plugin](<../../(fundamentals)/(plugin)/plugin.mdx>) of your
+own, check whether someone has already published one.
 
 ```shell
 # Search by ID, name, or description
@@ -58,13 +20,24 @@ $ proto plugin search Kubernetes
 # Quote queries with spaces, which are matched as a whole phrase
 $ proto plugin search "secret scanner"
 
-# Print the full registry entries as JSON
-$ proto plugin search yq --json
-
 # Register a plugin from the results, under an ID of your choosing, and install it
 $ proto plugin add example "github://org/proto-example-tool"
 $ proto install example
 ```
+
+A plugin matches when its ID, name, or description contains the query, exactly as typed. Matching
+is case-sensitive, with no fuzzy matching, so short queries work best, like part of a tool's name.
+
+Each result shows the plugin's name, author,
+[format](<../../(fundamentals)/(plugin)/plugin.mdx#plugin-formats>), description, and locator. The
+same tool can have more than one plugin, so compare the author and format before you pick one. Then
+register it with [`proto plugin add`](./add.mdx), and install it with
+[`proto install`](../install.mdx). Third-party plugins run code on your machine and are maintained by
+their authors, so check a plugin's source before you add it.
+
+The command exits with a non-zero code when nothing matches. Pass the global
+[`--json`](../overview.mdx#global-options) option to print the full registry entry of each match
+instead, which prints `[]` and exits successfully when nothing matches.
 
 ## Arguments
 

@@ -6,24 +6,19 @@ import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { TypeLabel } from "@/components/TypeLabel";
 
 Generate a tab-completion script for proto's command line, so your shell can complete `proto`
-commands, sub-commands, options, and the values of options that accept a fixed set (like
-`--config-mode` and `--log`). The script is generated from proto's own command definitions, so it
-covers proto itself, not the tools it manages: tool names, versions, and aliases aren't completed.
-
-The script is written to stdout, and nothing else is. Logs and notices go to stderr, even with a
-structured reporter enabled through the [global options](./overview.mdx#global-options), and the
-usual check for a new proto version is skipped. That makes the output safe to redirect into a file,
-or to evaluate directly from your shell's profile. proto doesn't install the script anywhere itself.
+commands, sub-commands, and options. It covers proto itself, not the tools it manages, so tool
+names, versions, and aliases aren't completed. The script is written to stdout, and proto doesn't
+install it anywhere itself.
 
 ```shell
 # Print completions for the detected shell
 $ proto completions
 
-# Write Fish completions to Fish's completions directory
-$ proto completions --shell fish > ~/.config/fish/completions/proto.fish
+# Print completions for a specific shell
+$ proto completions --shell zsh
 ```
 
-To enable completions, load the script from a place your shell reads on startup:
+To enable completions, write the script to a place your shell reads on startup:
 
 <Tabs groupId="shell" items={["Bash", "Zsh", "Fish", "Nushell"]}>
 <Tab>
@@ -52,13 +47,11 @@ $ proto completions --shell fish > ~/.config/fish/completions/proto.fish
 </Tab>
 <Tab>
 
-Nushell can't evaluate generated code at runtime, so save the completions to a file:
+Save the completions to a file, then source it from your `config.nu`:
 
 ```shell
 $ proto completions --shell nu | save --force ($nu.default-config-dir | path join "proto-completions.nu")
 ```
-
-Then source it from your configuration:
 
 ```nushell title="config.nu"
 source proto-completions.nu
@@ -67,13 +60,10 @@ source proto-completions.nu
 </Tab>
 </Tabs>
 
-The script describes the version of proto that generated it. When you evaluate it from your
-profile, it's regenerated in every new shell. When you write it to a file, run the command again
-after [`proto upgrade`](./upgrade.mdx) to pick up new commands and options.
+The script describes the version of proto that generated it, so run the command again after
+[`proto upgrade`](./upgrade.mdx) to pick up new commands and options.
 
 ## Options
 
 - `--shell` <TypeLabel type="bash | elvish | fish | nu | pwsh | zsh" /> - The shell to generate
-  completions for. Defaults
-  to detecting the current shell, as described above. Unsupported shells exit with code `1`, and
-  unknown names fail before anything is generated.
+  completions for. Defaults to detecting the current shell.

@@ -5,218 +5,72 @@ title: proto install
 import { TypeLabel } from "@/components/TypeLabel";
 
 Download and install [tools](<../(fundamentals)/(plugin)/tool.mdx>) into the
-[store](<../(fundamentals)/store.mdx>), where each version gets a directory of its own, like
-`~/.proto/tools/node/24.11.0`, so installing one version never replaces another. The command has two
-modes, depending on whether you name a tool:
+[store](<../(fundamentals)/store.mdx>), where each version gets a directory of its own, so installing
+one version never replaces another. The command is also available as `proto i`, `proto u`, and
+`proto use`, and has two modes, depending on whether you name a tool:
 
 - **One tool** - `proto install node 24` installs a single tool, at the version you pass, or the
-  one detected for the current directory. Use it to try a version, set up a default for your
-  machine, or move a tool forward to its newest release.
+  one [detected](<../(fundamentals)/detection.mdx#detection-order>) for the current directory, or
+  `latest` when nothing is detected. Use it to try a version, set up a default for your machine, or
+  move a tool forward to its newest release.
 - **Every tool** - `proto install`, without arguments, installs every tool that has a version
-  configured for the current directory, in parallel. Use it after cloning a repository, and whenever
-  its pins change.
-
-The command is also available as `proto i`, `proto u`, and `proto use`.
-
-In both modes, each tool is installed the same way. proto resolves the
-[version specification](<../(fundamentals)/version-spec.mdx>) to a single version, against a freshly
-loaded list of available versions, so a release from an hour ago is installable right away. Unless
-that version is already installed, proto downloads the prebuilt archive for your operating system
-and architecture, [verifies its checksum](../advanced/checksums.mdx), and unpacks it (or
-[builds it from source](#building-from-source)). It then records the version in the tool's
-[manifest](<../(fundamentals)/store.mdx#manifest>), and creates a
-[shim](<../(fundamentals)/workflows.mdx#shims>) and a
-[binary](<../(fundamentals)/workflows.mdx#binary-linking>) for each of its executables.
-
-Versions that are already installed are skipped (pass `--force` to reinstall them), though proto
-still makes sure their shims and binaries exist, so the command is safe to run again and again.
-Concurrent installs of the same version, even from separate processes, like parallel CI jobs that
-share a store, wait for each other, and only the first does the work. Downloading requires an
-internet connection, so installing a new version fails when you're
-[offline](../guides/offline-mode.mdx).
-
-You don't always have to run it yourself: with [`auto-install`](<../(fundamentals)/config.mdx#auto-install>)
-enabled, running a tool through its shim installs a missing version. To remove a version, run
-[`proto uninstall`](./uninstall.mdx).
-
-### Installing one tool
-
-Pass the tool's [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>), like `node`, or
-a [backend-prefixed](<../(fundamentals)/(plugin)/tool.mdx#backend-prefixed>) one, like
-`npm:prettier`, optionally followed by a version specification: an exact version, a partial version or
-requirement, like `24` or `^24.1`, or an [alias](<../(fundamentals)/version-spec.mdx#aliases>),
-like `latest` or `lts`.
-
-Without a version, proto [detects](<../(fundamentals)/detection.mdx#detection-order>) one, from a
-`PROTO_<TOOL>_VERSION` environment variable, then the closest
-[`.prototools`](<../(fundamentals)/config.mdx>) or ecosystem file, like `.nvmrc`, walking up from the
-current directory. Unlike shims, it doesn't check your global
-[`~/.proto/.prototools`](<../(fundamentals)/config.mdx#locations>), and when nothing is detected, it
-installs `latest` (see [detection by command](<../(fundamentals)/detection.mdx#detection-by-command>)).
-
-A requirement resolves to the newest matching release, even when an older match is already
-installed. With Node.js 24.10.0 installed and a `node = "24"` pin, `proto install node` installs
-24.11.0, which makes it the way to move a single tool forward. The exception is a
-[lockfile](#lockfiles-and-checksums) record, which locks the version that a specification resolves
-to.
-
-Some tools require another tool, like pnpm requires Node.js. Before installing one, the tool it
-requires must have a version pinned in a [`.prototools`](<../(fundamentals)/config.mdx>), which can
-be your global one, or the install fails with an error naming the missing tool.
-
-```shell
-# Install the newest Node.js 24 release
-$ proto install node 24
-
-# Install an exact version, or an alias
-$ proto install node 24.11.0
-$ proto install node lts
-
-# Install the version detected for the current directory, or latest
-$ proto install node
-```
-
-### Installing every tool
-
-Without a tool, proto installs every tool with a version configured for the current directory,
-whether it's pinned in a [`.prototools`](<../(fundamentals)/config.mdx>), or declared in an ecosystem
-file, like `.nvmrc`. It works from any directory within a repository, and is the usual first step
-after cloning one (see [installing every tool](../start/team.mdx#installing-every-tool)).
-
-Configuration is loaded in the [`upwards`](<../(fundamentals)/config.mdx#upwards>) mode, so
-versions pinned in your global [`~/.proto/.prototools`](<../(fundamentals)/config.mdx#locations>)
-aren't installed, only what the project needs. Pass the global `--config-mode upwards-global`
-option to include them. Pins that an [untrusted](<../(fundamentals)/trust.mdx#untrusted-configurations>)
-[`.prototools`](<../(fundamentals)/config.mdx>) isn't allowed to make are left out too.
-
-Tools are installed in parallel, with a progress line for each. A tool waits for the tools it
-requires, like pnpm for Node.js, and fails if one of them fails. In this mode, a required tool must
-have a version configured for the current directory too, as your global pins aren't loaded. If it
-doesn't, the command fails before installing anything.
-
-A requirement is satisfied by any matching version that's already installed, the same way a shim
-resolves it. A `node = "24"` pin with Node.js 24.10.0 installed installs nothing, even when 24.11.0
-is available. To move a tool forward, install it by name, like `proto install node`, or update its
-pin with [`proto outdated --update`](./outdated.mdx).
-
-When it's done, proto prints which tools were installed, and which failed. For each failed tool, it
-writes the full log to `proto-<id>-install.log` in the current directory, and the command exits with
-a non-zero code: the number of tools that failed. When no versions are configured at all, it prints
-a warning, and exits with `1`.
+  configured for the current directory, in a [`.prototools`](<../(fundamentals)/config.mdx>) or an
+  ecosystem file like `.nvmrc`, in parallel. Use it after cloning a repository (see
+  [installing every tool](../start/team.mdx#installing-every-tool)), and whenever its pins change.
 
 ```shell
 # Install every tool the current directory needs
 $ proto install
 
-# Also install the versions pinned in ~/.proto/.prototools
-$ proto install --config-mode upwards-global
-```
+# Install the newest Node.js 24 release, an exact version, or an alias
+$ proto install node 24
+$ proto install node 24.11.0
+$ proto install node lts
 
-### Pinning the installed version
-
-Installing a version doesn't [pin](<../(fundamentals)/config.mdx#pinning-versions>) it, so unless an
-existing pin matches it, shims won't run it. Pass `--pin` to pin the version that was
-installed, the fully-qualified version, like `24.11.0`, instead of the specification you passed. It's
-written to the [closest](<../(fundamentals)/config.mdx#closest>)
-[`.prototools`](<../(fundamentals)/config.mdx>) by default, or to another
-[location](<../(fundamentals)/config.mdx#writing-to-a-file>): `closest`, `local`, `user`, or
-`global`. A version that's already installed is pinned too, so `--pin` is also a quick way to switch
-versions.
-
-When you install the `latest` alias, explicitly, or because no version was passed or detected, the
-[`pin-latest`](<../(fundamentals)/config.mdx#pin-latest>) setting pins the resolved version
-automatically, to the location it's set to. It takes precedence over the location passed to
-`--pin`.
-
-When installing every tool, `--pin` pins each tool's resolved version to that location, replacing a
-partial pin there, like `node = "24"`, with the exact version it resolved to. When the pinned
-[`.prototools`](<../(fundamentals)/config.mdx>) has a [lockfile](../advanced/lockfile.mdx), the
-install's record is written to it, and records of the pin it replaced are migrated to the new
-version, like [`proto pin --resolve`](./pin.mdx) does.
-
-```shell
-# Install, then pin the resolved version, like 24.11.0, to the closest .prototools
-$ proto install node 24 --pin
-
-# Install, then pin it as your default version, in ~/.proto/.prototools
+# Install, then pin the resolved version, like 24.11.0, as your default
 $ proto install node 24 --pin global
-```
 
-As `--pin` accepts an optional value, place it after the tool and version. In
-`proto install node --pin 24`, `24` is read as the location, and the command fails.
+# Build Python from source, instead of downloading a prebuilt
+$ proto install python 3.13 --build
 
-### Lockfiles and checksums
+# Install Node.js, without installing its bundled npm
+$ proto install node 24 -- --no-bundled-npm
 
-When a [lockfile](../advanced/lockfile.mdx) applies to a tool, every install follows it:
-
-- **Resolving** - A record for the specification locks its version, which is installed instead of
-  the newest match (see [version resolution](../advanced/lockfile.mdx#version-resolution)). Pass
-  `--update-lockfile` to ignore the record, re-resolve the specification, and replace the record.
-- **Recording** - The install adds a record with the version, and the checksum for your platform, to
-  the [`.protolock`](../advanced/lockfile.mdx) of the [`.prototools`](<../(fundamentals)/config.mdx>)
-  that pins the tool, creating the file when needed (see [scope](../advanced/lockfile.mdx#scope)).
-  Only fresh installs are recorded. When the resolved version is already installed, like one you
-  installed before enabling the lockfile, nothing is written until you reinstall it with `--force`.
-- **Verifying** - The download's checksum is compared to the locked one, and a mismatch fails the
-  install (see [checksum verification](../advanced/lockfile.mdx#checksum-verification)). Even without
-  a lockfile, reinstalling with `--force` is compared to the checksum recorded when the version was
-  first installed.
-- **Pruning** - Afterwards, [orphaned records](../advanced/lockfile.mdx#orphaned-records), whose
-  specification no longer matches the pin, are removed. That includes the record of a version
-  installed by hand, like `proto install node 22` where `node = "24"` is pinned, unless you also
-  pass `--pin`.
-
-In CI, the lockfile should decide what's installed, not be changed by the install. Pass
-`--immutable-lockfile`, or set `PROTO_IMMUTABLE_LOCKFILE`, so proto never writes to or prunes a
-lockfile, and fails instead of resolving a version that has no record for your platform (see
-[immutable lockfiles](../advanced/lockfile.mdx#immutable-lockfiles)).
-
-```shell
-# Re-resolve node = "24" to the newest 24.x release, and update its record
-$ proto install node --update-lockfile
-
-# Install exactly what the lockfile records, or fail
+# In CI, install exactly what the lockfile records, or fail
 $ proto install --immutable-lockfile
 ```
 
-### Building from source
+Versions that are already installed are skipped, so the command is safe to run again and again
+(pass `--force` to reinstall them). The two modes treat a partial version differently: installing
+one tool resolves a requirement like `24` to the newest matching release, even when an older match
+is installed, while installing every tool is satisfied by any matching version that's already
+installed. To move a tool forward, install it by name, like `proto install node`, or update its pin
+with [`proto outdated --update`](./outdated.mdx).
 
-Most tools are installed from a prebuilt archive, but some plugins can also
-[build a tool from source](../guides/build-from-source.mdx), which helps when no prebuilt exists for
-your platform. Pass `--build` to build from source, or `--no-build` to download a prebuilt, for a
-tool whose plugin builds by default. When installing one tool, the install fails if the tool doesn't
-support the requested strategy. When installing every tool, only the tools that support it are
-installed, and the rest are skipped.
+Neither mode installs the versions pinned in your global
+[`~/.proto/.prototools`](<../(fundamentals)/config.mdx#locations>), only what the current directory
+needs. When installing every tool, pass the global `--config-mode upwards-global` option to include
+them. Some tools require another, like pnpm requires Node.js, and fail to install unless that tool
+has a version pinned too. When a tool fails, its full log is written to `proto-<id>-install.log` in
+the current directory, and the command exits with a non-zero code.
 
-A build installs the tool's system dependencies with your package manager, checks that the commands
-it requires are available, downloads the sources, and runs the build. When installing one tool,
-proto asks whether to install missing system packages, as the current user or with elevated
-privileges, and with the global `--yes` option, or in CI, it installs them without asking. When
-installing every tool, it can't ask, and tries building without them, except in CI, where it
-installs them with elevated privileges when available. It's configured with
-[`[settings.build]`](<../(fundamentals)/config.mdx#settingsbuild>). Building from source is still
-unstable, and proto prints a warning saying so. When a build fails, its log is written to
-`proto-<id>-install.log` in the current directory, and with
-[`write-log-file`](<../(fundamentals)/config.mdx#write-log-file>) enabled, after every build (see
-[build logs](../guides/build-from-source.mdx#build-logs)).
+Installing a version doesn't [pin](<../(fundamentals)/config.mdx#pinning-versions>) it, so unless an
+existing pin matches it, shims won't run it. Pass `--pin` to pin the resolved version, or enable
+[`pin-latest`](<../(fundamentals)/config.mdx#pin-latest>) to pin it automatically when installing
+`latest`. As `--pin` accepts an optional value, place it after the tool and version: in
+`proto install node --pin 24`, `24` is read as the location, and the command fails.
 
-```shell
-# Build Python from source, instead of downloading a prebuilt
-$ proto install python 3.13 --build
-```
+When a [lockfile](../advanced/lockfile.mdx) applies to a tool, installs follow it: a locked version
+is installed instead of the newest match (see
+[version resolution](../advanced/lockfile.mdx#version-resolution)), the download must match the
+locked checksum, and fresh installs are recorded in the `.protolock`. A version installed before you
+enabled the lockfile isn't recorded until you reinstall it with `--force`. In CI, pass
+`--immutable-lockfile`, so the lockfile decides what's installed instead of being changed by the
+install (see [immutable lockfiles](../advanced/lockfile.mdx#immutable-lockfiles)).
 
-### Passing arguments to the tool
-
-When installing one tool, arguments after `--` are passed to the tool's plugin, which can use them
-in its pre-install and post-install hooks, and when updating your shell profile. Which arguments are
-supported depends on the plugin. For example, when the Node.js `bundled-npm` setting is enabled, its
-post-install hook also installs the npm version that ships with Node.js, unless you pass
-`--no-bundled-npm`. When installing every tool, no arguments are passed.
-
-```shell
-# Install Node.js, without installing its bundled npm
-$ proto install node 24 -- --no-bundled-npm
-```
+You don't always have to run it yourself: with
+[`auto-install`](<../(fundamentals)/config.mdx#auto-install>) enabled, running a tool through its
+shim installs a missing version. To remove a version, run [`proto uninstall`](./uninstall.mdx).
 
 ## Arguments
 
@@ -226,37 +80,24 @@ $ proto install node 24 -- --no-bundled-npm
   `npm:prettier`. When omitted, every tool configured for the current directory is installed.
 - `[SPEC]` - When installing one tool, the
   [version specification](<../(fundamentals)/version-spec.mdx>) to install, like `24.11.0`, `24`, or
-  `lts`. Defaults to the [detected](<../(fundamentals)/detection.mdx>) version, or `latest` when
-  nothing is detected.
+  `lts`. Defaults to the [detected](<../(fundamentals)/detection.mdx>) version, or `latest`.
 - `-- [PASSTHROUGH...]` - When installing one tool, arguments to pass to the tool's plugin, for its
-  install hooks. See [passing arguments to the tool](#passing-arguments-to-the-tool).
+  install hooks. Which arguments are supported depends on the plugin.
 
 ## Options
 
-- `--build` - [Build from source](#building-from-source) instead of downloading a prebuilt. When
-  installing every tool, tools that can't be built from source are skipped. Can't be combined with
-  `--no-build`.
-- `--force` - Reinstall the version, even when it's already installed. When installing every tool,
-  every configured version is reinstalled. The download is still compared to the checksum recorded
-  for the version, when one exists.
-- `--immutable-lockfile` - Treat [lockfiles](../advanced/lockfile.mdx) as read-only. Versions are
-  only resolved from existing records, and the install fails when a record is missing, or only
-  exists for other platforms. Lockfiles are never created, updated, or pruned. Can also be set with
-  the `PROTO_IMMUTABLE_LOCKFILE` environment variable. Can't be combined with `--pin` or
-  `--update-lockfile`, which both write to the lockfile.
+- `--build` - [Build from source](../guides/build-from-source.mdx) instead of downloading a
+  prebuilt, which may ask to install missing system packages first. When installing every tool,
+  tools that can't be built from source are skipped.
+- `--force` - Reinstall versions that are already installed. The download is still compared to the
+  checksum recorded for the version, when one exists.
+- `--immutable-lockfile` - Treat [lockfiles](../advanced/lockfile.mdx) as read-only, and fail when a
+  version has no record for your platform. Can also be set with `PROTO_IMMUTABLE_LOCKFILE`.
 - `--no-build` - Download a prebuilt instead of building from source, for tools that build from
-  source by default. When installing every tool, tools without a prebuilt are skipped. Can't be
-  combined with `--build`.
+  source by default. When installing every tool, tools without a prebuilt are skipped.
 - `--pin` <TypeLabel type="closest | global | local | user" /> - After installing, pin the resolved
-  version to a [`.prototools`](<../(fundamentals)/config.mdx>) at this
-  [location](<../(fundamentals)/config.mdx#writing-to-a-file>). Passing the flag alone pins to
-  `closest`. Also accepts the aliases `store` (`global`), `cwd` (`local`), and `home` (`user`). See
-  [pinning the installed version](#pinning-the-installed-version).
-- `--quiet` - Hide the install's progress output, except for errors. When installing one tool, the
-  success message is hidden too. When installing every tool, the summary is only printed when a tool
-  failed.
-- `--update-lockfile` - Ignore the [lockfile](../advanced/lockfile.mdx) record of each
-  specification, resolve it again, and replace the record with the result. To move a specification
-  to its newest matching release, pass a tool, like `proto install node --update-lockfile`, as
-  installing every tool prefers matching versions that are already installed. Can't be combined
-  with `--immutable-lockfile`.
+  version to the [`.prototools`](<../(fundamentals)/config.mdx>) at this
+  [location](<../(fundamentals)/config.mdx#writing-to-a-file>). Defaults to `closest`.
+- `--quiet` - Hide the install's progress output, except for errors.
+- `--update-lockfile` - Ignore each specification's [lockfile](../advanced/lockfile.mdx) record,
+  resolve it again, and replace the record with the result.

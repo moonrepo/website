@@ -2,15 +2,13 @@
 title: proto trust
 ---
 
-The `proto trust` command trusts a local [`.prototools`](<../(fundamentals)/config.mdx>) file, or
-every config within a directory, so that proto applies their
+Trust a local [`.prototools`](<../(fundamentals)/config.mdx>) file, or every config within a
+directory, so that proto applies their
 [security-sensitive settings](<../(fundamentals)/trust.mdx#security-sensitive-settings>), like
 environment variables, shell aliases, plugins, and pins for tools without a built-in plugin. Until a
-config is trusted, proto ignores those settings, applies the rest, and warns about what it skipped,
-as a config from a cloned repository could otherwise run code on your machine. It's proto's
-equivalent of `direnv allow`. See [trust & safety](<../(fundamentals)/trust.mdx>) for the full model,
-and [trusting configurations](<../(fundamentals)/trust.mdx#trusting-configurations>) for the
-workflow.
+config is trusted, proto ignores those settings, applies the rest, and warns about what it skipped.
+It's proto's equivalent of `direnv allow`. See [trust & safety](<../(fundamentals)/trust.mdx>) for
+the full model.
 
 Run it after you clone a repository and read its [`.prototools`](<../(fundamentals)/config.mdx>), or
 when proto warns that it ignored a config's settings ([`proto status`](./status.mdx) lists the
@@ -35,64 +33,34 @@ $ proto trust .prototools.production
 
 The path decides what's trusted:
 
-- **A directory** trusts every config within it and its sub-directories, including
-  [environment configs](<../(fundamentals)/config.mdx#environment-mode>) and configs added later,
-  like a new package in a monorepo. The directory doesn't need to contain a config yet. This is
-  usually what you want: run it once in a repository's root after cloning.
-- **A config file**, any path named [`.prototools`](<../(fundamentals)/config.mdx>) or
-  [`.prototools.<env>`](<../(fundamentals)/config.mdx#environment-mode>), trusts only that file. Use
-  it to vouch for one file, like a repository's root config, but not the configs in each of its
-  packages. The file must exist, so to trust a config before it's created, trust its directory.
+- **A directory** trusts every config within it and its sub-directories, including configs added
+  later, like a new package in a monorepo. This is usually what you want: run it once in a
+  repository's root after cloning.
+- **A config file** trusts only that file. Use it to vouch for one file, like a repository's root
+  config, but not the configs in each of its packages.
 
 Trust only flows downwards, so trusting `packages/web` doesn't trust the root
-[`.prototools`](<../(fundamentals)/config.mdx>) that's also loaded there (see
-[how trust works](<../(fundamentals)/trust.mdx#how-trust-works>)). The warnings that other commands
-print suggest trusting the config's file path, which covers only that file. Trust the repository's
-root directory instead when you want all of its configs applied.
-
-Relative components and symlinked directories are resolved first, so a directory is trusted no
-matter which path you reach it by, and proto prints the resolved path. A config file that's itself a
-symlink isn't followed, so it can't borrow the trust of the config it points to. When the path
-doesn't exist, or is a file that isn't a config, like `package.json`, proto prints a warning and
-exits with code `1`, without trusting anything.
+[`.prototools`](<../(fundamentals)/config.mdx>) that's also loaded there. The warnings that other
+commands print suggest trusting the config's file path, which covers only that file, so trust the
+repository's root directory instead when you want all of its configs applied.
 
 proto doesn't ask for confirmation, so read the config before you trust it. Once trusted, it prints
-the sensitive settings it will now apply, as TOML, for the trusted file or for each config directly
-within the trusted directory (configs in sub-directories aren't printed). It follows with a summary
-that lists each of those configs with the paths of its sensitive settings, like `env`,
-`shell.aliases`, or `settings.auto-install`. Check that it's what you expected, and if it isn't,
-run [`proto untrust`](./untrust.mdx). A config without sensitive settings can be trusted too, so
-that settings added to it later are applied. With the global `--json` option (see
-[output formats](./overview.mdx#output-formats)), the settings aren't printed, only the outcome, as
-JSON notices with `variant`, `messages`, and, for a directory, `items` fields.
+the sensitive settings it will now apply. Check that it's what you expected, and if it isn't, run
+[`proto untrust`](./untrust.mdx). Trusting your home directory, or a directory above it like `/`,
+prints a warning, as it trusts every config within your home directory, including repositories you
+clone in the future.
 
-A few paths are handled specially:
-
-- **Your home directory**, or a directory above it like `/`, is trusted, but with a warning, as it
-  trusts every config within your home directory, including repositories you clone in the future.
-  For a directory of repositories that you all trust, like your company's,
-  [`PROTO_TRUSTED_PATHS`](../advanced/env-vars.mdx#trust) is the more deliberate choice.
-- **Configs you own**, `~/.prototools` and `~/.proto/.prototools` (and their environment configs),
-  are [always trusted](<../(fundamentals)/trust.mdx#automatically-trusted>), so trusting them
-  changes nothing. proto says so, and doesn't record anything.
-
-Trust is recorded as a small JSON file in the `trust` directory of the
-[store](<../(fundamentals)/store.mdx#directory-layout>) (`~/.proto/trust`), one per trusted path,
-containing only the path. Running the command again for the same path rewrites the same record, so
-it's safe to repeat. As the record doesn't include the config's content, edits to a trusted config,
-like changes you pull, are applied without trusting it again, so review changes to
-[`.prototools`](<../(fundamentals)/config.mdx>) in pull requests like any other code that runs on
-your machine. Trust isn't cached, so it takes effect on the next proto command, including the next
-run of the [shell activation](<../(fundamentals)/workflows.mdx#shell-activation>) hook.
-
-To stop applying a config's sensitive settings, run [`proto untrust`](./untrust.mdx) with the same
-path. A record also outlives the directory it points to, so after deleting a trusted repository, run
-[`proto clean trust`](./clean.mdx) to remove its record, before something else is cloned to the same
-path and inherits its trust.
+Trust follows the path, not the content, so edits to a trusted config, like changes you pull, are
+applied without trusting it again. Review changes to [`.prototools`](<../(fundamentals)/config.mdx>)
+in pull requests like any other code that runs on your machine. After deleting a trusted repository,
+run [`proto clean trust`](./clean.mdx) to remove its record, before something else is cloned to the
+same path and inherits its trust. See
+[how trust works](<../(fundamentals)/trust.mdx#how-trust-works>) for more details.
 
 ## Arguments
 
 - `[PATH]` - The config file, or directory of config files, to trust, either relative to the current
-  directory or absolute. A path named [`.prototools`](<../(fundamentals)/config.mdx>) or
+  directory or absolute, and it must exist. A path named
+  [`.prototools`](<../(fundamentals)/config.mdx>) or
   [`.prototools.<env>`](<../(fundamentals)/config.mdx#environment-mode>) is a config file, and any
   other path is a directory. Defaults to the current directory.

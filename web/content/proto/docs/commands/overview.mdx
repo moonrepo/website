@@ -5,11 +5,10 @@ title: Overview
 import { TypeLabel } from "@/components/TypeLabel";
 
 Every proto command accepts a set of _global options_, which control how proto itself behaves, like
-which configuration it loads, how much it logs, how it prints its output, and whether it prompts.
-They can be passed before or after the command, and each one can also be set with an
+how much it logs, how it prints its output, and whether it prompts. They can be passed before or
+after the command, and each one can also be set with an
 [environment variable](../advanced/env-vars.mdx#global-options), which is handy for configuring
-proto once in CI, or for the [shims](<../(fundamentals)/workflows.mdx#shims>) that run proto for
-you. A flag on the command line takes precedence over its variable.
+proto once in CI.
 
 ```shell
 # Both are equivalent
@@ -22,69 +21,50 @@ $ PROTO_LOG=debug proto install node
 
 ## Global options
 
-- `-c`, `--config-mode` <TypeLabel type="global | local | upwards | upwards-global" /> - The
-  [resolution mode](#configuration-mode) used to load [`.prototools`](<../(fundamentals)/config.mdx>)
-  files. `all` is accepted as an alias of `upwards-global`. Defaults to a mode per command. Can also
-  be set via the `PROTO_CONFIG_MODE` environment variable.
-- `--dump` - Dump a [trace profile](#profiling) to the current working directory. Can also be set
-  via the `PROTO_DUMP` environment variable.
+- `-c`, `--config-mode` <TypeLabel type="global | local | upwards | upwards-global" /> - Which
+  [`.prototools`](<../(fundamentals)/config.mdx>) files to load (see
+  [resolution modes](<../(fundamentals)/config.mdx#resolution-modes>)). Defaults to a mode per
+  command. Also set with `PROTO_CONFIG_MODE`.
+- `--dump` - Write a [trace profile](#profiling) to the current directory. Also set with
+  `PROTO_DUMP`.
 - `-h`, `--help` - Display the help menu for the current command.
-- `--json` - Print the output of commands that support it as [JSON](#output-formats). Shorthand for
-  `--reporter json`. Can also be set via the `PROTO_JSON` environment variable.
+- `--json` - Print the output as [JSON](#output-formats), for commands that support it. Also set
+  with `PROTO_JSON`.
 - `-l`, `--log` <TypeLabel type="off | error | warn | info | debug | trace | verbose" /> - The lowest
-  [log level](#logging) to output. Defaults to `info`. Can also be set via the `PROTO_LOG`
-  environment variable.
-- `--log-file` <TypeLabel type="string" /> - Path to a file to
-  [write logs to](#writing-logs-to-a-file). Can also be set via the `PROTO_LOG_FILE` environment
-  variable.
-- `--otel` - Export [traces and metrics](#opentelemetry) over OTLP. Can also be set via the
-  `PROTO_OTEL` environment variable.
-- `--otel-logs` - Export log events as OTLP logs. Can also be set via the `PROTO_OTEL_LOGS`
-  environment variable.
-- `--otel-service-name` <TypeLabel type="string" /> - The service name to report to OTLP. Can also
-  be set via the `PROTO_OTEL_SERVICE_NAME` environment variable.
+  [log level](#logging) to output. Defaults to `info`. Also set with `PROTO_LOG`.
+- `--log-file` <TypeLabel type="string" /> - A file to [write logs to](#writing-logs-to-a-file).
+  Also set with `PROTO_LOG_FILE`.
+- `--otel` - Export [traces and metrics](#opentelemetry) over OTLP. Also set with `PROTO_OTEL`.
+- `--otel-logs` - Export logs over OTLP. Also set with `PROTO_OTEL_LOGS`.
+- `--otel-service-name` <TypeLabel type="string" /> - The service name to report to OTLP. Also set
+  with `PROTO_OTEL_SERVICE_NAME`.
 - `-r`, `--reporter` <TypeLabel type="text | json | ndjson" /> - The [format](#output-formats) to
-  print output in. Defaults to `ndjson` when an AI agent is detected, and `text` otherwise. Can also
-  be set via the `PROTO_REPORTER` environment variable.
+  print output in. Defaults to `ndjson` when an AI agent is detected, and `text` otherwise. Also set
+  with `PROTO_REPORTER`.
 - `-t`, `--theme` <TypeLabel type="dark | light" /> - The terminal [theme](#themes) to print with.
-  Defaults to `dark`. Can also be set via the `PROTO_THEME` environment variable.
+  Defaults to `dark`. Also set with `PROTO_THEME`.
 - `-V`, `--version` - Display the version of proto.
-- `-y`, `--yes` - Skip every [prompt](#prompts), and use its default answer. Can also be set via
-  the `PROTO_YES` environment variable.
+- `-y`, `--yes` - Skip every [prompt](#prompts), and use its default answer. Also set with
+  `PROTO_YES`.
 
 ## Logging
 
-By default, proto logs at the `info` level, which in practice means you only see warnings and
-errors, as proto (and the [plugins](<../(fundamentals)/(plugin)/plugin.mdx>) it runs) logs very
-little at that level. How much is logged is controlled with the `--log` option (or `PROTO_LOG`),
-using one of the following levels, from least to most verbose:
-
-- `off` - Turn off logging entirely.
-- `error` - Only log errors.
-- `warn` - Log warnings and above.
-- `info` _(default)_ - Log informational messages and above.
-- `debug` - Log debug messages and above. This is the level to reach for when something doesn't
-  behave as expected, as it includes the majority of useful diagnostic information, like which
-  files were loaded and which versions were detected.
-- `trace` - Log everything, including each call into a plugin. This is _very_ verbose, and is
-  primarily intended for deep diagnostics.
-- `verbose` - Like `trace`, but also includes span information.
+proto logs very little by default, so you mostly see warnings and errors. When something doesn't
+behave as expected, pass `--log debug` (or set `PROTO_LOG=debug`) to see which files were loaded,
+which versions were detected, and more. The levels, from least to most verbose, are `off`, `error`,
+`warn`, `info` (default), `debug`, `trace`, and `verbose` (which also logs spans).
 
 ```shell
 $ proto install node --log debug
 ```
 
-Logs are written to stderr, so they never mix with a command's output, or the output of a tool that
-proto runs. With the [`ndjson` reporter](#output-formats), each log is written to stderr as a JSON
-line instead.
-More variables, like `PROTO_DEBUG_COMMAND` and `PROTO_DEBUG_WASM`, reveal even more about specific
-parts of proto; see [debugging variables](../advanced/env-vars.mdx#debugging).
+Logs are written to stderr, so they never mix with a command's output. See
+[debugging variables](../advanced/env-vars.mdx#debugging) for variables that reveal even more.
 
 ### Writing logs to a file
 
-To keep the logs of a command, like to attach them to a bug report, write them to a file with the
-`--log-file` option (or `PROTO_LOG_FILE`), in addition to the terminal. The file respects `--log`,
-so only logs at that level or above are written.
+To keep the logs of a command, like to attach them to a bug report, write them to a file with
+`--log-file` (or `PROTO_LOG_FILE`). Only logs at the `--log` level or above are written.
 
 ```shell
 $ proto install node --log debug --log-file debug.log
@@ -92,57 +72,36 @@ $ proto install node --log debug --log-file debug.log
 
 ## Output formats
 
-How proto prints its output is decided by the reporter, set with the `--reporter` option (or
-`PROTO_REPORTER`):
+Choose how proto prints its output with the `--reporter` option (or `PROTO_REPORTER`):
 
-- `text` _(default)_ - Human-readable output, with tables, colors, and progress bars. `human` and
-  `user` are accepted as aliases.
-- `json` - A single JSON document with the command's data, for commands that produce data, like [`proto status`](./status.mdx), [`proto versions`](./versions.mdx), and
-  [`proto debug env`](./debug/env.mdx). `data` is accepted as an alias.
-- `ndjson` - One JSON object per line, printed as the command runs, for every message, notice,
-  table, and progress update, with the command's data wrapped as `{"type":"data","data":...}`. When
-  the command fails, the error is printed as a `{"type":"error",...}` line too. `agent` and `bot`
-  are accepted as aliases.
+- `text` _(default)_ - Human-readable output, with tables, colors, and progress bars.
+- `json` - A single JSON document, for commands that produce data, like
+  [`proto status`](./status.mdx) and [`proto versions`](./versions.mdx). `--json` is a shorthand.
+- `ndjson` - One JSON object per line, streamed as the command runs.
 
-The `--json` option (or `PROTO_JSON`) is a shorthand for `--reporter json`, and a JSON format passed
-to `--reporter` takes precedence over it. When proto detects that it's being run by an AI agent, it
-defaults to `ndjson`, so pass `--reporter text` to get the human-readable output back.
+When proto is run by an AI agent, it defaults to `ndjson`. Pass `--reporter text` to get the
+human-readable output back. See the [reporting guide](../guides/reporting.mdx) for how to consume
+the JSON formats.
 
 ```shell
 # Pipe the status of each tool into jq
 $ proto status --json | jq 'keys'
-
-# Stream machine-readable events
-$ proto install node --reporter ndjson
 ```
-
-Output is written to stdout, except when stdout belongs to something else. For
-[`proto run`](./run.mdx), [`proto exec`](./exec.mdx), and [`proto shell`](./shell.mdx), it belongs
-to the tool being run, and for [`proto activate`](./activate.mdx),
-[`proto completions`](./completions.mdx), and [`proto mcp`](./mcp.mdx), to the shell code or
-protocol that they print. proto's own output goes to stderr in those cases. See the
-[reporting guide](../guides/reporting.mdx) for how to consume the JSON formats.
 
 ## Colors
 
-proto inherits color support from your terminal by default. It respects the
-[`NO_COLOR`](https://no-color.org) environment variable to disable colors entirely, and
-[`FORCE_COLOR`](https://force-color.org) to force them on, like in a CI provider whose logs support
-colors that aren't detected.
+proto inherits color support from your terminal. Set [`NO_COLOR`](https://no-color.org) to disable
+colors, or [`FORCE_COLOR`](https://force-color.org) to force them on, like in a CI provider whose
+logs support colors that aren't detected. The JSON formats never include colors.
 
 ```shell
 $ NO_COLOR=1 proto status
 ```
 
-The JSON formats never include colors. When the reporter is `json` or `ndjson`, proto sets
-`NO_COLOR=1` and removes `FORCE_COLOR`, for itself and for the tools that it runs, so their output
-stays free of escape codes too.
-
 ### Themes
 
-proto assumes a dark terminal theme by default, and picks its colors accordingly. If you use a light
-theme, those colors can be hard to read, so switch to the light theme with `--theme light` (or
-`PROTO_THEME=light`).
+proto picks its colors for a dark terminal theme by default. If you use a light theme, switch with
+`--theme light` (or `PROTO_THEME=light`).
 
 ```shell
 $ proto versions node --theme light
@@ -150,52 +109,41 @@ $ proto versions node --theme light
 
 ## Prompts
 
-Some commands ask before doing something you might not expect, or let you choose an option:
+Some commands ask before doing something you might not expect:
 
 - [`proto clean`](./clean.mdx) and [`proto uninstall`](./uninstall.mdx) confirm before removing
   tool versions.
 - [`proto outdated --update`](./outdated.mdx) confirms before writing the new versions.
 - [`proto setup`](./setup.mdx) asks which shell and profile to configure.
 - [`proto upgrade`](./upgrade.mdx) confirms when another proto process is running.
-- [`proto install`](./install.mdx), when [building from source](../guides/build-from-source.mdx),
-  asks whether to install missing system packages.
+- [`proto install`](./install.mdx) asks whether to install missing system packages when
+  [building from source](../guides/build-from-source.mdx).
 
 Pass `--yes` (or set `PROTO_YES`) to skip every prompt and use its default answer. Prompts are also
-skipped automatically when proto detects a CI or CD environment.
+skipped in CI. A prompt can't be shown without a terminal, so always pass `--yes` in scripts.
 
 ```shell
 $ proto clean --yes
 ```
 
-A prompt can only be shown in a terminal. When stdout isn't one, like when piping output or running
-from a script, proto can't ask, and depending on the command, either picks the first option or
-skips the action entirely. Pass `--yes` in scripts, so the outcome doesn't depend on how proto is run.
-
 ## Profiling
 
-When the `--dump` option (or `PROTO_DUMP`) is passed, proto writes a trace profile of the command to
-a `dump-<timestamp>.json` file in the current working directory, which is the quickest way to find
-out where a slow command spends its time, like resolving versions, downloading, or loading
-plugins. The file uses the Chrome trace format, so open it in [Perfetto](https://ui.perfetto.dev) or
-`chrome://tracing` to explore it.
+To find out where a slow command spends its time, pass `--dump` (or set `PROTO_DUMP`). proto writes
+a trace profile to a `dump-<timestamp>.json` file in the current directory, which you can open in
+[Perfetto](https://ui.perfetto.dev) or `chrome://tracing`. See
+[profiling](../guides/troubleshooting.mdx#profiling) for more tips.
 
 ```shell
 $ proto install node --dump
 ```
 
-[`proto run`](./run.mdx), [`proto exec`](./exec.mdx), and [`proto shell`](./shell.mdx) don't write
-a profile, as their process belongs to the tool they run. See
-[profiling](../guides/troubleshooting.mdx#profiling) for more troubleshooting tips.
-
 ## OpenTelemetry
 
-When the `--otel` option (or `PROTO_OTEL`) is passed, proto exports
-[OpenTelemetry](https://opentelemetry.io/) traces and metrics over OTLP, to an observability backend
-like Grafana, Honeycomb, or Datadog, while `--otel-logs` (or `PROTO_OTEL_LOGS`) exports logs. Where
-the data is sent is configured with the standard `OTEL_EXPORTER_OTLP_*` environment variables, and
-the service name with `OTEL_SERVICE_NAME`, or `--otel-service-name` (or `PROTO_OTEL_SERVICE_NAME`)
-to override it. Refer to the [OpenTelemetry guide](../guides/opentelemetry.mdx) for configuring the
-exporter, and for the traces and metrics that proto records.
+Pass `--otel` (or set `PROTO_OTEL`) to export [OpenTelemetry](https://opentelemetry.io/) traces and
+metrics over OTLP, to an observability backend like Grafana, Honeycomb, or Datadog, and
+`--otel-logs` to export logs too. Configure where the data is sent with the standard
+`OTEL_EXPORTER_OTLP_*` environment variables. See the [OpenTelemetry guide](../guides/opentelemetry.mdx)
+for more details.
 
 ```shell
 $ export OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4318"

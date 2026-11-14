@@ -10,11 +10,9 @@ applied, restores `PATH` to what it was before activating, and removes the `prot
 
 A command can't change the environment of the shell that launched it, so `proto deactivate` doesn't
 apply any of this itself. With `--export`, it prints the statements in your shell's syntax, for the
-shell to evaluate. That's exactly what the `proto_deactivate` function does, so day to day you call
-the function instead of this command (see
-[deactivating](<../(fundamentals)/workflows.mdx#deactivating>)). Without `--export`, nothing is
-printed to evaluate. The command only reminds you on stderr to call `proto_deactivate`, or warns that
-no activation was detected in the session.
+shell to evaluate, which is exactly what the `proto_deactivate` function does. So day to day, call
+the function instead of this command. Without `--export`, the command only reminds you to call
+`proto_deactivate`.
 
 ```shell
 # Deactivate the current session, through the function the hook defined
@@ -22,80 +20,26 @@ $ proto_deactivate
 
 # The same in Zsh, by evaluating the statements yourself
 $ eval "$(proto deactivate zsh --export)"
-
-# Print the changes as JSON, for tooling that can't evaluate shell syntax
-$ proto deactivate zsh --json
 ```
 
-Everything to undo is recorded in the session itself. Bookkeeping variables (`_PROTO_ACTIVATED_*`,
-see [variables within shell activation](../advanced/env-vars.mdx#within-shell-activation)) hold the
-names of the variables and aliases that activation set, and its `PATH` entries are fenced between
-two marker entries, `~/.proto/activate-start` and `~/.proto/activate-stop`. So deactivating
-doesn't load tool plugins or detect versions, and doesn't need the options you activated with: the
-hook always calls `proto deactivate <shell> --export`, whatever you passed to
-[`proto activate`](./activate.mdx). For example, in Zsh with a variable from
-[`[env]`](<../(fundamentals)/config.mdx#env>) and an alias applied:
+Deactivating doesn't need the options you activated with. Only the `PATH` entries that activation
+added are removed, so entries from your profile, like `~/.proto/shims` and `~/.proto/bin`, stay
+where they were. Variables are unset, not restored: if activation overwrote a variable you had
+already exported, like `NODE_ENV` from an [`[env]`](<../(fundamentals)/config.mdx#env>) table,
+deactivating unsets it instead of bringing back your value.
 
-```shell
-$ proto deactivate zsh --export
-chpwd_functions=(${chpwd_functions:#proto_activate})
-precmd_functions=(${precmd_functions:#proto_activate})
-unset -f proto_activate;
-unset -f proto_deactivate;
-unset NODE_ENV;
-unalias gs;
-export PATH="/home/user/.proto/shims:/home/user/.proto/bin:/usr/bin:/bin";
-unset _PROTO_ACTIVATED_ENV;
-unset _PROTO_ACTIVATED_ALIASES;
-unset _PROTO_ACTIVATED_PATH;
-```
-
-A few things to keep in mind:
-
-- Only the entries between the markers are removed from `PATH`. Everything else stays exactly where
-  it was, including `~/.proto/shims` and `~/.proto/bin` when your profile added them itself, as in
-  the example above.
-- Variables are unset, not restored. If activation overwrote a variable you had already exported,
-  like `NODE_ENV` from an [`[env]`](<../(fundamentals)/config.mdx#env>) table, deactivating unsets
-  it instead of bringing back your value.
-- The hook teardown is always printed, even when nothing is currently applied (for example, in a
-  directory without a [`.prototools`](<../(fundamentals)/config.mdx>)), so the hook is fully
-  unregistered either way.
-- Deactivating only affects the current session. Your profile still runs the hook, so new
-  terminals are activated as usual, and you can re-activate the current one by evaluating
-  [`proto activate`](./activate.mdx) again.
-
-With [`--json`](./overview.mdx#global-options) and without `--export`, the same changes are printed
-as data instead, for editors and scripts that apply the environment themselves. `env` maps each
-variable to unset (the bookkeeping variables included) to `null`, and `paths` is the `PATH` to
-restore, formatted for the given shell. An empty `paths` means `PATH` doesn't need to change.
-Aliases and the hook teardown aren't included, as they only exist in the shell. `--export` takes
-precedence over `--json`, so the hook always receives shell syntax.
-
-```json
-{
-  "env": {
-    "NODE_ENV": null,
-    "_PROTO_ACTIVATED_ENV": null,
-    "_PROTO_ACTIVATED_ALIASES": null,
-    "_PROTO_ACTIVATED_PATH": null
-  },
-  "paths": [
-    "/home/user/.proto/shims",
-    "/home/user/.proto/bin",
-    "/usr/bin",
-    "/bin"
-  ]
-}
-```
+Deactivating only affects the current session. Your profile still runs the hook, so new terminals
+are activated as usual, and you can re-activate the current one by evaluating
+[`proto activate`](./activate.mdx) again. Pass [`--json`](./overview.mdx#global-options) for
+machine-readable output, for editors and scripts that apply the environment themselves. See
+[deactivating](<../(fundamentals)/workflows.mdx#deactivating>) for more details.
 
 ## Arguments
 
-- `[SHELL]` - The shell to print statements for. Accepts the same
-  names as [`proto activate`](./activate.mdx), listed in
-  [supported shells](<../(fundamentals)/workflows.mdx#supported-shells>). When omitted, the shell is
-  detected from `$SHELL`, then the parent process, and the command fails if it can't be detected.
-  Pass it explicitly when evaluating the output, as the hook does.
+- `[SHELL]` - The shell to print statements for. Accepts the same names as
+  [`proto activate`](./activate.mdx), listed in
+  [supported shells](<../(fundamentals)/workflows.mdx#supported-shells>). When omitted, it's detected
+  from `$SHELL`, then the parent process. Pass it explicitly when evaluating the output.
 
 ## Options
 

@@ -2,32 +2,11 @@
 title: proto status
 ---
 
-Lists the tools that are active in the current directory, and for each one, the version that's
-configured, the version it resolves to, whether that version is installed, and which file it was
-configured in. It's the quickest way to answer "which version of `node` do I get here, and why?",
-and to see what's still missing before running [`proto install`](./install.mdx). It only reports,
-and never installs, pins, or updates a lockfile.
-
-proto loads every tool it knows about, from the pins and [plugins](<../(fundamentals)/config.mdx#plugins>)
-in your [`.prototools`](<../(fundamentals)/config.mdx>) files, plus the
-[built-in tools](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>), and runs
-[version detection](<../(fundamentals)/detection.mdx>) for each of them. So a tool is listed whether
-its version comes from a [`.prototools`](<../(fundamentals)/config.mdx>) pin, an
-[ecosystem file](<../(fundamentals)/detection.mdx#4-ecosystem-files>) like `.nvmrc`, or a
-[`PROTO_<TOOL>_VERSION`](<../(fundamentals)/detection.mdx#2-environment-variable>) environment
-variable. Tools without a detected version are skipped, and when no tool has one, the command fails
-with an error. As built-in tools are checked even when you haven't pinned them, the first run on a
-new machine can take a moment while their plugins are downloaded. The
-[`builtin-tools`](<../(fundamentals)/config.mdx#builtin-tools>) setting controls which of them are
-available.
-
-Like [`proto install`](./install.mdx), it uses the
-[`upwards`](<../(fundamentals)/config.mdx#upwards>) resolution mode by default, so it reports what
-the project needs, and versions that are only pinned in the global
-[`~/.proto/.prototools`](<../(fundamentals)/config.mdx#locations>) aren't listed. Pass
-`--config-mode upwards-global` (or `all`) to include them, which matches what shims see, or
-`--config-mode local` to only check the current directory (see
-[configuration mode](./overview.mdx#configuration-mode)).
+List the tools that are active in the current directory, with the version that's configured, the
+version it resolves to, whether that version is installed, and which file it was configured in. It's
+the quickest way to answer "which version of `node` do I get here, and why?", and to see what's still
+missing before running [`proto install`](./install.mdx). It only reports, and never installs, pins,
+or updates a lockfile.
 
 ```shell
 # List the tools for the current directory
@@ -43,95 +22,27 @@ $ proto status --json
 $ proto status --json | jq -r 'to_entries[] | select(.value.is_installed | not) | .key'
 ```
 
-The tools are printed as a table, sorted by name:
+A tool is listed whenever proto [detects a version](<../(fundamentals)/detection.mdx>) for it,
+whether from a [`.prototools`](<../(fundamentals)/config.mdx>) pin, an
+[ecosystem file](<../(fundamentals)/detection.mdx#4-ecosystem-files>) like `.nvmrc`, or a
+[`PROTO_<TOOL>_VERSION`](<../(fundamentals)/detection.mdx#2-environment-variable>) environment
+variable, and that includes [built-in tools](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>)
+you haven't pinned. Tools without a version are skipped, and the command fails when no tool has one.
+When a tool has a [lockfile](../advanced/lockfile.mdx) record, its locked version is shown too.
 
-```text
-$ proto status
-╭────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ Tool      Configured  Resolved    Installed                   Config                           │
-│────────────────────────────────────────────────────────────────────────────────────────────────│
-│ bun       ^1.2        1.2.5       /Users/name/.proto/tools/   /Users/name/app/.prototools      │
-│                                   bun/1.2.5                                                    │
-│ node      20.18.0     20.18.0     /Users/name/.proto/tools/   /Users/name/app/.nvmrc           │
-│                                   node/20.18.0                                                 │
-│ pnpm      10          10.8.1      No                          /Users/name/app/.prototools      │
-╰────────────────────────────────────────────────────────────────────────────────────────────────╯
-```
-
-- **Tool** - The tool's [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>),
-  including its [backend](<../(fundamentals)/(plugin)/backend.mdx>) prefix, like `npm:typescript`.
-- **Configured** - The [version specification](<../(fundamentals)/version-spec.mdx>) that was
-  detected, as written, like `20.18.0`, `^1.2`, or `lts`.
-- **Resolved** - The version that the specification resolves to, and that proto uses for the tool
-  in this directory. A requirement, like `^1.2` or `10`, resolves to the highest installed version
-  that matches, or the highest available one when none is installed (see
-  [requirements and ranges](<../(fundamentals)/version-spec.mdx#requirements-and-ranges>)), which
-  is why `pnpm = "10"` above resolves to a version that isn't installed yet. Resolving needs the
-  tool's list of available versions, which is [cached](<../(fundamentals)/store.mdx#inventory>) for
-  12 hours. `N/A` when the specification can't be resolved, like a version that doesn't exist, or
-  when the list can't be loaded and nothing is cached.
-- **Locked** - The version from the tool's [lockfile](../advanced/lockfile.mdx) record for the
-  specification, which it resolves to instead of the newest match (see
-  [version resolution](../advanced/lockfile.mdx#version-resolution)). This column is only shown
-  when at least one tool has a record. `N/A` for tools without one, which resolve as usual until
-  [`proto install`](./install.mdx) adds a record.
-- **Installed** - The directory the resolved version is installed to, in the tool's
-  [inventory](<../(fundamentals)/store.mdx#inventory>). `No` when it isn't installed, or couldn't
-  be resolved.
-- **Config** - The file the version was detected in, either a
-  [`.prototools`](<../(fundamentals)/config.mdx>) or an ecosystem file. `N/A` when it came from a
-  `PROTO_<TOOL>_VERSION` environment variable.
+Like [`proto install`](./install.mdx), it uses the
+[`upwards`](<../(fundamentals)/config.mdx#upwards>) resolution mode by default, so versions that are
+only pinned in the global [`~/.proto/.prototools`](<../(fundamentals)/config.mdx#locations>) aren't
+listed. Pass `--config-mode upwards-global` to include them, which matches what shims see (see
+[resolution modes](<../(fundamentals)/config.mdx#resolution-modes>)).
 
 If any of the loaded configs haven't been [trusted](<../(fundamentals)/trust.mdx>), they're listed
-above the table, each with the [security-sensitive settings](<../(fundamentals)/trust.mdx#security-sensitive-settings>)
-that were ignored, like `env` or `plugins.tools`, and a reminder to run
-[`proto trust`](./trust.mdx). This often explains a tool that seems to be missing: pins that require
-trust aren't applied, and a tool whose plugin is configured in an untrusted config is skipped
-entirely (see [untrusted configurations](<../(fundamentals)/trust.mdx#untrusted-configurations>)).
-The list is printed even when the command fails because no tools were found.
+above the table, with the
+[security-sensitive settings](<../(fundamentals)/trust.mdx#security-sensitive-settings>) that were
+ignored. This often explains a tool that seems to be missing, so review them, then run
+[`proto trust`](./trust.mdx).
 
-```text
-$ proto status
-
-Untrusted configs ──────────────────────────────────────────────────────────
-
-  The security-sensitive settings of these configs were ignored, so some tools or settings may be
-  missing. Review them, then trust each with proto trust [path]
-
-  - /Users/name/app/.prototools (env, plugins.tools)
-```
-
-With the global `--json` option (see [output formats](./overview.mdx#output-formats)), the tools are
-printed as a JSON object keyed by identifier instead, and untrusted configs aren't listed. Each tool
-has the same information as the table, with `null` in place of `N/A`: `config_version`,
-`resolved_version`, `locked_version` (`null` without a lockfile record), `is_installed`,
-`product_dir` (the installed directory), and `config_source` (the file it was detected in).
-
-```json
-{
-  "node": {
-    "is_installed": true,
-    "config_source": "/Users/name/app/.nvmrc",
-    "config_version": "20.18.0",
-    "locked_version": null,
-    "resolved_version": "20.18.0",
-    "product_dir": "/Users/name/.proto/tools/node/20.18.0"
-  },
-  "pnpm": {
-    "is_installed": false,
-    "config_source": "/Users/name/app/.prototools",
-    "config_version": "10",
-    "locked_version": null,
-    "resolved_version": "10.8.1",
-    "product_dir": null
-  }
-}
-```
-
-With `--reporter ndjson`, the default when an AI agent runs proto, the object is printed on a single
-line, wrapped as `{"type":"data","data":{...}}`. See
-[JSON output](../guides/reporting.mdx#json-output).
-
-To dig into why a version was detected, see
+Pass the global [`--json`](./overview.mdx#output-formats) option for machine-readable output, keyed
+by tool identifier. To dig into why a version was detected, see
 [debugging detection](<../(fundamentals)/detection.mdx#debugging-detection>). To check whether newer
-versions are available for these tools, use [`proto outdated`](./outdated.mdx).
+versions are available, use [`proto outdated`](./outdated.mdx).

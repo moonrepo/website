@@ -5,28 +5,19 @@ title: proto plugin
 Manage the [plugins](<../(fundamentals)/(plugin)/plugin.mdx>) that power proto's
 [tools](<../(fundamentals)/(plugin)/tool.mdx>) and [backends](<../(fundamentals)/(plugin)/backend.mdx>).
 Built-in and [community tools](<../(fundamentals)/(plugin)/tool.mdx#community-tools>) work without
-any setup, so you'll mostly reach for these commands when you need something else: finding a
-plugin for a tool that proto doesn't support out of the box, registering it in a
-[`.prototools`](<../(fundamentals)/config.mdx>) file without editing the file by hand, or checking
-which plugin a tool is actually loaded from, like when a configured plugin
-[overrides a built-in one](<../(fundamentals)/(plugin)/tool.mdx#overriding-built-in-tools>).
+any setup, so you'll mostly reach for these commands to bring in a tool that proto doesn't support
+out of the box, or to check which plugin a tool is actually loaded from, like when a configured
+plugin [overrides a built-in one](<../(fundamentals)/(plugin)/tool.mdx#overriding-built-in-tools>).
 
-This command does nothing on its own. It exists purely to group the following sub-commands:
+This command does nothing on its own. It groups the following sub-commands:
 
 - [`proto plugin add`](./plugin/add.mdx) - Register a tool or backend plugin in a
-  [`.prototools`](<../(fundamentals)/config.mdx>) file, with an ID and a
-  [locator](../../../wasm/docs/plugin-locators.mdx), and load it to verify that it works.
-- [`proto plugin info`](./plugin/info.mdx) - Display details about a single tool's plugin, like its
-  locator and version, the detected version, installed versions, executables, and
-  [store](<../(fundamentals)/store.mdx>) directories.
-- [`proto plugin list`](./plugin/list.mdx) - List the built-in tool plugins and those configured in
-  the global [`.prototools`](<../(fundamentals)/config.mdx>) with their locators, and optionally
-  each tool's installed versions and aliases.
+  [`.prototools`](<../(fundamentals)/config.mdx>) file.
+- [`proto plugin info`](./plugin/info.mdx) - Display details about a single tool and its plugin.
+- [`proto plugin list`](./plugin/list.mdx) - List tool plugins and where they're loaded from.
 - [`proto plugin remove`](./plugin/remove.mdx) - Remove a plugin from a
-  [`.prototools`](<../(fundamentals)/config.mdx>) file, along with the tool's version pin and
-  settings.
-- [`proto plugin search`](./plugin/search.mdx) - Search the third-party plugin registry by ID, name,
-  or description, and print the locator of each match.
+  [`.prototools`](<../(fundamentals)/config.mdx>) file.
+- [`proto plugin search`](./plugin/search.mdx) - Search the third-party plugin registry.
 
 ```shell
 # Find a plugin, register it in the closest .prototools, and install the tool
@@ -38,14 +29,3 @@ $ proto install example
 $ proto plugin info node
 $ proto plugin list --versions
 ```
-
-Plugin locators are a [security-sensitive setting](<../(fundamentals)/trust.mdx#security-sensitive-settings>),
-as plugins execute code on your machine. When [`proto plugin add`](./plugin/add.mdx) writes the
-first one to a [`.prototools`](<../(fundamentals)/config.mdx>) file, proto
-[trusts that file](<../(fundamentals)/trust.mdx#automatically-trusted>) automatically, since you
-added the plugin yourself.
-
-[`proto plugin info`](./plugin/info.mdx), [`proto plugin list`](./plugin/list.mdx), and
-[`proto plugin search`](./plugin/search.mdx) also support the global
-[`--json`](./overview.mdx#global-options) option, which prints the result as JSON for scripts and
-other tools.
