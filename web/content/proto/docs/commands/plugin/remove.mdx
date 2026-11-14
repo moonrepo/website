@@ -2,6 +2,67 @@
 title: proto plugin remove
 ---
 
+import { TypeLabel } from "@/components/TypeLabel";
+
+Remove a tool or backend [plugin](<../../(fundamentals)/(plugin)/plugin.mdx>) from a
+[`.prototools`](<../../(fundamentals)/config.mdx>) file, the reverse of
+[`proto plugin add`](./add.mdx). Reach for it when a project no longer needs a third-party tool, or to drop a
+plugin that [overrides a built-in
+tool](<../../(fundamentals)/(plugin)/tool.mdx#overriding-built-in-tools>). Once no file configures a
+plugin for the ID, a built-in or [community
+tool](<../../(fundamentals)/(plugin)/tool.mdx#community-tools>) goes back to its default plugin.
+
+```shell
+# Remove a tool plugin from the closest .prototools
+$ proto plugin remove my-tool
+
+# Remove a backend plugin from the user config
+$ proto plugin remove my-backend --type backend --from user
+
+# Uninstall every version of a tool, then remove its plugin
+$ proto uninstall my-tool
+$ proto plugin remove my-tool
+```
+
+For a tool, the command removes everything the file configures for the ID, not just the plugin: its
+locator in [`[plugins]`](<../../(fundamentals)/config.mdx#plugins>), its
+[`[tools.*]`](<../../(fundamentals)/config.mdx#tools>) table with every setting in it, and its
+version pin. Tables left empty are removed too, and the rest of the file
+is kept as is, including its comments.
+
+<Callout type="warning">
+  This applies to built-in tools too. `proto plugin remove node` removes an
+  override of the Node.js plugin, but also the `node` pin and the `[tools.node]`
+  table. To only drop the override, delete its locator from `[plugins]`, or the
+  `plugin` setting from `[tools.node]`, by hand.
+</Callout>
+
+With `--type backend`, only the locator in `[plugins.backends]` is removed. The backend's
+[`[backends.*]`](<../../(fundamentals)/config.mdx#backends>) table is left in place, including its
+[`plugin`](<../../(fundamentals)/config.mdx#backends-plugin>) setting, which is where
+[`proto plugin add --type backend`](./add.mdx) writes the locator when the file has no `[plugins]`
+table. The pins and settings of the backend's tools are kept too, so
+check the file afterwards and remove what's left by hand.
+
+The command edits a single [`.prototools`](<../../(fundamentals)/config.mdx>), chosen with `--from`.
+A plugin that's also configured in another file stays active. Run
+[`proto debug config`](../debug/config.mdx) to see every file that configures it.
+
+Only configuration is changed, and nothing is deleted from the
+[store](<../../(fundamentals)/store.mdx>). To remove a tool entirely, run
+[`proto uninstall`](../uninstall.mdx) first, while the plugin is still configured, as it loads the
+tool through its plugin. If you skip it, [`proto clean`](../clean.mdx) won't remove the leftover
+versions either (see [stale versions](<../../(fundamentals)/store.mdx#stale-versions>)).
+
 ## Arguments
 
+- `<ID>` - The ID the plugin is registered with. For a backend, this is the backend's
+  ID, rather than the ID of one of its tools.
+
 ## Options
+
+- `--from` <TypeLabel type="closest | global | local | user" /> - The
+  [location](<../../(fundamentals)/config.mdx#writing-to-a-file>) of the
+  [`.prototools`](<../../(fundamentals)/config.mdx>) to remove the plugin from. Defaults to
+  `closest`. Also accepts `cwd`, `home`, and `store`, as aliases of `local`, `user`, and `global`.
+- `--type` <TypeLabel type="backend | tool" /> - The type of plugin to remove. Defaults to `tool`.

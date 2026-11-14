@@ -2,6 +2,64 @@
 title: proto lock
 ---
 
+import { TypeLabel } from "@/components/TypeLabel";
+
+Record the versions and checksums of your tools in the [lockfile](../advanced/lockfile.mdx), without
+installing them. For each tool, proto resolves the version, downloads its prebuilt for each
+platform, verifies it, and writes a record. Nothing is installed, and downloads are deleted once
+they've been verified.
+
+Installing is how records usually get into a lockfile, so a lockfile only knows about the platforms
+someone has installed on. Reach for `proto lock` to fill in the rest from your own machine, or to
+record the checksums for every platform after changing a pin with [`proto pin`](./pin.mdx) or
+[`proto outdated --update`](./outdated.mdx).
+
+```shell
+# Lock every tool pinned in the current directory
+$ proto lock
+
+# Lock a single tool, or a specific version of it
+$ proto lock node
+$ proto lock node 24
+
+# Lock the platforms your team and CI use
+$ proto lock --platform arm64-macos,x64-linux,x64-windows
+
+# Re-download and verify every locked platform
+$ proto lock --force
+```
+
+By default, proto locks the current platform, plus every platform that already has a record for
+the tool, so the whole team moves to the same version at once. Pass `--platform` to lock exactly the
+platforms you list instead. Tools whose download is the same everywhere get a single
+record for every platform.
+
+Tools that can only be verified by installing them are skipped: Rust, tools from
+[backends](<../(fundamentals)/(plugin)/backend.mdx>), and tools that
+[build from source](../guides/build-from-source.mdx), so they're skipped, as are tools in a
+[`.prototools`](<../(fundamentals)/config.mdx>) that hasn't enabled the
+[`lockfile`](<../(fundamentals)/config.mdx#lockfile>) setting. The command prints whether each tool
+and platform was locked, already locked, skipped, or failed, and exits with a non-zero code if any
+failed. Commit the updated `.protolock` when it's done.
+
+See [locking without installing](../advanced/lockfile.mdx#locking-without-installing) for more
+details.
+
 ## Arguments
 
+- `[CONTEXT]` - The [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>) of a
+  single tool to lock. When omitted, every tool with a version for the current
+  directory is locked.
+- `[SPEC]` - When locking one tool, the [version
+  specification](<../(fundamentals)/version-spec.mdx>) to lock. Defaults to the version detected for
+  the current directory.
+
 ## Options
+
+- `--force` - Download and verify platforms that are already locked, instead of skipping them. The
+  command fails if a download doesn't match its locked checksum, which makes it a quick way to audit
+  a lockfile.
+- `--platform` <TypeLabel type="string[]" /> - A comma-separated list of platforms to lock, instead
+  of the current platform and those already locked. A platform is written as `<arch>-<os>`
+  (`x64-linux`, `arm64-macos`), with an optional libc on Linux (`x64-linux-musl`).
+- `--quiet` - Hide the output, except for errors.

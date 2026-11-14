@@ -2,4 +2,68 @@
 title: proto completions
 ---
 
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
+import { TypeLabel } from "@/components/TypeLabel";
+
+Generate a tab-completion script for proto's command line, so your shell can complete `proto`
+commands, sub-commands, and options. It covers proto itself, not the tools it manages, so tool
+names, versions, and aliases aren't completed. The script is written to stdout, and proto doesn't
+install it anywhere itself.
+
+```shell
+# Print completions for the detected shell
+$ proto completions
+
+# Print completions for a specific shell
+$ proto completions --shell zsh
+```
+
+To enable completions, write the script to a place your shell reads on startup:
+
+<Tabs groupId="shell" items={["Bash", "Zsh", "Fish", "Nushell"]}>
+<Tab>
+
+```shell
+$ mkdir -p ~/.bash_completion.d
+$ proto completions --shell bash > ~/.bash_completion.d/proto
+```
+
+</Tab>
+<Tab>
+
+```shell
+$ mkdir -p ~/.oh-my-zsh/completions
+$ proto completions --shell zsh > ~/.oh-my-zsh/completions/_proto
+```
+
+</Tab>
+<Tab>
+
+```shell
+$ mkdir -p ~/.config/fish/completions
+$ proto completions --shell fish > ~/.config/fish/completions/proto.fish
+```
+
+</Tab>
+<Tab>
+
+Save the completions to a file, then source it from your `config.nu`:
+
+```shell
+$ proto completions --shell nu | save --force ($nu.default-config-dir | path join "proto-completions.nu")
+```
+
+```nushell title="config.nu"
+source proto-completions.nu
+```
+
+</Tab>
+</Tabs>
+
+The script describes the version of proto that generated it, so run the command again after
+[`proto upgrade`](./upgrade.mdx) to pick up new commands and options.
+
 ## Options
+
+- `--shell` <TypeLabel type="bash | elvish | fish | nu | pwsh | zsh" /> - The shell to generate
+  completions for. Defaults to detecting the current shell.

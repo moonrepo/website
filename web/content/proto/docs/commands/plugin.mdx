@@ -1,3 +1,31 @@
 ---
 title: proto plugin
 ---
+
+Manage the [plugins](<../(fundamentals)/(plugin)/plugin.mdx>) that power proto's
+[tools](<../(fundamentals)/(plugin)/tool.mdx>) and
+[backends](<../(fundamentals)/(plugin)/backend.mdx>). Built-in and [community
+tools](<../(fundamentals)/(plugin)/tool.mdx#community-tools>) work without any setup, so you'll
+mostly reach for these commands to bring in a tool that proto doesn't support out of the box, or to
+check which plugin a tool is actually loaded from.
+
+This command does nothing on its own. It groups the following sub-commands:
+
+- [`proto plugin add`](./plugin/add.mdx) - Register a tool or backend plugin in a
+  [`.prototools`](<../(fundamentals)/config.mdx>) file.
+- [`proto plugin info`](./plugin/info.mdx) - Display details about a single tool and its plugin.
+- [`proto plugin list`](./plugin/list.mdx) - List tool plugins and where they're loaded from.
+- [`proto plugin remove`](./plugin/remove.mdx) - Remove a plugin from a
+  [`.prototools`](<../(fundamentals)/config.mdx>) file.
+- [`proto plugin search`](./plugin/search.mdx) - Search the third-party plugin registry.
+
+```shell
+# Find a plugin, register it in the closest .prototools, and install the tool
+$ proto plugin search example
+$ proto plugin add example "github://org/proto-example-tool"
+$ proto install example
+
+# Inspect a tool's plugin, and list tool plugins with their installed versions
+$ proto plugin info node
+$ proto plugin list --versions
+```

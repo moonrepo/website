@@ -2,20 +2,148 @@
 title: Overview
 ---
 
+import { TypeLabel } from "@/components/TypeLabel";
+
+Every proto command accepts a set of _global options_, which control how proto itself behaves: how
+much it logs, how it prints its output, and whether it prompts. They can be passed before or after
+the command, and each one can also be set with an [environment
+variable](../advanced/env-vars.mdx#global-options), which is handy for configuring proto once in CI.
+
+```shell
+# Both are equivalent
+$ proto --log debug install node
+$ proto install node --log debug
+
+# As is the environment variable
+$ PROTO_LOG=debug proto install node
+```
+
 ## Global options
 
-## Configuration mode
+- `-c`, `--config-mode` <TypeLabel type="global | local | upwards | upwards-global" /> - Which
+  [`.prototools`](<../(fundamentals)/config.mdx>) files to load (see
+  [resolution modes](<../(fundamentals)/config.mdx#resolution-modes>)). Defaults to a mode per
+  command. Also set with `PROTO_CONFIG_MODE`.
+- `--dump` - Write a [trace profile](#profiling) to the current directory. Also set with
+  `PROTO_DUMP`.
+- `-h`, `--help` - Display the help menu for the current command.
+- `--json` - Print the output as [JSON](#output-formats), for commands that support it. Also set
+  with `PROTO_JSON`.
+- `-l`, `--log` <TypeLabel type="off | error | warn | info | debug | trace | verbose" /> - The
+  lowest [log level](#logging) to output. Defaults to `info`. Also set with `PROTO_LOG`.
+- `--log-file` <TypeLabel type="string" /> - A file to [write logs to](#writing-logs-to-a-file).
+  Also set with `PROTO_LOG_FILE`.
+- `--otel` - Export [traces and metrics](#opentelemetry) over OTLP. Also set with `PROTO_OTEL`.
+- `--otel-logs` - Export logs over OTLP. Also set with `PROTO_OTEL_LOGS`.
+- `--otel-service-name` <TypeLabel type="string" /> - The service name to report to OTLP. Also set
+  with `PROTO_OTEL_SERVICE_NAME`.
+- `-r`, `--reporter` <TypeLabel type="text | json | ndjson" /> - The [format](#output-formats) to
+  print output in. Defaults to `ndjson` when an AI agent is detected, and `text` otherwise. Also set
+  with `PROTO_REPORTER`.
+- `-t`, `--theme` <TypeLabel type="dark | light" /> - The terminal [theme](#themes) to print with.
+  Defaults to `dark`. Also set with `PROTO_THEME`.
+- `-V`, `--version` - Display the version of proto.
+- `-y`, `--yes` - Skip every [prompt](#prompts), and use its default answer. Also set with
+  `PROTO_YES`.
 
 ## Logging
 
+proto logs very little by default, so you mostly see warnings and errors. When something doesn't
+behave as expected, pass `--log debug` (or set `PROTO_LOG=debug`) to see which files were loaded,
+which versions were detected, and more. The levels, from least to most verbose, are `off`, `error`,
+`warn`, `info` (default), `debug`, `trace`, and `verbose` (which also logs spans).
+
+```shell
+$ proto install node --log debug
+```
+
+Logs are written to stderr, so they never mix with a command's output. See
+[debugging variables](../advanced/env-vars.mdx#debugging) for variables that reveal even more.
+
 ### Writing logs to a file
+
+To keep the logs of a command, write them to a file with `--log-file` (or `PROTO_LOG_FILE`). Only
+logs at the `--log` level or above are written.
+
+```shell
+$ proto install node --log debug --log-file debug.log
+```
 
 ## Output formats
 
+Choose how proto prints its output with the `--reporter` option (or `PROTO_REPORTER`):
+
+- `text` _(default)_ - Human-readable output, with tables, colors, and progress bars.
+- `json` - A single JSON document, for commands that produce data. `--json` is a shorthand.
+- `ndjson` - One JSON object per line, streamed as the command runs.
+
+When proto is run by an AI agent, it defaults to `ndjson`. Pass `--reporter text` to get the
+human-readable output back. See the [reporting guide](../guides/reporting.mdx) for how to consume
+the JSON formats.
+
+```shell
+# Pipe the status of each tool into jq
+$ proto status --json | jq 'keys'
+```
+
 ## Colors
+
+proto inherits color support from your terminal. Set [`NO_COLOR`](https://no-color.org) to disable
+colors, or [`FORCE_COLOR`](https://force-color.org) to force them on. The JSON formats never include
+colors.
+
+```shell
+$ NO_COLOR=1 proto status
+```
+
+### Themes
+
+proto picks its colors for a dark terminal theme by default. If you use a light theme, switch with
+`--theme light` (or `PROTO_THEME=light`).
+
+```shell
+$ proto versions node --theme light
+```
 
 ## Prompts
 
+Some commands ask before doing something you might not expect:
+
+- [`proto clean`](./clean.mdx) and [`proto uninstall`](./uninstall.mdx) confirm before removing
+  tool versions.
+- [`proto outdated --update`](./outdated.mdx) confirms before writing the new versions.
+- [`proto setup`](./setup.mdx) asks which shell and profile to configure.
+- [`proto upgrade`](./upgrade.mdx) confirms when another proto process is running.
+- [`proto install`](./install.mdx) asks whether to install missing system packages when
+  [building from source](../guides/build-from-source.mdx).
+
+Pass `--yes` (or set `PROTO_YES`) to skip every prompt and use its default answer. Prompts are also
+skipped in CI. A prompt can't be shown without a terminal, so always pass `--yes` in scripts.
+
+```shell
+$ proto clean --yes
+```
+
 ## Profiling
 
+To find out where a slow command spends its time, pass `--dump` (or set `PROTO_DUMP`). proto writes
+a trace profile to a `dump-<timestamp>.json` file in the current directory, which you can open in
+[Perfetto](https://ui.perfetto.dev) or `chrome://tracing`. See
+[profiling](../guides/troubleshooting.mdx#profiling) for more tips.
+
+```shell
+$ proto install node --dump
+```
+
 ## OpenTelemetry
+
+Pass `--otel` (or set `PROTO_OTEL`) to export [OpenTelemetry](https://opentelemetry.io/) traces and
+metrics over OTLP, to an observability backend, and
+`--otel-logs` to export logs too. Configure where the data is sent with the standard
+`OTEL_EXPORTER_OTLP_*` environment variables. See the [OpenTelemetry
+guide](../guides/opentelemetry.mdx) for more details.
+
+```shell
+$ export OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4318"
+$ proto --otel install
+```

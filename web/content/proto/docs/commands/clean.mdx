@@ -2,6 +2,77 @@
 title: proto clean
 ---
 
+import { TypeLabel } from "@/components/TypeLabel";
+
+Removes what proto has put in the [store](<../(fundamentals)/store.mdx>) but no longer uses: tool
+versions you haven't run in a while, downloaded plugins, temporary files, cached HTTP responses, and
+[trust](<../(fundamentals)/trust.mdx>) records for paths that were deleted. The store only grows on
+its own, so run this command every so often to reclaim disk space, or in CI before a cached store is
+saved (see [caching the store](../guides/ci.mdx#caching-the-store)).
+
+```shell
+# Clean everything that hasn't been used in 30 days
+$ proto clean
+
+# Clean only installed tool versions, without prompting
+$ proto clean tools --yes
+
+# Clean everything that hasn't been used in a week
+$ proto clean --days 7
+
+# Remove trust records for deleted repositories
+$ proto clean trust
+
+# Clean everything in a script, and print what was removed as JSON
+$ proto clean --yes --json
+```
+
+An item is stale when it hasn't been used within `--days` (30 by default). For tool versions, that's
+the [last used](<../(fundamentals)/store.mdx#last-used>) timestamp that proto records each time it
+runs a version, so a version that has never run through proto, or was installed with
+`PROTO_NO_CLEAN` set, is never removed by age. For everything else, it's when the file was last
+accessed. See [stale versions](<../(fundamentals)/store.mdx#stale-versions>) for the full rules.
+
+Only tools that proto can load where you run the command are checked: every
+[built-in tool](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>), and every tool configured in
+the [`.prototools`](<../(fundamentals)/config.mdx>) files that apply. So a third-party or
+[backend](<../(fundamentals)/(plugin)/backend.mdx>) tool that's only configured in a repository is
+only cleaned when you run the command inside that repository. Tools that keep their inventory
+[outside the store](<../(fundamentals)/store.mdx#custom-locations>) are skipped.
+
+Before removing a tool's stale versions, proto lists them and asks for confirmation, once per tool.
+The prompt is skipped when the global `--yes` option is passed (see
+[prompts](./overview.mdx#prompts)), or in a CI environment. When the output isn't a terminal, the
+prompt can't be shown and the versions are kept, so always pass `--yes` in scripts. Everything else
+is removed without asking.
+
+A stale version is uninstalled like [`proto uninstall`](./uninstall.mdx) would, but cleaning never
+touches your configuration. Pins in [`.prototools`](<../(fundamentals)/config.mdx>) files, and
+records in [lockfiles](../advanced/lockfile.mdx), are kept, so run [`proto install`](./install.mdx)
+to install the version again when it's needed.
+
+To clean without having to remember, enable the
+[`auto-clean`](<../(fundamentals)/config.mdx#auto-clean>) setting. proto then cleans every target,
+with the default of 30 days and without prompting, after [`proto activate`](./activate.mdx),
+[`proto install`](./install.mdx), [`proto outdated`](./outdated.mdx), [`proto regen`](./regen.mdx), and
+[`proto status`](./status.mdx). See [automatic
+cleaning](<../(fundamentals)/store.mdx#automatic-cleaning>).
+
 ## Arguments
 
+- `[TARGET]` - The type of artifact to clean. Defaults to `all`.
+  - `all` - Every target below.
+  - `cache` - Files in `~/.proto/cache`.
+  - `plugins` - Downloaded plugin files in `~/.proto/plugins`, which are downloaded again the next
+    time they're needed.
+  - `temp` - Files in `~/.proto/temp`.
+  - `tools` - Stale versions of installed tools, and proto's own versions.
+  - `trust` - [Trust](<../(fundamentals)/trust.mdx>) records for paths that no longer exist,
+    regardless of age. To remove a record for a path that still exists, use
+    [`proto untrust`](./untrust.mdx).
+
 ## Options
+
+- `--days` <TypeLabel type="number" /> - The number of days since an item was last used (or
+  accessed) before it's considered stale, as a whole number from `0` to `255`. Doesn't apply to the
+  `trust` target. Defaults to `30`.

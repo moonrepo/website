@@ -195,6 +195,10 @@ the version you installed. proto looks for a record with the same specification 
 3. **No record** - The specification is resolved as usual, to the newest matching version, and
    installing it adds a record.
 
+A record is only added when the version is actually downloaded. If it's already installed,
+[`proto install`](../commands/install.mdx) skips it without recording it, so reinstall it with
+`--force` to add its record.
+
 To move a specification forward, re-resolve it and replace its record with `--update-lockfile`:
 
 ```shell
@@ -345,5 +349,6 @@ The following commands read or update lockfiles:
 | [`proto status`](../commands/status.mdx)                                          | Shows the locked version of each tool                                                                                               |
 | [`proto versions`](../commands/versions.mdx)                                      | Labels locked versions                                                                                                              |
 | [`proto run`](../commands/run.mdx), [`proto bin`](../commands/bin.mdx), and shims | Resolve versions from records                                                                                                       |
+| [`proto exec`](../commands/exec.mdx) and [`proto shell`](../commands/shell.mdx)   | Resolve versions from records                                                                                                       |
 | [`proto debug config`](../commands/debug/config.mdx)                              | Prints each lockfile after the config that owns it                                                                                  |
 | [`proto diagnose`](../commands/diagnose.mdx)                                      | Reports orphaned, duplicate, and unresolved records                                                                                 |

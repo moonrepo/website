@@ -2,6 +2,60 @@
 title: proto upgrade
 ---
 
+Upgrade proto itself, the `proto` and `proto-shim` executables in `~/.proto/bin`, to the latest
+release, or to an exact version you pass. proto checks for a newer release in the background, and
+when one is out, its notice points you to this command (see [upgrading](../index.mdx#upgrading)).
+Passing a version is also how you downgrade. The command is also available as `proto up`.
+
+```shell
+# Upgrade to the latest release
+$ proto upgrade
+$ proto up
+
+# Upgrade, or downgrade, to an exact version
+$ proto upgrade 0.62.0
+
+# Check whether a newer release is available, without upgrading
+$ proto upgrade --check
+
+# Upgrade without asking, even if another proto process is running
+$ proto upgrade --yes
+```
+
+Without a version, proto only upgrades when the latest release is newer than the version you're
+running, and never downgrades on its own. With a version, it installs exactly that version, which
+must be fully-qualified, not a range or an alias. Either way, proto
+needs to reach GitHub, so it fails when you're [offline](../guides/offline-mode.mdx). Set
+`PROTO_GITHUB_TOKEN` if you're hitting the GitHub API's rate limit (see
+[GitHub authentication](../advanced/http.mdx#github-authentication)).
+
+If another proto process is running, proto asks whether to continue, as replacing its executables
+may interrupt it. The prompt is skipped with the global `--yes` option (see
+[prompts](./overview.mdx#prompts)) or in CI. Upgrading never changes your
+[`.prototools`](<../(fundamentals)/config.mdx>) files or [lockfiles](../advanced/lockfile.mdx). If
+you installed proto with a package manager, upgrade it with that package manager instead.
+
+This command upgrades the proto you installed, not a version of proto that a repository
+[pins](<../(fundamentals)/config.mdx#pinning-proto>). Within a directory that pins proto, the
+command compares the latest release against the pin, and the directory keeps using its pinned
+version after an upgrade, so run `proto upgrade` outside of those directories. To move a repository
+to a new version of proto, update its pin with [`proto pin proto 0.63.2`](./pin.mdx), then run
+[`proto install`](./install.mdx).
+
+Pass the global [`--json`](./overview.mdx#output-formats) option for machine-readable output, where
+`available` is whether running the command would install a different version. The command exits with
+`0` either way, so scripts should read `available` rather than the exit code. JSON output never
+upgrades, even without `--check`. That includes the `ndjson` reporter, which is the default when an
+AI agent runs proto (see [AI agents and bots](../guides/reporting.mdx#ai-agents-and-bots)), so pass
+`--reporter text` to upgrade from an agent.
+
 ## Arguments
 
+- `[TARGET]` - The exact version of proto to upgrade or downgrade to. Defaults to
+  the latest release, in which case nothing is installed unless it's newer than the version you're
+  running.
+
 ## Options
+
+- `--check` - Print how the version you're running compares to the target version, without
+  upgrading. Works with an explicit `[TARGET]` too.

@@ -2,6 +2,63 @@
 title: proto alias
 ---
 
+import { TypeLabel } from "@/components/TypeLabel";
+
+The `proto alias` (or `proto a`) command adds a [custom
+alias](<../(fundamentals)/version-spec.mdx#custom-aliases>) to a tool: a name that maps to a
+[version specification](<../(fundamentals)/version-spec.mdx>). Once it's defined, you can use the
+name anywhere the tool accepts a version.
+
+Aliases let you name a version after its purpose, and change what several pins point to from one
+place. For example, a monorepo can define `work` in its root
+[`.prototools`](<../(fundamentals)/config.mdx>), pin `node = "work"` in each package, and later move
+every package to a new version by running `proto alias` again with a new spec.
+
+```shell
+# Add an alias to the closest .prototools
+$ proto alias node work "^20.11"
+
+# Pin the alias, then point it at a newer version later
+$ proto pin node work
+$ proto alias node work "^22"
+
+# Map an alias to another alias
+$ proto alias node ci work
+
+# Add a personal alias for a backend tool, to ~/.prototools
+$ proto alias npm:prettier legacy 2.8.8 --to user
+```
+
+The alias is written to the [`[tools.<tool>.aliases]`](<../(fundamentals)/config.mdx#tools-aliases>)
+table of the [closest](<../(fundamentals)/config.mdx#closest>)
+[`.prototools`](<../(fundamentals)/config.mdx>) by default, overwriting an existing alias with the
+same name. The spec isn't checked against the tool's available versions, so a spec that matches no
+release only fails once the alias is used.
+
+Where you write an alias decides who can use it. If a committed
+[`.prototools`](<../(fundamentals)/config.mdx>) pins the alias, define it in the project's
+[`.prototools`](<../(fundamentals)/config.mdx>) too, so it exists for your teammates and CI. For
+personal aliases that you use across projects, prefer `--to user`, as the global file isn't loaded
+by commands that act on a project (see [`upwards`](<../(fundamentals)/config.mdx#upwards>)).
+
+To see your aliases alongside the tool's own, run [`proto versions node --aliases`](./versions.mdx),
+and to remove one, run [`proto unalias`](./unalias.mdx).
+
 ## Arguments
 
+- `<CONTEXT>` - The [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>) of the tool
+  to add the alias to, or a backend-prefixed one.
+- `<ALIAS>` - Name of the alias. It must start with a letter, followed by letters, digits, `-`, `_`,
+  `.`, `/`, or `\`. Avoid names that look like versions, as they're never resolved as
+  aliases.
+- `<SPEC>` - The [version specification](<../(fundamentals)/version-spec.mdx>) the alias maps to: a
+  version, requirement, range, or another alias, but not the alias itself. Quote specs that contain
+  shell characters.
+
 ## Options
+
+- `--to` <TypeLabel type="closest | global | local | user" /> - The
+  [location](<../(fundamentals)/config.mdx#writing-to-a-file>) of the
+  [`.prototools`](<../(fundamentals)/config.mdx>) to write to: the closest file (`closest`, the
+  default), `./.prototools` (`local`), `~/.prototools` (`user`), or `~/.proto/.prototools`
+  (`global`).

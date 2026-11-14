@@ -2,6 +2,60 @@
 title: proto plugin list
 ---
 
+List the [plugins](<../../(fundamentals)/(plugin)/plugin.mdx>) that proto loads for its
+[tools](<../../(fundamentals)/(plugin)/tool.mdx>), where each plugin comes from, and where each
+tool's [inventory](<../../(fundamentals)/store.mdx#inventory>) lives. It's a quick way to audit your
+setup across many tools at once: confirm that a configured plugin [overrides a built-in
+one](<../../(fundamentals)/(plugin)/tool.mdx#overriding-built-in-tools>), check which release of a
+plugin is in use, or, with `--versions`, review what you have installed (and what you haven't used
+in a while) before running [`proto clean`](../clean.mdx). For everything about a single tool, use
+[`proto plugin info`](./info.mdx) instead.
+
+```shell
+# List every built-in tool, and the plugins registered globally
+$ proto plugin list
+
+# Only list Node.js and its package managers
+$ proto plugin list node npm pnpm yarn
+
+# Include installed versions and aliases
+$ proto plugin list node --versions --aliases
+
+# Print as JSON, for scripts
+$ proto plugin list --json
+```
+
+Without arguments, every enabled [built-in
+tool](<../../(fundamentals)/(plugin)/tool.mdx#built-in-tools>) is listed, along with the tool
+plugins in the [`[plugins]`](<../../(fundamentals)/config.mdx#plugins>) table of the global
+[`~/.proto/.prototools`](<../../(fundamentals)/config.mdx#locations>). Plugins configured anywhere
+else aren't included. Pass IDs to list specific tools instead, which also finds plugins in the
+`[plugins]` table of any loaded [`.prototools`](<../../(fundamentals)/config.mdx>), and tools with a
+pinned version. Other IDs are skipped without an error.
+
+A plugin configured in an [untrusted](<../../(fundamentals)/trust.mdx>)
+[`.prototools`](<../../(fundamentals)/config.mdx>) is ignored until you trust it with
+[`proto trust`](../trust.mdx), so a built-in tool is listed with its built-in plugin instead. proto
+also loads every listed plugin and its available versions, so the first run can take a moment, and
+needs an internet connection for tools whose versions aren't cached yet (see
+[offline mode](../../guides/offline-mode.mdx)).
+
+Pass the global [`--json`](../overview.mdx#global-options) option for machine-readable output.
+`--aliases` and `--versions` don't change it.
+
 ## Arguments
 
+- `[IDS...]` - IDs of the tools to list. When omitted, the built-in tools and the tool plugins
+  registered in the global [`~/.proto/.prototools`](<../../(fundamentals)/config.mdx#locations>) are
+  listed.
+
 ## Options
+
+- `--aliases` - Include each tool's [aliases](<../../(fundamentals)/version-spec.mdx#aliases>):
+  those provided by its plugin, and your [custom
+  aliases](<../../(fundamentals)/version-spec.mdx#custom-aliases>), which take precedence when they
+  share a name.
+- `--versions` - Include each tool's installed versions, with when each was installed and
+  [last used](<../../(fundamentals)/store.mdx#last-used>). The version pinned in the global
+  [`~/.proto/.prototools`](<../../(fundamentals)/config.mdx#locations>) is marked as the
+  [fallback version](<../../(fundamentals)/detection.mdx#5-global-configuration>).

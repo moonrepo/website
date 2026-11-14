@@ -2,6 +2,62 @@
 title: proto versions
 ---
 
+List the versions of a [tool](<../(fundamentals)/(plugin)/tool.mdx>) that are available to install,
+and mark the ones you already have. Reach for it before installing or pinning, to see what a tool
+has released, to check what a [version specification](<../(fundamentals)/version-spec.mdx>)
+matches, or to see which versions are installed on your machine. The command is also available as
+`proto vs`.
+
+```shell
+# List every available version of Node.js
+$ proto versions node
+
+# List the versions that a requirement or range matches
+$ proto versions node 22
+$ proto versions node "^20 || ^22"
+
+# Check which version an alias resolves to
+$ proto versions node stable
+
+# List installed versions only
+$ proto versions node --installed
+
+# Include aliases, and what they map to
+$ proto versions node --aliases
+
+# List the versions of a backend tool, as JSON
+$ proto versions npm:prettier --json
+```
+
+Versions are printed from oldest to newest, so the newest is at the bottom. A version you've
+installed is labeled `installed`, with the date it was installed, and a version with a record in the
+[lockfile](../advanced/lockfile.mdx) is labeled `locked`. The tool doesn't need to be installed, and
+tools from a [backend](<../(fundamentals)/(plugin)/tool.mdx#backend-prefixed>) are supported too.
+The available versions are [cached](<../(fundamentals)/store.mdx#inventory>), so a release from the
+last few hours may not show up yet (set `PROTO_CACHE=false` to load them again).
+
+Pass a version specification as the second argument to narrow the list down, which is a quick way to
+check a spec before you pin it. A requirement or range lists every version that matches it, a full
+version lists itself when it exists, and an alias lists the version it resolves to. For tools with
+[version scopes](<../(fundamentals)/version-spec.mdx#version-scopes>), pass the scope in the filter,
+as in `proto versions java temurin-21`.
+
+Pass the global [`--json`](./overview.mdx#output-formats) option for machine-readable output.
+
 ## Arguments
 
+- `<CONTEXT>` - The [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>) of the tool
+  to list versions for, or a backend-prefixed one.
+- `[FILTER]` - A [version specification](<../(fundamentals)/version-spec.mdx>) to filter the list
+  by. Quote specs that contain shell characters.
+
 ## Options
+
+- `--aliases` - Print the tool's aliases, and your custom aliases from every loaded
+  [`.prototools`](<../(fundamentals)/config.mdx>), after the versions, with the spec each one maps
+  to. Ignored with `--installed`.
+- `--installed` - Only list the available versions that are installed. An installed version the
+  plugin no longer reports isn't shown, so use [`proto plugin info`](./plugin/info.mdx) to see
+  everything in a tool's inventory.
+- `--no-builds` - Exclude versions with build metadata (a trailing `+`), which some plugins list
+  alongside the official releases.

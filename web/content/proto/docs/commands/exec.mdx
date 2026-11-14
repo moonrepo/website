@@ -2,6 +2,84 @@
 title: proto exec
 ---
 
+import { TypeLabel } from "@/components/TypeLabel";
+
+Runs any command with one or more [tools](<../(fundamentals)/(plugin)/tool.mdx>) added to its
+environment. Each tool's executables, and those of its globally installed packages, are put on
+`PATH`, and the [`[env]`](<../(fundamentals)/config.mdx#env>) and
+[`[tools.*.env]`](<../(fundamentals)/config.mdx#tools-env>) variables of your
+[`.prototools`](<../(fundamentals)/config.mdx>) are applied (see [within tool
+processes](../advanced/env-vars.mdx#within-tool-processes)). The command can be a package script, a
+`make` target, a shell script, or anything else, and every process it spawns uses those versions.
+That makes `proto exec` (or its alias, `proto x`) a good fit for CI steps and scripts that should be
+explicit about their versions, and for trying a command against another version without changing
+your pins.
+
+```shell
+# Run a command with Node.js 24 and pnpm 10
+$ proto exec node@24 pnpm@10 -- pnpm install
+
+# Use the highest installed version of each tool
+$ proto x node pnpm -- pnpm run dev
+
+# Run a command with every tool pinned in .prototools
+$ proto exec --tools-from-config -- npm test
+
+# Override one pin, and use the others as-is
+$ proto exec node@20 --tools-from-config -- npm test
+
+# Run a script that uses shell syntax, through the current shell
+$ proto exec node pnpm --raw -- 'pnpm build && pnpm test'
+```
+
+Tools are passed by [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>), optionally
+with a [version specification](<../(fundamentals)/version-spec.mdx>) as `<id>@<spec>`, as in
+`node@22` or `npm:typescript@5`. proto doesn't
+[detect versions](<../(fundamentals)/detection.mdx#detection-by-command>), so ecosystem files are
+ignored. To use the versions pinned in [`.prototools`](<../(fundamentals)/config.mdx>), pass
+`--tools-from-config`, and any tools you list take precedence over their pins.
+
+A few things to keep in mind:
+
+- **Nothing is installed.** A version that isn't installed is left off `PATH` without an error, so
+  the command may pick up a [shim](<../(fundamentals)/workflows.mdx#shims>) or a system install
+  instead. Run [`proto install`](./install.mdx) first.
+- **Requirements aren't added for you.** List every tool the command needs.
+- **Unknown tools are skipped.** A [community
+  tool](<../(fundamentals)/(plugin)/tool.mdx#community-tools>) or backend tool that isn't pinned in
+  a [`.prototools`](<../(fundamentals)/config.mdx>) is skipped, also without an error.
+- **Configured variables win.** Unlike [`proto run`](./run.mdx), `[tools.*.env]` variables override
+  ones already set in your shell, once the [`.prototools`](<../(fundamentals)/config.mdx>) is
+  [trusted](<../(fundamentals)/trust.mdx#security-sensitive-settings>).
+
+The command goes after a `--` separator, and runs directly, without a shell. When it contains pipes
+(`|`), `&&`, or redirects, or runs a `.ps1`, `.cmd`, or `.bat` script, proto runs it through your
+current shell. Variables and globs alone don't count, so pass `--shell` when a command relies on
+them. Your own shell parses the command line first, so anything unquoted after `&&` or `|` runs
+outside the environment. Quote the whole script as one argument, and pass `--raw`, as shown above.
+`proto exec` exits with the command's exit code.
+
+Use [`proto run`](./run.mdx) instead when a tool should behave exactly as if you'd typed its name,
+with version detection and [`auto-install`](<../(fundamentals)/config.mdx#auto-install>). For an
+interactive session with a set of tools, use [`proto shell`](./shell.mdx).
+
 ## Arguments
 
+- `[TOOLS...]` - The tools to add to the environment, as `<id>` or `<id>@<version>`. A tool without
+  a version uses the highest installed version. Can be combined with `--tools-from-config`, in which
+  case these take precedence over the pins.
+- `-- <COMMAND...>` - The command to execute, followed by its arguments. Required, and must come
+  after a `--` separator.
+
 ## Options
+
+- `--raw` - Insert the command into the shell's command line as-is, instead of quoting each argument
+  that contains a space. Pass the whole script as a single quoted argument, so the shell interprets
+  its syntax.
+- `--shell` <TypeLabel type="ash | bash | dash | elvish | fish | ion | murex | nu | powershell | pwsh | sh | xonsh | zsh" /> - Always execute the command through this shell. Without it, the
+  command only runs through a shell when it needs one, using the shell detected from your
+  environment.
+- `--tools-from-config` - Also add every tool pinned in the
+  [`.prototools`](<../(fundamentals)/config.mdx>) files that apply to the current directory,
+  including the global one, at its pinned version. Tools passed as arguments take precedence over
+  their pins.

@@ -24,11 +24,12 @@ the one it's already configured by), with a key for each tool:
 
 ```toml title=".prototools"
 node = "24.11.0"
-pnpm = "10"
+pnpm = "~10"
 ```
 
-Within `~/projects/app` and its sub-directories, `node` now runs Node.js 24.11.0, and `pnpm` the
-highest installed pnpm 10 release. Anywhere else, they keep running whatever's pinned there.
+A partial version is written as the requirement it stands for, so `10` is pinned as `~10`. Within
+`~/projects/app` and its sub-directories, `node` now runs Node.js 24.11.0, and `pnpm` the highest
+installed pnpm 10 release. Anywhere else, they keep running whatever's pinned there.
 
 ```shell
 $ node --version

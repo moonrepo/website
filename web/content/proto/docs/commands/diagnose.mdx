@@ -2,4 +2,46 @@
 title: proto diagnose
 ---
 
+import { TypeLabel } from "@/components/TypeLabel";
+
+Check your proto installation, and the environment of the shell you run it from, for problems that
+make proto behave in surprising ways: a tool that runs the wrong version, a tool that can't be
+found, or settings in a [`.prototools`](<../(fundamentals)/config.mdx>) that seem to be ignored. Run
+it after installing proto or editing your shell profile, and whenever something doesn't work as
+expected. The command is also available as `proto doctor`.
+
+```shell
+# Check your installation and shell
+$ proto diagnose
+$ proto doctor
+
+# Report the profile for a specific shell, when it isn't detected
+$ proto diagnose --shell fish
+
+# Print the issues as JSON, for scripts
+$ proto diagnose --json
+```
+
+It checks:
+
+- **Your `PATH`** - That the shims and bin directories are on the current shell's `PATH`, in the
+  right order. After editing your profile, open a new terminal before running it again.
+- **Your configuration** - The [`.prototools`](<../(fundamentals)/config.mdx>) files and
+  [lockfiles](../advanced/lockfile.mdx) that apply in the current directory, so run it inside a
+  repository to check that repository's configs.
+- **proto itself** - Whether a newer proto release is out, which is fetched from GitHub, so the
+  command needs a network connection.
+
+Each issue comes with how to resolve it. Errors break how proto works and must be fixed, while
+warnings may or may not matter, depending on how you use proto. The command exits with a non-zero
+code when it reports an error, so it can gate a script or CI step.
+
+proto also prints the shell it detected, and the profile to edit. When it suggests running
+[`proto setup`](./setup.mdx), keep in mind that it only updates your profile when neither directory
+is on `PATH`, so fix a wrong order, or a single missing directory, in your profile by hand.
+
 ## Options
+
+- `--shell` <TypeLabel type="ash | bash | dash | elvish | fish | ion | murex | nu | powershell | pwsh | sh | xonsh | zsh" /> - The shell whose profile to report, when [`proto setup`](./setup.mdx)
+  hasn't recorded one. It doesn't change the checks. Defaults to detecting the shell from the
+  `SHELL` environment variable, then the parent processes.

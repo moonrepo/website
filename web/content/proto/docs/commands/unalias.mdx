@@ -2,6 +2,45 @@
 title: proto unalias
 ---
 
+import { TypeLabel } from "@/components/TypeLabel";
+
+The `proto unalias <tool> <alias>` (or `proto ua`) command removes a
+[custom alias](<../(fundamentals)/version-spec.mdx#custom-aliases>) from a tool. It's the reverse of
+[`proto alias`](./alias.mdx), and is handy for cleaning up aliases that no project uses anymore.
+
+```shell
+# Remove an alias from the closest .prototools
+$ proto unalias node work
+
+# Move a pin off of an alias, then remove the alias
+$ proto pin node 22
+$ proto unalias node work
+
+# Remove a personal alias for a backend tool, from ~/.prototools
+$ proto unalias npm:prettier legacy --from user
+```
+
+By default, the alias is removed from the [closest](<../(fundamentals)/config.mdx#closest>)
+[`.prototools`](<../(fundamentals)/config.mdx>), and only that file is checked. If it doesn't define
+the alias, proto prints a warning naming the file and exits with a non-zero code, so pass `--from`
+to target the file that does. On success, proto prints the spec that the alias
+mapped to, in case you want to add it back.
+
+Pins that use the alias aren't updated, and fail to resolve once the alias is
+gone, unless another file still defines it. Re-pin those tools with [`proto pin`](./pin.mdx) first.
+To see which aliases are left, run [`proto versions node --aliases`](./versions.mdx).
+
 ## Arguments
 
+- `<CONTEXT>` - The [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>) of the tool
+  to remove the alias from, or a backend-prefixed one.
+- `<ALIAS>` - Name of the alias to remove. It must match a name in the tool's
+  [`aliases`](<../(fundamentals)/config.mdx#tools-aliases>) table exactly.
+
 ## Options
+
+- `--from` <TypeLabel type="closest | global | local | user" /> - The
+  [location](<../(fundamentals)/config.mdx#writing-to-a-file>) of the
+  [`.prototools`](<../(fundamentals)/config.mdx>) to remove the alias from: the closest file
+  (`closest`, the default), `./.prototools` (`local`), `~/.prototools` (`user`), or
+  `~/.proto/.prototools` (`global`).

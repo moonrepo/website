@@ -2,6 +2,70 @@
 title: proto bin
 ---
 
+import { TypeLabel } from "@/components/TypeLabel";
+
+Print the absolute path to a [tool's](<../(fundamentals)/(plugin)/tool.mdx>) primary
+[executable](<../(fundamentals)/(plugin)/tool.mdx#executables>), within an installed version in the
+[store](<../(fundamentals)/store.mdx>). Reach for it whenever something outside of proto needs a
+real file to run, or to check which installed version a directory resolves to.
+
+```shell
+# Print the primary executable of the detected version
+$ proto bin node
+/Users/you/.proto/tools/node/24.11.0/bin/node
+
+# Print the executable of an exact version, or of the highest installed 22.x
+$ proto bin node 22.14.0
+$ proto bin node 22
+
+# Print a path that doesn't change between versions, for an editor setting
+$ proto bin node --shim
+$ proto bin node --bin
+
+# Print the directory that contains the executables
+$ proto bin node --dir exes
+
+# Run the executable directly, without a shim
+$ "$(proto bin node)" ./script.mjs
+```
+
+Without a version, proto [detects](<../(fundamentals)/detection.mdx#detection-order>) one for the
+current directory, and falls back to the highest installed version when nothing is detected. The
+version must already be installed: `proto bin` never installs anything, even with
+[`auto-install`](<../(fundamentals)/config.mdx#auto-install>) enabled, so install it first with
+[`proto install`](./install.mdx).
+
+The executable's path contains its version, so it changes whenever the version does. When you need a
+path that stays the same, print the tool's [shim](<../(fundamentals)/workflows.mdx#shims>) with
+`--shim`, which follows each project's pin, or its [linked
+binary](<../(fundamentals)/workflows.mdx#binary-linking>) with `--bin`, which runs the highest
+installed version. Not every tool has both, and when the one you ask for doesn't exist, proto prints
+the executable's path instead.
+
+With `--dir`, proto prints the directories that [`proto run`](./run.mdx) and shims add to `PATH`,
+which are handy for adding a tool to `PATH` yourself. Shims, binaries, and directories are printed
+where proto expects them, so a globals directory, for example, may not exist until you install a
+package globally. As `proto bin` only prints the primary executable, use
+[`proto plugin info`](./plugin/info.mdx) to list them all.
+
 ## Arguments
 
+- `<CONTEXT>` - The [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>) of the tool
+  to locate, or a [backend-prefixed](<../(fundamentals)/(plugin)/tool.mdx#backend-prefixed>)
+  one.
+- `[SPEC]` - The [version specification](<../(fundamentals)/version-spec.mdx>) to locate. Defaults
+  to the [detected](<../(fundamentals)/detection.mdx>) version, or the highest installed version
+  when nothing is detected.
+
 ## Options
+
+- `--all` - Print every directory, one per line, instead of only the first. Only affects `--dir`.
+- `--bin` - Print the path to the tool's unversioned [linked
+  binary](<../(fundamentals)/workflows.mdx#binary-linking>). Takes precedence over `--shim` and
+  `--dir`.
+- `--dir` <TypeLabel type="exes | globals" /> - Print directories instead of the executable's path.
+  - `exes` - The directories within the installed version that contain the tool's executables.
+  - `globals` - The directories that the executables of globally installed packages are installed
+    to.
+- `--shim` - Print the path to the tool's [shim](<../(fundamentals)/workflows.mdx#shims>). Takes
+  precedence over `--dir`.

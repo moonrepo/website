@@ -98,13 +98,16 @@ The next [`proto install`](../commands/install.mdx) writes a
 [`.protolock`](../advanced/lockfile.mdx) file next to it, which
 records, for each pin, the version it resolved to, and for your operating system and architecture,
 the checksum of what was downloaded. Commit it alongside [`.prototools`](<../(fundamentals)/config.mdx>).
-From then on:
+Only versions that are actually downloaded get a record, so if a pinned version is already
+installed on your machine, reinstall it with [`proto install --force`](../commands/install.mdx) to
+record it. From then on:
 
 - Installs, and the tools that shims run, use the locked version instead of the newest match, so
   `node = "24"` keeps meaning the same release on every machine.
 - Downloads are verified against the locked checksum, and the install fails if they don't match.
 - When a teammate installs on a different platform, like Linux instead of macOS, they get the same
-  version, and a record with their platform's checksum is added. Commit that change too.
+  version, and a record with their platform's checksum is added (unless that version was already
+  installed there). Commit that change too.
 
 <VersionLabel version="0.64.0" /> Rather than wait for each platform to show up,
 you can lock all of them from your own machine, without installing anything,

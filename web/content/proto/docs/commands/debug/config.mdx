@@ -2,4 +2,53 @@
 title: proto debug config
 ---
 
+When a pinned version, setting, or plugin doesn't seem to apply, this command shows you exactly what
+proto read. It prints every [`.prototools`](<../../(fundamentals)/config.mdx>) that proto found from
+the current directory, each as a block of TOML titled with its path, followed by the final
+configuration that they [merge](<../../(fundamentals)/config.mdx#merging-strategy>) into. Between
+the two, you can tell whether a file was found at all, what proto made of it, and which value won.
+
+```shell
+# Print each .prototools, and the configuration they merge into
+$ proto debug config
+
+# Show the configuration that proto install and shell activation see
+$ proto debug config --config-mode upwards
+
+# Include environment files
+$ PROTO_ENV=production proto debug config
+
+# Print the same information as JSON, for scripts
+$ proto debug config --json
+
+# Dump proto's internal data structures to a file, to attach to a bug report
+$ proto debug config --raw 2> config.txt
+```
+
+Files are printed from lowest to highest precedence, so reading from top to bottom follows the order
+in which they're merged (see [locations](<../../(fundamentals)/config.mdx#locations>)). Each file is
+shown as proto parsed it, rather than as it's written, so comments are gone and versions are
+normalized. A file that hasn't been
+[trusted](<../../(fundamentals)/trust.mdx#untrusted-configurations>) is labeled `(untrusted)` and
+printed without its security-sensitive settings, so the output matches what's actually applied. When
+a project file enables a [`lockfile`](<../../(fundamentals)/config.mdx#lockfile>), the `.protolock`
+it owns is printed right after it.
+
+The final configuration includes every default, the built-in plugins, and any settings overridden by
+environment variables, so it's a quick way to check which plugin a tool
+loads, or which value a setting ended up with. It's merged in
+[`upwards-global`](<../../(fundamentals)/config.mdx#upwards-global>) mode by default, the same as
+[`proto run`](../run.mdx) and shims. Pass the global `--config-mode` option to see what a command in
+another [resolution mode](<../../(fundamentals)/config.mdx#resolution-modes>) sees.
+
+For a shorter list of the files that were found, alongside the store paths and `PROTO_*` variables,
+run [`proto debug env`](./env.mdx). See [debugging
+configuration](<../../(fundamentals)/config.mdx#debugging-configuration>) and [inspecting
+configuration](../../guides/troubleshooting.mdx#inspecting-configuration) for more ways to track
+down a problem.
+
 ## Options
+
+- `--raw` - Dump proto's internal data structures, in Rust's debug format, instead of TOML. It's
+  printed to stderr, and takes precedence over `--json`. It's verbose and mostly useful when
+  reporting a bug, so redirect it to a file.

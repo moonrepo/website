@@ -2,6 +2,78 @@
 title: proto run
 ---
 
+import { TypeLabel } from "@/components/TypeLabel";
+
+Run an executable of a [tool](<../(fundamentals)/(plugin)/tool.mdx>), at the version that applies to
+the current directory. This is the command that [shims](<../(fundamentals)/workflows.mdx#shims>) are
+built on: running `node` through its shim runs `proto run node -- <args>`. Run it directly when
+you don't use shims or [shell activation](<../(fundamentals)/workflows.mdx#shell-activation>), or to
+try a version once without changing your pins. Its alias is `proto r`.
+
+```shell
+# Run the primary executable, with the detected version
+$ proto run node -- --version
+
+# Run a specific version, regardless of what's pinned
+$ proto run node 20.18.0 -- ./script.mjs
+
+# Run a secondary executable, either way
+$ proto run npm --exe npx -- cowsay hello
+$ proto run npx -- cowsay hello
+
+# Run a tool from a backend
+$ proto run npm:prettier -- --check .
+
+# Install the version first, if it's missing
+$ PROTO_AUTO_INSTALL=true proto run node 24 -- ./script.mjs
+```
+
+<Callout type="warning">
+  Arguments for the tool must come after `--`. Everything before it is parsed by
+  proto, so the tool's flags are treated as proto's own, and its first argument
+  as the version to run.
+</Callout>
+
+Without a version, proto [detects](<../(fundamentals)/detection.mdx#detection-order>) one from the
+environment, the closest [`.prototools`](<../(fundamentals)/config.mdx>) or ecosystem file, and
+finally your global [`~/.proto/.prototools`](<../(fundamentals)/config.mdx>). A partial version
+typically runs the highest matching version you already have.
+
+When that version isn't installed, proto installs it first if
+[`auto-install`](<../(fundamentals)/config.mdx#auto-install>) is enabled, without writing to a
+[lockfile](../advanced/lockfile.mdx), and otherwise fails with the [`proto install`](./install.mdx)
+command to run. Only when proto can't pick a managed version at all, because it doesn't know the
+tool or no version is detected, does it fall back to an executable of the same name elsewhere on
+`PATH`.
+
+proto runs the tool's primary [executable](<../(fundamentals)/(plugin)/tool.mdx#executables>),
+unless you pass `--exe` or the name of a secondary one. To list a tool's executables, run
+[`proto plugin info`](./plugin/info.mdx).
+
+Before the tool starts, proto adds its directories to `PATH`, and applies the
+[`[env]`](<../(fundamentals)/config.mdx#env>) variables of your
+[`.prototools`](<../(fundamentals)/config.mdx>) (see [variables within tool
+processes](../advanced/env-vars.mdx#within-tool-processes)). Everything proto prints goes to stderr,
+so stdout and the exit code belong to the tool. Pass `--log debug` (see [global
+options](./overview.mdx#global-options)) to see what was detected and executed. A tool's own upgrade
+command is blocked, with an error suggesting [`proto install bun latest --pin`](./install.mdx)
+instead.
+
+To run an arbitrary command with one or more tools available, use [`proto exec`](./exec.mdx)
+instead. To print the path to an executable, use [`proto bin`](./bin.mdx).
+
 ## Arguments
 
+- `<CONTEXT>` - The [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>) of the tool
+  to run, or a [backend-prefixed](<../(fundamentals)/(plugin)/tool.mdx#backend-prefixed>)
+  one. Can also be a secondary executable, once the tool that
+  provides it is installed.
+- `[SPEC]` - The [version specification](<../(fundamentals)/version-spec.mdx>) to run. Defaults to
+  the [detected](<../(fundamentals)/detection.mdx>) version.
+- `-- [PASSTHROUGH...]` - Arguments to pass through to the executable.
+
 ## Options
+
+- `--exe` <TypeLabel type="string" /> - The name of a secondary executable to run, instead of the
+  primary one. Required for tools that don't have a primary executable. Also
+  available as `--alt`.

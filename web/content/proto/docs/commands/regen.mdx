@@ -2,4 +2,55 @@
 title: proto regen
 ---
 
+Rebuilds the [shims](<../(fundamentals)/workflows.mdx#shims>) in `~/.proto/shims` from scratch, and
+with `--bin`, the [linked binaries](<../(fundamentals)/workflows.mdx#binary-linking>) in
+`~/.proto/bin` too. proto keeps both up to date as you install and uninstall tools, so you rarely
+need this command. Reach for it when they've drifted out of sync with what's installed:
+
+- A shim is missing or fails to run, for example after files in `~/.proto/shims` were deleted or
+  edited by hand.
+- A binary in `~/.proto/bin` is broken, or points to the wrong version.
+- You've [moved the store](<../(fundamentals)/store.mdx#moving-the-store>). Binaries are symlinks to
+  absolute paths, so they keep pointing to the old location until you relink them with `--bin`.
+- You've upgraded proto, and want every shim replaced with a copy of the new `proto-shim` at once.
+
+```shell
+# Regenerate every shim
+$ proto regen
+
+# Regenerate every shim, and relink every binary
+$ proto regen --bin
+
+# Pin a tool globally first, so it's regenerated from any directory
+$ proto pin bun 1 --to global
+$ proto regen
+```
+
+Nothing is repaired in place. proto deletes the existing shims, and with `--bin`, every file in
+`~/.proto/bin` except `proto` and `proto-shim`, whether proto created it or not, so don't keep your
+own executables in there. It then recreates them for each tool with a version configured in the
+[`.prototools`](<../(fundamentals)/config.mdx>) files that apply to the current directory. It never
+installs, uninstalls, or pins anything.
+
+<Callout type="warning">
+  Both directories are emptied for every tool, but only refilled for the tools
+  configured where you run the command. Any other tool loses its shims (and with
+  `--bin`, its binaries) until you install it again, or run `proto regen` in a
+  directory where it's configured. So run it from a directory where every tool
+  you use is configured, or pin each one globally first with [`proto pin --to
+  global`](./pin.mdx).
+</Callout>
+
+To see which tools will be covered, run [`proto debug config`](./debug/config.mdx) in the same
+directory. A tool whose plugin is configured in an
+[untrusted](<../(fundamentals)/trust.mdx#untrusted-configurations>)
+[`.prototools`](<../(fundamentals)/config.mdx>) is skipped, so run [`proto trust`](./trust.mdx) in
+that directory first. If loading fails partway, for example on a malformed
+[`.prototools`](<../(fundamentals)/config.mdx>), the tools that weren't reached are left without
+shims, so fix the problem and run it again.
+
 ## Options
+
+- `--bin` - Also rebuild [binary links](<../(fundamentals)/workflows.mdx#binary-linking>), for every
+  installed version of each tool with a configured version. Without it, `~/.proto/bin` is left
+  untouched.

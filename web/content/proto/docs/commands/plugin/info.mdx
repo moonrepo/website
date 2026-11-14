@@ -2,4 +2,45 @@
 title: proto plugin info
 ---
 
+Display everything proto knows about a single [tool](<../../(fundamentals)/(plugin)/tool.mdx>): the
+[plugin](<../../(fundamentals)/(plugin)/plugin.mdx>) that powers it and where it was loaded from,
+the version detected for the current directory, the tool's
+[inventory](<../../(fundamentals)/store.mdx#inventory>) in the store, the executables, shims, and
+binaries it provides, and the configuration that applies to it. Reach for it when a tool doesn't
+behave as you expect, to find the executable that runs in a directory, or to check when each
+installed version was last used. To see every plugin at once, use [`proto plugin list`](./list.mdx)
+instead.
+
+```shell
+# Show the plugin, inventory, and configuration of Node.js
+$ proto plugin info node
+
+# Inspect a specific installed version, instead of the detected one
+$ PROTO_NODE_VERSION=22 proto plugin info node
+
+# Print the details as JSON, for scripts
+$ proto plugin info node --json
+```
+
+The tool must be installed. proto [detects](<../../(fundamentals)/detection.mdx>) the tool's version
+for the current directory, or uses the highest installed version when nothing is detected, and fails
+if that version isn't installed. Install it with [`proto install`](../install.mdx) first. Only tool
+IDs are supported, not tools from a [backend](<../../(fundamentals)/(plugin)/backend.mdx>).
+
+The output covers the plugin (its version, where it was loaded from, and any tools it requires), the
+tool's inventory (its store directory, executables,
+[shims](<../../(fundamentals)/workflows.mdx#shims>),
+[binaries](<../../(fundamentals)/workflows.mdx#binary-linking>), and installed versions with when
+each was [last used](<../../(fundamentals)/store.mdx#last-used>)), and its
+[`[tools.*]`](<../../(fundamentals)/config.mdx#tools>) settings, merged across every loaded
+[`.prototools`](<../../(fundamentals)/config.mdx>) file. Shims and binaries are listed as the paths
+proto creates, not files found on disk, so if one is missing, recreate them with
+[`proto regen`](../regen.mdx), and pass `--bin` to include binaries.
+
+Pass the global [`--json`](../overview.mdx#global-options) option for machine-readable output.
+
 ## Arguments
+
+- `<ID>` - The ID of the tool to display, as it's used in
+  [`.prototools`](<../../(fundamentals)/config.mdx>) and other commands. Tools from a backend aren't
+  supported.

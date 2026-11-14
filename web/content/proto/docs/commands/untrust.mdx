@@ -2,4 +2,47 @@
 title: proto untrust
 ---
 
+Remove trust from a [`.prototools`](<../(fundamentals)/config.mdx>) file, or a directory, that was
+trusted with [`proto trust`](./trust.mdx). Once removed, proto ignores the [security-sensitive
+settings](<../(fundamentals)/trust.mdx#security-sensitive-settings>) of the affected configs again,
+while safe settings still apply. Use it when you no longer want a repository's config to run code on
+your machine, or to narrow trust from a whole repository down to a single file.
+
+```shell
+# Untrust the current directory
+$ proto untrust
+
+# Untrust a repository by path
+$ proto untrust ~/Projects/app
+
+# Untrust a single config file, but not its directory
+$ proto untrust packages/web/.prototools
+```
+
+This removes the record for exactly the path you pass, so other records that cover the same configs
+are kept:
+
+- Untrusting a directory doesn't untrust files within it that were trusted on their own. That
+  includes configs that proto [trusted for you](<../(fundamentals)/trust.mdx#automatically-trusted>)
+  when a command added their first sensitive setting.
+- Untrusting a file or a sub-directory doesn't untrust a parent directory that was trusted. You
+  can't exclude a sub-directory from a trusted parent, so untrust the parent instead, then trust the
+  directories or files you still want with [`proto trust`](./trust.mdx).
+
+When a config is still trusted another way, through a trusted parent directory,
+[`PROTO_TRUSTED_PATHS`](../advanced/env-vars.mdx#trust), or CI, proto tells you why (see
+[automatically trusted](<../(fundamentals)/trust.mdx#automatically-trusted>)). The change applies to
+the next proto command or shim, and in a shell with
+[activation](<../(fundamentals)/workflows.mdx#shell-activation>), the next prompt unsets the
+config's environment variables and shell aliases.
+
+Unlike [`proto trust`](./trust.mdx), the path doesn't need to exist, so you can remove the record of
+a repository you've already deleted. To remove the records of every path that no longer exists at
+once, run [`proto clean trust`](./clean.mdx). See [removing
+trust](<../(fundamentals)/trust.mdx#removing-trust>) for more.
+
 ## Arguments
+
+- `[PATH]` - The config file ([`.prototools`](<../(fundamentals)/config.mdx>) or
+  `.prototools.<env>`), or directory of config files, to untrust. Either absolute, or relative to
+  the current directory. Defaults to the current directory, and doesn't need to exist.

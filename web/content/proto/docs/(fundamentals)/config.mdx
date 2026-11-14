@@ -305,12 +305,14 @@ $ proto pin go 1.25 --to global
 ```
 
 ```toml title=".prototools"
-node = "24"
+node = "~24"
 ```
 
 A pin can be any [version specification](./version-spec.mdx): a fully-qualified version, a partial
 version, a requirement or range, or an alias. A fully-qualified version, like `24.11.0`, is the
-most reproducible, while a partial version, like `24`, matches newer releases over time. To keep
+most reproducible, while a partial version, like `24`, matches newer releases over time.
+[`proto pin`](../commands/pin.mdx) writes a partial version as the requirement it stands for, so
+`24` is pinned as `~24`. To keep
 the flexibility of requirements while still getting reproducible installs, enable
 [lockfiles](../advanced/lockfile.mdx).
 
@@ -481,12 +483,13 @@ Apart from `detect-strategy`, `lockfile`, `pin-latest`, and `telemetry`, every s
 
 <TypeLabel type="boolean" />
 
-When enabled, proto cleans up the store in the background after running
+When enabled, proto cleans up the store once
 [`proto activate`](../commands/activate.mdx), [`proto install`](../commands/install.mdx),
 [`proto outdated`](../commands/outdated.mdx), [`proto regen`](../commands/regen.mdx), or
-[`proto status`](../commands/status.mdx). Like [`proto clean`](../commands/clean.mdx), but without
-prompting, it removes tool versions that haven't been used in 30 days, along with plugins and
-temporary files older than that (see [cleaning](./store.mdx#cleaning)). Defaults to `false`. Also
+[`proto status`](../commands/status.mdx) has finished, before the command exits. Like
+[`proto clean`](../commands/clean.mdx), but without prompting, it cleans every target: tool
+versions that haven't been used in 30 days, plugins, temporary files, and cached files older than
+that, and trust records for paths that no longer exist (see [cleaning](./store.mdx#cleaning)). Defaults to `false`. Also
 set with `PROTO_AUTO_CLEAN`.
 
 #### `auto-install`
@@ -1055,8 +1058,11 @@ $ proto debug config --json
 $ proto debug config --config-mode upwards
 ```
 
-Each file is printed as proto parsed it, so a misspelled setting or a mistake in TOML is easy to
-spot. A file whose security-sensitive settings were ignored, because it hasn't been trusted, is
+Each file is printed as proto parsed it, so you see the values proto actually read. A mistake in
+TOML, or an unknown setting in `[settings]`, fails the command with an error that points to the
+line instead. Unknown keys within `[tools.*]` and `[backends.*]` are kept, as plugins can define
+their own settings, so check those against the printed output. A file whose security-sensitive
+settings were ignored, because it hasn't been trusted, is
 marked as `(untrusted)`, and printed without them. When a file enables a [lockfile](#lockfile), its
 `.protolock` is printed after it.
 
@@ -1066,8 +1072,9 @@ merged with the current [resolution mode](#resolution-modes), so pass `--config-
 what different commands see. Environment variables that override settings, like
 `PROTO_AUTO_INSTALL`, are applied to it too.
 
-For a short list of the files that were loaded, run [`proto debug env`](../commands/debug/env.mdx),
-which prints them as config sources. To follow the loading process itself, run any command with
+For a short list of the files proto found, run [`proto debug env`](../commands/debug/env.mdx),
+which prints them as config sources. Both commands list every file they find, whichever resolution
+mode is used; the mode only decides which of them are merged. To follow the loading process itself, run any command with
 `--log debug`, which logs the resolution mode and each file as it's loaded. See
 [inspecting configuration](../guides/troubleshooting.mdx#inspecting-configuration) for more
 troubleshooting tips.

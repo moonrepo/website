@@ -2,6 +2,46 @@
 title: proto deactivate
 ---
 
+Reverses a [shell activation](<../(fundamentals)/workflows.mdx#shell-activation>) in the current
+session. It unregisters the activation hook so nothing re-activates, unsets the environment
+variables and [shell aliases](<../(fundamentals)/workflows.mdx#shell-aliases>) that activation
+applied, restores `PATH` to what it was before activating, and removes the `proto_activate` and
+`proto_deactivate` functions that the hook defined.
+
+A command can't change the environment of the shell that launched it, so `proto deactivate` doesn't
+apply any of this itself. With `--export`, it prints the statements in your shell's syntax, for the
+shell to evaluate, which is exactly what the `proto_deactivate` function does. So day to day, call
+the function instead of this command. Without `--export`, the command only reminds you to call
+`proto_deactivate`.
+
+```shell
+# Deactivate the current session, through the function the hook defined
+$ proto_deactivate
+
+# The same in Zsh, by evaluating the statements yourself
+$ eval "$(proto deactivate zsh --export)"
+```
+
+Deactivating doesn't need the options you activated with. Only the `PATH` entries that activation
+added are removed, so entries from your profile stay where they were. Variables are unset, not
+restored: if activation overwrote a variable you had already exported, deactivating unsets it
+instead of bringing back your value.
+
+Deactivating only affects the current session. Your profile still runs the hook, so new terminals
+are activated as usual, and you can re-activate the current one by evaluating
+[`proto activate`](./activate.mdx) again. Pass [`--json`](./overview.mdx#global-options) for
+machine-readable output, for editors and scripts that apply the environment themselves. See
+[deactivating](<../(fundamentals)/workflows.mdx#deactivating>) for more details.
+
 ## Arguments
 
+- `[SHELL]` - The shell to print statements for. Accepts the same names as
+  [`proto activate`](./activate.mdx), listed in [supported
+  shells](<../(fundamentals)/workflows.mdx#supported-shells>). When omitted, it's detected from
+  `$SHELL`, then the parent process. Pass it explicitly when evaluating the output.
+
 ## Options
+
+- `--export` - Print the statements that revert the activation in the shell's syntax, for the shell
+  to evaluate. This is what the `proto_deactivate` function runs. Without it, only a reminder is
+  printed (or JSON, with `--json`).

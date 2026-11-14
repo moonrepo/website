@@ -180,7 +180,9 @@ Instead of editing the file by hand, run [`proto plugin add`](../../commands/plu
 ID and a locator. It writes to the closest [`.prototools`](../config.mdx) (customizable with
 `--to`), in the tool's `plugin` setting, or in `[plugins]` when the file already has that table. It
 then loads the plugin to verify that it works. Pass `--type backend` to add a backend.
-[`proto plugin remove`](../../commands/plugin/remove.mdx) removes it again.
+[`proto plugin remove`](../../commands/plugin/remove.mdx) removes a tool's plugin again, along with
+the tool's version pin and settings. For a backend, it only removes the entry in
+`[plugins.backends]`, so a backend's `plugin` setting in `[backends.<id>]` must be removed by hand.
 
 ```shell
 # Add a tool plugin
