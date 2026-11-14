@@ -38,30 +38,31 @@ Only tools that proto can load where you run the command are checked: every
 the [`.prototools`](<../(fundamentals)/config.mdx>) files that apply. So a third-party or
 [backend](<../(fundamentals)/(plugin)/backend.mdx>) tool that's only configured in a repository is
 only cleaned when you run the command inside that repository. Tools that keep their inventory
-[outside the store](<../(fundamentals)/store.mdx#custom-locations>), like Rust, are skipped.
+[outside the store](<../(fundamentals)/store.mdx#custom-locations>) are skipped.
 
 Before removing a tool's stale versions, proto lists them and asks for confirmation, once per tool.
 The prompt is skipped when the global `--yes` option is passed (see
-[prompts](./overview.mdx#prompts)), or in a CI environment. When the output isn't a terminal, like in
-a script or a pipe, the prompt can't be shown and the versions are kept, so always pass `--yes` in
-scripts. Everything else is removed without asking.
+[prompts](./overview.mdx#prompts)), or in a CI environment. When the output isn't a terminal, the
+prompt can't be shown and the versions are kept, so always pass `--yes` in scripts. Everything else
+is removed without asking.
 
 A stale version is uninstalled like [`proto uninstall`](./uninstall.mdx) would, but cleaning never
 touches your configuration. Pins in [`.prototools`](<../(fundamentals)/config.mdx>) files, and
 records in [lockfiles](../advanced/lockfile.mdx), are kept, so run [`proto install`](./install.mdx)
 to install the version again when it's needed.
 
-To clean without having to remember, enable the [`auto-clean`](<../(fundamentals)/config.mdx#auto-clean>)
-setting. proto then cleans every target, with the default of 30 days and without prompting, after
-[`proto activate`](./activate.mdx), [`proto install`](./install.mdx),
-[`proto outdated`](./outdated.mdx), [`proto regen`](./regen.mdx), and
-[`proto status`](./status.mdx). See [automatic cleaning](<../(fundamentals)/store.mdx#automatic-cleaning>).
+To clean without having to remember, enable the
+[`auto-clean`](<../(fundamentals)/config.mdx#auto-clean>) setting. proto then cleans every target,
+with the default of 30 days and without prompting, after [`proto activate`](./activate.mdx),
+[`proto install`](./install.mdx), [`proto outdated`](./outdated.mdx), [`proto regen`](./regen.mdx), and
+[`proto status`](./status.mdx). See [automatic
+cleaning](<../(fundamentals)/store.mdx#automatic-cleaning>).
 
 ## Arguments
 
 - `[TARGET]` - The type of artifact to clean. Defaults to `all`.
   - `all` - Every target below.
-  - `cache` - Files in `~/.proto/cache`, like cached HTTP responses and plugin registries.
+  - `cache` - Files in `~/.proto/cache`.
   - `plugins` - Downloaded plugin files in `~/.proto/plugins`, which are downloaded again the next
     time they're needed.
   - `temp` - Files in `~/.proto/temp`.

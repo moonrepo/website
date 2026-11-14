@@ -26,13 +26,13 @@ $ proto outdated --json
 ```
 
 Every tool with a version [detected](<../(fundamentals)/detection.mdx>) for the current directory is
-checked, whether it's pinned in a [`.prototools`](<../(fundamentals)/config.mdx>), an
-[ecosystem file](<../(fundamentals)/detection.mdx#4-ecosystem-files>) like `.nvmrc`, or a
+checked, whether it's pinned in a [`.prototools`](<../(fundamentals)/config.mdx>), an [ecosystem
+file](<../(fundamentals)/detection.mdx#4-ecosystem-files>) like `.nvmrc`, or a
 [`PROTO_<TOOL>_VERSION`](<../(fundamentals)/detection.mdx#2-environment-variable>) environment
 variable. Like [`proto install`](./install.mdx), versions that are only pinned in the global
 [`~/.proto/.prototools`](<../(fundamentals)/config.mdx#locations>) aren't checked by default, so
-pass `--config-mode upwards-global` to include them (see
-[resolution modes](<../(fundamentals)/config.mdx#resolution-modes>)). Each tool is reported with these columns:
+pass `--config-mode upwards-global` to include them (see [resolution
+modes](<../(fundamentals)/config.mdx#resolution-modes>)). Each tool is reported with these columns:
 
 - **Tool** - The tool's [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>).
 - **Current** - The version that the pin resolves to right now.
@@ -40,16 +40,16 @@ pass `--config-mode upwards-global` to include them (see
   instead of resolving the pin. Only shown when at least one tool is locked.
 - **Newest** - The highest available version that the pin allows. An exact version allows anything
   within its major version.
-- **Latest** - The version that the [`latest`](<../(fundamentals)/version-spec.mdx#built-in-aliases>)
-  alias resolves to. It's red when it's beyond what the pin allows, which usually means a new major
-  version.
+- **Latest** - The version that the
+  [`latest`](<../(fundamentals)/version-spec.mdx#built-in-aliases>) alias resolves to. It's red when
+  it's beyond what the pin allows, which usually means a new major version.
 - **Config** - The file that the version was detected from.
 
 Pass `--update` to write each tool's Newest version, or its Latest with `--latest`, to the file it
 was detected from. The new version is always written as an exact version, so `pnpm = "^9"` becomes
-`pnpm = "9.15.9"`. Aliases like `stable`, and versions from ecosystem files or environment variables,
-are left as-is. When an updated [`.prototools`](<../(fundamentals)/config.mdx>) enables a lockfile,
-its `.protolock` is updated too.
+`pnpm = "9.15.9"`. Aliases like `stable`, and versions from ecosystem files or environment
+variables, are left as-is. When an updated [`.prototools`](<../(fundamentals)/config.mdx>) enables a
+lockfile, its `.protolock` is updated too.
 
 In an interactive terminal, proto asks for confirmation before writing anything. There's no prompt
 with the global `--yes` option (see [prompts](./overview.mdx#prompts)), in CI, or with JSON output.

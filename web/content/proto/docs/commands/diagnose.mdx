@@ -5,7 +5,7 @@ title: proto diagnose
 import { TypeLabel } from "@/components/TypeLabel";
 
 Check your proto installation, and the environment of the shell you run it from, for problems that
-make proto behave in surprising ways, like a tool that runs the wrong version, a tool that can't be
+make proto behave in surprising ways: a tool that runs the wrong version, a tool that can't be
 found, or settings in a [`.prototools`](<../(fundamentals)/config.mdx>) that seem to be ignored. Run
 it after installing proto or editing your shell profile, and whenever something doesn't work as
 expected. The command is also available as `proto doctor`.
@@ -42,7 +42,6 @@ is on `PATH`, so fix a wrong order, or a single missing directory, in your profi
 
 ## Options
 
-- `--shell` <TypeLabel type="ash | bash | dash | elvish | fish | ion | murex | nu | powershell | pwsh | sh | xonsh | zsh" /> -
-  The shell whose profile to report, when [`proto setup`](./setup.mdx) hasn't recorded one. It
-  doesn't change the checks. Defaults to detecting the shell from the `SHELL` environment variable,
-  then the parent processes.
+- `--shell` <TypeLabel type="ash | bash | dash | elvish | fish | ion | murex | nu | powershell | pwsh | sh | xonsh | zsh" /> - The shell whose profile to report, when [`proto setup`](./setup.mdx)
+  hasn't recorded one. It doesn't change the checks. Defaults to detecting the shell from the
+  `SHELL` environment variable, then the parent processes.

@@ -3,13 +3,14 @@ title: proto mcp
 ---
 
 Start a [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server, so that AI agents
-and editors like Claude Code, Cursor, and VS Code can manage your toolchain through proto. The server
-lets an agent install and uninstall versions of a [tool](<../(fundamentals)/(plugin)/tool.mdx>), list
-a tool's available versions, and read configuration, as structured equivalents of
-[`proto install`](./install.mdx), [`proto uninstall`](./uninstall.mdx),
-[`proto versions`](./versions.mdx), [`proto debug config`](./debug/config.mdx), and
-[`proto debug env`](./debug/env.mdx). The MCP guide describes every
-[tool](../guides/mcp.mdx#available-tools) and [resource](../guides/mcp.mdx#available-resources).
+and editors like Claude Code, Cursor, and VS Code can manage your toolchain through proto. The
+server lets an agent install and uninstall versions of a
+[tool](<../(fundamentals)/(plugin)/tool.mdx>), list a tool's available versions, and read
+configuration, as structured equivalents of [`proto install`](./install.mdx),
+[`proto uninstall`](./uninstall.mdx), [`proto versions`](./versions.mdx),
+[`proto debug config`](./debug/config.mdx), and [`proto debug env`](./debug/env.mdx). The MCP guide describes
+every [tool](../guides/mcp.mdx#available-tools) and
+[resource](../guides/mcp.mdx#available-resources).
 
 You rarely run this command yourself. Your MCP client spawns `proto mcp` and talks to it over stdin
 and stdout (see [setup](../guides/mcp.mdx#setup) for registering it with your client). Started by

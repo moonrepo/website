@@ -23,10 +23,9 @@ $ eval "$(proto deactivate zsh --export)"
 ```
 
 Deactivating doesn't need the options you activated with. Only the `PATH` entries that activation
-added are removed, so entries from your profile, like `~/.proto/shims` and `~/.proto/bin`, stay
-where they were. Variables are unset, not restored: if activation overwrote a variable you had
-already exported, like `NODE_ENV` from an [`[env]`](<../(fundamentals)/config.mdx#env>) table,
-deactivating unsets it instead of bringing back your value.
+added are removed, so entries from your profile stay where they were. Variables are unset, not
+restored: if activation overwrote a variable you had already exported, deactivating unsets it
+instead of bringing back your value.
 
 Deactivating only affects the current session. Your profile still runs the hook, so new terminals
 are activated as usual, and you can re-activate the current one by evaluating
@@ -37,9 +36,9 @@ machine-readable output, for editors and scripts that apply the environment them
 ## Arguments
 
 - `[SHELL]` - The shell to print statements for. Accepts the same names as
-  [`proto activate`](./activate.mdx), listed in
-  [supported shells](<../(fundamentals)/workflows.mdx#supported-shells>). When omitted, it's detected
-  from `$SHELL`, then the parent process. Pass it explicitly when evaluating the output.
+  [`proto activate`](./activate.mdx), listed in [supported
+  shells](<../(fundamentals)/workflows.mdx#supported-shells>). When omitted, it's detected from
+  `$SHELL`, then the parent process. Pass it explicitly when evaluating the output.
 
 ## Options
 

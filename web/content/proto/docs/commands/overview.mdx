@@ -4,11 +4,10 @@ title: Overview
 
 import { TypeLabel } from "@/components/TypeLabel";
 
-Every proto command accepts a set of _global options_, which control how proto itself behaves, like
-how much it logs, how it prints its output, and whether it prompts. They can be passed before or
-after the command, and each one can also be set with an
-[environment variable](../advanced/env-vars.mdx#global-options), which is handy for configuring
-proto once in CI.
+Every proto command accepts a set of _global options_, which control how proto itself behaves: how
+much it logs, how it prints its output, and whether it prompts. They can be passed before or after
+the command, and each one can also be set with an [environment
+variable](../advanced/env-vars.mdx#global-options), which is handy for configuring proto once in CI.
 
 ```shell
 # Both are equivalent
@@ -30,8 +29,8 @@ $ PROTO_LOG=debug proto install node
 - `-h`, `--help` - Display the help menu for the current command.
 - `--json` - Print the output as [JSON](#output-formats), for commands that support it. Also set
   with `PROTO_JSON`.
-- `-l`, `--log` <TypeLabel type="off | error | warn | info | debug | trace | verbose" /> - The lowest
-  [log level](#logging) to output. Defaults to `info`. Also set with `PROTO_LOG`.
+- `-l`, `--log` <TypeLabel type="off | error | warn | info | debug | trace | verbose" /> - The
+  lowest [log level](#logging) to output. Defaults to `info`. Also set with `PROTO_LOG`.
 - `--log-file` <TypeLabel type="string" /> - A file to [write logs to](#writing-logs-to-a-file).
   Also set with `PROTO_LOG_FILE`.
 - `--otel` - Export [traces and metrics](#opentelemetry) over OTLP. Also set with `PROTO_OTEL`.
@@ -63,8 +62,8 @@ Logs are written to stderr, so they never mix with a command's output. See
 
 ### Writing logs to a file
 
-To keep the logs of a command, like to attach them to a bug report, write them to a file with
-`--log-file` (or `PROTO_LOG_FILE`). Only logs at the `--log` level or above are written.
+To keep the logs of a command, write them to a file with `--log-file` (or `PROTO_LOG_FILE`). Only
+logs at the `--log` level or above are written.
 
 ```shell
 $ proto install node --log debug --log-file debug.log
@@ -75,8 +74,7 @@ $ proto install node --log debug --log-file debug.log
 Choose how proto prints its output with the `--reporter` option (or `PROTO_REPORTER`):
 
 - `text` _(default)_ - Human-readable output, with tables, colors, and progress bars.
-- `json` - A single JSON document, for commands that produce data, like
-  [`proto status`](./status.mdx) and [`proto versions`](./versions.mdx). `--json` is a shorthand.
+- `json` - A single JSON document, for commands that produce data. `--json` is a shorthand.
 - `ndjson` - One JSON object per line, streamed as the command runs.
 
 When proto is run by an AI agent, it defaults to `ndjson`. Pass `--reporter text` to get the
@@ -91,8 +89,8 @@ $ proto status --json | jq 'keys'
 ## Colors
 
 proto inherits color support from your terminal. Set [`NO_COLOR`](https://no-color.org) to disable
-colors, or [`FORCE_COLOR`](https://force-color.org) to force them on, like in a CI provider whose
-logs support colors that aren't detected. The JSON formats never include colors.
+colors, or [`FORCE_COLOR`](https://force-color.org) to force them on. The JSON formats never include
+colors.
 
 ```shell
 $ NO_COLOR=1 proto status
@@ -142,8 +140,8 @@ $ proto install node --dump
 Pass `--otel` (or set `PROTO_OTEL`) to export [OpenTelemetry](https://opentelemetry.io/) traces and
 metrics over OTLP, to an observability backend like Grafana, Honeycomb, or Datadog, and
 `--otel-logs` to export logs too. Configure where the data is sent with the standard
-`OTEL_EXPORTER_OTLP_*` environment variables. See the [OpenTelemetry guide](../guides/opentelemetry.mdx)
-for more details.
+`OTEL_EXPORTER_OTLP_*` environment variables. See the [OpenTelemetry
+guide](../guides/opentelemetry.mdx) for more details.
 
 ```shell
 $ export OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4318"

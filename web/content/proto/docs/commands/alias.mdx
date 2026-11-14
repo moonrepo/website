@@ -4,17 +4,15 @@ title: proto alias
 
 import { TypeLabel } from "@/components/TypeLabel";
 
-The `proto alias` (or `proto a`) command adds a
-[custom alias](<../(fundamentals)/version-spec.mdx#custom-aliases>) to a tool: a name that maps to a
-[version specification](<../(fundamentals)/version-spec.mdx>), like `work` to `^20.11`. Once it's
-defined, you can use the name anywhere the tool accepts a version, like a pin in
-[`.prototools`](<../(fundamentals)/config.mdx>) or [`proto install node work`](./install.mdx).
+The `proto alias` (or `proto a`) command adds a [custom
+alias](<../(fundamentals)/version-spec.mdx#custom-aliases>) to a tool: a name that maps to a
+[version specification](<../(fundamentals)/version-spec.mdx>). Once it's defined, you can use the
+name anywhere the tool accepts a version.
 
-Aliases let you name a version after its purpose, like `legacy` for the release an old service still
-runs on, and change what several pins point to from one place. For example, a monorepo can define
-`work` in its root [`.prototools`](<../(fundamentals)/config.mdx>), pin `node = "work"` in each
-package, and later move every package to a new version by running `proto alias` again with a new
-spec.
+Aliases let you name a version after its purpose, and change what several pins point to from one
+place. For example, a monorepo can define `work` in its root
+[`.prototools`](<../(fundamentals)/config.mdx>), pin `node = "work"` in each package, and later move
+every package to a new version by running `proto alias` again with a new spec.
 
 ```shell
 # Add an alias to the closest .prototools
@@ -48,14 +46,14 @@ and to remove one, run [`proto unalias`](./unalias.mdx).
 
 ## Arguments
 
-- `<CONTEXT>` - The [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>) of the tool to
-  add the alias to, or a backend-prefixed one.
+- `<CONTEXT>` - The [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>) of the tool
+  to add the alias to, or a backend-prefixed one.
 - `<ALIAS>` - Name of the alias. It must start with a letter, followed by letters, digits, `-`, `_`,
-  `.`, `/`, or `\`. Avoid names that look like versions, like `v2`, as they're never resolved as
+  `.`, `/`, or `\`. Avoid names that look like versions, as they're never resolved as
   aliases.
 - `<SPEC>` - The [version specification](<../(fundamentals)/version-spec.mdx>) the alias maps to: a
   version, requirement, range, or another alias, but not the alias itself. Quote specs that contain
-  shell characters, like `"^20.11"`.
+  shell characters.
 
 ## Options
 

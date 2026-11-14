@@ -10,8 +10,7 @@ platform, verifies it, and writes a record. Nothing is installed, and downloads 
 they've been verified.
 
 Installing is how records usually get into a lockfile, so a lockfile only knows about the platforms
-someone has installed on. Reach for `proto lock` to fill in the rest from your own machine, like
-the Linux records that an [immutable](../advanced/lockfile.mdx#immutable-lockfiles) CI needs, or to
+someone has installed on. Reach for `proto lock` to fill in the rest from your own machine, or to
 record the checksums for every platform after changing a pin with [`proto pin`](./pin.mdx) or
 [`proto outdated --update`](./outdated.mdx).
 
@@ -32,10 +31,10 @@ $ proto lock --force
 
 By default, proto locks the current platform, plus every platform that already has a record for
 the tool, so the whole team moves to the same version at once. Pass `--platform` to lock exactly the
-platforms you list instead. Tools whose download is the same everywhere, like npm, get a single
+platforms you list instead. Tools whose download is the same everywhere get a single
 record for every platform.
 
-A few tools can't be locked without installing them, like Rust, tools from
+Tools that can only be verified by installing them are skipped: Rust, tools from
 [backends](<../(fundamentals)/(plugin)/backend.mdx>), and tools that
 [build from source](../guides/build-from-source.mdx), so they're skipped, as are tools in a
 [`.prototools`](<../(fundamentals)/config.mdx>) that hasn't enabled the
@@ -51,8 +50,9 @@ details.
 - `[CONTEXT]` - The [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>) of a
   single tool to lock. When omitted, every tool with a version for the current
   directory is locked.
-- `[SPEC]` - When locking one tool, the [version specification](<../(fundamentals)/version-spec.mdx>)
-  to lock, like `24`. Defaults to the version detected for the current directory.
+- `[SPEC]` - When locking one tool, the [version
+  specification](<../(fundamentals)/version-spec.mdx>) to lock. Defaults to the version detected for
+  the current directory.
 
 ## Options
 
@@ -60,6 +60,6 @@ details.
   command fails if a download doesn't match its locked checksum, which makes it a quick way to audit
   a lockfile.
 - `--platform` <TypeLabel type="string[]" /> - A comma-separated list of platforms to lock, instead
-  of the current platform and those already locked. A platform is written as `<arch>-<os>`, like
-  `x64-linux` or `arm64-macos`, with an optional libc on Linux, like `x64-linux-musl`.
+  of the current platform and those already locked. A platform is written as `<arch>-<os>`
+  (`x64-linux`, `arm64-macos`), with an optional libc on Linux (`x64-linux-musl`).
 - `--quiet` - Hide the output, except for errors.

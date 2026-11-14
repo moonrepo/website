@@ -6,10 +6,9 @@ import { TypeLabel } from "@/components/TypeLabel";
 
 The `proto unpin` (or `proto uv`) command removes a tool's version pin from a
 [`.prototools`](<../(fundamentals)/config.mdx>), undoing [`proto pin`](./pin.mdx). Use it when a
-directory should stop pinning its own version of a tool, like a package in a monorepo that no longer
-needs an override. Once the pin is gone, proto [detects](<../(fundamentals)/detection.mdx>) the
-version from the next source it finds, like a pin in a parent directory, and falls back to your
-[global pin](<../(fundamentals)/detection.mdx#5-global-configuration>).
+directory should stop pinning its own version of a tool. Once the pin is gone, proto
+[detects](<../(fundamentals)/detection.mdx>) the version from the next source it finds, and falls
+back to your [global pin](<../(fundamentals)/detection.mdx#5-global-configuration>).
 
 ```shell
 # Remove the Node.js pin from the closest .prototools
@@ -31,16 +30,15 @@ the tool, proto prints a warning and exits with a non-zero code, instead of look
 `--from` to target another file. When the file enables a [lockfile](../advanced/lockfile.mdx), the
 unpinned version's records are removed from its `.protolock` too.
 
-Only the pin is removed. The tool's other settings, like its
-[aliases](<../(fundamentals)/config.mdx#tools-aliases>), stay in the file, and installed versions
+Only the pin is removed. The tool's other settings stay in the file, and installed versions
 stay in the [store](<../(fundamentals)/store.mdx>). To remove those, use
 [`proto unalias`](./unalias.mdx) and [`proto uninstall`](./uninstall.mdx).
 
 ## Arguments
 
-- `<CONTEXT>` - The [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>) of the tool to
-  unpin, like `node`, or a backend-prefixed one, like `npm:typescript`. It must match the tool's key
-  in the [`.prototools`](<../(fundamentals)/config.mdx>) exactly.
+- `<CONTEXT>` - The [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>) of the tool
+  to unpin, or a backend-prefixed one. It must match the tool's key in the
+  [`.prototools`](<../(fundamentals)/config.mdx>) exactly.
 
 ## Options
 
@@ -50,7 +48,7 @@ stay in the [store](<../(fundamentals)/store.mdx>). To remove those, use
   (`closest`, the default), `./.prototools` (`local`), `~/.prototools` (`user`), or
   `~/.proto/.prototools` (`global`). With `--tool-native`, it picks the directory that the plugin
   looks in instead.
-- `--tool-native` - Remove the version from the tool's
-  [ecosystem file](<../(fundamentals)/detection.mdx#4-ecosystem-files>), like `devEngines` in
-  `package.json`, instead of a [`.prototools`](<../(fundamentals)/config.mdx>). Only supported by
-  tools whose plugin implements it.
+- `--tool-native` - Remove the version from the tool's [ecosystem
+  file](<../(fundamentals)/detection.mdx#4-ecosystem-files>) instead of a
+  [`.prototools`](<../(fundamentals)/config.mdx>). Only supported by tools whose plugin implements
+  it.

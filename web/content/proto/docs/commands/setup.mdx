@@ -13,8 +13,7 @@ is separate and opt-in (see [`proto activate`](./activate.mdx)).
 
 You rarely need to run it by hand. The [Bash install script](../index.mdx#macos-linux-and-wsl) runs
 it as its last step, and passes any options you give the script through to it. After installing
-with the [PowerShell install script](../index.mdx#windows), or any other way, like with
-[Nix](../index.mdx#nix) or a [manual download](../index.mdx#manual-download), run it yourself.
+with the [PowerShell install script](../index.mdx#windows), or any other way, run it yourself.
 
 ```shell
 # Set up the detected shell, choosing the profile to update from a prompt
@@ -29,10 +28,10 @@ $ proto setup --no-modify-profile --no-modify-path
 
 proto detects your shell from `$SHELL` and its parent processes, and asks you to pick one when it
 can't. `$SHELL` holds your _login_ shell, so pass `--shell` when you're running a different one. It
-then lists the profile files for that shell, like `~/.zshrc`, `~/.zprofile`, and `~/.zshenv` for
-Zsh, and asks which one to update. You can also enter a path of your own, or choose none. Set the
-[`PROTO_SHELL_PROFILE`](../advanced/env-vars.mdx#installation) environment variable to use a single
-file instead. For Bash and Zsh, the appended lines look like this:
+then lists the profile files for that shell, and asks which one to update. You can also enter a path
+of your own, or choose none. Set the [`PROTO_SHELL_PROFILE`](../advanced/env-vars.mdx#installation)
+environment variable to use a single file instead. For Bash and Zsh, the appended lines look like
+this:
 
 ```shell title="~/.zshrc"
 # proto
@@ -49,12 +48,10 @@ A few more things to know:
 - **Open a new terminal.** Your current terminal isn't affected by the changes.
 - **It only sets up a shell without proto.** When the `shims` or `bin` directory is already on the
   current `PATH`, proto exits without changing anything. A shell you start from one that's set up
-  inherits its `PATH`, so to add proto to another shell, like Fish started from Zsh, add the lines
+  inherits its `PATH`, so to add proto to another shell, add the lines
   to that shell's profile yourself.
 - **It never duplicates lines.** proto only appends to a profile that doesn't mention `PROTO_HOME`.
-  A profile that already sets it, like for a
-  [custom store location](<../(fundamentals)/store.mdx#store-location>), is left as is, so add the
-  `PATH` line to it yourself.
+  A profile that already sets it is left as is, so add the `PATH` line to it yourself.
 - **Pass `--yes` in scripts.** The global `--yes` option (see [prompts](./overview.mdx#prompts))
   skips the prompts, and picks the first profile that exists, or creates one. Without it, when the
   output isn't a terminal, the first option of each prompt is selected, which may be a profile that
@@ -66,12 +63,10 @@ it's installed. [`proto diagnose`](./diagnose.mdx) reports it. To undo the setup
 
 ## Options
 
-- `--shell` <TypeLabel type="ash | bash | dash | elvish | fish | ion | murex | nu | powershell | pwsh | sh | xonsh | zsh" /> -
-  The shell to set up, which determines the syntax of the lines and the profiles to choose from.
-  Defaults to detecting the current shell.
-- `--no-modify-profile` - Don't append the lines to a shell profile, like in a Docker image or CI job
-  where you manage `PATH` yourself. Also available as `--no-profile`, or by setting the
-  `PROTO_NO_MODIFY_PROFILE` environment variable to `true`.
+- `--shell` <TypeLabel type="ash | bash | dash | elvish | fish | ion | murex | nu | powershell | pwsh | sh | xonsh | zsh" /> - The shell to set up, which determines the syntax of the lines and
+  the profiles to choose from. Defaults to detecting the current shell.
+- `--no-modify-profile` - Don't append the lines to a shell profile. Also available as
+  `--no-profile`, or by setting the `PROTO_NO_MODIFY_PROFILE` environment variable to `true`.
 - `--no-modify-path` - Don't add proto's directories to the `Path` of your user account. Only has an
   effect on Windows. Can also be set with the `PROTO_NO_MODIFY_PATH` environment variable, set to
   `true`.

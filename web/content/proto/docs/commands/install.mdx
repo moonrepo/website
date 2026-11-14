@@ -5,9 +5,9 @@ title: proto install
 import { TypeLabel } from "@/components/TypeLabel";
 
 Download and install [tools](<../(fundamentals)/(plugin)/tool.mdx>) into the
-[store](<../(fundamentals)/store.mdx>), where each version gets a directory of its own, so installing
-one version never replaces another. The command is also available as `proto i`, `proto u`, and
-`proto use`, and has two modes, depending on whether you name a tool:
+[store](<../(fundamentals)/store.mdx>), where each version gets a directory of its own, so
+installing one version never replaces another. The command is also available as `proto i`,
+`proto u`, and `proto use`, and has two modes, depending on whether you name a tool:
 
 - **One tool** - `proto install node 24` installs a single tool, at the version you pass, or the
   one [detected](<../(fundamentals)/detection.mdx#detection-order>) for the current directory, or
@@ -27,7 +27,7 @@ $ proto install node 24
 $ proto install node 24.11.0
 $ proto install node lts
 
-# Install, then pin the resolved version, like 24.11.0, as your default
+# Install, then pin the resolved version as your default
 $ proto install node 24 --pin global
 
 # Build Python from source, instead of downloading a prebuilt
@@ -44,15 +44,15 @@ Versions that are already installed are skipped, so the command is safe to run a
 (pass `--force` to reinstall them). The two modes treat a partial version differently: installing
 one tool resolves a requirement like `24` to the newest matching release, even when an older match
 is installed, while installing every tool is satisfied by any matching version that's already
-installed. To move a tool forward, install it by name, like `proto install node`, or update its pin
+installed. To move a tool forward, install it by name, or update its pin
 with [`proto outdated --update`](./outdated.mdx).
 
 Neither mode installs the versions pinned in your global
 [`~/.proto/.prototools`](<../(fundamentals)/config.mdx#locations>), only what the current directory
 needs. When installing every tool, pass the global `--config-mode upwards-global` option to include
-them. Some tools require another, like pnpm requires Node.js, and fail to install unless that tool
-has a version pinned too. When a tool fails, its full log is written to `proto-<id>-install.log` in
-the current directory, and the command exits with a non-zero code.
+them. Some tools require another, and fail to install unless that tool has a version pinned too.
+When a tool fails, its full log is written to `proto-<id>-install.log` in the current directory, and
+the command exits with a non-zero code.
 
 Installing a version doesn't [pin](<../(fundamentals)/config.mdx#pinning-versions>) it, so unless an
 existing pin matches it, shims won't run it. Pass `--pin` to pin the resolved version, or enable
@@ -61,9 +61,9 @@ existing pin matches it, shims won't run it. Pass `--pin` to pin the resolved ve
 `proto install node --pin 24`, `24` is read as the location, and the command fails.
 
 When a [lockfile](../advanced/lockfile.mdx) applies to a tool, installs follow it: a locked version
-is installed instead of the newest match (see
-[version resolution](../advanced/lockfile.mdx#version-resolution)), the download must match the
-locked checksum, and fresh installs are recorded in the `.protolock`. A version installed before you
+is installed instead of the newest match (see [version
+resolution](../advanced/lockfile.mdx#version-resolution)), the download must match the locked
+checksum, and fresh installs are recorded in the `.protolock`. A version installed before you
 enabled the lockfile isn't recorded until you reinstall it with `--force`. In CI, pass
 `--immutable-lockfile`, so the lockfile decides what's installed instead of being changed by the
 install (see [immutable lockfiles](../advanced/lockfile.mdx#immutable-lockfiles)).
@@ -74,13 +74,12 @@ shim installs a missing version. To remove a version, run [`proto uninstall`](./
 
 ## Arguments
 
-- `[CONTEXT]` - The [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>) of a
-  single tool to install, like `node`, or a
-  [backend-prefixed](<../(fundamentals)/(plugin)/tool.mdx#backend-prefixed>) one, like
-  `npm:prettier`. When omitted, every tool configured for the current directory is installed.
-- `[SPEC]` - When installing one tool, the
-  [version specification](<../(fundamentals)/version-spec.mdx>) to install, like `24.11.0`, `24`, or
-  `lts`. Defaults to the [detected](<../(fundamentals)/detection.mdx>) version, or `latest`.
+- `[CONTEXT]` - The [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>) of a single
+  tool to install, or a [backend-prefixed](<../(fundamentals)/(plugin)/tool.mdx#backend-prefixed>)
+  one. When omitted, every tool configured for the current directory is installed.
+- `[SPEC]` - When installing one tool, the [version
+  specification](<../(fundamentals)/version-spec.mdx>) to install. Defaults to the
+  [detected](<../(fundamentals)/detection.mdx>) version, or `latest`.
 - `-- [PASSTHROUGH...]` - When installing one tool, arguments to pass to the tool's plugin, for its
   install hooks. Which arguments are supported depends on the plugin.
 

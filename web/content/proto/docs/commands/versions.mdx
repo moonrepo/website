@@ -32,25 +32,24 @@ $ proto versions npm:prettier --json
 Versions are printed from oldest to newest, so the newest is at the bottom. A version you've
 installed is labeled `installed`, with the date it was installed, and a version with a record in the
 [lockfile](../advanced/lockfile.mdx) is labeled `locked`. The tool doesn't need to be installed, and
-tools from a [backend](<../(fundamentals)/(plugin)/tool.mdx#backend-prefixed>), like `npm:prettier`,
-are supported too. The available versions are [cached](<../(fundamentals)/store.mdx#inventory>), so
-a release from the last few hours may not show up yet (set `PROTO_CACHE=false` to load them again).
+tools from a [backend](<../(fundamentals)/(plugin)/tool.mdx#backend-prefixed>) are supported too.
+The available versions are [cached](<../(fundamentals)/store.mdx#inventory>), so a release from the
+last few hours may not show up yet (set `PROTO_CACHE=false` to load them again).
 
 Pass a version specification as the second argument to narrow the list down, which is a quick way to
-check a spec before you pin it. A requirement or range, like `22`, lists every version that matches
-it, a full version, like `22.14.0`, lists itself when it exists, and an alias, like `latest` or one of
-your [custom aliases](<../(fundamentals)/version-spec.mdx#custom-aliases>), lists the version it
-resolves to. For tools with [version scopes](<../(fundamentals)/version-spec.mdx#version-scopes>),
-like Java, `proto versions java temurin-21` lists Temurin builds of Java 21.
+check a spec before you pin it. A requirement or range lists every version that matches it, a full
+version lists itself when it exists, and an alias lists the version it resolves to. For tools with
+[version scopes](<../(fundamentals)/version-spec.mdx#version-scopes>), pass the scope in the filter,
+as in `proto versions java temurin-21`.
 
 Pass the global [`--json`](./overview.mdx#output-formats) option for machine-readable output.
 
 ## Arguments
 
 - `<CONTEXT>` - The [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>) of the tool
-  to list versions for, like `node`, or a backend-prefixed one, like `npm:prettier`.
+  to list versions for, or a backend-prefixed one.
 - `[FILTER]` - A [version specification](<../(fundamentals)/version-spec.mdx>) to filter the list
-  by, like `22` or `stable`. Quote specs that contain shell characters, like `">=18 <21"`.
+  by. Quote specs that contain shell characters.
 
 ## Options
 
@@ -60,5 +59,5 @@ Pass the global [`--json`](./overview.mdx#output-formats) option for machine-rea
 - `--installed` - Only list the available versions that are installed. An installed version the
   plugin no longer reports isn't shown, so use [`proto plugin info`](./plugin/info.mdx) to see
   everything in a tool's inventory.
-- `--no-builds` - Exclude versions with build metadata (a trailing `+`), like `1.2.3+build.5`, which
-  some plugins, like Python and Ruby, list alongside the official releases.
+- `--no-builds` - Exclude versions with build metadata (a trailing `+`), which some plugins list
+  alongside the official releases.

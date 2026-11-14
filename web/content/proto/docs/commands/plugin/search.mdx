@@ -2,13 +2,14 @@
 title: proto plugin search
 ---
 
-Search proto's [third-party plugin registry](<../../(fundamentals)/(plugin)/tool.mdx#third-party-tools>)
-for a plugin that provides a tool, and print the [locator](../../../../wasm/docs/plugin-locators.mdx)
-needed to enable it. Reach for this when a tool isn't
-[built in](<../../(fundamentals)/(plugin)/tool.mdx#built-in-tools>) or available as a
-[community tool](<../../(fundamentals)/(plugin)/tool.mdx#community-tools>), which already work by ID
-and aren't searched. Before you write a [plugin](<../../(fundamentals)/(plugin)/plugin.mdx>) of your
-own, check whether someone has already published one.
+Search proto's [third-party plugin
+registry](<../../(fundamentals)/(plugin)/tool.mdx#third-party-tools>) for a plugin that provides a
+tool, and print the [locator](../../../../wasm/docs/plugin-locators.mdx) needed to enable it. Reach
+for this when a tool isn't [built in](<../../(fundamentals)/(plugin)/tool.mdx#built-in-tools>) or
+available as a [community tool](<../../(fundamentals)/(plugin)/tool.mdx#community-tools>), which
+already work by ID and aren't searched. Before you write a
+[plugin](<../../(fundamentals)/(plugin)/plugin.mdx>) of your own, check whether someone has already
+published one.
 
 ```shell
 # Search by ID, name, or description
@@ -26,14 +27,14 @@ $ proto install example
 ```
 
 A plugin matches when its ID, name, or description contains the query, exactly as typed. Matching
-is case-sensitive, with no fuzzy matching, so short queries work best, like part of a tool's name.
+is case-sensitive, with no fuzzy matching, so short queries work best.
 
 Each result shows the plugin's name, author,
 [format](<../../(fundamentals)/(plugin)/plugin.mdx#plugin-formats>), description, and locator. The
 same tool can have more than one plugin, so compare the author and format before you pick one. Then
 register it with [`proto plugin add`](./add.mdx), and install it with
-[`proto install`](../install.mdx). Third-party plugins run code on your machine and are maintained by
-their authors, so check a plugin's source before you add it.
+[`proto install`](../install.mdx). Third-party plugins run code on your machine and are maintained by their
+authors, so check a plugin's source before you add it.
 
 The command exits with a non-zero code when nothing matches. Pass the global
 [`--json`](../overview.mdx#global-options) option to print the full registry entry of each match

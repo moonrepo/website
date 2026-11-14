@@ -14,7 +14,7 @@ it needs, and how you choose fallback versions for your machine. The command is 
 # Pin a version to the closest .prototools
 $ proto pin node 24
 
-# Pin the exact version that an alias currently resolves to, like 24.11.0
+# Pin the exact version that an alias currently resolves to
 $ proto pin node stable --resolve
 
 # Pin a fallback version, used in any directory that doesn't pin its own
@@ -40,33 +40,31 @@ By default, the [closest](<../(fundamentals)/config.mdx#closest>)
 are none, so pinning from anywhere within a repository updates the file at its root. When that file
 enables a [lockfile](../advanced/lockfile.mdx), its `.protolock` is kept in sync.
 
-Pins for tools without a built-in plugin, like community tools, are
+Pins for tools without a built-in plugin are
 [security-sensitive](<../(fundamentals)/trust.mdx#security-sensitive-settings>), and pinning one
 [trusts the file](<../(fundamentals)/trust.mdx#automatically-trusted>), unless it already had
-untrusted settings. The reserved `proto` identifier
-[pins proto itself](<../(fundamentals)/config.mdx#pinning-proto>), but only from a project file, as
-the pin is ignored in your user and global files.
+untrusted settings. The reserved `proto` identifier [pins proto
+itself](<../(fundamentals)/config.mdx#pinning-proto>), but only from a project file, as the pin is
+ignored in your user and global files.
 
 ## Arguments
 
 - `<CONTEXT>` - The tool to pin, by its
-  [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>), like `node`, or a
-  [backend](<../(fundamentals)/(plugin)/backend.mdx>) prefixed identifier, like `npm:prettier`.
+  [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>), or a
+  [backend](<../(fundamentals)/(plugin)/backend.mdx>) prefixed identifier.
 - `<SPEC>` - The [version specification](<../(fundamentals)/version-spec.mdx>) to pin: a version,
-  partial version, requirement, range, or alias. Quote specs that contain spaces or shell operators,
-  like `">=20 <23"`.
+  partial version, requirement, range, or alias. Quote specs that contain spaces or shell operators.
 
 ## Options
 
-- `--resolve` - Resolve the spec to a fully-qualified version, like `stable` to `24.11.0`, and pin
+- `--resolve` - Resolve the spec to a fully-qualified version, and pin
   that version instead, so every machine runs the same version. Fails if no version matches.
 - `--to` <TypeLabel type="closest | global | local | user" /> - The
   [location](<../(fundamentals)/config.mdx#writing-to-a-file>) of the
   [`.prototools`](<../(fundamentals)/config.mdx>) to write: the closest file (`closest`, the
   default), `./.prototools` (`local`), `~/.prototools` (`user`), or `~/.proto/.prototools`
   (`global`).
-- `--tool-native` - Pin the version in the tool's own
-  [ecosystem file](<../(fundamentals)/detection.mdx#4-ecosystem-files>) instead, like `devEngines`
-  in `package.json` for Node.js and its package managers, so tooling outside of proto sees the same
-  version. The `package.json` must already exist in the directory picked by `--to`, and
-  `devEngines` doesn't support aliases, so pass `--resolve` to pin one.
+- `--tool-native` - Pin the version in the tool's own [ecosystem
+  file](<../(fundamentals)/detection.mdx#4-ecosystem-files>) instead, so tooling outside of proto
+  sees the same version. The `package.json` must already exist in the directory picked by `--to`,
+  and `devEngines` doesn't support aliases, so pass `--resolve` to pin one.

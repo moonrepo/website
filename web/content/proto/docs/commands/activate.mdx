@@ -4,19 +4,19 @@ title: proto activate
 
 Activates proto for the current shell session, so the tools pinned for the directory you're in
 resolve straight to their installed executables, instead of going through
-[shims](<../(fundamentals)/workflows.mdx#shims>). It's the command behind
-[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>): you evaluate its output once,
-in your shell profile, and from then on a hook re-activates the session whenever the prompt is drawn
-or the directory changes, updating `PATH`, exporting the [`[env]`](<../(fundamentals)/config.mdx#env>)
-variables of your [`.prototools`](<../(fundamentals)/config.mdx>), and defining its
-[shell aliases](<../(fundamentals)/workflows.mdx#shell-aliases>).
+[shims](<../(fundamentals)/workflows.mdx#shims>). It's the command behind [shell
+activation](<../(fundamentals)/workflows.mdx#shell-activation>): you evaluate its output once, in
+your shell profile, and from then on a hook re-activates the session whenever the prompt is drawn or
+the directory changes, updating `PATH`, exporting the [`[env]`](<../(fundamentals)/config.mdx#env>)
+variables of your [`.prototools`](<../(fundamentals)/config.mdx>), and defining its [shell
+aliases](<../(fundamentals)/workflows.mdx#shell-aliases>).
 
-Use it when you want those variables and aliases in your interactive shell, a
-[pinned proto version](<../(fundamentals)/config.mdx#pinning-proto>), or no proto overhead on each
-call. Activation sits on top of shims and
-[binaries](<../(fundamentals)/workflows.mdx#binary-linking>), which still cover scripts, editors, and
-CI (see [choosing a workflow](../start/shell.mdx#choosing-a-workflow)). For a one-off session that
-doesn't touch your profile, use [`proto shell`](./shell.mdx) instead.
+Use it when you want those variables and aliases in your interactive shell, a [pinned proto
+version](<../(fundamentals)/config.mdx#pinning-proto>), or no proto overhead on each call.
+Activation sits on top of shims and [binaries](<../(fundamentals)/workflows.mdx#binary-linking>),
+which still cover scripts, editors, and CI (see [choosing a
+workflow](../start/shell.mdx#choosing-a-workflow)). For a one-off session that doesn't touch your
+profile, use [`proto shell`](./shell.mdx) instead.
 
 Add the hook near the end of your profile, after `PATH` is configured, as the hook runs `proto`. See
 [shell activation](<../(fundamentals)/workflows.mdx#shell-activation>) for the hook of every
@@ -47,17 +47,17 @@ Versions pinned only in the global [`~/.proto/.prototools`](<../(fundamentals)/c
 activated unless you pass `--config-mode upwards-global`, and still resolve through shims. Versions
 that aren't installed are skipped, as activation never installs anything, and so are the
 [security-sensitive settings](<../(fundamentals)/trust.mdx#security-sensitive-settings>) of a config
-that hasn't been [trusted](<../(fundamentals)/trust.mdx>), like `[env]` variables and shell aliases.
+that hasn't been [trusted](<../(fundamentals)/trust.mdx>).
 
 The hook passes [`--config-mode`](./overview.mdx#global-options), `--no-bin`, and `--no-shim` to
-every run, so set them in your profile, then open a new terminal. Other global options, like
-`--log`, aren't carried over, so to debug, run the export yourself, as shown above. See [how activation works](<../(fundamentals)/workflows.mdx#how-activation-works>) for
-more details.
+every run, so set them in your profile, then open a new terminal. Other global options aren't
+carried over, so to debug, run the export yourself, as shown above. See [how activation
+works](<../(fundamentals)/workflows.mdx#how-activation-works>) for more details.
 
 ## Arguments
 
-- `[SHELL]` - The shell to activate for. When omitted, it's detected from `$SHELL`, and then from the
-  parent process. In your profile, pass it explicitly, as `$SHELL` isn't always the shell that's
+- `[SHELL]` - The shell to activate for. When omitted, it's detected from `$SHELL`, and then from
+  the parent process. In your profile, pass it explicitly, as `$SHELL` isn't always the shell that's
   evaluating the profile.
 
 ## Options
@@ -67,6 +67,6 @@ more details.
 - `--no-bin` - Don't append `~/.proto/bin` to `PATH` after the activated tools. If your profile adds
   it to `PATH` itself, it stays where it is.
 - `--no-init` - Don't activate when the hook is evaluated in your shell profile, and wait for the
-  first trigger instead, like the next prompt or directory change.
+  first trigger instead.
 - `--no-shim` - Don't append `~/.proto/shims` to `PATH` after the activated tools. If your profile
   adds it to `PATH` itself, it stays where it is.

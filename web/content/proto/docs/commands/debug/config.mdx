@@ -2,11 +2,11 @@
 title: proto debug config
 ---
 
-When a pinned version, setting, or plugin doesn't seem to apply, this command shows you exactly
-what proto read. It prints every [`.prototools`](<../../(fundamentals)/config.mdx>) that proto found
-from the current directory, each as a block of TOML titled with its path, followed by the final
-configuration that they [merge](<../../(fundamentals)/config.mdx#merging-strategy>) into. Between the
-two, you can tell whether a file was found at all, what proto made of it, and which value won.
+When a pinned version, setting, or plugin doesn't seem to apply, this command shows you exactly what
+proto read. It prints every [`.prototools`](<../../(fundamentals)/config.mdx>) that proto found from
+the current directory, each as a block of TOML titled with its path, followed by the final
+configuration that they [merge](<../../(fundamentals)/config.mdx#merging-strategy>) into. Between
+the two, you can tell whether a file was found at all, what proto made of it, and which value won.
 
 ```shell
 # Print each .prototools, and the configuration they merge into
@@ -15,7 +15,7 @@ $ proto debug config
 # Show the configuration that proto install and shell activation see
 $ proto debug config --config-mode upwards
 
-# Include environment files, like .prototools.production
+# Include environment files
 $ PROTO_ENV=production proto debug config
 
 # Print the same information as JSON, for scripts
@@ -30,23 +30,22 @@ in which they're merged (see [locations](<../../(fundamentals)/config.mdx#locati
 shown as proto parsed it, rather than as it's written, so comments are gone and versions are
 normalized. A file that hasn't been
 [trusted](<../../(fundamentals)/trust.mdx#untrusted-configurations>) is labeled `(untrusted)` and
-printed without its security-sensitive settings, so the output matches what's actually applied.
-When a project file enables a [`lockfile`](<../../(fundamentals)/config.mdx#lockfile>), the
-`.protolock` it owns is printed right after it.
+printed without its security-sensitive settings, so the output matches what's actually applied. When
+a project file enables a [`lockfile`](<../../(fundamentals)/config.mdx#lockfile>), the `.protolock`
+it owns is printed right after it.
 
 The final configuration includes every default, the built-in plugins, and any settings overridden by
-environment variables, like `PROTO_AUTO_INSTALL`, so it's a quick way to check which plugin a tool
+environment variables, so it's a quick way to check which plugin a tool
 loads, or which value a setting ended up with. It's merged in
 [`upwards-global`](<../../(fundamentals)/config.mdx#upwards-global>) mode by default, the same as
 [`proto run`](../run.mdx) and shims. Pass the global `--config-mode` option to see what a command in
-another [resolution mode](<../../(fundamentals)/config.mdx#resolution-modes>) sees, like
-[`proto install`](../install.mdx) in [`upwards`](<../../(fundamentals)/config.mdx#upwards>) mode.
+another [resolution mode](<../../(fundamentals)/config.mdx#resolution-modes>) sees.
 
 For a shorter list of the files that were found, alongside the store paths and `PROTO_*` variables,
-run [`proto debug env`](./env.mdx). See
-[debugging configuration](<../../(fundamentals)/config.mdx#debugging-configuration>) and
-[inspecting configuration](../../guides/troubleshooting.mdx#inspecting-configuration) for more ways
-to track down a problem.
+run [`proto debug env`](./env.mdx). See [debugging
+configuration](<../../(fundamentals)/config.mdx#debugging-configuration>) and [inspecting
+configuration](../../guides/troubleshooting.mdx#inspecting-configuration) for more ways to track
+down a problem.
 
 ## Options
 

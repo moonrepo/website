@@ -30,14 +30,13 @@ $ proto plugin add my-backend "registry://ghcr.io/my-org/my_backend:0.1.0" --typ
 
 By default, the plugin is added to the [closest](<../../(fundamentals)/config.mdx#closest>)
 [`.prototools`](<../../(fundamentals)/config.mdx>), or a new one in the current directory when there
-is none. The locator is written to the file's [`[plugins]`](<../../(fundamentals)/config.mdx#plugins>)
-table if it has one, otherwise to the [`plugin`](<../../(fundamentals)/config.mdx#tools-plugin>)
-setting of a `[tools.<id>]` table (or with `--type backend`, the
-[`plugin`](<../../(fundamentals)/config.mdx#backends-plugin>) setting of a `[backends.<id>]` table).
-Running the command again for the same ID overwrites the locator, like to bump a plugin to a new
-release. To use a plugin in every project, add it with `--to user` rather than `--to global`, as the
-global config isn't loaded by commands that act on a project, like [`proto install`](../install.mdx)
-(see [where to configure](<../../(fundamentals)/config.mdx#where-to-configure>)).
+is none. The locator is written to the file's
+[`[plugins]`](<../../(fundamentals)/config.mdx#plugins>) table if it has one, otherwise to the
+[`plugin`](<../../(fundamentals)/config.mdx#tools-plugin>) setting of a `[tools.<id>]` table (or
+with `--type backend`, the [`plugin`](<../../(fundamentals)/config.mdx#backends-plugin>) setting of
+a `[backends.<id>]` table). Running the command again for the same ID overwrites the locator. To use
+a plugin in every project, add it with `--to user` rather than `--to global`, as the global config
+isn't loaded by commands that act on a project.
 
 Once the file is written, proto loads the plugin to verify that it works, which fails if the plugin
 can't be found, isn't a valid plugin, or requires a newer version of proto. An entry that fails to
@@ -51,19 +50,20 @@ load stays in the file, so fix the locator and run the command again, or remove 
   directory, or use an absolute path, so both agree.
 </Callout>
 
-If the file had no [security-sensitive settings](<../../(fundamentals)/trust.mdx#security-sensitive-settings>)
-before, proto [trusts it automatically](<../../(fundamentals)/trust.mdx#automatically-trusted>). A
-project config that already had untrusted settings, like in a repository you just cloned, stays
-untrusted, and other commands ignore the plugin until you run [`proto trust`](../trust.mdx).
+If the file had no [security-sensitive
+settings](<../../(fundamentals)/trust.mdx#security-sensitive-settings>) before, proto [trusts it
+automatically](<../../(fundamentals)/trust.mdx#automatically-trusted>). A project config that
+already had untrusted settings stays untrusted, and other commands ignore the plugin until you run
+[`proto trust`](../trust.mdx).
 
 ## Arguments
 
 - `<ID>` - The ID to register the plugin under, which is how you reference the tool in pins and
-  commands. A backend's ID is the prefix of its tools, like `my-backend` in `my-backend:some-tool`.
-  Using the ID of a built-in tool or backend overrides its built-in plugin.
+  commands. A backend's ID is the prefix of its tools. Using the ID of a built-in tool or backend
+  overrides its built-in plugin.
 - `<PLUGIN>` - The [plugin locator](../../../../wasm/docs/plugin-locators.mdx) to load the plugin
   from: a `file://` path, an `https://` URL, a `github://` release, or a `registry://` image. A
-  `github://` locator uses the latest release unless you append a tag, like `@v1.0.0`.
+  `github://` locator uses the latest release unless you append `@<tag>`.
 
 ## Options
 
@@ -71,6 +71,6 @@ untrusted, and other commands ignore the plugin until you run [`proto trust`](..
   [location](<../../(fundamentals)/config.mdx#writing-to-a-file>) of the
   [`.prototools`](<../../(fundamentals)/config.mdx>) to add the plugin to. Defaults to `closest`.
   Also accepts `cwd`, `home`, and `store`, as aliases of `local`, `user`, and `global`.
-- `--type` <TypeLabel type="backend | tool" /> - The
-  [type of plugin](<../../(fundamentals)/(plugin)/plugin.mdx#plugin-types>) to add. Defaults to
-  `tool`. Backends must be [WASM](<../../(fundamentals)/(plugin)/plugin.mdx#wasm>) plugins.
+- `--type` <TypeLabel type="backend | tool" /> - The [type of
+  plugin](<../../(fundamentals)/(plugin)/plugin.mdx#plugin-types>) to add. Defaults to `tool`.
+  Backends must be [WASM](<../../(fundamentals)/(plugin)/plugin.mdx#wasm>) plugins.

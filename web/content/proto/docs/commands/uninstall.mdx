@@ -6,9 +6,8 @@ The `proto uninstall` (or `proto ui`) command removes installed versions of a
 [tool](<../(fundamentals)/(plugin)/tool.mdx>) from the [store](<../(fundamentals)/store.mdx>). Pass
 a version to remove just that one, or leave it out to remove every version of the tool, along with
 its entire [inventory](<../(fundamentals)/store.mdx#inventory>). Reach for it when you're done with
-a version, like an old major after your projects have upgraded, or with a tool altogether. To
-reclaim disk space from versions you haven't used in a while, without touching your configuration,
-use [`proto clean`](./clean.mdx) instead.
+a version, or with a tool altogether. To reclaim disk space from versions you haven't used in a
+while, without touching your configuration, use [`proto clean`](./clean.mdx) instead.
 
 ```shell
 # Uninstall a specific version
@@ -46,26 +45,24 @@ The tool's plugin and its [`[plugins]`](<../(fundamentals)/config.mdx#plugins>) 
 To remove a third-party tool entirely, follow up with [`proto plugin remove`](./plugin/remove.mdx).
 
 <Callout type="warning">
-  For a tool whose inventory lives
-  [outside the store](<../(fundamentals)/store.mdx#custom-locations>),
-  uninstalling without a version deletes that directory as a whole. For Rust,
-  that's `~/.rustup/toolchains`, including toolchains that you installed with
-  rustup directly, not through proto.
+  For a tool whose inventory lives [outside the
+  store](<../(fundamentals)/store.mdx#custom-locations>), uninstalling without a version deletes
+  that directory as a whole. For Rust, that's `~/.rustup/toolchains`, including toolchains that you
+  installed with rustup directly, not through proto.
 </Callout>
 
 Before removing anything, proto asks for confirmation. The prompt is skipped when the global `--yes`
 option is passed (see [prompts](./overview.mdx#prompts)), or in a CI environment. When the output
-isn't a terminal, like in a script or a pipe, the prompt can't be shown and nothing is uninstalled,
+isn't a terminal, the prompt can't be shown and nothing is uninstalled,
 so always pass `--yes` in scripts.
 
 ## Arguments
 
 - `<CONTEXT>` - The [identifier](<../(fundamentals)/(plugin)/tool.mdx#tool-identifiers>) of the tool
-  to uninstall, like `node`, or a
-  [backend-prefixed](<../(fundamentals)/(plugin)/tool.mdx#backend-prefixed>) one, like
-  `npm:prettier`. A third-party tool's plugin must still be configured.
-- `[SPEC]` - The [version specification](<../(fundamentals)/version-spec.mdx>) to uninstall, like
-  `20.11.0`, `20`, or `lts`. When omitted, every installed version of the tool is uninstalled.
+  to uninstall, or a [backend-prefixed](<../(fundamentals)/(plugin)/tool.mdx#backend-prefixed>) one.
+  A third-party tool's plugin must still be configured.
+- `[SPEC]` - The [version specification](<../(fundamentals)/version-spec.mdx>) to uninstall. When
+  omitted, every installed version of the tool is uninstalled.
 
 ## Options
 

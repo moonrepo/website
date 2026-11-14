@@ -3,14 +3,13 @@ title: proto plugin info
 ---
 
 Display everything proto knows about a single [tool](<../../(fundamentals)/(plugin)/tool.mdx>): the
-[plugin](<../../(fundamentals)/(plugin)/plugin.mdx>) that powers it and where it was loaded from, the
-version detected for the current directory, the tool's
+[plugin](<../../(fundamentals)/(plugin)/plugin.mdx>) that powers it and where it was loaded from,
+the version detected for the current directory, the tool's
 [inventory](<../../(fundamentals)/store.mdx#inventory>) in the store, the executables, shims, and
 binaries it provides, and the configuration that applies to it. Reach for it when a tool doesn't
-behave as you expect, like to confirm that a configured plugin actually
-[overrides a built-in one](<../../(fundamentals)/(plugin)/tool.mdx#overriding-built-in-tools>), to find
-the executable that runs in a directory, or to check when each installed version was last used. To
-see every plugin at once, use [`proto plugin list`](./list.mdx) instead.
+behave as you expect, to find the executable that runs in a directory, or to check when each
+installed version was last used. To see every plugin at once, use [`proto plugin list`](./list.mdx)
+instead.
 
 ```shell
 # Show the plugin, inventory, and configuration of Node.js
@@ -24,10 +23,9 @@ $ proto plugin info node --json
 ```
 
 The tool must be installed. proto [detects](<../../(fundamentals)/detection.mdx>) the tool's version
-for the current directory, or uses the highest installed version when nothing is detected, and
-fails if that version isn't installed. Install it with [`proto install`](../install.mdx) first. Only
-tool IDs, like `node`, are supported, not tools from a
-[backend](<../../(fundamentals)/(plugin)/backend.mdx>), like `npm:typescript`.
+for the current directory, or uses the highest installed version when nothing is detected, and fails
+if that version isn't installed. Install it with [`proto install`](../install.mdx) first. Only tool
+IDs are supported, not tools from a [backend](<../../(fundamentals)/(plugin)/backend.mdx>).
 
 The output covers the plugin (its version, where it was loaded from, and any tools it requires), the
 tool's inventory (its store directory, executables,
@@ -43,6 +41,6 @@ Pass the global [`--json`](../overview.mdx#global-options) option for machine-re
 
 ## Arguments
 
-- `<ID>` - The ID of the tool to display, like `node`, as it's used in
-  [`.prototools`](<../../(fundamentals)/config.mdx>) and other commands. Tools from a backend, like
-  `npm:typescript`, aren't supported.
+- `<ID>` - The ID of the tool to display, as it's used in
+  [`.prototools`](<../../(fundamentals)/config.mdx>) and other commands. Tools from a backend aren't
+  supported.

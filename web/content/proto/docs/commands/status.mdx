@@ -4,9 +4,9 @@ title: proto status
 
 List the tools that are active in the current directory, with the version that's configured, the
 version it resolves to, whether that version is installed, and which file it was configured in. It's
-the quickest way to answer "which version of `node` do I get here, and why?", and to see what's still
-missing before running [`proto install`](./install.mdx). It only reports, and never installs, pins,
-or updates a lockfile.
+the quickest way to answer "which version of `node` do I get here, and why?", and to see what's
+still missing before running [`proto install`](./install.mdx). It only reports, and never installs,
+pins, or updates a lockfile.
 
 ```shell
 # List the tools for the current directory
@@ -37,10 +37,9 @@ listed. Pass `--config-mode upwards-global` to include them, which matches what 
 [resolution modes](<../(fundamentals)/config.mdx#resolution-modes>)).
 
 If any of the loaded configs haven't been [trusted](<../(fundamentals)/trust.mdx>), they're listed
-above the table, with the
-[security-sensitive settings](<../(fundamentals)/trust.mdx#security-sensitive-settings>) that were
-ignored. This often explains a tool that seems to be missing, so review them, then run
-[`proto trust`](./trust.mdx).
+above the table, with the [security-sensitive
+settings](<../(fundamentals)/trust.mdx#security-sensitive-settings>) that were ignored. This often
+explains a tool that seems to be missing, so review them, then run [`proto trust`](./trust.mdx).
 
 Pass the global [`--json`](./overview.mdx#output-formats) option for machine-readable output, keyed
 by tool identifier. To dig into why a version was detected, see
