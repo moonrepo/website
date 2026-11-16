@@ -86,7 +86,8 @@ methods. For URLs, use the
 [`ConfigLoader::url()`](https://docs.rs/schematic/latest/schematic/struct.ConfigLoader.html#method.url)
 method (requires the `url` Cargo feature, which is _not_ enabled by default). For inline code, use the
 [`ConfigLoader::code()`](https://docs.rs/schematic/latest/schematic/struct.ConfigLoader.html#method.code)
-method, which requires an explicit format.
+method, which requires a file name, like `example.yml`. It picks the format, and names the source in
+errors.
 
 ```rust
 loader.code("secure: false", "example.yml")?;
@@ -139,7 +140,8 @@ traced back to where it came from:
 2. Each source, in the order they were added.
 3. [Environment variables](./struct/env.mdx), as `Source::EnvVars`.
 
-The default values and environment variables are left out when they set nothing. Both are read
+The default values and environment variables are left out when they set nothing, as is an optional
+file that doesn't exist. The defaults and variables are read
 against what the sources set, so they only include what applies: the defaults and variables of the
 enum variant the sources picked, and those of an optional nested config only when it's present.
 
@@ -170,7 +172,13 @@ schematic is powered entirely by [serde](https://serde.rs), and supports the fol
 - Pkl - Uses `rpkl` and requires the `pkl` Cargo feature.
 - RON - Uses `ron` and requires the `ron` Cargo feature.
 - TOML - Uses `toml` and requires the `toml` Cargo feature.
-- YAML - Uses `serde_norway` and requires the `yaml` Cargo feature.
+- YAML - Uses `serde_norway` and requires the `yaml` Cargo feature. An externally tagged enum
+  variant that holds a value is written as a YAML tag, like `!file`, rather than a map
+  ([learn more](./struct/index.mdx#yaml-and-externally-tagged-variants)).
+
+None of these formats are enabled by default, so enable the feature of each format you load. A
+source without a format to parse it fails to load, with an error naming the feature its extension
+needs.
 
 ## Cargo features
 

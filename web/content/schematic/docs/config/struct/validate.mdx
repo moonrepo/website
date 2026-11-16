@@ -92,6 +92,11 @@ fn absolute_path<P, C>(value: &str, partial: &P, context: &C, finalize: bool) ->
   are skipped, while the final pass has a value for every setting.
 </Callout>
 
+An error in a source's pass names that source, like `Failed to validate config.yml`. The final pass
+validates what every layer merged into, so its error names each source, and the environment
+variables when any were set, like `Failed to validate base.yml, config.yml, environment variables`.
+With neither, it names the config instead.
+
 ## Required settings
 
 Every setting in a [partial configuration](../partial.mdx) is optional, so a setting that no source
