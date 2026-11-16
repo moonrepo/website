@@ -10,7 +10,12 @@ icon: GitMerge
 
 Configs can extend other configs, generating an accurate layer chain, via the `#[setting(extend)]`
 attribute field. Extended configs can either be a file path (relative from the current config) or a
-secure URL.
+secure URL. A secure URL uses `https://`, while plain `http://` is only allowed when the host is
+`localhost`, `127.0.0.1`, or `[::1]`.
+
+A source that's extended more than once, like a base config that two others extend, is only loaded
+once, where it's first extended. Sources that extend each other in a cycle, like `a.json` extending
+`b.json` which extends `a.json`, fail to load with an error that lists every source in the cycle.
 
 When defining `extend`, we currently support 3 types of patterns. We also suggest making the setting
 optional, so that extending is not required by consumers!

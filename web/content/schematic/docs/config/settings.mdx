@@ -3,8 +3,10 @@ title: Settings
 icon: SlidersHorizontal
 ---
 
-Settings are the individual fields of a [`Config` struct](./struct/index.mdx) or variants of a
-[`Config` enum](./struct/index.mdx), and can be annotated with the optional `#[setting]` attribute.
+Settings are the individual fields of a [`Config` struct](./struct/index.mdx), the variants of a
+[`Config` enum](./struct/index.mdx), or the fields of a
+[named variant](./struct/index.mdx#enum-variants), and can be annotated with the optional
+`#[setting]` attribute.
 
 ## Third-party types
 
@@ -39,23 +41,35 @@ string, so the wrapper works without the upstream crate's `serde` feature.
   defaults to `None`.
 </Callout>
 
+### Required traits
+
+Every setting is held by the [partial](./partial.mdx), which derives `Clone`, `Debug`, `Default`,
+`PartialEq`, `Deserialize`, and `Serialize`, so a setting's type has to implement those too, along
+with [`Schematic`](../schema/index.mdx). A type that lacks one, like `regex::Regex`, which has no
+`PartialEq`, fails to compile at `#[derive(Config)]`. Wrap it in a newtype that implements it, as
+`RegexSetting` does by comparing patterns.
+
 ## Attribute fields
 
 The following fields are supported for the `#[setting]` field/variant attribute:
 
+- `context` - Maps the parent's [context](./context.mdx#nested-configs-with-another-context) to the
+  nested config's own. Requires `nested`.
 - `default` - Sets the [default value](./struct/default.mdx). On an enum variant, it names the
   variant the partial defaults to, and on a variant holding a value, can also provide that value.
-- `env` _(struct only)_ - Sets the [environment variable](./struct/env.mdx) to receive a value from.
-- `env_prefix` _(struct only)_ - Overrides the [environment variable](./struct/env.mdx#container-prefixes)
-  prefix of the nested config this field holds. Requires `nested`.
+- `env` _(field only)_ - Sets the [environment variable](./struct/env.mdx) to receive a value from.
+  A `nested` config reads its own variables, so use `env_prefix` instead.
+- `env_prefix` _(field only)_ - Adds an [environment variable](./struct/env.mdx#nested-prefixes)
+  prefix for the nested config this field holds. Requires `nested`.
 - `exclude` - Omits the field or variant from the generated [schema](../schema/index.mdx). Has no
   effect without the `schema` Cargo feature.
 - `extend` _(struct only)_ - Enables a configuration to [extend other configs](./struct/extend.mdx).
 - `merge` - Defines a function to use for [merging values](./struct/merge.mdx).
 - `nested` - Marks the field as using a [nested `Config`](./nested.mdx).
 - `null` _(enum only)_ - Marks the variant as representing `null`, so it is never tagged.
-- `parse_env` _(struct only)_ - Parses the [environment variable](./struct/env.mdx) value using a
-  function. Requires either `env`, or an `env_prefix` on the container.
+- `parse_env` _(field only)_ - Parses the [environment variable](./struct/env.mdx) value using a
+  function. Requires either `env`, or an `env_prefix` on the container, and can't be used with
+  `nested`.
 - `partial` - Forwards attributes to the field on the [partial](./partial.mdx). May be repeated.
 - `required` - Marks the setting as [required](./struct/validate.mdx#required-settings), so that
   loading fails when no source provides a value, instead of falling back to a default.
@@ -67,8 +81,11 @@ And the following for serde compatibility:
 - `alias`
 - `flatten`
 - `rename`
-- `skip`
-- `skip_deserializing`
+- `rename_all` _(named variant only)_ - Applies a casing to the fields of the variant, over the
+  enum's `rename_all_fields`.
+- `skip` - Also left out of the generated [schema](../schema/index.mdx), as it's never read or
+  written, so its type doesn't need to implement `Schematic`.
+- `skip_deserializing` - Hidden in the generated schema, as it's written but never read.
 - `skip_serializing`
 - `skip_serializing_if` - Only honored from `#[setting]`, and written against the partial's
   `Option`. The `#[serde]` form is left for the full type, whose field is not wrapped.
@@ -97,3 +114,7 @@ struct Example {
 Names are used exactly as written. There is no default casing, so a field named `allowed_hosts` is
 parsed as `allowed_hosts` unless a `rename` or `rename_all` says otherwise. An explicit `rename` is
 never re-cased by `rename_all`.
+
+A custom deserializer, with `#[serde(with)]` or `#[serde(deserialize_with)]`, fails to compile, as
+the partial holds an `Option` of the setting's type rather than the type itself. Provide one for the
+partial instead, like `#[setting(partial(serde(with = "module::option")))]`.

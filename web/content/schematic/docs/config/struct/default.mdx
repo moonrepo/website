@@ -6,7 +6,7 @@ icon: CircleDot
 In schematic, there are 2 forms of default values:
 
 - The first is applied through the [partial configuration](../partial.mdx), is defined with the
-  `#[setting]` attribute, and is the first layer to be merged.
+  `#[setting]` attribute, and is the layer below every other.
 - The second is on the [final configuration](../index.mdx) itself, and uses the `Default` trait to
   generate the final value if none was provided. This acts more like a fallback. To fail instead,
   mark the setting as [required](./validate.mdx#required-settings).
@@ -37,6 +37,10 @@ struct AppConfig {
 	pub retry: Retry,
 }
 ```
+
+A string literal is converted into the setting's type with `TryFrom<&str>`, or `FromStr` when the
+type doesn't implement it, so types like `IpAddr` and `SocketAddr` can be written as strings, like
+`#[setting(default = "127.0.0.1")]`.
 
 ### Paths: value or function?
 
@@ -93,6 +97,23 @@ enum Compress {
   [nested](../nested.mdx) configuration, which sources its defaults from its own
   settings.
 </Callout>
+
+A [named variant](./index.mdx#enum-variants) takes no value either, as each of its fields takes a
+`default` of its own. These are applied whenever the variant is picked, not only when it's the
+default, so a source that picks `Url` below gets a `timeout` of `30`.
+
+```rust
+#[derive(Config)]
+enum Host {
+	#[setting(default)]
+	Local,
+	Url {
+		address: String,
+		#[setting(default = 30)]
+		timeout: u32,
+	},
+}
+```
 
 ## Handler function
 

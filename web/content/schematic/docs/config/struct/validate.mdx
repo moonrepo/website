@@ -60,8 +60,36 @@ enum Entry {
 <Callout>
   We provide a handful of built-in validation functions in the [`validate`
   module](https://docs.rs/schematic/latest/schematic/validate/index.html).
-  Furthermore, some functions are factories which can be called to produce a
-  validator.
+  Furthermore, some functions are [factories](#factories) which can be called to
+  produce a validator, like `min(1)`, `max(10)`, and `in_range(1, 10)` for
+  numbers (all inclusive), or `min_length(1)` for strings and lists.
+</Callout>
+
+## Validation passes
+
+A configuration is validated more than once while loading. Each source is validated on its own as
+it's parsed, and the final configuration is validated again once every source,
+[default value](./default.mdx), and [environment variable](./env.mdx) has been merged, and every
+[transform](./transform.mdx) has run. A validator is told which pass it's in by its last argument,
+`finalize`, which is only `true` for the final pass.
+
+A source only holds part of the configuration, and a later one may replace a value an earlier one
+set, so a check that needs the final value should wait for the final pass. For example, a path that
+a transform makes absolute isn't absolute yet when its source is validated.
+
+```rust
+fn absolute_path<P, C>(value: &str, partial: &P, context: &C, finalize: bool) -> ValidateResult {
+	if finalize && !Path::new(value).is_absolute() {
+		return Err(ValidateError::new("must be an absolute path"));
+	}
+
+	Ok(())
+}
+```
+
+<Callout>
+  Settings that a source didn't provide are `None` in that source's pass, and
+  are skipped, while the final pass has a value for every setting.
 </Callout>
 
 ## Required settings
@@ -91,8 +119,9 @@ source is free to omit it. A `null` counts as missing, while an empty value, lik
 not.
 
 When the setting is wrapped in `Option`, the value must be `Some`, but the field stays an `Option`
-in the final configuration. A setting that isn't wrapped still has to implement `Default`, which
-`AppConfig::default()` falls back to.
+in the final configuration. Its [schema](../../schema/struct.mdx#optional-and-nullable-fields)
+describes the type the `Option` holds, as `null` isn't a value. A setting that isn't wrapped still
+has to implement `Default`, which `AppConfig::default()` falls back to.
 
 A required setting can't declare a `default`, as it would always have a value. Nor can a
 [nested config](../nested.mdx) that isn't wrapped in `Option`, as one always exists in the final
@@ -111,7 +140,7 @@ the final validation pass.
 fn validate_string(
 	value: &str,
 	partial: &PartialAppConfig,
-	context: &Context
+	context: &Context,
 	finalize: bool
 ) -> ValidateResult {
 	if !do_check(value) {
@@ -156,6 +185,32 @@ fn regex<T, P, C>(pattern: &str) -> Validator<T, P, C> {
 }
 ```
 
+### Several errors
+
+A validator usually returns one error, but it may return several instead, such as one for each item
+of a list that fails, by returning a `Vec<ValidateError>` or a garde `Report`. Anything that
+implements
+[`IntoValidateErrors`](https://docs.rs/schematic/latest/schematic/trait.IntoValidateErrors.html)
+can be returned.
+
+```rust
+fn no_empty_items<P, C>(
+	items: &[String],
+	partial: &P,
+	context: &C,
+	finalize: bool,
+) -> Result<(), Vec<ValidateError>> {
+	let errors = items
+		.iter()
+		.enumerate()
+		.filter(|(_, item)| item.is_empty())
+		.map(|(index, _)| ValidateError::with_segment("must not be empty", PathSegment::Index(index)))
+		.collect::<Vec<_>>();
+
+	if errors.is_empty() { Ok(()) } else { Err(errors) }
+}
+```
+
 ### Path targeting
 
 If validating an item in a list or collection, you can specifiy the nested path when failing. This
@@ -181,6 +236,42 @@ fn using_generics<P, C>(value: &str, partial: &P, context: &C, finalize: bool) -
 	// ...
 }
 ```
+
+## Config validation
+
+A rule that compares settings, rather than checking one, can validate the configuration as a whole
+with the `#[config(validate)]` container attribute field. The function receives the partial
+configuration, the [context](../context.mdx), and whether this is the
+[final pass](#validation-passes), and may return [several errors](#several-errors). It runs after the
+validators of each setting, and works for both structs and enums. Like a setting's validator, it can
+also be a [factory](#factories) that returns a closure taking those same arguments, like
+`#[config(validate = at_most(10))]`.
+
+```rust
+fn min_below_max<C>(partial: &PartialRangeConfig, context: &C, finalize: bool) -> ValidateResult {
+	// A source may only set one of them
+	if let (Some(min), Some(max)) = (partial.min, partial.max)
+		&& min > max
+	{
+		return Err(ValidateError::with_segment(
+			"must be at most max",
+			PathSegment::Key("min".into()),
+		));
+	}
+
+	Ok(())
+}
+
+#[derive(Config)]
+#[config(validate = min_below_max)]
+struct RangeConfig {
+	pub min: usize,
+	pub max: usize,
+}
+```
+
+An error is reported at the configuration's own path, like `range` when it's nested, unless it
+[targets a setting](#path-targeting) within it, like `range.min`.
 
 ## Cargo features
 

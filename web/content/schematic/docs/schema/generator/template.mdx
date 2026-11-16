@@ -6,7 +6,7 @@ icon: LayoutDashboard
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
 <Callout>
-  Requires the `template` and desired
+  Requires the `renderer_template` and desired
   [format](../../config/index.mdx#supported-source-formats) Cargo feature.
 </Callout>
 
@@ -132,10 +132,16 @@ render `[]` and `{}` respectively. This can be customized with the
 [`expand_fields` option](#field-expansion).
 
 Furthermore, [enums](../enum.mdx) and [unions](../union.mdx) only support default values when
-explicitly marked as such. For example, with `#[default]`.
+explicitly marked as such. For example, with `#[default]`, or `#[setting(default)]` on a
+[`Config` enum](../../config/struct/index.mdx).
 
-And lastly, when we're unsure of what to render for a value, we'll render `null`. This isn't a valid
-value for TOML, and may not be what you expect.
+When we're unsure of what to render for a value, we'll render `null`, which may not be what you
+expect. TOML has no `null`, so the setting is left commented out instead, like `# name =`, for a user
+to fill in.
+
+A flattened struct's settings are rendered alongside the struct's own, as serde reads them, rather
+than under the field that holds it. In TOML, that means they're part of the same table. A flattened
+map collects keys that a template has no names for, so it renders nothing.
 
 ## Example output
 

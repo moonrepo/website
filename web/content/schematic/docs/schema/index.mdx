@@ -1,6 +1,5 @@
 ---
 title: Schemas
-icon: FileCode
 ---
 
 <Callout>
@@ -31,9 +30,9 @@ enum UserStatus {
 
 #[derive(Schematic)]
 struct User {
-	pub name: String;
-	pub age: usize;
-	pub status: UserStatus;
+	pub name: String,
+	pub age: usize,
+	pub status: UserStatus,
 }
 ```
 
@@ -63,9 +62,9 @@ enum UserStatus {
 }
 
 struct User {
-	pub name: String;
-	pub age: usize;
-	pub status: UserStatus;
+	pub name: String,
+	pub age: usize,
+	pub status: UserStatus,
 }
 
 impl Schematic for User {
@@ -91,6 +90,10 @@ impl Schematic for User {
 ## Cargo features
 
 The following Cargo features are available:
+
+- `schema_serde` - Implements `Serialize` and `Deserialize` for schemas and their types. When
+  deserializing, every field of a type is optional (except a literal's value), so a hand-written
+  schema only needs the fields it sets.
 
 #### Renderers
 

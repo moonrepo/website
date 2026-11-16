@@ -32,10 +32,84 @@ enum ParentEnum {
 The `#[setting(nested)]` attribute is required, as the macro will substitute [`Config`][config] with
 its [partial](./partial.mdx) implementation.
 
-<Callout>
-  Nested values can also be wrapped in collections, like `Vec` and `HashMap`.
-  However, these are tricky to support and may not work in all situations!
-</Callout>
+A nested config can be referenced by its path, like `child::ChildConfig`, without importing its
+partial, and can be [generic](./generics.mdx#nesting-generic-configs). A config can even nest its
+own type, as long as it's wrapped in a `Box` or a collection, like `Option<Box<Self>>` or
+`Vec<Self>`.
+
+## Collections
+
+Nested values can also be wrapped in collections, like `Vec`, `HashMap`, `BTreeMap`, or `VecDeque`.
+Each item is finalized and validated as a nested config, but the collection is replaced when merged,
+rather than merging its items. To merge a map of configs by key, use the
+[`merge_partials` strategy](./struct/merge.mdx#nested-maps).
+
+```rust
+#[derive(Config)]
+struct ParentConfig {
+	#[setting(nested)]
+	pub list: Vec<ChildConfig>,
+
+	#[setting(nested, merge = schematic::merge::merge_partials)]
+	pub map: HashMap<String, ChildConfig>,
+}
+```
+
+## Enum variants
+
+A `#[setting(nested)]` on a variant applies to every value it holds. To hold a nested config
+alongside plain values, mark the value itself instead. Its config is merged, finalized, and validated
+as nested, while the other values are replaced, like any other setting.
+
+```rust
+#[derive(Config)]
+enum ParentEnum {
+	Both(#[setting(nested)] ChildConfig, bool),
+}
+```
+
+## Flattening
+
+A nested config can be flattened with `#[setting(flatten, nested)]` (or serde's own
+`#[serde(flatten)]`), so its settings are written alongside the parent's, rather than under the
+field's name. A map can be flattened too, which collects every key the other settings don't.
+
+```rust
+#[derive(Config)]
+struct ParentConfig {
+	pub name: String,
+
+	#[setting(flatten, nested)]
+	pub server: ServerConfig,
+
+	#[setting(flatten, nested)]
+	pub plugins: HashMap<String, PluginConfig>,
+}
+```
+
+A config rejects keys that aren't its settings, unless it has `#[config(allow_unknown_fields)]`, which
+interacts with flattening in a few ways:
+
+- A config with a flattened map accepts unknown keys, as the map collects them.
+- When a flattened config flattens a setting of its own, serde can't deny unknown fields through it,
+  so both the parent and the flattened config need `#[config(allow_unknown_fields)]`. The derive
+  fails to compile without them, naming the fix.
+
+```rust
+#[derive(Config)]
+#[config(allow_unknown_fields)]
+struct ServerConfig {
+	#[setting(flatten, nested)]
+	pub tls: TlsConfig,
+}
+
+#[derive(Config)]
+#[config(allow_unknown_fields)]
+struct ParentConfig {
+	#[setting(flatten, nested)]
+	pub server: ServerConfig,
+}
+```
 
 ## Bare structs
 

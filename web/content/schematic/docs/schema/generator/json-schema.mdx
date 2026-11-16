@@ -3,7 +3,7 @@ title: JSON schemas
 icon: Braces
 ---
 
-<Callout>Requires the `json_schema` Cargo feature.</Callout>
+<Callout>Requires the `renderer_json_schema` Cargo feature.</Callout>
 
 With our
 [`JsonSchemaRenderer`](https://docs.rs/schematic/latest/schematic/schema/json_schema/struct.JsonSchemaRenderer.html),
@@ -60,6 +60,10 @@ When rendered, will look something like the following:
 }
 ```
 
+Integers are rendered as `"type": "integer"`, with the range of their kind, like `0` to `255` for a
+`u8`. An explicit [`min` or `max`](../integer.mdx) narrows the range but can't widen it, and a 64-bit
+bound, which a JSON number can't hold exactly, is left out.
+
 ## Options
 
 Custom options can be passed to the renderer using
@@ -81,10 +85,25 @@ JsonSchemaRenderer::new(JsonSchemaOptions {
   `inline_subschemas`. Refer to their documentation for more information.
 </Callout>
 
+With `inline_subschemas` enabled, named types are rendered in place rather than referenced, and only
+a type that's the target of a cycle remains a definition. When `meta_schema` is draft 2020-12, tuples
+are rendered with `prefixItems`.
+
+### Definitions path
+
+The `definitions_path` option is the prefix each `$ref` is built from, and where definitions are
+placed in the document. It defaults to `#/definitions/`, while draft 2020-12 prefers `#/$defs/`.
+
+```rust
+JsonSchemaOptions {
+	// ...
+	definitions_path: "#/$defs/".into(),
+}
+```
+
 <Callout>
-  `definitions_path` is the prefix each `$ref` is built from, such as
-  `#/definitions/`. Schemars models its own field of that name as a JSON pointer
-  instead, so the two are not interchangeable.
+  Schemars models its own field of that name as a JSON pointer instead, so the
+  two are not interchangeable.
 </Callout>
 
 ### Markdown descriptions
@@ -108,8 +127,9 @@ JsonSchemaOptions {
 
 ### Required fields
 
-When a struct is rendered, automatically mark all non-`Option` struct fields as required, and
-include them in the JSON schema
+When a struct is rendered, automatically mark every struct field that can't be omitted as required,
+which is any field that isn't [optional](../struct.mdx#optional-and-nullable-fields), and include
+them in the JSON schema
 [`required` field](https://json-schema.org/understanding-json-schema/reference/object#required).
 This is enabled by default.
 
