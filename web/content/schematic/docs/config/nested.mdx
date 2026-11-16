@@ -39,9 +39,10 @@ own type, as long as it's wrapped in a `Box` or a collection, like `Option<Box<S
 
 ## Collections
 
-Nested values can also be wrapped in collections, like `Vec`, `HashMap`, `BTreeMap`, or `VecDeque`.
-Each item is finalized and validated as a nested config, but the collection is replaced when merged,
-rather than merging its items. To merge a map of configs by key, use the
+Nested values can also be wrapped in collections, like `Vec`, `HashMap`, `BTreeMap`, or `VecDeque`,
+including ones whose items aren't the last type argument, like `SmallVec<[ChildConfig; 4]>` or
+`ArrayVec<ChildConfig, 4>`. Each item is finalized and validated as a nested config, but the
+collection is replaced when merged, rather than merging its items. To merge a map of configs by key, use the
 [`merge_partials` strategy](./struct/merge.mdx#nested-maps). A map's key must implement `Display`,
 as it's part of the path that validation errors report, like `map.web.port` for a `web` key.
 
