@@ -8,12 +8,12 @@ Each type of template variable.
 
 | Variant | Type | Description |
 | --- | --- | --- |
-| [`array`](#array) | [`TemplateVariableArraySetting`](./TemplateVariableArraySetting.mdx) | An array variable. |
-| [`boolean`](#boolean) | [`TemplateVariableBoolSetting`](./TemplateVariableBoolSetting.mdx) | A boolean variable. |
-| [`enum`](#enum) | [`TemplateVariableEnumSetting`](./TemplateVariableEnumSetting.mdx) | A string enumerable variable. |
-| [`number`](#number) | [`TemplateVariableNumberSetting`](./TemplateVariableNumberSetting.mdx) | A number variable. |
-| [`object`](#object) | [`TemplateVariableObjectSetting`](./TemplateVariableObjectSetting.mdx) | An object variable. |
-| [`string`](#string) | [`TemplateVariableStringSetting`](./TemplateVariableStringSetting.mdx) | A string variable. |
+| [`array`](#array) | `{ type: "array" } & TemplateVariableArraySetting` | An array variable. |
+| [`boolean`](#boolean) | `{ type: "boolean" } & TemplateVariableBoolSetting` | A boolean variable. |
+| [`enum`](#enum) | `{ type: "enum" } & TemplateVariableEnumSetting` | A string enumerable variable. |
+| [`number`](#number) | `{ type: "number" } & TemplateVariableNumberSetting` | A number variable. |
+| [`object`](#object) | `{ type: "object" } & TemplateVariableObjectSetting` | An object variable. |
+| [`string`](#string) | `{ type: "string" } & TemplateVariableStringSetting` | A string variable. |
 
 ## Variants
 
@@ -23,7 +23,8 @@ An array variable.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`TemplateVariableArraySetting`](./TemplateVariableArraySetting.mdx) |
+| Type | `{ type: "array" } & TemplateVariableArraySetting` |
+| References | [`TemplateVariableArraySetting`](./TemplateVariableArraySetting.mdx) |
 
 ### `boolean`
 
@@ -31,7 +32,8 @@ A boolean variable.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`TemplateVariableBoolSetting`](./TemplateVariableBoolSetting.mdx) |
+| Type | `{ type: "boolean" } & TemplateVariableBoolSetting` |
+| References | [`TemplateVariableBoolSetting`](./TemplateVariableBoolSetting.mdx) |
 
 ### `enum`
 
@@ -39,7 +41,8 @@ A string enumerable variable.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`TemplateVariableEnumSetting`](./TemplateVariableEnumSetting.mdx) |
+| Type | `{ type: "enum" } & TemplateVariableEnumSetting` |
+| References | [`TemplateVariableEnumSetting`](./TemplateVariableEnumSetting.mdx) |
 
 ### `number`
 
@@ -47,7 +50,8 @@ A number variable.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`TemplateVariableNumberSetting`](./TemplateVariableNumberSetting.mdx) |
+| Type | `{ type: "number" } & TemplateVariableNumberSetting` |
+| References | [`TemplateVariableNumberSetting`](./TemplateVariableNumberSetting.mdx) |
 
 ### `object`
 
@@ -55,7 +59,8 @@ An object variable.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`TemplateVariableObjectSetting`](./TemplateVariableObjectSetting.mdx) |
+| Type | `{ type: "object" } & TemplateVariableObjectSetting` |
+| References | [`TemplateVariableObjectSetting`](./TemplateVariableObjectSetting.mdx) |
 
 ### `string`
 
@@ -63,7 +68,8 @@ A string variable.
 
 | Attribute | Value |
 | --- | --- |
-| Type | [`TemplateVariableStringSetting`](./TemplateVariableStringSetting.mdx) |
+| Type | `{ type: "string" } & TemplateVariableStringSetting` |
+| References | [`TemplateVariableStringSetting`](./TemplateVariableStringSetting.mdx) |
 
 ## References
 
