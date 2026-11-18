@@ -6,14 +6,15 @@ icon: CircleDot
 In schematic, there are 2 forms of default values:
 
 - The first is applied through the [partial configuration](../partial.mdx), is defined with the
-  `#[setting]` attribute, and is the first layer to be merged.
+  `#[setting]` attribute, and is the layer below every other.
 - The second is on the [final configuration](../index.mdx) itself, and uses the `Default` trait to
   generate the final value if none was provided. This acts more like a fallback. To fail instead,
   mark the setting as [required](./validate.mdx#required-settings).
 
 To define a default value, use the `#[setting(default)]` attribute. The `default` attribute field
-accepts primitive values, like numbers, strings, and booleans, as well as array, tuple, and struct
-literals, paths that name a value, and function and macro calls.
+accepts any expression of the setting's type, like a number, a boolean, an array, tuple, or struct
+literal, a path that names a value, or a function, method, or macro call. Only strings and bare
+paths are handled specially, as described below.
 
 ```rust
 #[derive(Config)]
@@ -35,8 +36,18 @@ struct AppConfig {
 
 	#[setting(default = Retry { attempts: 3, backoff: 500 })]
 	pub retry: Retry,
+
+	#[setting(default = PathBuf::from("/etc").join("app"))]
+	pub config_dir: PathBuf,
 }
 ```
+
+A string literal is converted into the setting's type with `TryFrom<&str>`, or `FromStr` when the
+type doesn't implement it, so types like `IpAddr` and `SocketAddr` can be written as strings, like
+`#[setting(default = "127.0.0.1")]`.
+
+A string that fails to convert, or a [handler function](#handler-function) that fails, is an error
+naming the setting, like `Invalid default value for port. invalid digit found in string`.
 
 ### Paths: value or function?
 
@@ -93,6 +104,23 @@ enum Compress {
   [nested](../nested.mdx) configuration, which sources its defaults from its own
   settings.
 </Callout>
+
+A [named variant](./index.mdx#enum-variants) takes no value either, as each of its fields takes a
+`default` of its own. These are applied whenever the variant is picked, not only when it's the
+default, so a source that picks `Url` below gets a `timeout` of `30`.
+
+```rust
+#[derive(Config)]
+enum Host {
+	#[setting(default)]
+	Local,
+	Url {
+		address: String,
+		#[setting(default = 30)]
+		timeout: u32,
+	},
+}
+```
 
 ## Handler function
 

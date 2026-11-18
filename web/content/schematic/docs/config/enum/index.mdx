@@ -58,6 +58,8 @@ And the following for serde compatibility:
 
 - `rename`
 - `rename_all` - Has no default. Variant names are used exactly as written unless this is set.
+  Names are cased exactly as serde cases them, which splits before every capital letter, so `MacOS`
+  in kebab case is `mac-o-s`. Use `rename` on the variant for a name like `macos`.
 
 ### Variants
 

@@ -50,6 +50,35 @@ let result = ConfigLoader::<ExampleConfig>::new()
   sections for more information on how to use context.
 </Callout>
 
+## Nested configs with another context
+
+A [nested config](./nested.mdx) receives its parent's context, so by default it must declare the
+same one. A config from a library can't know your application's context though, so the `context`
+field of `#[setting(nested)]` maps the parent's context to the nested config's own, with a function
+that takes a reference to one and returns a reference to the other.
+
+```rust
+#[derive(Config)]
+#[config(context = AppContext)]
+struct AppConfig {
+	// A library config, whose context is `()`
+	#[setting(nested, context = schematic::context::unit)]
+	pub lib: LibConfig,
+
+	// A config whose context is part of the application's
+	#[setting(nested, context = plugin_context)]
+	pub plugin: PluginConfig,
+}
+
+fn plugin_context(context: &AppContext) -> &PluginContext {
+	&context.plugin
+}
+```
+
+The mapped context is what the nested config's own default values, merge strategies, and validation
+rules receive. The built-in `schematic::context::unit` function passes `()`, whatever the parent's
+context is. Enum variants that hold a nested config support `context` as well.
+
 ## Metadata
 
 Alongside the configuration itself, the derive records a little metadata about each
@@ -77,5 +106,5 @@ Each entry carries the setting's `type_alias` (the Rust type as written), its `e
 <Callout>
   A key derived from an [`env_prefix`](./struct/env.mdx#container-prefixes) is
   reported with the container's own prefix. A parent's `#[setting(nested,
-  env_prefix)]` override is applied at runtime, so it isn't reflected here.
+  env_prefix)]` prefix is applied at runtime, so it isn't reflected here.
 </Callout>

@@ -3,7 +3,7 @@ title: TypeScript types
 icon: Type
 ---
 
-<Callout>Requires the `typescript` Cargo feature.</Callout>
+<Callout>Requires the `renderer_typescript` Cargo feature.</Callout>
 
 With our
 [`TypeScriptRenderer`](https://docs.rs/schematic/latest/schematic/schema/typescript/struct.TypeScriptRenderer.html),
@@ -127,7 +127,9 @@ Properties within a struct can be rendered as either optional or required in Typ
 on usage. The default format for all properties can be customized with the `property_format` option
 and the
 [`PropertyFormat`](https://docs.rs/schematic/latest/schematic/schema/typescript/enum.PropertyFormat.html)
-enum. By default all properties are required.
+enum. By default a property is required, unless it's
+[optional](../struct.mdx#optional-and-nullable-fields): an `Option`, which serde fills in with `None`,
+or a setting with a default.
 
 ```rust
 TypeScriptOptions {

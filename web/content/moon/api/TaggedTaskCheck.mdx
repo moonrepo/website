@@ -6,35 +6,32 @@ title: TaggedTaskCheck
 
 | Variant | Type | Description |
 | --- | --- | --- |
-| [`condition`](#condition) | [`TaskCheckConditionConfig`](./TaskCheckConditionConfig.mdx) | Task check configuration for conditions. |
-| [`requirement`](#requirement) | [`TaskCheckRequirementConfig`](./TaskCheckRequirementConfig.mdx) | Task check configuration for requirements. |
-| [`fingerprint`](#fingerprint) | [`TaskCheckFingerprintConfig`](./TaskCheckFingerprintConfig.mdx) | Task check configuration for fingerprinting. |
+| [`condition`](#condition) | `{ check: "condition" } & TaskCheckConditionConfig` |  |
+| [`requirement`](#requirement) | `{ check: "requirement" } & TaskCheckRequirementConfig` |  |
+| [`fingerprint`](#fingerprint) | `{ check: "fingerprint" } & TaskCheckFingerprintConfig` |  |
 
 ## Variants
 
 ### `condition`
 
-Task check configuration for conditions.
-
 | Attribute | Value |
 | --- | --- |
-| Type | [`TaskCheckConditionConfig`](./TaskCheckConditionConfig.mdx) |
+| Type | `{ check: "condition" } & TaskCheckConditionConfig` |
+| References | [`TaskCheckConditionConfig`](./TaskCheckConditionConfig.mdx) |
 
 ### `requirement`
 
-Task check configuration for requirements.
-
 | Attribute | Value |
 | --- | --- |
-| Type | [`TaskCheckRequirementConfig`](./TaskCheckRequirementConfig.mdx) |
+| Type | `{ check: "requirement" } & TaskCheckRequirementConfig` |
+| References | [`TaskCheckRequirementConfig`](./TaskCheckRequirementConfig.mdx) |
 
 ### `fingerprint`
 
-Task check configuration for fingerprinting.
-
 | Attribute | Value |
 | --- | --- |
-| Type | [`TaskCheckFingerprintConfig`](./TaskCheckFingerprintConfig.mdx) |
+| Type | `{ check: "fingerprint" } & TaskCheckFingerprintConfig` |
+| References | [`TaskCheckFingerprintConfig`](./TaskCheckFingerprintConfig.mdx) |
 
 ## References
 

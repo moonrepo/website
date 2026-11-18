@@ -1,7 +1,6 @@
 {
   "title": "Schemas",
   "pages": [
-    "index",
     "generator",
     "---Types---",
     "types",
@@ -15,6 +14,7 @@
     "object",
     "string",
     "struct",
+    "tagged",
     "tuple",
     "union",
     "unknown",

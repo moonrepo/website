@@ -1,6 +1,5 @@
 ---
 title: Configuration
-icon: Settings
 ---
 
 <Callout>
@@ -65,8 +64,8 @@ struct AppConfig {
 ### Loading sources
 
 When all of your structs and enums have been defined, you can then load, parse, merge, and validate
-a configuration from one or many sources. A source is either a file path, secure URL, or inline code
-string.
+a configuration from one or many sources. A source is either a file path, secure URL, inline code
+string, or a [partial](./partial.mdx) in memory.
 
 Begin by importing the
 [`ConfigLoader`](https://docs.rs/schematic/latest/schematic/struct.ConfigLoader.html) struct and
@@ -76,7 +75,7 @@ type you want to load.
 ```rust
 use schematic::ConfigLoader;
 
-let loader = ConfigLoader::<AppConfig>::new();
+let mut loader = ConfigLoader::<AppConfig>::new();
 ```
 
 From here, you can feed it sources to load. For file paths, use the
@@ -87,7 +86,8 @@ methods. For URLs, use the
 [`ConfigLoader::url()`](https://docs.rs/schematic/latest/schematic/struct.ConfigLoader.html#method.url)
 method (requires the `url` Cargo feature, which is _not_ enabled by default). For inline code, use the
 [`ConfigLoader::code()`](https://docs.rs/schematic/latest/schematic/struct.ConfigLoader.html#method.code)
-method, which requires an explicit format.
+method, which requires a file name, like `example.yml`. It picks the format, and names the source in
+errors.
 
 ```rust
 loader.code("secure: false", "example.yml")?;
@@ -99,17 +99,51 @@ loader.url("https://ordomain.com/to/config.yaml")?;
   The formats to use are derived from the trailing file extension.
 </Callout>
 
+A [partial](./partial.mdx) that's already in memory, like one parsed from command line arguments, can
+be added with the
+[`ConfigLoader::partial()`](https://docs.rs/schematic/latest/schematic/struct.ConfigLoader.html#method.partial)
+method, along with a name to use in error messages. Nothing is parsed, but it's otherwise treated
+like any other source: merged in the order it was added, validated, and able to
+[extend](./struct/extend.mdx) other sources (relative files resolve against the working directory).
+
+```rust
+loader.partial("CLI arguments", PartialAppConfig {
+	port: Some(8080),
+	..Default::default()
+});
+```
+
+<Callout>
+  Like every source, a partial sits below [environment
+  variables](./struct/env.mdx), which are applied last. For command line
+  arguments to take precedence over the environment, read the variables through
+  your argument parser instead (like clap's `env` argument), rather than with
+  `#[setting(env)]`.
+</Callout>
+
 And lastly call the
 [`ConfigLoader::load()`](https://docs.rs/schematic/latest/schematic/struct.ConfigLoader.html#method.load)
 method to generate the final configuration. This methods returns a result, which includes the final
-configuration, as well as all of the [partial layers](./partial.mdx) that were loaded.
+configuration, as well as all of the [partial layers](./partial.mdx) that were merged into it.
 
 ```rust
 let result = loader.load()?;
 
 result.config; // AppConfig
-result.layers; // Vec<Layer<PartialAppConfig>>
+result.layers; // Vec<Layer<AppConfig>>
 ```
+
+The layers are in order of precedence, and each one holds only the values it set, so a value can be
+traced back to where it came from:
+
+1. [Default values](./struct/default.mdx), as `Source::Defaults`.
+2. Each source, in the order they were added.
+3. [Environment variables](./struct/env.mdx), as `Source::EnvVars`.
+
+The default values and environment variables are left out when they set nothing, as is an optional
+file that doesn't exist. The defaults and variables are read
+against what the sources set, so they only include what applies: the defaults and variables of the
+enum variant the sources picked, and those of an optional nested config only when it's present.
 
 ### Automatic schemas
 
@@ -138,7 +172,13 @@ schematic is powered entirely by [serde](https://serde.rs), and supports the fol
 - Pkl - Uses `rpkl` and requires the `pkl` Cargo feature.
 - RON - Uses `ron` and requires the `ron` Cargo feature.
 - TOML - Uses `toml` and requires the `toml` Cargo feature.
-- YAML - Uses `serde_norway` and requires the `yaml` Cargo feature.
+- YAML - Uses `serde_norway` and requires the `yaml` Cargo feature. An externally tagged enum
+  variant that holds a value is written as a YAML tag, like `!file`, rather than a map
+  ([learn more](./struct/index.mdx#yaml-and-externally-tagged-variants)).
+
+None of these formats are enabled by default, so enable the feature of each format you load. A
+source without a format to parse it fails to load, with an error naming the feature its extension
+needs.
 
 ## Cargo features
 
@@ -154,3 +194,7 @@ The following Cargo features are available:
 - `url` - Enables loading, extending, and parsing configs from URLs.
 - `validate` (default) - Enables setting value validation.
 - `yaml` - Enables YAML.
+
+The `env`, `extends`, `url`, and `validate` features only apply to configs, so each enables `config`
+as well. Dependencies that only configs use are only compiled with `config`, so a build for
+[schemas](../schema/index.mdx) alone doesn't pull them in.

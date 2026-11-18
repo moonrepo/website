@@ -53,7 +53,6 @@ The pattern in which affected files will be passed to the task.
 | Attribute | Value |
 | --- | --- |
 | Type | [`TaskOptionAffectedFilesEntry`](./TaskOptionAffectedFilesEntry.mdx) |
-| Default | `true` |
 
 ### `cache`
 
@@ -65,7 +64,6 @@ Defaults to `true` if outputs are configured for the task.
 | Attribute | Value |
 | --- | --- |
 | Type | [`TaskOptionCache`](./TaskOptionCache.mdx) |
-| Default | `true` |
 
 ### `cacheKey`
 
@@ -156,7 +154,6 @@ with the other field-specific merge options.
 | Attribute | Value |
 | --- | --- |
 | Type | [`MergeStrategy`](./MergeStrategy.mdx) |
-| Default | `"append"` |
 | Values | `"append"`, `"prepend"`, `"preserve"`, `"replace"` |
 
 ### `mergeArgs`
@@ -168,7 +165,6 @@ The strategy to use when merging `args` with an inherited task.
 | Attribute | Value |
 | --- | --- |
 | Type | [`MergeStrategy`](./MergeStrategy.mdx) |
-| Default | `"append"` |
 | Values | `"append"`, `"prepend"`, `"preserve"`, `"replace"` |
 
 ### `mergeChecks`
@@ -180,7 +176,6 @@ The strategy to use when merging `checks` with an inherited task.
 | Attribute | Value |
 | --- | --- |
 | Type | [`MergeStrategy`](./MergeStrategy.mdx) |
-| Default | `"append"` |
 | Values | `"append"`, `"prepend"`, `"preserve"`, `"replace"` |
 
 ### `mergeDeps`
@@ -192,7 +187,6 @@ The strategy to use when merging `deps` with an inherited task.
 | Attribute | Value |
 | --- | --- |
 | Type | [`MergeStrategy`](./MergeStrategy.mdx) |
-| Default | `"append"` |
 | Values | `"append"`, `"prepend"`, `"preserve"`, `"replace"` |
 
 ### `mergeEnv`
@@ -204,7 +198,6 @@ The strategy to use when merging `env` with an inherited task.
 | Attribute | Value |
 | --- | --- |
 | Type | [`MergeStrategy`](./MergeStrategy.mdx) |
-| Default | `"append"` |
 | Values | `"append"`, `"prepend"`, `"preserve"`, `"replace"` |
 
 ### `mergeInputs`
@@ -216,7 +209,6 @@ The strategy to use when merging `inputs` with an inherited task.
 | Attribute | Value |
 | --- | --- |
 | Type | [`MergeStrategy`](./MergeStrategy.mdx) |
-| Default | `"append"` |
 | Values | `"append"`, `"prepend"`, `"preserve"`, `"replace"` |
 
 ### `mergeOutputs`
@@ -228,7 +220,6 @@ The strategy to use when merging `outputs` with an inherited task.
 | Attribute | Value |
 | --- | --- |
 | Type | [`MergeStrategy`](./MergeStrategy.mdx) |
-| Default | `"append"` |
 | Values | `"append"`, `"prepend"`, `"preserve"`, `"replace"` |
 
 ### `mergeTags`
@@ -240,7 +231,6 @@ The strategy to use when merging `tags` with an inherited task.
 | Attribute | Value |
 | --- | --- |
 | Type | [`MergeStrategy`](./MergeStrategy.mdx) |
-| Default | `"append"` |
 | Values | `"append"`, `"prepend"`, `"preserve"`, `"replace"` |
 
 ### `mergeToolchains`
@@ -252,7 +242,6 @@ The strategy to use when merging `toolchains` with an inherited task.
 | Attribute | Value |
 | --- | --- |
 | Type | [`MergeStrategy`](./MergeStrategy.mdx) |
-| Default | `"append"` |
 | Values | `"append"`, `"prepend"`, `"preserve"`, `"replace"` |
 
 ### `mutex`
@@ -301,7 +290,6 @@ The style in which task output will be printed to the console.
 | Attribute | Value |
 | --- | --- |
 | Type | [`TaskOutputStyle`](./TaskOutputStyle.mdx) |
-| Default | `"buffer"` |
 | Values | `"buffer"`, `"buffer-only-failure"`, `"hash"`, `"none"`, `"stream"` |
 | Environment variable | `MOON_OUTPUT_STYLE` |
 
@@ -326,7 +314,6 @@ in which it is ran within the action pipeline.
 | Attribute | Value |
 | --- | --- |
 | Type | [`TaskPriority`](./TaskPriority.mdx) |
-| Default | `"normal"` |
 | Values | `"critical"`, `"high"`, `"normal"`, `"low"` |
 
 ### `retryCount`
@@ -372,7 +359,6 @@ Whether to run the task in CI or not, when executing `moon ci`,
 | Attribute | Value |
 | --- | --- |
 | Type | [`TaskOptionRunInCI`](./TaskOptionRunInCI.mdx) |
-| Default | `true` |
 
 ### `runInSyncPhase`
 
@@ -414,7 +400,6 @@ The shell to run the task in when on a Unix-based machine.
 | Attribute | Value |
 | --- | --- |
 | Type | [`TaskUnixShell`](./TaskUnixShell.mdx) |
-| Default | `"bash"` |
 | Values | `"bash"`, `"elvish"`, `"fish"`, `"ion"`, `"murex"`, `"nu"`, `"pwsh"`, `"sh"`, `"xonsh"`, `"zsh"` |
 
 ### `windowsShell`
@@ -426,7 +411,6 @@ The shell to run the task in when on a Windows machine.
 | Attribute | Value |
 | --- | --- |
 | Type | [`TaskWindowsShell`](./TaskWindowsShell.mdx) |
-| Default | `"pwsh"` |
 | Values | `"bash"`, `"elvish"`, `"fish"`, `"murex"`, `"nu"`, `"pwsh"`, `"powershell"`, `"xonsh"` |
 
 ## References

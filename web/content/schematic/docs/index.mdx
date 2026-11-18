@@ -15,6 +15,15 @@ Both of these features can be used independently or together.
 $ cargo add schematic
 ```
 
+The [configuration system](./config/index.mdx) also needs `serde`, with its `derive` feature, as the
+generated partial types derive serde's traits. No source format is enabled by default, so enable the
+feature of each format you load, like `yaml`.
+
+```shell
+$ cargo add schematic --features yaml
+$ cargo add serde --features derive
+```
+
 ## Example references
 
 The following projects are using schematic and can be used as a reference:
