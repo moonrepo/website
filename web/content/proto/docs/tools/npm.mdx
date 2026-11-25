@@ -6,30 +6,31 @@ import { TypeLabel } from "@/components/TypeLabel";
 
 [npm](https://www.npmjs.com/) is the package manager that ships with Node.js, and the default way to
 install dependencies and run `package.json` scripts in JavaScript projects. It's a
-[built-in tool](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>) with the `npm` ID, managed
-separately from [Node.js](./node.mdx), so a project can pin the npm version it needs, whatever
-Node.js version it runs on.
+[built-in tool](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>) with the `npm` ID, so it
+works without configuring a plugin.
 
-proto downloads npm from the npm registry, detects the version to use from
-[`.prototools`](<../(fundamentals)/config.mdx>) or `package.json`, and runs it with the Node.js
-version detected for the current directory. npm is written in JavaScript, so it requires the
-[`node`](./node.mdx) tool.
+proto downloads npm from the npm registry, and manages it separately from [Node.js](./node.mdx),
+so a project can pin the npm version it needs, whatever Node.js version it runs on. It detects the
+version to use from [`.prototools`](<../(fundamentals)/config.mdx>) or `package.json`, and runs it
+with the Node.js version detected for the current directory. npm is written in JavaScript, so it
+requires the [`node`](./node.mdx) tool.
 
 ## Prerequisites
 
-- **Node.js** - npm [requires](<../(fundamentals)/config.mdx#tools-requires>) the `node` tool, which
-  must have a version configured too, like a pin in [`.prototools`](<../(fundamentals)/config.mdx>).
-  Installing npm fails without one, and when [`proto install`](../commands/install.mdx) installs
-  every pinned tool, Node.js is installed first.
-- **A supported platform** - macOS, Linux, or Windows, on x64 or arm64. Other operating systems and
-  architectures fail with an unsupported error, even where Node.js itself runs.
+- **Node.js** - npm requires the [`node`](./node.mdx) tool, which must have a version configured
+  too, like a pin in [`.prototools`](<../(fundamentals)/config.mdx>). Installing npm fails without
+  one, and when [`proto install`](../commands/install.mdx) installs every pinned tool, Node.js is
+  installed first.
+- **A supported platform** - npm is supported on macOS, Linux, and Windows, on x64 or arm64, even
+  though Node.js runs on more. Other platforms fail with an unsupported platform error.
 - **Bash** - On macOS and Linux, npm's executables are launched with small Bash scripts, so `bash`
   must be installed. Minimal container images, like Alpine, don't include it by default.
 
 ## Installation
 
-Install npm with [`proto install`](../commands/install.mdx), and pin a version with
-[`proto pin`](../commands/pin.mdx), or with the `--pin` option while installing:
+npm requires Node.js, so pin both. Install npm with [`proto install`](../commands/install.mdx),
+and pin a version with [`proto pin`](../commands/pin.mdx), or with the `--pin` option while
+installing:
 
 ```shell
 # Install the detected version, or the latest when none is detected
@@ -37,6 +38,9 @@ $ proto install npm
 
 # Install the newest npm 11 release, and pin it to the closest .prototools
 $ proto install npm 11 --pin
+
+# Pin a version without installing it
+$ proto pin npm 11
 
 # Install the npm version that ships with the detected Node.js version
 $ proto install npm bundled
@@ -50,11 +54,17 @@ node = "24.11.0"
 npm = "11.6.2"
 ```
 
-Versions are the releases of the [`npm`](https://www.npmjs.com/package/npm) package, and its
-dist-tags are [aliases](<../(fundamentals)/version-spec.mdx#aliases>), like `next-11`. `latest`
-follows the `latest` dist-tag, falling back to the highest stable version when that tag points to a
-pre-release. npm also supports `bundled`, the version that ships with Node.js (see
-[bundled npm](#bundled-npm)). The `canary` spec isn't supported.
+Besides versions and ranges, npm supports the `latest`
+[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. Versions are the
+releases of the [`npm`](https://www.npmjs.com/package/npm) package, and `latest` follows its
+`latest` dist-tag, falling back to the highest stable version when that tag points to a
+pre-release.
+
+The plugin also provides the following aliases:
+
+- `bundled` - The version that ships with the detected Node.js version (see
+  [bundled npm](#bundled-npm)).
+- `<dist-tag>` - The version of any other dist-tag of the package, like `next-11`.
 
 npm provides three [executables](<../(fundamentals)/(plugin)/tool.mdx#executables>), each with a
 [shim](<../(fundamentals)/workflows.mdx#shims>), but no
@@ -68,10 +78,10 @@ npm provides three [executables](<../(fundamentals)/(plugin)/tool.mdx#executable
 ## Configuration
 
 npm is configured in the `[tools.npm]` table of [`.prototools`](<../(fundamentals)/config.mdx>).
-Like other tool settings, its settings only apply from a project's
-[`.prototools`](<../(fundamentals)/config.mdx>) once it's [trusted](<../(fundamentals)/trust.mdx>).
-Along with the settings below, the [tool settings](<../(fundamentals)/config.mdx#tools>) that every
-tool supports apply too, like `env`, and
+Like other [tool settings](<../(fundamentals)/config.mdx#tools>), these only apply from a
+project's [`.prototools`](<../(fundamentals)/config.mdx>) once it's
+[trusted](<../(fundamentals)/trust.mdx>). Along with the settings below, the tool settings that
+every tool supports apply too, like `env`, and
 [`versions-source`](<../(fundamentals)/config.mdx#tools-versions-source>) to list versions from a
 mirror, though dist-tag aliases like `next-11` are only available from the registry.
 
@@ -79,9 +89,10 @@ mirror, though dist-tag aliases like `next-11` are only available from the regis
 
 <TypeLabel type="string" /> - The npm registry to list versions from, and
 download npm from, without a trailing slash. Defaults to
-`https://registry.npmjs.org`. Set it to use a private registry or mirror, which
-is authenticated with your `.npmrc` credentials (see [private
-registries](#private-registries)).
+`https://registry.npmjs.org`.
+
+Set it to use a private registry or mirror, which is authenticated with your `.npmrc` credentials
+(see [private registries](#private-registries)).
 
 ```toml title=".prototools"
 [tools.npm]
@@ -91,8 +102,10 @@ registry-url = "https://npm.corp.internal"
 ### `dist-url`
 
 <TypeLabel type="string" /> - The URL template to download npm's tarball from.
-Defaults to `{registry}/{package}/-/{package_without_scope}-{version}.tgz`, the
-npm registry's tarball URL. Supports the following placeholders:
+Defaults to `{registry}/{package}/-/{package_without_scope}-{version}.tgz`.
+
+The default is the npm registry's tarball URL, and the template supports the following
+placeholders:
 
 - `{registry}` - The [`registry-url`](#registry-url) setting.
 - `{package}` and `{package_without_scope}` - The package name, `npm`.
@@ -112,8 +125,9 @@ URL points to another host, so only point it at hosts you trust.
 <TypeLabel type="boolean" /> - Install global packages into
 `~/.proto/tools/node/globals`, a directory shared by every Node.js version, and
 by pnpm, Yarn, and Nub when they enable this setting, instead of into the
-directory of the Node.js version that runs npm. Defaults to `false`. This
-setting is experimental. See [global packages](#global-packages).
+directory of the Node.js version that runs npm. Defaults to `false`.
+
+This setting is experimental. See [global packages](#global-packages).
 
 ```toml title=".prototools"
 [tools.npm]
@@ -124,16 +138,16 @@ shared-globals-dir = true
 
 ### Execution environment
 
-Whenever npm runs through a shim, [`proto run`](../commands/run.mdx), or
-[`proto exec`](../commands/exec.mdx), the Node.js version detected for the directory is added to its
-environment: its directory is put on `PATH`, after npm's own, and `PROTO_NODE_VERSION` is set to
-it. So npm, and every script it runs, like `npm test` or a `postinstall` script, uses that version
-of `node`.
+Whenever npm runs through proto, with a [shim](<../(fundamentals)/workflows.mdx#shims>),
+[`proto run`](../commands/run.mdx), [`proto exec`](../commands/exec.mdx), or
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>), proto:
 
-With [`shared-globals-dir`](#shared-globals-dir) enabled, proto also sets `PREFIX`, which npm uses
-as its global prefix, to `~/.proto/tools/node/globals` (or its `bin` directory on Windows). This
-applies to [shell activation](<../(fundamentals)/workflows.mdx#shell-activation>) too, which exports
-it into your shell session.
+- Adds the directory of the Node.js version detected for the directory to `PATH`, after npm's own,
+  and sets `PROTO_NODE_VERSION` to that version. So npm, and every script it runs, like `npm test`
+  or a `postinstall` script, uses that version of `node`.
+- Sets `PREFIX`, which npm uses as its global prefix, to `~/.proto/tools/node/globals` (or its
+  `bin` directory on Windows), when [`shared-globals-dir`](#shared-globals-dir) is enabled. With
+  shell activation, it's exported into your shell session.
 
 ### Global packages
 
@@ -143,7 +157,8 @@ version that runs it, like `~/.proto/tools/node/24.11.0`. Their executables are 
 therefore has its own global packages, so after switching versions, install them again, or enable
 [`shared-globals-dir`](#shared-globals-dir).
 
-proto looks for the executables of global packages in the following directories, in order:
+proto looks for their executables in the following directories, in order, skipping any whose
+environment variable isn't set:
 
 1. `$PREFIX/bin`, when `PREFIX` is set.
 2. `~/.proto/tools/node/<version>/bin`, for the Node.js version in `PROTO_NODE_VERSION`, when set.
@@ -154,13 +169,11 @@ On Windows, the first three are used without `/bin`, and when a variable already
 directory, it's used as-is. With [`shared-globals-dir`](#shared-globals-dir) enabled, only the
 shared directory is used.
 
-Whenever npm runs through proto, and with
-[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>), proto puts these
-directories on `PATH`, along with the Node.js version's directory, so the executables of global
-packages, like `tsc`, are found. Shims only exist for npm's own executables, though, so with shims
-alone, they aren't on your shell's `PATH`. Use shell activation, or enable
-[`shared-globals-dir`](#shared-globals-dir) and add `~/.proto/tools/node/globals/bin` to your
-`PATH`.
+proto adds these directories to `PATH` whenever npm runs through proto, and with
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>), along with the Node.js
+version's directory, so the executables of global packages, like `tsc`, are found. With shims
+alone, enable [`shared-globals-dir`](#shared-globals-dir) and add `~/.proto/tools/node/globals/bin`
+to your `PATH` yourself, as shims only exist for npm's own executables.
 
 ```shell
 # Install a package globally
@@ -168,6 +181,9 @@ $ npm install -g typescript
 
 # Print the directory of the detected Node.js version, where it's installed by default
 $ proto bin node --dir exes
+
+# Print the directories that proto looks in
+$ proto bin npm --dir globals --all
 ```
 
 For a CLI that you want in every project, whatever its Node.js version, the
@@ -178,9 +194,10 @@ a version you can pin, and shims for its executables. The backend runs on this t
 
 ### Version files
 
-npm's version is [detected](<../(fundamentals)/detection.mdx#4-ecosystem-files>) from
-`package.json` files, skipping any within `node_modules`. The following fields are checked in order,
-and the first with a valid version for `npm` wins:
+Besides [`.prototools`](<../(fundamentals)/config.mdx>), proto
+[detects](<../(fundamentals)/detection.mdx#4-ecosystem-files>) an npm version from the following
+fields of `package.json`, checked in this order, and skips any `package.json` within
+`node_modules`:
 
 1. `devEngines.packageManager` - An entry named `npm`, as an object or within a list. Only versions
    and ranges are read.
@@ -189,8 +206,9 @@ and the first with a valid version for `npm` wins:
 3. `volta.npm` - Including from the file that `volta.extends` points to.
 4. `engines.npm` - Only versions and ranges are read.
 
-A field that proto can't parse, like a URL in `packageManager`, is skipped in favor of the next one,
-and fields for other package managers are ignored. In the following example, npm `11.6.2` is used:
+The first field with a valid version for `npm` wins. A field that proto can't parse, like a URL in
+`packageManager`, is skipped in favor of the next one, and fields for other package managers are
+ignored. In the following example, npm `11.6.2` is used:
 
 ```json title="package.json"
 {
@@ -278,27 +296,42 @@ This only affects how proto downloads npm itself. Once installed, npm reads `.np
 
 ## Troubleshooting
 
-- **`npm install -g npm` doesn't change the version** - proto runs the npm version it detects for
-  the directory, while a global install only adds another copy to npm's global prefix, like the
-  Node.js version's directory. To upgrade, install and pin a newer version, like with
-  [`proto install npm latest --pin`](../commands/install.mdx).
-- **A global package's command isn't found** - With shims alone, the executables of global packages
-  aren't on `PATH`. See [global packages](#global-packages).
-- **`bundled` installs the latest npm** - When proto can't find the Node.js version to look up, like
-  when Node.js isn't installed yet, or is a canary build, `bundled` falls back to `latest`. Install
-  Node.js first, or pin an explicit npm version.
-- **Downloads from a private registry fail** - Check that [`registry-url`](#registry-url) is set,
-  and that your `.npmrc` has credentials for its host (see
-  [private registries](#private-registries)).
+### `npm install -g npm` doesn't change the version
+
+proto runs the npm version it detects for the directory, while a global install only adds another
+copy to npm's global prefix, like the Node.js version's directory. To upgrade, install and pin a
+newer version, like with [`proto install npm latest --pin`](../commands/install.mdx).
+
+### A global package's command isn't found
+
+With shims alone, the executables of global packages aren't on `PATH`. See
+[global packages](#global-packages).
+
+### `bundled` installs the latest npm
+
+When proto can't find the Node.js version to look up, like when Node.js isn't installed yet, or is
+a canary build, `bundled` falls back to `latest`. Install Node.js first, or pin an explicit npm
+version.
+
+### Downloads from a private registry fail
+
+proto doesn't read the `registry` setting from `.npmrc`, so it downloads from
+[`registry-url`](#registry-url), with the `.npmrc` credentials for that host. Check that
+`registry-url` is set, and that your `.npmrc` has credentials for its host (see
+[private registries](#private-registries)).
 
 ## Caveats
 
-- npm's tarballs have no published checksum for proto to verify against, so proto
-  [records one](../advanced/checksums.mdx#tools-without-checksums) from the first download. The
-  tarball is the same on every platform, so a [lockfile](../advanced/lockfile.mdx#records) has a
-  single record for npm, shared by every operating system and architecture.
-- The `bundled` alias looks up which npm ships with each Node.js release on `nodejs.org`, so it
-  needs access to that host, even when Node.js itself downloads from a mirror.
-- With [`shared-globals-dir`](#shared-globals-dir), `PREFIX` is set for npm and every script it
-  runs, and with shell activation, for your whole shell session. Other tools that read `PREFIX`,
-  like many Makefiles, see it too.
+- **Published hashes aren't verified** - proto doesn't verify npm's downloads against the registry's
+  integrity hashes, so it [records a checksum](../advanced/checksums.mdx#tools-without-checksums)
+  from the first download, and with a [lockfile](../advanced/lockfile.mdx), later installs must
+  match it.
+- **A single lockfile record** - The tarball is the same on every platform, so a
+  [lockfile](../advanced/lockfile.mdx#records) has a single record for npm, shared by every
+  operating system and architecture.
+- **`bundled` needs `nodejs.org`** - The `bundled` alias looks up which npm ships with each Node.js
+  release on `nodejs.org`, so it needs access to that host, even when Node.js itself downloads from
+  a mirror.
+- **`PREFIX` leaks to other tools** - With [`shared-globals-dir`](#shared-globals-dir), `PREFIX` is
+  set for npm and every script it runs, and with shell activation, for your whole shell session.
+  Other tools that read `PREFIX`, like many Makefiles, see it too.

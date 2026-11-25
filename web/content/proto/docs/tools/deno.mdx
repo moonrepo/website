@@ -16,20 +16,21 @@ that Deno projects already use, like `.dvmrc` and `package.json`. It can also in
 
 ## Prerequisites
 
-- **Git** - Available versions are loaded from the Git tags of
-  [denoland/deno](https://github.com/denoland/deno), with `git ls-remote`, so `git` must be on your
-  `PATH` (see [requirements](../index.mdx#requirements)).
-- **A supported platform** - Prebuilt binaries exist for Linux (x64 and arm64, glibc only), macOS
-  (x64 and arm64), and Windows (x64 and arm64). Other platforms, and musl-based Linux distributions
-  like Alpine, fail with an error.
+- **Git** - Versions are listed from the tags of the
+  [denoland/deno](https://github.com/denoland/deno) repository, with `git ls-remote`, so `git` must
+  be on your `PATH` (see [requirements](../index.mdx#requirements)).
+- **A supported platform** - Deno is published for Linux (x64 and arm64, glibc only), macOS (x64
+  and arm64), and Windows (x64 and arm64). On musl-based Linux distributions, like Alpine,
+  installing fails (see [troubleshooting](#installing-on-alpine-linux-fails)). Other platforms fail
+  with an unsupported platform error.
 
 ## Installation
 
-Install Deno with [`proto install`](../commands/install.mdx), and pin a version for your project
-with [`proto pin`](../commands/pin.mdx), or the `--pin` option:
+Install Deno with [`proto install`](../commands/install.mdx), and pin a version with
+[`proto pin`](../commands/pin.mdx), or with the `--pin` option while installing:
 
 ```shell
-# Install the latest version
+# Install the detected version, or the latest when none is detected
 $ proto install deno
 
 # Install the newest 2.9 release, and pin it to the closest .prototools
@@ -46,22 +47,24 @@ $ proto install deno canary
 deno = "2.9.8"
 ```
 
-Besides versions, requirements, and the `latest` alias, Deno supports `canary`, which installs its
-newest unreleased build (see [canary builds](#canary-builds)).
+Besides versions and ranges, Deno supports the `latest` and `canary`
+[aliases](<../(fundamentals)/version-spec.mdx#built-in-aliases>) (see
+[canary builds](#canary-builds)). The `canary` alias installs Deno's newest unreleased build.
 
 ### Building from source
 
-Deno can be [built from source](../guides/build-from-source.mdx) on Linux and macOS (x64 and
-arm64), and on Windows (x64), with the `--build` option. Only released versions can be built, not
-`canary`.
+Pass `--build` to [`proto install`](../commands/install.mdx) to
+[build Deno from source](../guides/build-from-source.mdx), instead of downloading a prebuilt. It's
+supported on Linux and macOS (x64 and arm64), and on Windows (x64), for released versions only, not
+`canary`. proto downloads the source archive attached to the release, and compiles it with Cargo,
+which takes a long time, as Deno is a large Rust project.
 
 ```shell
 # Build a version from source, instead of downloading a prebuilt
 $ proto install deno 2.9.8 --build
 ```
 
-proto downloads the source archive attached to the release, and compiles it with Cargo, which takes
-a long time, as Deno is a large Rust project. The build needs:
+The build needs:
 
 - Rust, with `cargo` on your `PATH`.
 - Git 2.19.2 or later.
@@ -70,23 +73,25 @@ a long time, as Deno is a large Rust project. The build needs:
   [Deno's build instructions](https://github.com/denoland/deno/blob/main/.github/CONTRIBUTING.md#windows),
   which proto asks you to confirm before building.
 
-The remaining [system dependencies](../guides/build-from-source.mdx#system-dependencies) are
-installed for you: `clang`, `lld`, `cmake`, `libglib2.0-dev`, and `protobuf-compiler` on Linux, and
-`cmake` and `protobuf` on macOS, plus `llvm` and `lld` on Apple Silicon.
+Before building, proto offers to install the
+[system dependencies](../guides/build-from-source.mdx#system-dependencies) that Deno needs, which
+are `clang`, `lld`, `cmake`, `libglib2.0-dev`, and `protobuf-compiler` on Linux, and `cmake` and
+`protobuf` on macOS, plus `llvm` and `lld` on Apple Silicon.
 
 ## Configuration
 
-Deno's settings go in the `[tools.deno]` table of [`.prototools`](<../(fundamentals)/config.mdx>).
-Like other [tool settings](<../(fundamentals)/config.mdx#tools>), they require
-[trust](<../(fundamentals)/trust.mdx>) in a project's
-[`.prototools`](<../(fundamentals)/config.mdx>).
+Deno is configured in the `[tools.deno]` table of [`.prototools`](<../(fundamentals)/config.mdx>).
+Like other [tool settings](<../(fundamentals)/config.mdx#tools>), these only apply from a
+project's [`.prototools`](<../(fundamentals)/config.mdx>) once it's
+[trusted](<../(fundamentals)/trust.mdx>).
 
 ### `dist-url`
 
 <TypeLabel type="string" /> - The URL template that release archives are
 downloaded from, like a mirror or an internal artifact store. Defaults to
-`https://github.com/denoland/deno/releases/download/v{version}/{file}`. Supports
-the following placeholders:
+`https://github.com/denoland/deno/releases/download/v{version}/{file}`.
+
+The URL supports the following placeholders:
 
 - `{version}` - The version being installed, without a `v` prefix, like `2.9.8`.
 - `{file}` - The archive's file name for your platform, like `deno-aarch64-apple-darwin.zip` or
@@ -111,7 +116,8 @@ the others are skipped.
 ### Global packages
 
 Packages that you install globally with `deno install --global` (or `-g`) put their executables in
-a single directory, shared by every Deno version. proto looks for it in the following order:
+a single directory, shared by every Deno version. proto looks for their executables in the
+following directories, in order, skipping any whose environment variable isn't set:
 
 1. `$DENO_INSTALL_ROOT/bin`, when `DENO_INSTALL_ROOT` is set.
 2. `$DENO_HOME/bin`, when `DENO_HOME` is set.
@@ -119,6 +125,11 @@ a single directory, shared by every Deno version. proto looks for it in the foll
 
 When a variable already points to a `bin` directory, like `DENO_INSTALL_ROOT=~/.deno/bin`, it's used
 as-is.
+
+proto adds these directories to `PATH` whenever Deno runs through proto, and with
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>). With shims alone, add the
+directory that [`proto bin deno --dir globals`](../commands/bin.mdx) prints to your `PATH` yourself,
+so installed commands like `file-server` run directly.
 
 ```shell
 # Install a command globally
@@ -128,21 +139,15 @@ $ deno install --global --allow-net --allow-read jsr:@std/http/file-server
 $ proto bin deno --dir globals --all
 ```
 
-proto adds these directories to `PATH` whenever Deno runs through a shim or
-[`proto run`](../commands/run.mdx), and in your shell with
-[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>), so installed commands like
-`file-server` run directly. If you only use shims, add the directory printed by
-[`proto bin deno --dir globals`](../commands/bin.mdx) to your `PATH` yourself.
-
 ### Version files
 
-proto also [detects](<../(fundamentals)/detection.mdx#4-ecosystem-files>) a version from Deno's own
-files, so a project that already declares its Deno version works as-is. In each directory, they're
-checked in the following order:
+Besides [`.prototools`](<../(fundamentals)/config.mdx>), proto
+[detects](<../(fundamentals)/detection.mdx#4-ecosystem-files>) a Deno version from the following
+files, checked in this order in each directory:
 
 1. `.dvmrc` - The version file of [dvm](https://github.com/justjavac/dvm). The version is read from
    a `deno_version=<version>` line, as written by newer versions of dvm, or otherwise from the first
-   line with content, ignoring `#` and `//` comments.
+   line with content, ignoring comments after `#` or `//`.
 2. `package.json` - The `deno` entry of `devEngines.runtime`, or `engines.deno` when there isn't
    one. Only versions and ranges are read, so aliases like `latest` are ignored, as are
    `package.json` files within `node_modules`.
@@ -203,26 +208,18 @@ $ proto install deno canary
 ### Installing on Alpine Linux fails
 
 Deno only publishes prebuilt binaries for glibc, so installing on a musl-based distribution, like
-Alpine, fails with "No pre-built Deno archive is available for musl Linux targets". Use a
+Alpine, fails with `No pre-built Deno archive is available for musl Linux targets.` Use a
 glibc-based distribution or container image instead, like Debian or Ubuntu.
-
-### `deno upgrade` is blocked
-
-`deno upgrade` would replace a binary that proto manages, so proto blocks it, and in an interactive
-terminal offers to install the `latest` version instead (see
-[running tools](<../(fundamentals)/(plugin)/tool.mdx#running-tools>)). To upgrade yourself, install
-and pin a newer version, or install [`canary`](#canary-builds) instead of running
-`deno upgrade canary`:
-
-```shell
-# Install the latest version, and pin it to the closest .prototools
-$ proto install deno latest --pin
-```
 
 ## Caveats
 
-- Deno publishes checksums for 2.0.1 and later, and for canary builds. Older versions are
-  [verified against their first download](../advanced/checksums.mdx#tools-without-checksums)
-  instead.
-- Prebuilt binaries for Linux arm64 exist from Deno 1.41, and for Windows arm64 from Deno 2.7, so
-  older versions fail to download on those platforms.
+- **`deno upgrade` is blocked** - It would replace a version that proto manages, so in an
+  interactive terminal, proto offers to install and pin the `latest` version instead (see
+  [running tools](<../(fundamentals)/(plugin)/tool.mdx#running-tools>)). To upgrade yourself, run
+  [`proto install deno latest --pin`](../commands/install.mdx), or install
+  [`canary`](#canary-builds) instead of running `deno upgrade canary`.
+- **No published checksums** - Deno doesn't publish checksums for versions before 2.0.1, so proto
+  [records one](../advanced/checksums.mdx#tools-without-checksums) from the first download, and
+  with a [lockfile](../advanced/lockfile.mdx), later installs must match it.
+- **Older versions on arm64** - Prebuilt binaries for Linux arm64 exist from Deno 1.41, and for
+  Windows arm64 from Deno 2.7, so older versions fail to download on those platforms.

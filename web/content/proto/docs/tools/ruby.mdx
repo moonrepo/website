@@ -5,47 +5,55 @@ title: Ruby
 import { TypeLabel } from "@/components/TypeLabel";
 
 [Ruby](https://www.ruby-lang.org) is a dynamic programming language built for developer happiness,
-and the language behind Rails. proto installs it with the `ruby` ID, from portable prebuilts where
-they're available, or by [building it from source](#building-from-source). Alongside `ruby` itself,
-it provides `gem`, `bundle`, `irb`, and `rake` as
-[executables](<../(fundamentals)/(plugin)/tool.mdx#executables>), each with its own shim.
+and the language behind Rails. It's an unstable
+[built-in tool](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>) with the `ruby` ID, so it
+works without configuring a plugin, but proto prints a warning when installing it.
 
-Ruby is an [unstable](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>) tool, so proto prints a
-warning when installing it, and Windows isn't supported.
+proto installs Ruby from portable prebuilts where they're available, or by
+[building it from source](#building-from-source). It provides the `ruby`, `gem`, `bundle`, `irb`,
+and `rake` [executables](<../(fundamentals)/(plugin)/tool.mdx#executables>), each with its own
+shim.
 
 ## Prerequisites
 
-- **Linux or macOS** - Windows isn't supported, either with prebuilts or by building from source.
-  Use [WSL](https://learn.microsoft.com/en-us/windows/wsl/) instead, where Ruby installs like it
-  does on Linux.
-- **A platform with prebuilts** - Prebuilts exist for Linux on x64 and arm64 with glibc, and for
-  macOS on Apple Silicon, for Ruby 3.2.1 and later. Anywhere else, like macOS on Intel, Alpine
-  Linux (musl), or FreeBSD, and for older releases, Ruby must be
-  [built from source](#building-from-source).
-- **Git, to build from source** - Plus the Xcode command line tools on macOS. The system packages
-  that the build needs are installed for you.
+- **Git** - Versions are listed from the tags of the [ruby/ruby](https://github.com/ruby/ruby)
+  repository, with `git ls-remote`, so `git` must be on your `PATH` (see
+  [requirements](../index.mdx#requirements)).
+- **A supported platform** - Ruby is published as prebuilts for Linux on x64 and arm64 with glibc,
+  and for macOS on Apple Silicon, for Ruby 3.2.1 and later. Anywhere else, like macOS on Intel,
+  Alpine Linux (musl), or FreeBSD, and for older releases, Ruby must be
+  [built from source](#building-from-source). Windows isn't supported, either with prebuilts or by
+  building from source, so use [WSL](https://learn.microsoft.com/en-us/windows/wsl/) instead, where
+  Ruby installs like it does on Linux.
 
 ## Installation
 
+Install Ruby with [`proto install`](../commands/install.mdx), and pin a version with
+[`proto pin`](../commands/pin.mdx), or with the `--pin` option while installing:
+
 ```shell
-# Install the latest release
+# Install the detected version, or the latest when none is detected
 $ proto install ruby
 
-# Install the latest 3.4 release, or an exact version
-$ proto install ruby 3.4
-$ proto install ruby 3.4.5
+# Install the newest 3.4 release, and pin it to the closest .prototools
+$ proto install ruby 3.4 --pin
 
-# Pin a version to the closest .prototools
+# Pin a version without installing it
 $ proto pin ruby 3.4.5
+
+# Install an exact version
+$ proto install ruby 3.4.5
 ```
 
 ```toml title=".prototools"
 ruby = "3.4.5"
 ```
 
-Versions are listed from the tags of the [ruby/ruby](https://github.com/ruby/ruby) repository, from
-Ruby 2 onwards. Pre-releases use semver's format, like `4.0.0-preview.2` or `3.4.0-rc.1`, and Ruby's
-own format, like `4.0.0-preview2`, is accepted too.
+Besides versions and ranges, Ruby supports the `latest`
+[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. Versions are
+listed from the tags of the [ruby/ruby](https://github.com/ruby/ruby) repository, from Ruby 2
+onwards. Pre-releases use semver's format, like `4.0.0-preview.2` or `3.4.0-rc.1`, and Ruby's own
+format, like `4.0.0-preview2`, is accepted too.
 
 Prebuilts are portable builds from the [jdx/ruby](https://github.com/jdx/ruby) project. A release
 can be built more than once, and each build is listed as its own version with a build number, like
@@ -60,27 +68,36 @@ you get depends on the version you ask for:
 
 ### Building from source
 
-Pass `--build` to [`proto install`](../commands/install.mdx) to compile Ruby with rbenv's
-[ruby-build](https://github.com/rbenv/ruby-build), on any platform except Windows. proto clones
-ruby-build into `~/.proto/builders/ruby-build` on the first build, and pulls its latest changes
-before every build after that, so new Ruby releases can be built as soon as ruby-build supports
-them.
+Pass `--build` to [`proto install`](../commands/install.mdx) to
+[build Ruby from source](../guides/build-from-source.mdx), instead of downloading a prebuilt. It's
+supported on every platform except Windows. proto compiles Ruby with rbenv's
+[ruby-build](https://github.com/rbenv/ruby-build), which it clones into
+`~/.proto/builders/ruby-build` on the first build, and pulls its latest changes before every build
+after that, so new Ruby releases can be built as soon as ruby-build supports them.
 
 ```shell
 # Build a specific version from source
 $ proto install ruby 3.4.5 --build
 ```
 
-Before building, proto offers to install the system packages that Ruby needs, like a C compiler and
-the OpenSSL and libyaml libraries, with apk, apt, brew, dnf, pacman, pkg, or yum. For apt, dnf,
-pacman, and pkg, this includes Rust, which Ruby uses to build its YJIT compiler. If you manage Rust
-with rustup instead, [exclude the package](../guides/build-from-source.mdx#excluding-packages). See
-the [build from source guide](../guides/build-from-source.mdx) for how builds work.
+The build needs:
+
+- `git`, to clone ruby-build.
+- The Xcode command line tools, on macOS.
+
+Before building, proto offers to install the
+[system dependencies](../guides/build-from-source.mdx#system-dependencies) that Ruby needs, like a
+C compiler and the OpenSSL and libyaml libraries, with apk, apt, brew, dnf, pacman, pkg, or yum.
+For apt, dnf, pacman, and pkg, this includes Rust, which Ruby uses to build its YJIT compiler. If
+you manage Rust with rustup instead,
+[exclude the package](../guides/build-from-source.mdx#excluding-packages).
 
 ## Configuration
 
-Ruby is configured in the [`[tools.ruby]`](<../(fundamentals)/config.mdx#tools>) table of
-[`.prototools`](<../(fundamentals)/config.mdx>).
+Ruby is configured in the `[tools.ruby]` table of [`.prototools`](<../(fundamentals)/config.mdx>).
+Like other [tool settings](<../(fundamentals)/config.mdx#tools>), these only apply from a
+project's [`.prototools`](<../(fundamentals)/config.mdx>) once it's
+[trusted](<../(fundamentals)/trust.mdx>).
 
 ### `use-latest-build`
 
@@ -131,17 +148,20 @@ nothing for Ruby, so use `--dir exes` instead.
 
 ### Version files
 
-proto [detects](<../(fundamentals)/detection.mdx#4-ecosystem-files>) a version from `.ruby-version`
-files, the format that rbenv, chruby, RVM, and most other Ruby version managers share, so an
-existing project works as-is.
+Besides [`.prototools`](<../(fundamentals)/config.mdx>), proto
+[detects](<../(fundamentals)/detection.mdx#4-ecosystem-files>) a Ruby version from the following
+files, checked in this order in each directory:
 
-- The version is read from the first line with content, skipping comments, and can be partial, like
-  `3.4`.
-- The `ruby-` prefix that RVM and chruby write is removed, so `ruby-3.4.5` is `3.4.5`.
-- Files for another engine, or for no version at all, like `jruby-9.4.5.0`, `truffleruby-24.0.0`,
-  or `system`, are ignored with a warning, and detection continues in parent directories.
-- Directories within `vendor`, like gems installed to `vendor/bundle`, are skipped, so a gem's own
-  `.ruby-version` never decides which Ruby you run.
+1. `.ruby-version` - The format that rbenv, chruby, RVM, and most other Ruby version managers
+   share, so an existing project works as-is.
+   - The version is read from the first line with content, ignoring comments after `#` or `//`,
+     and can be partial, like `3.4`.
+   - The `ruby-` prefix that RVM and chruby write is removed, so `ruby-3.4.5` is `3.4.5`.
+   - Files for another engine, or for no version at all, like `jruby-9.4.5.0`,
+     `truffleruby-24.0.0`, or `system`, are ignored with a warning, and detection continues in
+     parent directories.
+   - Directories within `vendor`, like gems installed to `vendor/bundle`, are skipped, so a gem's
+     own `.ruby-version` never decides which Ruby you run.
 
 ```text title=".ruby-version"
 ruby-3.4.5
@@ -188,7 +208,8 @@ along with fixes for common errors.
 
 - **CRuby only** - proto installs CRuby, the reference implementation of Ruby. Other engines, like
   JRuby and TruffleRuby, aren't supported.
-- **Prebuilts are third-party** - They're published by jdx/ruby, not the Ruby core team, and come
-  without checksums, so proto [records its own](../advanced/checksums.mdx#tools-without-checksums)
-  on the first download. Build from source when you need Ruby compiled from its official source
-  archives.
+- **Prebuilts are third-party** - They're published by jdx/ruby, not the Ruby core team. Build from
+  source when you need Ruby compiled from its official source archives.
+- **No published checksums** - jdx/ruby doesn't publish checksums for its prebuilts, so proto
+  [records one](../advanced/checksums.mdx#tools-without-checksums) from the first download, and
+  with a [lockfile](../advanced/lockfile.mdx), later installs must match it.

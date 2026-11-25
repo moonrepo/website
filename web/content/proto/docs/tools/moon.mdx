@@ -4,36 +4,43 @@ title: moon
 
 [moon](https://moonrepo.dev/moon) is moonrepo's build system and repository management tool. It runs
 the tasks of every project in your repository through a single, cached pipeline, in any language.
-proto supports it out of the box with the `moon` ID, and downloads the official release for your
-platform from GitHub.
+It's a [built-in tool](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>) with the `moon` ID,
+so it works without configuring a plugin.
 
-Installing moon with proto is the easiest way to pin it per repository, so everyone, including CI,
-runs the same version. It provides 2
-[executables](<../(fundamentals)/(plugin)/tool.mdx#executables>):
+proto downloads the official release for your platform from GitHub. Installing moon with proto is
+the easiest way to pin it per repository, so everyone, including CI, runs the same version. It
+provides the `moon` and `moonx` [executables](<../(fundamentals)/(plugin)/tool.mdx#executables>):
 
 - `moon` - The primary executable, and moon's full CLI.
 - `moonx` - A shorthand for [`moon exec`](../../../moon/docs/commands/exec.mdx), so
-  `moonx app:build` runs the same task as `moon exec app:build`. Only provided for moon v2 and later.
+  `moonx app:build` runs the same task as `moon exec app:build`. Only provided for moon v2 and
+  later.
 
 For other ways to install moon, see its [installation guide](../../../moon/docs/index.mdx).
 
 ## Prerequisites
 
+- **Git** - Versions are listed from the tags of the
+  [moonrepo/moon](https://github.com/moonrepo/moon) repository, with `git ls-remote`, so `git` must
+  be on your `PATH` (see [requirements](../index.mdx#requirements)).
 - **A supported platform** - moon is published for Linux (x64 and arm64), macOS (x64 and arm64),
   and Windows (x64). On Linux, proto downloads the GNU or musl build that matches your system. Other
   platforms, like Windows on arm64, fail with an unsupported platform error.
 
 ## Installation
 
-Install moon by its ID, and pin it in the [`.prototools`](<../(fundamentals)/config.mdx>) at the
-root of your repository, so that every developer and CI machine runs the same version:
+Install moon with [`proto install`](../commands/install.mdx), and pin a version with
+[`proto pin`](../commands/pin.mdx), or with the `--pin` option while installing:
 
 ```shell
-# Install the latest version
+# Install the detected version, or the latest when none is detected
 $ proto install moon
 
-# Install a version, and pin it to the closest .prototools
-$ proto install moon 3.0.0 --pin
+# Install the newest 3.0 release, and pin it to the closest .prototools
+$ proto install moon 3.0 --pin
+
+# Pin a version without installing it
+$ proto pin moon 3.0.0
 
 # Install every pinned tool, including moon, after cloning
 $ proto install
@@ -43,12 +50,15 @@ $ proto install
 moon = "3.0.0"
 ```
 
+Besides versions and ranges, moon supports the `latest`
+[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. An exact version
+is the most reproducible for a tool that runs your whole pipeline, but any
+[version specification](<../(fundamentals)/version-spec.mdx>) works, like `3` or `~3.0`.
+
 moon has no version file of its own for proto to detect, so pin it in a
-[`.prototools`](<../(fundamentals)/config.mdx>). An exact version is the most reproducible for a
-tool that runs your whole pipeline, but any
-[version specification](<../(fundamentals)/version-spec.mdx>) works, like `3` or `~3.0`. proto
-doesn't read moon's own [`versionConstraint`](/moon/api/WorkspaceConfig#versionconstraint) setting:
-it doesn't select a version, but it does make moon fail when a version outside its range runs.
+[`.prototools`](<../(fundamentals)/config.mdx>) at the root of your repository. proto doesn't read
+moon's own [`versionConstraint`](/moon/api/WorkspaceConfig#versionconstraint) setting: it doesn't
+select a version, but it does make moon fail when a version outside its range runs.
 
 To upgrade, run [`moon upgrade`](../../../moon/docs/commands/upgrade.mdx). When moon is installed by
 proto, it runs [`proto install moon latest --pin local`](../commands/install.mdx) for you, which
@@ -66,20 +76,25 @@ $ proto install moon latest --pin
 
 ### Building from source
 
-moon can also be [built from source](../guides/build-from-source.mdx), on the same platforms as its
-prebuilts. proto downloads the release's source archive from GitHub, and compiles `moon` (and
-`moonx`, for v2 and later) with Cargo. The build needs:
-
-- Rust, with `cargo` on `PATH`.
-- `protoc`, the Protocol Buffers compiler, for moon v2.2 and later. proto offers to
-  [install it](../guides/build-from-source.mdx#installing-system-packages) with apt
-  (`protobuf-compiler`) or Homebrew (`protobuf`). With any other package manager, and on Windows,
-  install it yourself first, or the Cargo build fails.
+Pass `--build` to [`proto install`](../commands/install.mdx) to
+[build moon from source](../guides/build-from-source.mdx), instead of downloading a prebuilt. It's
+supported on the same platforms as the prebuilts. proto downloads the release's source archive from
+GitHub, and compiles `moon` (and `moonx`, for v2 and later) with Cargo.
 
 ```shell
 # Build moon from source, instead of downloading a prebuilt
 $ proto install moon 3.0.0 --build
 ```
+
+The build needs:
+
+- Rust, with `cargo` on `PATH`.
+- `protoc`, the Protocol Buffers compiler, for moon v2.2 and later.
+
+Before building, proto offers to install the
+[system dependencies](../guides/build-from-source.mdx#system-dependencies) that moon needs, which
+are `protobuf-compiler` with apt, or `protobuf` with Homebrew, for `protoc`. With any other package
+manager, and on Windows, install `protoc` yourself first, or the Cargo build fails.
 
 ### Installing from a mirror
 

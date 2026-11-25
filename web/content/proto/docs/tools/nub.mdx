@@ -6,9 +6,9 @@ import { TypeLabel } from "@/components/TypeLabel";
 
 [Nub](https://nubjs.com) is an all-in-one toolkit for Node.js, written in Rust. A single binary runs
 TypeScript and JavaScript files, runs `package.json` scripts and package binaries, installs
-dependencies, and manages Node.js versions, while your code still runs on a regular `node`. proto
-supports it as a [built-in tool](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>), with the
-`nub` ID.
+dependencies, and manages Node.js versions, while your code still runs on a regular `node`. It's
+a [built-in tool](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>) with the `nub` ID, so it
+works without configuring a plugin.
 
 proto downloads Nub's native binary for your platform from the npm registry, exposes its
 executables, and detects the version to use from `package.json`. Unlike [npm](./npm.mdx),
@@ -17,19 +17,26 @@ to install, though it needs a Node.js runtime to run your code (see [Node.js](#n
 
 ## Prerequisites
 
-- **Node.js 18.19 or newer**, to run your code, but not to install Nub. Nub uses the `node` on
-  `PATH`, like one that proto manages, or downloads one itself.
-- **A supported platform** - macOS, Linux (glibc or musl), or Windows, on x64 or arm64. Other
-  operating systems and architectures, like FreeBSD, fail with an unsupported error.
+- **Node.js** - Nub requires Node.js 18.19 or newer to run your code, but not to install, so the
+  [`node`](./node.mdx) tool is optional. Nub uses the `node` on `PATH`, like one that proto
+  manages, or downloads one itself (see [Node.js](#nodejs)).
+- **A supported platform** - Nub is published for macOS, Linux (glibc or musl), and Windows, on x64
+  or arm64. Other platforms, like FreeBSD, fail with an unsupported platform error.
 
 ## Installation
 
+Install Nub with [`proto install`](../commands/install.mdx), and pin a version with
+[`proto pin`](../commands/pin.mdx), or with the `--pin` option while installing:
+
 ```shell
-# Install the latest version
+# Install the detected version, or the latest when none is detected
 $ proto install nub
 
-# Install a version, and pin it to the closest .prototools
+# Install the newest Nub 0.11 release, and pin it to the closest .prototools
 $ proto install nub 0.11 --pin
+
+# Pin a version without installing it
+$ proto pin nub 0.11
 
 # Run it
 $ proto run nub -- --version
@@ -39,10 +46,12 @@ $ proto run nub -- --version
 nub = "0.11.2"
 ```
 
-Versions are the releases of the [`@nubjs/nub`](https://www.npmjs.com/package/@nubjs/nub) package,
-and `latest` follows its `latest` dist-tag, falling back to the highest stable version when that tag
-points to a pre-release. The `canary` spec isn't supported, so to try a canary build, pin its exact
-version instead, like `0.9.3-canary.20260920.524`.
+Besides versions and ranges, Nub supports the `latest`
+[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. Versions are the
+releases of the [`@nubjs/nub`](https://www.npmjs.com/package/@nubjs/nub) package, and `latest`
+follows its `latest` dist-tag, falling back to the highest stable version when that tag points to a
+pre-release. To try a canary build, pin its exact version instead, like
+`0.9.3-canary.20260920.524`.
 
 Nub provides three [executables](<../(fundamentals)/(plugin)/tool.mdx#executables>), each with a
 shim and a binary:
@@ -59,15 +68,19 @@ pass that name along.
 ## Configuration
 
 Nub is configured in the `[tools.nub]` table of [`.prototools`](<../(fundamentals)/config.mdx>).
-Along with the settings below, the [tool settings](<../(fundamentals)/config.mdx#tools>) that every
-tool supports apply too, like `env` and `requires`.
+Like other [tool settings](<../(fundamentals)/config.mdx#tools>), these only apply from a
+project's [`.prototools`](<../(fundamentals)/config.mdx>) once it's
+[trusted](<../(fundamentals)/trust.mdx>). Along with the settings below, the tool settings that
+every tool supports apply too, like `env` and `requires`.
 
 ### `registry-url`
 
 <TypeLabel type="string" /> - The npm registry to list versions from, and
 download Nub from, without a trailing slash. Defaults to
-`https://registry.npmjs.org`. Set it to use a private registry or mirror, which
-must also host Nub's platform packages, like `@nubjs/nub-linux-x64`.
+`https://registry.npmjs.org`.
+
+Set it to use a private registry or mirror, which must also host Nub's platform packages, like
+`@nubjs/nub-linux-x64`.
 
 ```toml title=".prototools"
 [tools.nub]
@@ -81,8 +94,10 @@ your user `~/.npmrc`, like an `_authToken` for the registry's host. The `registr
 ### `dist-url`
 
 <TypeLabel type="string" /> - The URL template to download Nub's archive from.
-Defaults to `{registry}/{package}/-/{package_without_scope}-{version}.tgz`, the
-npm registry's tarball URL. Supports the following placeholders:
+Defaults to `{registry}/{package}/-/{package_without_scope}-{version}.tgz`.
+
+The default is the npm registry's tarball URL, and the template supports the following
+placeholders:
 
 - `{registry}` - The [`registry-url`](#registry-url) setting.
 - `{package}` - The package for your platform, like `@nubjs/nub-darwin-arm64` or
@@ -101,7 +116,9 @@ dist-url = "https://artifacts.corp.internal/npm/{package}/{file}"
 <TypeLabel type="boolean" /> - Install global packages into
 `~/.proto/tools/node/globals`, the same directory that npm, pnpm, and Yarn use
 when they enable this setting, instead of Nub's own location. Defaults to
-`false`. This setting is experimental. See [global packages](#global-packages).
+`false`.
+
+This setting is experimental. See [global packages](#global-packages).
 
 ```toml title=".prototools"
 [tools.nub]
@@ -112,17 +129,21 @@ shared-globals-dir = true
 
 ### Execution environment
 
-By default, proto doesn't change Nub's environment. With
-[`shared-globals-dir`](#shared-globals-dir) enabled, proto sets `npm_config_global_dir` to
-`~/.proto/tools/node/globals`, and `npm_config_global_bin_dir` to its `bin` directory, whenever Nub
-runs through a shim, [`proto run`](../commands/run.mdx), [`proto exec`](../commands/exec.mdx), or
-[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>). Nub reads both to decide
-where global packages are installed, and where their executables are linked.
+Whenever Nub runs through proto, with a [shim](<../(fundamentals)/workflows.mdx#shims>),
+[`proto run`](../commands/run.mdx), [`proto exec`](../commands/exec.mdx), or
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>), proto sets
+`npm_config_global_dir` to `~/.proto/tools/node/globals`, and `npm_config_global_bin_dir` to its
+`bin` directory, when [`shared-globals-dir`](#shared-globals-dir) is enabled. Nub reads both to
+decide where global packages are installed, and where their executables are linked. Otherwise,
+proto doesn't change Nub's environment.
 
 ### Global packages
 
 Install global packages with Nub's `-g` flag. Nub links their executables into `$XDG_BIN_HOME`, or
-`~/.local/bin` by default. proto looks for them in these directories, in order:
+`~/.local/bin` by default.
+
+proto looks for their executables in the following directories, in order, skipping any whose
+environment variable isn't set:
 
 1. `$PREFIX/bin`, when `PREFIX` is set.
 2. `~/.proto/tools/node/<version>/bin`, for the Node.js version in `PROTO_NODE_VERSION`, when set.
@@ -130,31 +151,36 @@ Install global packages with Nub's `-g` flag. Nub links their executables into `
 4. `~/.local/bin`.
 5. `~/.proto/tools/node/globals/bin`, the [shared directory](#shared-globals-dir).
 
-With [`shared-globals-dir`](#shared-globals-dir) enabled, only the shared directory is used. Shell
-activation adds it to `PATH` for you, but with [shims](<../(fundamentals)/workflows.mdx#shims>),
-add `~/.proto/tools/node/globals/bin` to `PATH` yourself.
+With [`shared-globals-dir`](#shared-globals-dir) enabled, only the shared directory is used.
+
+proto adds these directories to `PATH` whenever Nub runs through proto, and with
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>). With shims alone and
+[`shared-globals-dir`](#shared-globals-dir) enabled, add `~/.proto/tools/node/globals/bin` to your
+`PATH` yourself.
 
 ```shell
 # Install a package globally
 $ nub add -g cowsay
 
-# Print every directory that proto looks in
+# Print the directories that proto looks in
 $ proto bin nub --dir globals --all
 ```
 
 ### Version files
 
-Nub's version is [detected](<../(fundamentals)/detection.mdx#4-ecosystem-files>) from
-`package.json` files, skipping any within `node_modules`. The following fields are checked in order,
-and the first with a valid version for `nub` wins:
+Besides [`.prototools`](<../(fundamentals)/config.mdx>), proto
+[detects](<../(fundamentals)/detection.mdx#4-ecosystem-files>) a Nub version from the following
+fields of `package.json`, checked in this order, and skips any `package.json` within
+`node_modules`:
 
 1. `devEngines.packageManager` - An entry named `nub`, as an object or within a list.
 2. `packageManager` - Like `nub@0.11.2`. A Corepack hash, like `+sha512.…`, is ignored, and a bare
    `nub` means `latest`.
 3. `volta.nub` - Including from the file that `volta.extends` points to.
-4. `engines.nub`
+4. `engines.nub` - Only versions and ranges are read.
 
-Fields for other package managers, like `"packageManager": "pnpm@10.0.0"`, are ignored.
+The first field with a valid version for `nub` wins, and fields for other package managers, like
+`"packageManager": "pnpm@10.0.0"`, are ignored.
 
 ```json title="package.json"
 {
@@ -200,18 +226,25 @@ requires = ["node"]
 
 ## Troubleshooting
 
-- **Downloads from a private registry fail** - Check that your `.npmrc` has credentials for the
-  host in [`registry-url`](#registry-url), and that the registry hosts the platform packages, like
-  `@nubjs/nub-darwin-arm64`, not only `@nubjs/nub`.
-- **Executables of global packages aren't found** - proto doesn't read Nub's own `global-bin-dir`
-  setting. To move the directory, set `XDG_BIN_HOME` instead, which both Nub and proto respect, and
-  make sure it's on `PATH`.
+### Downloads from a private registry fail
+
+Nub is downloaded from a platform package, like `@nubjs/nub-darwin-arm64`, with the `.npmrc`
+credentials for the host in [`registry-url`](#registry-url). Check that your `.npmrc` has
+credentials for that host, and that the registry hosts the platform packages, not only
+`@nubjs/nub`.
+
+### A global package's command isn't found
+
+proto doesn't read Nub's own `global-bin-dir` setting, so it doesn't look in a directory that it
+points to. To move the directory, set `XDG_BIN_HOME` instead, which both Nub and proto respect, and
+make sure it's on `PATH`.
 
 ## Caveats
 
-- Nub is downloaded as a native binary per platform, so a [lockfile](../advanced/lockfile.mdx) has a
-  record for each operating system and architecture, unlike npm. Lock the platforms that CI uses
-  with [`proto lock --platform`](../commands/lock.mdx).
-- Nub's downloads have no published checksum for proto to verify against, so proto
-  [records one](../advanced/checksums.mdx#tools-without-checksums) from the first download. Enable a
-  lockfile so every machine must match it.
+- **A lockfile record per platform** - Nub is downloaded as a native binary per platform, so a
+  [lockfile](../advanced/lockfile.mdx) has a record for each operating system and architecture,
+  unlike npm. Lock the platforms that CI uses with [`proto lock --platform`](../commands/lock.mdx).
+- **Published hashes aren't verified** - proto doesn't verify Nub's downloads against the registry's
+  integrity hashes, so it [records a checksum](../advanced/checksums.mdx#tools-without-checksums)
+  from the first download, and with a [lockfile](../advanced/lockfile.mdx), later installs must
+  match it.

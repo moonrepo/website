@@ -5,32 +5,37 @@ title: Zig
 import { TypeLabel } from "@/components/TypeLabel";
 
 [Zig](https://ziglang.org/) is a systems programming language and toolchain, which also works as a
-drop-in C and C++ compiler, with `zig cc` and `zig c++`. proto installs it with the `zig` ID, from
-the official prebuilt archives listed in Zig's release index, and verifies each download against
-the [SHA-256 checksum](../advanced/checksums.mdx#sha-checksums) in that index. Every project can
-then pin the exact Zig it builds with, which matters more than usual, as Zig changes its language
-and standard library between minor releases.
+drop-in C and C++ compiler, with `zig cc` and `zig c++`. It's an unstable
+[built-in tool](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>) with the `zig` ID, so it
+works without configuring a plugin, but proto prints a warning when installing it.
 
-Zig is an [unstable tool](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>), so proto prints a
-warning when installing it. Its language server, [ZLS](./zls.mdx), is a separate tool (see
-[pairing with ZLS](#pairing-with-zls)).
+proto installs Zig from the official prebuilt archives listed in Zig's release index, and verifies
+each download against the [SHA-256 checksum](../advanced/checksums.mdx#sha-checksums) in that
+index. Each archive includes Zig's standard library and C toolchain, so no other tool or system
+compiler is required. Every project can then pin the exact Zig it builds with, which matters more
+than usual, as Zig changes its language and standard library between minor releases. Its language
+server, [ZLS](./zls.mdx), is a separate tool (see [pairing with ZLS](#pairing-with-zls)).
 
 ## Prerequisites
 
-- A platform that Zig publishes a prebuilt archive for. Archives exist for Linux, macOS, and
-  Windows on most architectures, and for FreeBSD, NetBSD, and OpenBSD, though older releases cover
-  fewer platforms. proto can't build Zig from source.
-- Nothing else. The archive includes Zig's standard library and C toolchain, so no other tool or
-  system compiler is required.
+- **A supported platform** - Zig is published for Linux, macOS, and Windows on most architectures,
+  and for FreeBSD, NetBSD, and OpenBSD, though older releases cover fewer platforms. proto can't
+  build Zig from source. Other platforms fail with an unsupported platform error.
 
 ## Installation
 
+Install Zig with [`proto install`](../commands/install.mdx), and pin a version with
+[`proto pin`](../commands/pin.mdx), or with the `--pin` option while installing:
+
 ```shell
-# Install the latest stable release
+# Install the detected version, or the latest when none is detected
 $ proto install zig
 
 # Install the newest 0.15 release, and pin it to the closest .prototools
 $ proto install zig 0.15 --pin
+
+# Pin a version without installing it
+$ proto pin zig 0.15.2
 
 # Install the latest development build
 $ proto install zig master
@@ -40,12 +45,21 @@ $ proto install zig master
 zig = "0.15.2"
 ```
 
+Besides versions and ranges, Zig supports the `latest` and `canary`
+[aliases](<../(fundamentals)/version-spec.mdx#built-in-aliases>) (see
+[development builds](#development-builds)). The plugin also provides the following aliases:
+
+- `master` - The latest [development build](#development-builds).
+
 As a new minor release can break your code, pin a minor version, like `0.15`, or an exact version
-in [`.prototools`](<../(fundamentals)/config.mdx>), instead of relying on `latest`. Besides the
-[built-in aliases](<../(fundamentals)/version-spec.mdx#built-in-aliases>), the plugin provides
-`master`, for the latest [development build](#development-builds).
+in [`.prototools`](<../(fundamentals)/config.mdx>), instead of relying on `latest`.
 
 ## Configuration
+
+Zig is configured in the `[tools.zig]` table of [`.prototools`](<../(fundamentals)/config.mdx>).
+Like other [tool settings](<../(fundamentals)/config.mdx#tools>), these only apply from a
+project's [`.prototools`](<../(fundamentals)/config.mdx>) once it's
+[trusted](<../(fundamentals)/trust.mdx>).
 
 ### `index-url`
 
@@ -75,16 +89,17 @@ and a configured `git-url` or `index-url` there drops the `master` alias.
 
 ### Version files
 
-proto [detects](<../(fundamentals)/detection.mdx#4-ecosystem-files>) a Zig version from the
-following files, checked in this order in each directory:
+Besides [`.prototools`](<../(fundamentals)/config.mdx>), proto
+[detects](<../(fundamentals)/detection.mdx#4-ecosystem-files>) a Zig version from the following
+files, checked in this order in each directory:
 
 1. `.zig-version` - A plain version file, also used by other Zig version managers.
 2. `.zigversion` - The same, with an alternative name.
 3. `build.zig.zon` - The `minimum_zig_version` field of your package manifest.
 
-The plain version files are read from their first line with content, ignoring comments after `#` or
-`//`, and accept any version spec, like `0.15.2`, `0.15`, or `master`. As they're checked first, a
-`.zig-version` overrides the `build.zig.zon` in the same directory.
+In the plain version files, the version is read from the first line with content, ignoring comments
+after `#` or `//`, and can be any version spec, like `0.15.2`, `0.15`, or `master`. As they're
+checked first, a `.zig-version` overrides the `build.zig.zon` in the same directory.
 
 ```text title=".zig-version"
 0.15.2 # Matches CI
@@ -153,22 +168,26 @@ ZLS development builds aren't supported, so there's no ZLS to pair with a `maste
 
 ## Troubleshooting
 
-- **No archive is available for target** - The release doesn't publish an archive for your
-  operating system and architecture, which is common for older releases. Install a newer one. When
-  the error says Zig doesn't provide an archive for your platform at all, Zig can't be installed
-  with proto there.
-- **A development version was not found** - Development builds are only listed until the next one
-  is published, so a pin like `0.16.0-dev.1234+abcdef012` stops working. Pin `master`, or a stable
-  release, instead.
+### No archive is available for the target
+
+The release doesn't publish an archive for your operating system and architecture, which is
+common for older releases. Install a newer one. When the error says Zig doesn't provide an archive
+for your platform at all, Zig can't be installed with proto there.
+
+### A development version isn't found
+
+Development builds are only listed until the next one is published, so a pin like
+`0.16.0-dev.1234+abcdef012` stops working. Pin `master`, or a stable release, instead.
 
 ## Caveats
 
-- On Windows, there's no `~/.proto/bin/zig.exe` [binary](<../(fundamentals)/workflows.mdx#binary-linking>),
-  as Zig looks for its `lib` directory next to the executable it's run from, which a binary in
-  `~/.proto/bin` doesn't have. Run Zig through its [shim](<../(fundamentals)/workflows.mdx#shims>) or
+- **No binary on Windows** - There's no `~/.proto/bin/zig.exe`
+  [binary](<../(fundamentals)/workflows.mdx#binary-linking>), as Zig looks for its `lib` directory
+  next to the executable it's run from, which a binary in `~/.proto/bin` doesn't have. Run Zig
+  through its [shim](<../(fundamentals)/workflows.mdx#shims>) or
   [shell activation](<../(fundamentals)/workflows.mdx#shell-activation>) instead.
-- Archives are downloaded from the URLs in the index, which are on ziglang.org, and not from Zig's
-  community mirrors. They're verified with the index's SHA-256 checksums, not minisign signatures.
-  To download from a mirror, rewrite the URLs with
+- **Downloads come from ziglang.org** - Archives are downloaded from the URLs in the index, which
+  are on ziglang.org, and not from Zig's community mirrors. They're verified with the index's
+  SHA-256 checksums, not minisign signatures. To download from a mirror, rewrite the URLs with
   [`url-rewrites`](<../(fundamentals)/config.mdx#url-rewrites>), and the checksums from the index
   still verify them.

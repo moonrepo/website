@@ -5,40 +5,49 @@ title: Java
 import { TypeLabel } from "@/components/TypeLabel";
 
 [Java](https://dev.java/) is a language and runtime for everything from command-line tools to large
-backend services, and the platform that JVM languages like Kotlin and Scala run on. Its open source
-implementation, OpenJDK, is built and distributed by [many vendors](#vendors), like Eclipse Temurin,
-Azul Zulu, and Amazon Corretto. proto installs prebuilt releases from any of them, using the
-[foojay Disco API](https://github.com/foojayio/discoapi) to find a build for your platform, so each
-project can choose both its vendor and its version.
+backend services, and the platform that JVM languages like Kotlin and Scala run on. It's an unstable
+[built-in tool](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>) with the `java`, `jdk`, and
+`jre` IDs, so it works without configuring a plugin, but proto prints a warning when installing it.
 
-The plugin is available under 3 IDs: `java` and `jdk` install the Java Development Kit (JDK), with
-the `java` runtime and the `javac` and `jar` development tools, while `jre` installs the Java
-Runtime Environment (JRE), which is the runtime only (see [JDK and JRE](#jdk-and-jre)). Java is
-[unstable](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>), so proto prints a warning when
-installing it, and its behavior may change between releases.
+proto installs prebuilt releases of OpenJDK, Java's open source implementation, which is built and
+distributed by [many vendors](#vendors), like Eclipse Temurin, Azul Zulu, and Amazon Corretto. It
+uses the [foojay Disco API](https://github.com/foojayio/discoapi) to find a build for your platform,
+so each project can choose both its vendor and its version.
+
+The `java` and `jdk` IDs install the Java Development Kit (JDK), which provides the `java`, `javac`,
+and `jar` [executables](<../(fundamentals)/(plugin)/tool.mdx#executables>): the runtime, and its
+development tools. The `jre` ID installs the Java Runtime Environment (JRE), which is the runtime
+only, and provides the `java` executable alone (see [JDK and JRE](#jdk-and-jre)).
 
 ## Prerequisites
 
-- Linux, macOS, or Windows. Other operating systems aren't supported.
-- Network access to the foojay Disco API (`api.foojay.io`), which lists the available releases, and
-  to the vendors' download servers. To use a mirror of the API instead, set [`api-url`](#api-url).
+- **A supported platform** - Java is published for Linux, macOS, and Windows, on the architectures
+  that each vendor builds for (see [no Java package is available](#no-java-package-is-available)).
+  Other operating systems fail with an unsupported platform error.
+- **Network access** - proto lists the available releases with the foojay Disco API
+  (`api.foojay.io`), and downloads them from the vendors' servers. To use a mirror of the API
+  instead, set [`api-url`](#api-url).
 
 ## Installation
 
-Java is built into proto, so it's ready to install by ID, with no plugin to configure.
+Install Java with [`proto install`](../commands/install.mdx), and pin a version with
+[`proto pin`](../commands/pin.mdx), or with the `--pin` option while installing:
 
 ```shell
-# Install the detected version, or the latest Eclipse Temurin release
+# Install the detected version, or the latest when none is detected
 $ proto install java
+
+# Install the newest Temurin 21 release, and pin it to the closest .prototools
+$ proto install java temurin-21 --pin
+
+# Pin a version without installing it
+$ proto pin java temurin-21
 
 # Install the newest Java 21 release, from Eclipse Temurin
 $ proto install java 21
 
 # Install the newest Java 21 release from another vendor
 $ proto install java zulu-21
-
-# Pin a vendor and version to .prototools
-$ proto pin java temurin-21
 
 # Pin the exact release it resolves to, like temurin-21.0.11+10
 $ proto pin java temurin-21 --resolve
@@ -48,7 +57,9 @@ $ proto pin java temurin-21 --resolve
 java = "temurin-21"
 ```
 
-Versions are written as `<vendor>-<version>`, using
+Besides versions and ranges, Java supports the `latest`
+[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. Versions are
+written as `<vendor>-<version>`, using
 [version scopes](<../(fundamentals)/version-spec.mdx#version-scopes>), and a version without a
 vendor uses Eclipse Temurin (see [vendors](#vendors)). Releases usually include a build number, like
 the `+10` in `temurin-21.0.11+10`, which you can leave off, as `temurin-21.0.11` matches that release
@@ -57,17 +68,20 @@ whatever its build. Releases with a 4th number, like `17.0.4.1`, are supported a
 
 ## Configuration
 
-Settings go in the `[tools.java]` table of [`.prototools`](<../(fundamentals)/config.mdx>), or
-`[tools.jdk]` and `[tools.jre]` for those IDs.
+Java is configured in the `[tools.java]` table of [`.prototools`](<../(fundamentals)/config.mdx>),
+or `[tools.jdk]` and `[tools.jre]` for those IDs. Like other
+[tool settings](<../(fundamentals)/config.mdx#tools>), these only apply from a project's
+[`.prototools`](<../(fundamentals)/config.mdx>) once it's [trusted](<../(fundamentals)/trust.mdx>).
 
 ### `api-url`
 
 <TypeLabel type="string" /> - The base URL of the foojay Disco API, which proto
 queries for the available releases, and for the download URL of each build.
-Defaults to `https://api.foojay.io/disco/v3.0`. Point it at a mirror, or a
-self-hosted instance of the API, when your network can't reach foojay. The
-builds themselves are still downloaded from the URLs that the API returns, which
-you can redirect with [URL rewrites](../advanced/http.mdx#url-rewrites).
+Defaults to `https://api.foojay.io/disco/v3.0`.
+
+Point it at a mirror, or a self-hosted instance of the API, when your network can't reach foojay.
+The builds themselves are still downloaded from the URLs that the API returns, which you can
+redirect with [URL rewrites](../advanced/http.mdx#url-rewrites).
 
 ```toml title=".prototools"
 [tools.java]
@@ -77,9 +91,9 @@ api-url = "https://foojay.corp.internal/disco/v3.0"
 ### `release-type`
 
 <TypeLabel type="ga | ea" /> - Which releases are available: `ga` for general
-availability releases, or `ea` for early access builds of upcoming versions.
-Defaults to `ga`. The long forms, `general-availability` and `early-access`, are
-accepted too.
+availability releases, or `ea` for early access builds of upcoming versions. The
+long forms, `general-availability` and `early-access`, are accepted too.
+Defaults to `ga`.
 
 Early access builds replace the general availability releases, rather than adding to them, and
 there's no `latest` alias for them. They're pre-releases, like `temurin-28.0.0-ea+25`, so pin them
@@ -96,13 +110,13 @@ release-type = "ea"
 
 ### Execution environment
 
-When proto runs Java, through a [shim](<../(fundamentals)/workflows.mdx#shims>),
+Whenever Java runs through proto, with a [shim](<../(fundamentals)/workflows.mdx#shims>),
 [`proto run`](../commands/run.mdx), [`proto exec`](../commands/exec.mdx), or
-[`proto shell`](../commands/shell.mdx), or when
-[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>) activates it, it sets
-`JAVA_HOME` to the installed version's directory. On macOS, where JDKs are packaged as bundles,
-that's the `Contents/Home` directory within it. Build tools like Gradle and Maven look for Java with
-`JAVA_HOME` before `PATH`, so this keeps them on the same version as `java`.
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>), proto sets `JAVA_HOME` to
+the installed version's directory, and so does [`proto shell`](../commands/shell.mdx). On macOS,
+where JDKs are packaged as bundles, that's the `Contents/Home` directory within it. Build tools
+like Gradle and Maven look for Java with `JAVA_HOME` before `PATH`, so this keeps them on the same
+version as `java`.
 
 With shell activation, [`proto exec`](../commands/exec.mdx), and
 [`proto shell`](../commands/shell.mdx), the version's `bin` directory is also added to `PATH`. That
@@ -116,13 +130,14 @@ $ proto exec --tools-from-config -- ./gradlew build
 
 ### Version files
 
-proto also detects a version from the files that other Java version managers use (see
-[ecosystem files](<../(fundamentals)/detection.mdx#4-ecosystem-files>)), checked in this order
-within each directory:
+Besides [`.prototools`](<../(fundamentals)/config.mdx>), proto
+[detects](<../(fundamentals)/detection.mdx#4-ecosystem-files>) a Java version from the following
+files, checked in this order in each directory:
 
-1. `.java-version` - Used by jenv and other version managers. The version is the first line with
-   content, and comments after a `#` are ignored. A version with a vendor, like `zulu-21`, is used
-   as-is, and one without uses Temurin. Legacy `1.x` versions are converted, so `1.8` is Java 8.
+1. `.java-version` - Used by jenv and other version managers. The version is read from the first
+   line with content, ignoring comments after `#` or `//`. A version with a vendor, like `zulu-21`,
+   is used as-is, and one without uses Temurin. Legacy `1.x` versions are converted, so `1.8` is
+   Java 8.
 2. `.sdkmanrc` - The project file of [SDKMAN!](https://sdkman.io/). Its `java=` line is read, with
    SDKMAN's `<version>-<vendor>` identifiers, like `21.0.2-tem`, whose vendor codes are mapped to
    [vendor scopes](#vendors). Only the version numbers are kept, so the build in an identifier like
@@ -235,7 +250,7 @@ $ proto versions java zulu-21
 
 ### A vendor isn't recognized
 
-An "unknown distribution vendor" error means the scope isn't one of the [vendors](#vendors), which
+An `Unknown distribution vendor` error means the scope isn't one of the [vendors](#vendors), which
 often comes from a `.java-version` or `.sdkmanrc` written by another tool, with its own vendor names.
 Change it to a scope from the table. A version can also fail to resolve when its scope is written
 differently than listed, like `tem-21` or `Temurin-21`, as aliases and other spellings only work in
@@ -263,6 +278,7 @@ $ export JAVA_HOME="$(dirname "$(proto bin java --dir exes)")"
   and later, aren't available.
 - **musl** - On Linux with musl, like Alpine, only musl builds are installed, which not every vendor
   publishes for every version.
-- **Checksums** - Downloads are verified against the vendor's SHA-256 or SHA-512 checksum. Vendors
-  that publish other kinds, like Tencent Kona's MD5 checksums, are installed without one (see
-  [tools without checksums](../advanced/checksums.mdx#tools-without-checksums)).
+- **SHA checksums only** - Downloads are verified against the vendor's SHA-256 or SHA-512 checksum.
+  When a vendor doesn't publish one, like Tencent Kona, which publishes MD5 checksums instead, proto
+  [records one](../advanced/checksums.mdx#tools-without-checksums) from the first download, and with
+  a [lockfile](../advanced/lockfile.mdx), later installs must match it.

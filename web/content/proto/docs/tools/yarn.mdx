@@ -5,40 +5,57 @@ title: Yarn
 import { TypeLabel } from "@/components/TypeLabel";
 
 [Yarn](https://yarnpkg.com) is a JavaScript package manager, known for its workspaces, Plug'n'Play
-installs, and offline cache. Its proto ID is `yarn`, and that one ID covers every generation of
-Yarn: Classic (1.x), Berry (2.x to 4.x), and the Rust-based Yarn 6, which proto supports
-experimentally. proto knows where each generation is published and how to run it, so moving a
-project from Yarn 1 to Yarn 4 is a one-line change to its pin.
+installs, and offline cache. It's a
+[built-in tool](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>) with the `yarn` ID, so it
+works without configuring a plugin. That one ID covers every generation of Yarn: Classic (1.x),
+Berry (2.x to 4.x), and the Rust-based Yarn 6, which proto supports experimentally.
 
-Yarn requires [Node.js](./node.mdx). Versions before Yarn 6 are written in JavaScript and run on
-Node.js, so their `yarn` and `yarnpkg` executables are available as
+proto downloads Classic and Berry from the npm registry, and Yarn 6 from GitHub releases (see
+[Yarn generations](#yarn-generations)), and knows how to run each of them, so moving a project from
+Yarn 1 to Yarn 4 is a one-line change to its pin. Before Yarn 6, Yarn provides the `yarn` and
+`yarnpkg` [executables](<../(fundamentals)/(plugin)/tool.mdx#executables>), which are written in
+JavaScript and run on Node.js, so they're available as
 [shims](<../(fundamentals)/workflows.mdx#shims>), but not as
-[binaries](<../(fundamentals)/workflows.mdx#binary-linking>). Yarn is powered by the same plugin as
-[npm](./npm.mdx), [pnpm](./pnpm.mdx), and [Nub](./nub.mdx), so their settings work the same way.
+[binaries](<../(fundamentals)/workflows.mdx#binary-linking>).
+
+Yarn requires [Node.js](./node.mdx), and is powered by the same plugin as [npm](./npm.mdx),
+[pnpm](./pnpm.mdx), and [Nub](./nub.mdx), so their settings work the same way.
 
 ## Prerequisites
 
-- **Node.js** - The `node` tool must have a version configured, pinned in a
-  [`.prototools`](<../(fundamentals)/config.mdx>) or set with `PROTO_NODE_VERSION`, for every
-  version of Yarn, including Yarn 6. It's installed before Yarn, and it's put on `PATH` whenever
-  Yarn runs, so Yarn and your package scripts use the same `node`.
-- **Git** - Yarn 6 releases are listed from the tags of a GitHub repository, so loading Yarn's
-  available versions runs `git ls-remote`, whichever generation you use. That happens when you
-  install a version, or resolve a requirement like `~4`.
-- **Platform** - Linux, macOS, or Windows, on x64 or arm64. Yarn 6 supports a different set of
-  platforms (see [Yarn 6](#yarn-6)).
+- **Node.js** - Yarn requires the [`node`](./node.mdx) tool, which must have a version configured
+  too, like a pin in [`.prototools`](<../(fundamentals)/config.mdx>), or with `PROTO_NODE_VERSION`.
+  That applies to every version of Yarn, including Yarn 6. It's installed before Yarn, and it's put
+  on `PATH` whenever Yarn runs, so Yarn and your package scripts use the same `node`.
+- **Git** - Yarn 6 versions are listed from the tags of the
+  [yarnpkg/zpm](https://github.com/yarnpkg/zpm) repository, with `git ls-remote`, so `git` must be
+  on your `PATH` (see [requirements](../index.mdx#requirements)). That happens whenever Yarn's
+  versions are loaded, whichever generation you use, like when you install a version, or resolve a
+  requirement like `~4`.
+- **A supported platform** - Yarn is published for Linux, macOS, and Windows, on x64 and arm64,
+  though Yarn 6 supports a different set of platforms (see [Yarn 6](#yarn-6)). Other platforms fail
+  with an unsupported platform error.
 
 ## Installation
 
-Pin Node.js alongside Yarn, as Yarn can't be installed without a `node` version configured. Then
-install them, and proto installs Node.js first:
+Yarn requires Node.js, so pin both. Install Yarn with [`proto install`](../commands/install.mdx),
+and pin a version with [`proto pin`](../commands/pin.mdx), or with the `--pin` option while
+installing:
 
 ```shell
-# Pin Node.js and Yarn in the closest .prototools
-$ proto pin node 24
+# Install the detected version, or the latest when none is detected
+$ proto install yarn
+
+# Install the newest Yarn 4 release, and pin it to the closest .prototools
+$ proto install yarn 4 --pin
+
+# Pin a version without installing it
 $ proto pin yarn 4
 
-# Install every pinned tool
+# Pin Node.js too, which Yarn requires
+$ proto pin node 24
+
+# Install every pinned tool, which installs Node.js first
 $ proto install
 
 # Install the latest Yarn 1, to try it out
@@ -50,29 +67,36 @@ node = "~24"
 yarn = "~4"
 ```
 
-Besides versions and requirements, Yarn supports the following aliases:
+Besides versions and ranges, Yarn supports the `latest` and `canary`
+[aliases](<../(fundamentals)/version-spec.mdx#built-in-aliases>) (see [Yarn 6](#yarn-6)). `latest`
+is the latest release of Berry on the npm registry, currently Yarn 4, and it's never a Yarn 6
+pre-release. `canary` resolves to the latest Yarn 6 release candidate. The plugin also provides the
+following aliases:
 
-- `latest` - The latest release of Berry on the npm registry, currently Yarn 4. It's never a Yarn 6
-  pre-release.
 - `berry` - The latest Yarn 4.
 - `classic` and `legacy` - The latest Yarn 1.
-- `rust` and `zpm` - The latest Yarn 6 release candidate. `canary` resolves to the same.
-- The npm dist-tags of the `yarn` and `@yarnpkg/cli-dist` packages, like `v3`.
+- `rust` and `zpm` - The latest Yarn 6 release candidate, like `canary`.
+- The npm dist-tags of the `yarn` and `@yarnpkg/cli-dist` packages - Like `v3`.
 
 Run [`proto versions yarn`](../commands/versions.mdx) to list every available version, across all
 generations, and add `--aliases` to see the aliases too.
 
 ## Configuration
 
+Yarn is configured in the `[tools.yarn]` table of [`.prototools`](<../(fundamentals)/config.mdx>).
+Like other [tool settings](<../(fundamentals)/config.mdx#tools>), these only apply from a
+project's [`.prototools`](<../(fundamentals)/config.mdx>) once it's
+[trusted](<../(fundamentals)/trust.mdx>).
+
 ### `registry-url`
 
 <TypeLabel type="string" /> - The npm registry to list Yarn versions from, and
-to download versions before Yarn 6 from. Defaults to
-`https://registry.npmjs.org`. Set it to use a mirror or a private registry, with
-credentials in `.yarnrc.yml` when it requires them (see [private
-registries](#private-registries)). proto doesn't read `npmRegistryServer` from
-`.yarnrc.yml`, so set this even when Yarn itself is already configured for the
-registry.
+to download versions before Yarn 6 from. Set it to use a mirror or a private
+registry, with credentials in `.yarnrc.yml` when it requires them (see [private
+registries](#private-registries)). Defaults to `https://registry.npmjs.org`.
+
+proto doesn't read `npmRegistryServer` from `.yarnrc.yml`, so set this even when Yarn itself is
+already configured for the registry.
 
 ```toml title=".prototools"
 [tools.yarn]
@@ -82,9 +106,10 @@ registry-url = "https://npm.example.com"
 ### `dist-url`
 
 <TypeLabel type="string" /> - The URL to download an archive from, for versions
-before Yarn 6. Defaults to `{registry}/{package}/-/{package_without_scope}-
-{version}.tgz`, the npm registry's tarball URL. Change it when your mirror
-stores tarballs at a different path. Supports the following placeholders:
+before Yarn 6. Change it when your mirror stores tarballs at a different path.
+Defaults to `{registry}/{package}/-/{package_without_scope}-{version}.tgz`.
+
+The default is the npm registry's tarball URL. Supports the following placeholders:
 
 - `{registry}` - The [`registry-url`](#registry-url).
 - `{package}` - The npm package: `yarn` for Yarn 1, and `@yarnpkg/cli-dist` for Yarn 2 and later.
@@ -100,10 +125,11 @@ dist-url = "https://mirror.example.com/npm/{package}/{file}"
 ### `shared-globals-dir`
 
 <TypeLabel type="boolean" /> - Install global packages into
-`~/.proto/tools/node/globals`, instead of Yarn's own location. Defaults to
-`false`. npm, pnpm, and Nub support the same setting, so enabling it for each of
-them gives you one place for every global package, whichever package manager
-installed it. This setting is experimental.
+`~/.proto/tools/node/globals`, instead of Yarn's own location. This setting is
+experimental. Defaults to `false`.
+
+npm, pnpm, and Nub support the same setting, so enabling it for each of them gives you one place for
+every global package, whichever package manager installed it.
 
 When enabled, Yarn runs with `PREFIX` set to `~/.proto/tools/node/globals`, so Yarn 1 links the
 executables of global packages into `~/.proto/tools/node/globals/bin`, which is then the only place
@@ -119,8 +145,8 @@ shared-globals-dir = true
 
 ### Execution environment
 
-Whenever Yarn runs, through a shim, [`proto run`](../commands/run.mdx),
-[`proto exec`](../commands/exec.mdx), or
+Whenever Yarn runs through proto, with a [shim](<../(fundamentals)/workflows.mdx#shims>),
+[`proto run`](../commands/run.mdx), [`proto exec`](../commands/exec.mdx), or
 [shell activation](<../(fundamentals)/workflows.mdx#shell-activation>), proto adds the detected
 Node.js version to its environment, so Yarn, and every script it runs, uses that `node`. With
 [`shared-globals-dir`](#shared-globals-dir) enabled, it also sets `PREFIX` to
@@ -132,21 +158,24 @@ Node.js version to its environment, so Yarn, and every script it runs, uses that
 Only Yarn 1 installs packages globally, with `yarn global add`. Yarn 2 and later don't have global
 packages, so run one-off executables with `yarn dlx` instead.
 
-proto looks for the executables of global packages in the following directories, in order, and
-skips any that use an environment variable that isn't set:
+proto looks for their executables in the following directories, in order, skipping any whose
+environment variable isn't set:
 
-1. `$PREFIX/bin`
-2. `$PREFIX/shims`
-3. `~/.proto/tools/node/<version>/bin`, for the Node.js version that Yarn runs with
-4. `$YARN_PREFIX/bin`
-5. `%LOCALAPPDATA%\Yarn\bin`, on Windows only
-6. `~/.yarn/bin`
-7. `~/.proto/tools/node/globals/bin`
+1. `$PREFIX/bin`.
+2. `$PREFIX/shims`.
+3. `~/.proto/tools/node/<version>/bin`, for the Node.js version that Yarn runs with.
+4. `$YARN_PREFIX/bin`.
+5. `%LOCALAPPDATA%\Yarn\bin`, on Windows only.
+6. `~/.yarn/bin`.
+7. `~/.proto/tools/node/globals/bin`.
 
 When `PREFIX` or `YARN_PREFIX` already points to a `bin` directory, it's used as-is. With
-[`shared-globals-dir`](#shared-globals-dir) enabled, only the last directory is used. These
-directories are put on `PATH` when Yarn runs through proto, and with shell activation (see the
-[workflows comparison](<../(fundamentals)/workflows.mdx#comparison>)). If Yarn 1 links executables
+[`shared-globals-dir`](#shared-globals-dir) enabled, only the last directory is used.
+
+proto adds these directories to `PATH` whenever Yarn runs through proto, and with
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>) (see the
+[workflows comparison](<../(fundamentals)/workflows.mdx#comparison>)). With shims alone, add the
+directory that `yarn global bin` prints to your `PATH` yourself. If Yarn 1 links executables
 somewhere else, set `PREFIX`, or enable `shared-globals-dir`.
 
 ```shell
@@ -156,15 +185,16 @@ $ yarn global add serve
 # Print where Yarn 1 links executables
 $ yarn global bin
 
-# Print every directory proto looks in
+# Print the directories that proto looks in
 $ proto bin yarn --dir globals --all
 ```
 
 ### Version files
 
-proto detects Yarn's version from `package.json` (see
-[ecosystem files](<../(fundamentals)/detection.mdx#4-ecosystem-files>)), and ignores any within
-`node_modules`. It reads the following fields, in order, and the first with a valid version wins:
+Besides [`.prototools`](<../(fundamentals)/config.mdx>), proto
+[detects](<../(fundamentals)/detection.mdx#4-ecosystem-files>) a Yarn version from the following
+fields of `package.json`, checked in this order, and skips any `package.json` within
+`node_modules`:
 
 1. `devEngines.packageManager` - An object, or a list of objects, whose `name` is `yarn`. Only a
    version or range in `version` is read.
@@ -173,9 +203,10 @@ proto detects Yarn's version from `package.json` (see
 3. `volta.yarn` - Volta's pin, including one inherited through `volta.extends`.
 4. `engines.yarn` - A version or range.
 
-Fields for other package managers, like `"packageManager": "pnpm@10.0.0"`, are skipped. A field
-with an invalid version is skipped when a later one is valid, and is an error otherwise. In the
-following example, `^4.9.0` from `devEngines` wins over `packageManager`:
+The first field with a valid version wins. Fields for other package managers, like
+`"packageManager": "pnpm@10.0.0"`, are skipped. A field with an invalid version is skipped when a
+later one is valid, and is an error otherwise. In the following example, `^4.9.0` from `devEngines`
+wins over `packageManager`:
 
 ```json title="package.json"
 {
@@ -290,11 +321,12 @@ for a single command, set `YARN_IGNORE_PATH=1`.
 
 ### Yarn runs a different version than the one pinned
 
-Run [`proto status`](../commands/status.mdx) to see the version proto detects, and the file it
-comes from. A [version field](#version-files) in a closer `package.json` wins over a
-[`.prototools`](<../(fundamentals)/config.mdx>) in a parent directory. If proto detects the right
-version, but `yarn --version` prints another, check the closest `.yarnrc.yml` for
-[`yarnPath`](#yarnpath). Otherwise, see
+A [version field](#version-files) in a closer `package.json` wins over a
+[`.prototools`](<../(fundamentals)/config.mdx>) in a parent directory, and a
+[`yarnPath`](#yarnpath) hands off to a committed release, whichever version proto detects. Run
+[`proto status`](../commands/status.mdx) to see the version proto detects, and the file it comes
+from. If proto detects the right version, but `yarn --version` prints another, check the closest
+`.yarnrc.yml` for `yarnPath`. Otherwise, see
 [a tool runs the wrong version](../guides/troubleshooting.mdx#a-tool-runs-the-wrong-version).
 
 ### Listing versions or installing fails
@@ -316,8 +348,9 @@ match a release candidate: use an exact version, or the `rust` alias (see [Yarn 
 
 ## Caveats
 
-- Downloads aren't checked against a published checksum, and the Corepack hash in `packageManager`
-  isn't verified either. They're handled like other
-  [tools without checksums](../advanced/checksums.mdx#tools-without-checksums) instead: proto
-  records the checksum of the first download, and with a lockfile, later installs must match it.
-- Yarn 6 support is experimental, as Yarn 6 itself is still in release candidates.
+- **Published hashes aren't verified** - proto doesn't verify Yarn's downloads against a published
+  hash, like the registry's integrity hashes or the Corepack hash in `packageManager`, so it
+  [records a checksum](../advanced/checksums.mdx#tools-without-checksums) from the first download,
+  and with a [lockfile](../advanced/lockfile.mdx), later installs must match it.
+- **Yarn 6 is experimental** - proto's support for Yarn 6 is experimental, as Yarn 6 itself is
+  still in release candidates.
