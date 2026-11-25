@@ -2,10 +2,243 @@
 title: Ruby
 ---
 
-## Installing
+import { TypeLabel } from "@/components/TypeLabel";
 
-## Version detection
+[Ruby](https://www.ruby-lang.org) is a dynamic programming language built for developer happiness,
+and the language behind Rails. It's an unstable
+[built-in tool](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>) with the `ruby` ID, so it
+works without configuring a plugin, but proto prints a warning when installing it.
+
+proto installs Ruby from portable prebuilts where they're available, or by
+[building it from source](#building-from-source). It provides the `ruby`, `gem`, `bundle`, `irb`,
+and `rake` [executables](<../(fundamentals)/(plugin)/tool.mdx#executables>), each with its own
+shim.
+
+## Prerequisites
+
+- **Git** - Versions are listed from the tags of the [ruby/ruby](https://github.com/ruby/ruby)
+  repository, with `git ls-remote`, so `git` must be on your `PATH` (see
+  [requirements](../index.mdx#requirements)).
+- **A supported platform** - Ruby is published as prebuilts for Linux on x64 and arm64 with glibc,
+  and for macOS on Apple Silicon, for stable releases from 3.2.1 onwards, and pre-releases from
+  3.5.0-preview.1 onwards. Anywhere else, like macOS on Intel, Alpine Linux (musl), or FreeBSD, and
+  for older releases, Ruby must be [built from source](#building-from-source). Windows isn't
+  supported, either with prebuilts or by building from source, so use
+  [WSL](https://learn.microsoft.com/en-us/windows/wsl/) instead, where Ruby installs like it does on
+  Linux.
+
+## Installation
+
+Install Ruby with [`proto install`](../commands/install.mdx), and pin a version with
+[`proto pin`](../commands/pin.mdx), or with the `--pin` option while installing:
+
+```shell
+# Install the detected version, or the latest when none is detected
+$ proto install ruby
+
+# Install the newest 3.4 release, and pin it to the closest .prototools
+$ proto install ruby 3.4 --pin
+
+# Pin a version without installing it
+$ proto pin ruby 3.4.5
+
+# Install an exact version
+$ proto install ruby 3.4.5
+```
+
+```toml title=".prototools"
+ruby = "3.4.5"
+```
+
+Besides versions and ranges, Ruby supports the `latest`
+[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. See
+[versions & aliases](#versions--aliases) for how Ruby's versions map to proto's.
+
+### Building from source
+
+Pass `--build` to [`proto install`](../commands/install.mdx) to
+[build Ruby from source](../guides/build-from-source.mdx), instead of downloading a prebuilt. It's
+supported on every platform except Windows. proto compiles Ruby with rbenv's
+[ruby-build](https://github.com/rbenv/ruby-build), which it clones into
+`~/.proto/builders/ruby-build` on the first build, and pulls its latest changes before every build
+after that, so new Ruby releases can be built as soon as ruby-build supports them.
+
+```shell
+# Build a specific version from source
+$ proto install ruby 3.4.5 --build
+```
+
+The build needs:
+
+- `git`, to clone ruby-build.
+- The Xcode command line tools, on macOS.
+
+Before building, proto offers to install the
+[system dependencies](../guides/build-from-source.mdx#system-dependencies) that Ruby needs, like a
+C compiler and the OpenSSL and libyaml libraries, with apk, apt, brew, dnf, pacman, pkg, or yum.
+For apt, dnf, pacman, and pkg, this includes Rust, which Ruby uses to build its YJIT compiler. If
+you manage Rust with rustup instead,
+[exclude the package](../guides/build-from-source.mdx#excluding-packages).
 
 ## Configuration
 
-## Building from source
+Ruby is configured in the `[tools.ruby]` table of [`.prototools`](<../(fundamentals)/config.mdx>).
+Like other [tool settings](<../(fundamentals)/config.mdx#tools>), these only apply from a
+project's [`.prototools`](<../(fundamentals)/config.mdx>) once it's
+[trusted](<../(fundamentals)/trust.mdx>).
+
+### `use-latest-build`
+
+<TypeLabel type="boolean" /> - When an exact version without a build number is
+requested, like `3.4.5`, install the latest [build](#versions--aliases) of that
+release, like `3.4.5+6`, instead of its first. Defaults to `false`.
+
+Enable it to keep exact pins, while still picking up rebuilds of the same release. A version with a
+build number, like `3.4.5+2`, is always installed as written.
+
+```toml title=".prototools"
+ruby = "3.4.5"
+
+[tools.ruby]
+use-latest-build = true
+```
+
+## Core features
+
+### Global packages
+
+Gems belong to the Ruby version that installed them. `gem install` puts a gem in that version's own
+directory in the [store](<../(fundamentals)/store.mdx>), and its executables, like `rails` or
+`rspec`, in the version's `bin` directory, next to `ruby` itself. proto doesn't set `GEM_HOME`, so
+this is RubyGems' default behavior, and a few things follow from it:
+
+- **Gems are per version** - Each installed version, including each build of a release, has its own
+  gems. After switching versions, run `bundle install` again.
+- **Gem executables don't get shims** - Only Ruby's own executables do. The `bin` directory is on
+  `PATH` with [shell activation](<../(fundamentals)/workflows.mdx#shell-activation>), within
+  [`proto exec`](../commands/exec.mdx), and for processes started by a Ruby shim. So
+  `bundle exec rails` works through shims, while a plain `rails` needs activation.
+
+```shell
+# Install a gem with the detected version of Ruby
+$ gem install rails
+
+# Run its executable through Bundler, or with the pinned tools on PATH
+$ bundle exec rails server
+$ proto exec --tools-from-config -- rails server
+
+# Print the directory that gem executables are installed to
+$ proto bin ruby --dir exes
+```
+
+As gems live within their version, [`proto bin ruby --dir globals`](../commands/bin.mdx) prints
+nothing for Ruby, so use `--dir exes` instead.
+
+### Version files
+
+Besides [`.prototools`](<../(fundamentals)/config.mdx>), proto
+[detects](<../(fundamentals)/detection.mdx#4-ecosystem-files>) a Ruby version from the following
+files, checked in this order in each directory:
+
+1. `.ruby-version` - The format that rbenv, chruby, RVM, and most other Ruby version managers
+   share, so an existing project works as-is.
+   - The version is read from the first line with content, ignoring comments after `#` or `//`,
+     and can be partial, like `3.4`.
+   - The `ruby-` prefix that RVM and chruby write is removed, so `ruby-3.4.5` is `3.4.5`.
+   - Files for another engine, or for no version at all, like `jruby-9.4.5.0`,
+     `truffleruby-24.0.0`, or `system`, are ignored with a warning, and detection continues in
+     parent directories.
+   - Directories within `vendor`, like gems installed to `vendor/bundle`, are skipped, so a gem's
+     own `.ruby-version` never decides which Ruby you run.
+
+```text title=".ruby-version"
+ruby-3.4.5
+```
+
+The `ruby` directive in a `Gemfile` isn't read. To keep Bundler and proto in agreement, point
+Bundler at the same file with `ruby file: ".ruby-version"` in your `Gemfile`.
+
+## Ecosystem
+
+### Versions & aliases
+
+Ruby doesn't use [semantic versions](<../(fundamentals)/version-spec.mdx#semantic-versions>) for all
+of its releases, so proto converts them:
+
+| Ruby version     | proto version     |
+| ---------------- | ----------------- |
+| `3.4.5`          | `3.4.5`           |
+| `3.4.0-rc1`      | `3.4.0-rc.1`      |
+| `4.0.0-preview2` | `4.0.0-preview.2` |
+
+Only pre-releases differ, as proto adds a `.` before their number. When choosing a version:
+
+- **Write proto's form** on the command line and in
+  [`.prototools`](<../(fundamentals)/config.mdx>), like `4.0.0-preview.2`. Ruby's own form, like
+  `4.0.0-preview2`, is accepted for an exact version too, including in `.ruby-version`, and
+  resolves to proto's. Requirements and ranges only match proto's form.
+- **Pin pre-releases in full.** Like any pre-release, a preview or release candidate is only used
+  when pinned as a full version, like `4.0.0-preview.2`.
+
+Ruby has no build numbers, but proto adds one. Prebuilts are portable builds from the
+[jdx/ruby](https://github.com/jdx/ruby) project, and as a release can be built more than once, each
+build is listed as its own version with a build number, like `3.4.5+6`.
+
+Which build is installed depends on the version you ask for:
+
+- **Partial versions and ranges**, like `3.4` or `^3.3` - The latest build of the highest matching
+  version.
+- **Exact versions**, like `3.4.5` - The version's first build, or its latest with
+  [`use-latest-build`](#use-latest-build).
+- **Exact builds**, like `3.4.5+6` - Exactly that build.
+- **The `latest` alias** - The first build of the newest stable release.
+
+Run [`proto versions ruby`](../commands/versions.mdx) to list every version as proto names it, from
+Ruby 2 onwards, with the builds that have a prebuilt for your platform. Add `--no-builds` to list
+the versions only.
+
+## Troubleshooting
+
+### No pre-built available
+
+Installing fails with an error like `No pre-built available for 3.4.5 on macos-x64` when the version
+has no prebuilt for your platform, or like
+`Failed to request https://registry.moonrepo.app/releases/ruby/3.1.4 (404)` when it has no
+prebuilts at all:
+
+- **Your platform or version has no prebuilts** - Build it from source instead, as in
+  [`proto install ruby 3.4.5 --build`](../commands/install.mdx). See
+  [prerequisites](#prerequisites) for what's covered.
+- **The release is too new** - New releases are listed as soon as they're tagged, and prebuilts
+  follow later, so a partial version, a range, or `latest` can resolve to a release without one.
+  Pin the previous release until a prebuilt is published, or build it from source.
+
+### A gem's executable isn't found
+
+When your shell reports `command not found` for an installed gem's executable, like `rails`:
+
+- Run it with shell activation, [`proto exec`](../commands/exec.mdx), or `bundle exec`, as gem
+  executables don't get shims (see [global packages](#global-packages)).
+- Check that the gem is installed for the version detected in the current directory, with
+  `gem list`. A version you've just switched to has none of the previous version's gems.
+- Check whether `GEM_HOME` is set, like by a previous version manager. Gems are then installed
+  there, and their executables to `$GEM_HOME/bin`, which proto doesn't put on `PATH`. Unset it, or
+  add that directory to `PATH` yourself. The same goes for `gem install --user-install`, which
+  installs to `~/.gem`, or to `~/.local/share/gem` when `~/.gem` doesn't exist.
+
+### A build from source fails
+
+A missing system library is the usual cause. The
+[build log](../guides/build-from-source.mdx#build-logs) shows each step and what failed, and the
+[ruby-build wiki](https://github.com/rbenv/ruby-build/wiki) lists the packages each platform needs,
+along with fixes for common errors.
+
+## Caveats
+
+- **CRuby only** - proto installs CRuby, the reference implementation of Ruby. Other engines, like
+  JRuby and TruffleRuby, aren't supported.
+- **Prebuilts are third-party** - They're published by jdx/ruby, not the Ruby core team. Build from
+  source when you need Ruby compiled from its official source archives.
+- **No published checksums** - jdx/ruby doesn't publish checksum files for its prebuilts, so proto
+  [records one](../advanced/checksums.mdx#tools-without-checksums) from the first download, and
+  with a [lockfile](../advanced/lockfile.mdx), later installs must match it.

@@ -2,6 +2,212 @@
 title: uv
 ---
 
-## Installing
+[uv](https://docs.astral.sh/uv/) is Astral's Python package and project manager, written in Rust.
+It resolves and installs dependencies, manages virtual environments and lockfiles, runs Python
+command-line tools, and can install Python itself. It's a
+[built-in tool](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>) with the `uv` ID, so it works
+without configuring a plugin.
 
-## Version detection
+proto installs the standalone binaries that Astral publishes, so everyone working in a repository,
+CI included, runs the same version of uv. It provides the `uv` and `uvx`
+[executables](<../(fundamentals)/(plugin)/tool.mdx#executables>), where `uv` is the primary, and
+`uvx` is uv's shorthand for `uv tool run`, which runs a Python tool without installing it. uv
+doesn't require proto's [Python](./python.mdx), as it finds or downloads interpreters on its own.
+See [Python versions](#python-versions) for how the two work together.
+
+## Prerequisites
+
+- **Git** - Versions are listed from the tags of the [astral-sh/uv](https://github.com/astral-sh/uv)
+  repository, with `git ls-remote`, so `git` must be on your `PATH` (see
+  [requirements](../index.mdx#requirements)). To list them from a mirror instead, configure
+  [`versions-source`](<../(fundamentals)/config.mdx#tools-versions-source>).
+- **A supported platform** - uv is published for Linux, macOS, and Windows, on x64 and arm64. x86 is
+  also supported on Linux and Windows, and arm, ppc64le, s390x, and riscv64 on Linux. On Linux, the
+  build for your system's libc, glibc or musl, is downloaded, except on arm, which uses a static
+  musl build that runs with either. Other platforms fail with an unsupported platform error.
+
+## Installation
+
+Install uv with [`proto install`](../commands/install.mdx), and pin a version with
+[`proto pin`](../commands/pin.mdx), or with the `--pin` option while installing:
+
+```shell
+# Install the detected version, or the latest when none is detected
+$ proto install uv
+
+# Install the newest 0.13 release, and pin it to the closest .prototools
+$ proto install uv 0.13 --pin
+
+# Pin a version without installing it
+$ proto pin uv 0.13
+```
+
+```toml title=".prototools"
+uv = "~0.13"
+```
+
+Besides versions and ranges, uv supports the `latest`
+[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. Each download is
+verified against the [SHA-256 checksum](../advanced/checksums.mdx#sha-checksums) that Astral
+publishes alongside it.
+
+If your project already declares uv's `required-version`, proto detects the version from it, with
+no [`.prototools`](<../(fundamentals)/config.mdx>) pin required (see [version files](#version-files)).
+
+Once installed, run uv and uvx through their [shims](<../(fundamentals)/workflows.mdx#shims>), or
+with [`proto run`](../commands/run.mdx):
+
+```shell
+# Run through the shims
+$ uv sync
+$ uvx ruff check
+
+# Run without shims
+$ proto run uv -- sync
+$ proto run uv --exe uvx -- ruff check
+```
+
+## Core features
+
+### Global packages
+
+`uv tool install` installs a Python command-line tool, like Ruff or httpie, into an isolated
+environment, and puts its executables in a bin directory.
+
+proto looks for their executables in the following directories, in order, skipping any whose
+environment variable isn't set:
+
+1. `$UV_TOOL_BIN_DIR`, when it's set.
+2. `$XDG_BIN_HOME`, when it's set.
+3. `$XDG_DATA_HOME/../bin`, when `XDG_DATA_HOME` is set.
+4. `~/.local/bin`.
+
+These are the same directories that uv installs to, so on most machines, it's `~/.local/bin`.
+
+proto adds these directories to `PATH` whenever uv runs through proto, and with
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>), so installed tools work
+right away. With shims alone, add the directory to your `PATH` yourself (see
+[troubleshooting](#installed-tools-arent-found)).
+
+```shell
+# Install a tool globally, and run it
+$ uv tool install ruff
+$ ruff --version
+
+# Print where the executables are installed
+$ proto bin uv --dir globals
+
+# Print the directories that proto looks in
+$ proto bin uv --dir globals --all
+```
+
+Installed tools live outside of proto's [store](<../(fundamentals)/store.mdx>), so they're shared by
+every version of uv, and kept when you uninstall a version. Tools you run with `uvx` aren't installed at
+all: they run from uv's cache, and don't need to be on `PATH`.
+
+### Version files
+
+Besides [`.prototools`](<../(fundamentals)/config.mdx>), proto
+[detects](<../(fundamentals)/detection.mdx#4-ecosystem-files>) a uv version from the following
+files, checked in this order in each directory:
+
+1. `uv.toml` - The top-level `required-version` field.
+2. `pyproject.toml` - The `required-version` field in the `[tool.uv]` table.
+
+Both are uv's own
+[`required-version`](https://docs.astral.sh/uv/reference/settings/#required-version) setting, which
+uv enforces whenever it runs.
+
+```toml title="pyproject.toml"
+[tool.uv]
+required-version = ">=0.13"
+```
+
+Like uv itself, a `uv.toml` takes precedence over the `pyproject.toml` next to it. When a directory
+has a `uv.toml` without `required-version`, its `pyproject.toml` is skipped too, as uv ignores
+`[tool.uv]` there, and detection continues in the parent directory. Other fields, like
+`requires-python`, are ignored.
+
+The value is a [PEP 440](https://peps.python.org/pep-0440/#version-specifiers) specifier, which
+proto converts into a [version requirement](<../(fundamentals)/version-spec.mdx>):
+
+- `==0.13.2`, or `0.13.2`, is that exact version. Short versions are padded with zeros, as PEP 440
+  compares them, so `==0.13` is `0.13.0`.
+- `==0.13.*` is any 0.13 release.
+- `>=`, `>`, `<=`, `<`, and `!=` are comparisons, which can be combined with commas, like
+  `>=0.12, !=0.12.3`.
+- `~=0.13.2` is any 0.13 release from 0.13.2, while `~=0.13` is any 0.x release from 0.13.
+
+These files are only read, so [`proto pin`](../commands/pin.mdx) with `--tool-native` isn't
+supported for uv. Edit `required-version` by hand instead. See
+[ecosystem files](<../(fundamentals)/detection.mdx#4-ecosystem-files>) for how they rank against
+[`.prototools`](<../(fundamentals)/config.mdx>), and note that
+[shell activation](<../(fundamentals)/detection.mdx#detection-by-command>) only activates tools
+pinned in a [`.prototools`](<../(fundamentals)/config.mdx>). A version from these files is still
+used by the `uv` shim.
+
+## Ecosystem
+
+### Python versions
+
+uv finds its own Python interpreters. When a command needs one, uv checks the project's virtual
+environment, then the Pythons it installed itself, with `uv python install` or automatically, then
+interpreters on `PATH`, and downloads one when nothing matches. Since proto's
+[Python](./python.mdx) is on `PATH` through shims or activation, uv uses it whenever it hasn't
+installed a matching version of its own.
+
+Both read the same `.python-version` file, so a version pinned with `uv python pin` is also the
+version that proto detects for `python`. Pick which one manages Python:
+
+- **uv** - Don't pin `python` with proto, and let uv download the versions a project needs, into
+  its own directory. This is the simplest setup when uv is your only Python tool.
+- **proto** - Pin `python` with proto, and tell uv to only use interpreters on `PATH`, with uv's
+  [`python-preference`](https://docs.astral.sh/uv/reference/settings/#python-preference) setting, or
+  the `UV_PYTHON_PREFERENCE` environment variable. This is useful when other tools, like
+  [Poetry](./poetry.mdx), need the same interpreter, or when Python versions should be installed
+  and [locked](../advanced/lockfile.mdx) by proto.
+
+For the second setup, add `python` to uv's
+[`requires`](<../(fundamentals)/config.mdx#tools-requires>). proto then installs Python before uv,
+fails when Python isn't pinned, and puts its Python on uv's `PATH` whenever uv runs:
+
+```toml title=".prototools"
+python = "3.13"
+uv = "0.13"
+
+[tools.uv]
+requires = ["python"]
+
+[tools.uv.env]
+# Never use, or download, a uv-managed Python
+UV_PYTHON_PREFERENCE = "only-system"
+```
+
+## Troubleshooting
+
+### Installed tools aren't found
+
+uv's bin directory isn't on your `PATH`, so your shell can't find a tool that `uv tool install`
+installed. uv warns about this when installing. Shims don't change your shell's `PATH`, so either
+use [shell activation](<../(fundamentals)/workflows.mdx#shell-activation>), run
+`uv tool update-shell` to add the directory to your shell profile, or add the directory printed by
+[`proto bin uv --dir globals`](../commands/bin.mdx) yourself.
+
+### uv reports a `required-version` mismatch
+
+proto reads the same field, so a mismatch means another version source took precedence over it,
+like a [`.prototools`](<../(fundamentals)/config.mdx>) in the same or a closer directory, a
+`PROTO_UV_VERSION` environment variable, or a version passed on the command line. uv then fails, as
+its version doesn't satisfy `required-version`. Run [`proto status`](../commands/status.mdx) to see
+which version is detected, and where it came from, then align the pin with `required-version`.
+
+## Caveats
+
+- **`uv self update` is blocked** - It would replace a version that proto manages, so in an
+  interactive terminal, proto offers to install and pin the `latest` version instead (see
+  [running tools](<../(fundamentals)/(plugin)/tool.mdx#running-tools>)). To upgrade yourself, run
+  [`proto install uv latest --pin`](../commands/install.mdx).
+- **uv's data lives outside the store** - Pythons, tools, and caches that uv manages live in uv's
+  own directories, outside of proto's [store](<../(fundamentals)/store.mdx>).
+  [`proto uninstall`](../commands/uninstall.mdx) and [`proto clean`](../commands/clean.mdx) don't
+  remove them, so use `uv python uninstall`, `uv tool uninstall`, and `uv cache clean` instead.

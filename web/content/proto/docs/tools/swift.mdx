@@ -2,8 +2,274 @@
 title: Swift
 ---
 
-## Installing
+import { TypeLabel } from "@/components/TypeLabel";
 
-## Version detection
+[Swift](https://www.swift.org/) is a compiled, general-purpose programming language, used for apps on
+Apple platforms, servers, and command-line tools. It's an unstable
+[built-in tool](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>) with the `swift` ID, so it
+works without configuring a plugin, but proto prints a warning when installing it.
+
+proto installs Swift from the prebuilt toolchains that Swift.org publishes, so you can pin a version
+per project without swiftly or Xcode. On Linux, Swift.org builds a toolchain for each distribution,
+so proto detects yours and downloads the matching build (see
+[Linux distributions](#linux-distributions)). On macOS, it downloads the universal `.pkg` installer,
+which runs on both Apple silicon and Intel.
+
+Each toolchain provides the `swift`, `swiftc`, and `sourcekit-lsp`
+[executables](<../(fundamentals)/(plugin)/tool.mdx#executables>), which are the primary executable,
+the compiler, and the language server, and proto creates
+[shims](<../(fundamentals)/workflows.mdx#shims>) for them. The toolchain's other executables, like
+`lldb`, are available through [shell activation](<../(fundamentals)/workflows.mdx#shell-activation>)
+and [`proto exec`](../commands/exec.mdx).
+
+## Prerequisites
+
+- **Git** - Versions are listed from the tags of the
+  [swiftlang/swift](https://github.com/swiftlang/swift) repository, with `git ls-remote`, so `git`
+  must be on your `PATH` (see [requirements](../index.mdx#requirements)).
+- **A supported platform** - Swift is published for Linux on x64 and arm64, with glibc, and for
+  macOS on Apple silicon and Intel. Linux distributions that use musl, like Alpine, aren't
+  supported. Other platforms, including Windows, fail with an unsupported platform error.
+- **System packages on Linux** - proto doesn't install the system packages that Swift needs, like
+  `libcurl` and `libxml2`, so install the packages that Swift.org lists for your distribution in its
+  [tarball instructions](https://www.swift.org/install/linux/tarball/).
+- **Xcode on macOS** - Xcode is optional, but Swift.org notes that Swift Package Manager may be
+  limited without it.
+
+## Installation
+
+Install Swift with [`proto install`](../commands/install.mdx), and pin a version with
+[`proto pin`](../commands/pin.mdx), or with the `--pin` option while installing:
+
+```shell
+# Install the detected version, or the latest when none is detected
+$ proto install swift
+
+# Install the newest 6.1 release, and pin it to the closest .prototools
+$ proto install swift 6.1 --pin
+
+# Pin a version without installing it
+$ proto pin swift 6.1
+
+# List the available versions
+$ proto versions swift
+```
+
+```toml title=".prototools"
+swift = "6.1.2"
+```
+
+Besides versions and ranges, Swift supports the `latest`
+[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. See
+[versions & aliases](#versions--aliases) for how Swift's versions map to proto's. Versions are
+listed from the release tags of the [swiftlang/swift](https://github.com/swiftlang/swift)
+repository, which can be pointed at a mirror with
+[`versions-source`](<../(fundamentals)/config.mdx#tools-versions-source>).
+
+Downloads are verified against Swift.org's
+[GPG signatures](../advanced/checksums.mdx#gpg-signatures) on Linux. macOS packages aren't
+verified against a signature, so proto
+[records a checksum](../advanced/checksums.mdx#tools-without-checksums) from the first download,
+and with a [lockfile](../advanced/lockfile.mdx), later installs must match it.
 
 ## Configuration
+
+Swift is configured in the `[tools.swift]` table of [`.prototools`](<../(fundamentals)/config.mdx>).
+Like other [tool settings](<../(fundamentals)/config.mdx#tools>), these only apply from a project's
+[`.prototools`](<../(fundamentals)/config.mdx>) once it's [trusted](<../(fundamentals)/trust.mdx>).
+
+### `dist-url`
+
+<TypeLabel type="string" /> - The URL to download toolchains from, like an
+internal mirror of `download.swift.org`. Defaults to
+`https://download.swift.org/{release}/{platform}/{folder}/{file}`.
+
+It supports the following placeholders:
+
+- `{release}` - The release directory, like `swift-6.1.2-release`.
+- `{platform}` - The platform directory: the [Linux distribution](#linux-distributions), like
+  `ubuntu2404`, with an `-aarch64` suffix on arm64, like `ubuntu2404-aarch64`, or `xcode` on macOS.
+- `{folder}` - The release folder, like `swift-6.1.2-RELEASE`.
+- `{file}` - The file name, like `swift-6.1.2-RELEASE-ubuntu24.04.tar.gz`, or
+  `swift-6.1.2-RELEASE-osx.pkg` on macOS.
+
+On Linux, the signature is downloaded from the same URL with `.sig` appended, so a mirror must serve
+it too. To redirect downloads without changing the template, you can also use
+[`url-rewrites`](<../(fundamentals)/config.mdx#url-rewrites>).
+
+```toml title=".prototools"
+[tools.swift]
+dist-url = "https://swift.mirror.internal/{release}/{platform}/{folder}/{file}"
+```
+
+### `linux-platform`
+
+<TypeLabel type="string" /> - The Linux distribution to download toolchains for,
+as one of the values in [Linux distributions](#linux-distributions). Swift.org's
+own names, like `ubuntu2204` or `ubi9`, work too. It's ignored on macOS.
+Defaults to the distribution detected on the current machine.
+
+Set it when your distribution isn't detected, like on Linux Mint 21, which is based on Ubuntu 22.04.
+A configured platform is used as-is for every version, without the fallback to older releases that
+detection has, so the version you install must have a build for it.
+
+```toml title=".prototools"
+[tools.swift]
+linux-platform = "ubuntu-22.04"
+```
+
+As the setting applies to every Linux machine that reads the file, configure a choice that's
+specific to your machine in your user [`.prototools`](<../(fundamentals)/config.mdx#locations>),
+rather than in a project's.
+
+## Core features
+
+### Global packages
+
+Swift Package Manager can build a package's executables and install them into `~/.swiftpm/bin`, with
+`swift package experimental-install`.
+
+proto looks for their executables in the following directory:
+
+1. `~/.swiftpm/bin`.
+
+proto adds this directory to `PATH` whenever Swift runs through proto, and with
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>). With shims alone, add
+`~/.swiftpm/bin` to your `PATH` yourself.
+
+```shell
+# Build the current package's executables, and install them into ~/.swiftpm/bin
+$ swift package experimental-install
+
+# Print the directories that proto looks in
+$ proto bin swift --dir globals --all
+```
+
+### Version files
+
+Besides [`.prototools`](<../(fundamentals)/config.mdx>), proto
+[detects](<../(fundamentals)/detection.mdx#4-ecosystem-files>) a Swift version from the following
+files, checked in this order in each directory:
+
+1. `.swift-version` - The version file used by swiftly and swiftenv. The version is read from the
+   first line with content, ignoring comments after `#` or `//`.
+2. `Package.swift` - The `// swift-tools-version:` comment of a Swift package manifest, which
+   declares the oldest toolchain that can build the package. It's read as a minimum, so `5.9`
+   becomes `>=5.9`. Settings after a `;`, like `6.3;(experimentalCGen)`, are ignored, and the
+   spacing and casing variations that SwiftPM accepts, like `//swift-tools-version:5.10`, are
+   supported.
+
+```text title=".swift-version"
+6.1.2 # Matches CI
+```
+
+```swift title="Package.swift"
+// swift-tools-version: 5.9
+import PackageDescription
+```
+
+As `>=5.9` matches every newer release, including future major versions, pin a version in
+`.swift-version` or [`.prototools`](<../(fundamentals)/config.mdx>) to stay on a release line.
+Manifests within `.build` directories, where SwiftPM checks out dependencies, are ignored, so a
+dependency's `Package.swift` never decides which version you run.
+
+## Ecosystem
+
+### Versions & aliases
+
+Swift doesn't use [semantic versions](<../(fundamentals)/version-spec.mdx#semantic-versions>) for
+all of its releases, so proto converts them:
+
+| Swift version | proto version |
+| ------------- | ------------- |
+| `5.10`        | `5.10.0`      |
+| `6.0`         | `6.0.0`       |
+| `6.0.3`       | `6.0.3`       |
+| `6.4.0`       | `6.4.0`       |
+
+Before Swift 6.4, Swift.org named the first release of each minor version without a patch version,
+like `6.0`. Patch releases, like `6.0.3`, and every release since Swift 6.4, like `6.4.0`, are
+already semantic versions. When choosing a version:
+
+- **Write proto's form**, like `6.0.0`, on the command line, in
+  [`.prototools`](<../(fundamentals)/config.mdx>), and in `.swift-version`, which is read the same
+  way.
+- **Partial versions are requirements.** `6.0` is a
+  [requirement](<../(fundamentals)/version-spec.mdx#requirements-and-ranges>) that matches every
+  6.0 release, so it resolves to the newest one, like `6.0.3`, not to the original `6.0`. Write
+  `6.0.0` for that release.
+- **`Package.swift` keeps SwiftPM's form.** Its `// swift-tools-version:` comment, like `5.9`, is
+  read as a minimum, `>=5.9`, when proto [reads it](#version-files).
+
+Run [`proto versions swift`](../commands/versions.mdx) to list every version as proto names it.
+
+### Linux distributions
+
+Swift.org builds each Linux toolchain for a specific distribution, against that distribution's
+system libraries, and a build for another distribution can fail with missing or mismatched
+libraries. So proto reads your distribution from `/etc/os-release`, and downloads its build:
+
+| Value               | Distribution                                            | Swift releases   |
+| ------------------- | ------------------------------------------------------- | ---------------- |
+| `amazon-linux-2`    | Amazon Linux 2                                          | 5.2.4 to 6.3.x   |
+| `amazon-linux-2023` | Amazon Linux 2023                                       | 6.3.1 and later  |
+| `debian-12`         | Debian 12                                               | 5.10.1 and later |
+| `debian-13`         | Debian 13                                               | 6.4.0 and later  |
+| `fedora-39`         | Fedora 39                                               | 5.10.1 to 6.3.x  |
+| `fedora-41`         | Fedora 41                                               | 6.2.4 and later  |
+| `redhat-ubi-9`      | RHEL 9, and derivatives like Rocky Linux and AlmaLinux  | 5.8.1 and later  |
+| `redhat-ubi-10`     | RHEL 10, and derivatives like Rocky Linux and AlmaLinux | 6.4.0 and later  |
+| `ubuntu-20.04`      | Ubuntu 20.04                                            | 5.2.4 to 6.1.x   |
+| `ubuntu-22.04`      | Ubuntu 22.04                                            | 5.7.0 and later  |
+| `ubuntu-24.04`      | Ubuntu 24.04 (also the fallback)                        | 5.10.1 and later |
+| `ubuntu-26.04`      | Ubuntu 26.04                                            | 6.4.0 and later  |
+
+On arm64, Amazon Linux 2 and Ubuntu 20.04 builds start at 5.6.0. A few things to know:
+
+- **Older releases are used as a fallback** - Swift.org only builds each version for the
+  distribution releases that are current at the time. When yours has no build of the version you're
+  installing, like Swift 6.1 on Ubuntu 26.04, proto uses the build for the newest older release of
+  the same distribution (Ubuntu 24.04 in that example), with a warning. When none has a build, like
+  Swift 6.2 on Ubuntu 20.04, the install fails.
+- **Undetected distributions use Ubuntu 24.04** - Any other distribution or release, like Linux
+  Mint or Fedora 40, falls back to `ubuntu-24.04`, with a warning. Set
+  [`linux-platform`](#linux-platform) to the closest match instead.
+- **Each build is locked separately** - Builds other than `ubuntu-24.04` are recorded as a
+  [variant](../advanced/lockfile.mdx#variants) in the lockfile, so machines on different
+  distributions can share one. When you lock Linux from another platform, with
+  [`proto lock --platform`](../commands/lock.mdx), proto can't detect a distribution, so it uses
+  `ubuntu-24.04`, or [`linux-platform`](#linux-platform) when it's configured.
+
+### Xcode toolchains
+
+On macOS, proto unpacks the contents of the `.pkg` installer into the
+[store](<../(fundamentals)/store.mdx>), instead of running it, so no administrator password is
+required. As a result, the toolchain isn't registered with Xcode: it's not listed in Xcode's
+toolchains menu, and Xcode, `xcodebuild`, and `xcrun` keep using Xcode's own Swift. Commands that run
+`swift` through proto's shims or activation, like `swift build` and `swift test`, use proto's.
+
+## Troubleshooting
+
+### Swift fails with missing libraries on Linux
+
+proto doesn't install the system packages that Swift needs, so a fresh machine or container often
+lacks some of them. Install the dependencies that Swift.org lists for your distribution in its
+[tarball instructions](https://www.swift.org/install/linux/tarball/). If your distribution wasn't
+detected, and the `ubuntu-24.04` fallback was installed, set
+[`linux-platform`](#linux-platform) to a closer match, then reinstall with
+[`proto install swift --force`](../commands/install.mdx).
+
+### `swift` runs Xcode's version on macOS
+
+macOS provides its own `swift` in `/usr/bin`. When proto doesn't detect a Swift version for the
+current directory, it falls back to that executable, so pin a version in
+[`.prototools`](<../(fundamentals)/config.mdx>) or `.swift-version`. Otherwise, check that
+`~/.proto/shims` comes before `/usr/bin` in your `PATH`, and compare the result of `which swift`
+with [`proto bin swift --shim`](../commands/bin.mdx).
+
+## Caveats
+
+- **Releases only** - Only releases can be installed, as development snapshots aren't listed.
+- **Swift 5 and 6 only on Linux** - On Linux, downloads are verified with the Swift 5 and Swift 6
+  release signing keys that the plugin includes, so only Swift 5.x and 6.x releases can be installed
+  there.

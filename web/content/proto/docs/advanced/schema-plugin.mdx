@@ -1,0 +1,956 @@
+---
+title: Non-WASM plugins
+icon: FileCode
+---
+
+import { SchemaTabs } from "@/components/proto/SchemaTabs";
+import { TypeLabel } from "@/components/TypeLabel";
+
+A non-WASM schema plugin describes a tool in a JSON, TOML, or YAML file, instead of in code. The schema tells
+proto where to find the tool's versions, which file to download for each platform, and which
+executables it contains, and proto takes care of the rest:
+[detecting versions](<../(fundamentals)/detection.mdx>), downloading and
+[verifying](./checksums.mdx) archives, and creating shims and binaries. There's nothing to compile,
+so it's the quickest way to add a tool that proto doesn't support, like the many CLIs that publish
+prebuilt archives on GitHub releases.
+
+proto doesn't interpret the schema itself. It passes the parsed file to a built-in WASM plugin,
+which implements the [tool plugin functions](../../../wasm/docs/tool.mdx) from your settings. A
+schema plugin is therefore downloaded, cached, and sandboxed like any other
+[plugin](<../(fundamentals)/(plugin)/plugin.mdx>), but it can only do what a schema can describe:
+install prebuilt files. Tools that must be built from source or need custom logic, and
+[backends](<../(fundamentals)/(plugin)/backend.mdx>), require a
+[WASM plugin](../../../wasm/docs/creating.mdx).
+
+Schemas come in two formats, and both can be written in any of the file types:
+
+- **[Format v2](#format-v2)** - Enabled with `format = "2"`. Its sections mirror the outputs of the
+  WASM plugin functions, its keys are snake_case, and it supports version-specific
+  [overrides](#overrides). Use it for new plugins.
+- **[Format v1](#format-v1)** - The original format, used when `format` isn't set. Its keys are
+  kebab-case in TOML, and camelCase in JSON and YAML.
+
+For real-world examples of both formats, browse the
+[community plugins](https://github.com/moonrepo/community-plugins) repository.
+
+## Creating a plugin
+
+Create a file named after the tool, with a `.toml`, `.json`, `.jsonc`, `.yaml`, or `.yml`
+extension. The extension tells proto how to parse the file, and every file type supports the same
+settings, so pick whichever you prefer.
+
+For example, the following schema describes Protostar, a fictional CLI that publishes an archive for
+each platform on its GitHub releases:
+
+<SchemaTabs
+  config={{
+    format: "2",
+    metadata: {
+      name: "Protostar",
+      type: "cli",
+    },
+    resolve: {
+      git_url: "https://github.com/example/protostar",
+    },
+    platform: {
+      linux: {
+        download_name: "protostar-{arch}-unknown-linux-{libc}.tar.gz",
+      },
+      macos: {
+        download_name: "protostar-{arch}-apple-darwin.tar.gz",
+      },
+      windows: {
+        download_name: "protostar-{arch}-pc-windows-msvc.zip",
+      },
+    },
+    install: {
+      download_url:
+        "https://github.com/example/protostar/releases/download/v{version}/{download_name}",
+    },
+  }}
+/>
+
+That's all most tools need:
+
+- `metadata` names the tool, and sets its [type](#plugin-metadata).
+- `resolve` loads the available versions from the repository's
+  [Git tags](#git-tags-or-json-index).
+- `platform` lists the supported operating systems, and the
+  [file to download](#platform-variations) on each.
+- `install` builds the [download URL](#downloading-and-installing) from tokens, like `{version}`
+  and `{download_name}`, which are replaced for the version and platform being installed.
+
+No executables are configured, so proto [locates](#locating-executables) a primary executable named
+after the tool's ID at the root of the archive, like `protostar`, or `protostar.exe` on Windows.
+
+To try it out, [enable the plugin](#enabling-a-plugin) with a `file://` locator, then install and
+run a version:
+
+```shell
+# Register the plugin in the closest .prototools
+$ proto plugin add protostar "file://./protostar.toml"
+
+# Install and run the latest version
+$ proto install protostar
+$ proto run protostar -- --version
+```
+
+Local files aren't cached, so changes to the schema apply the next time proto runs. Lists of
+versions are cached for up to 12 hours though, so set `PROTO_CACHE=off` after changing how versions
+are resolved. [`proto versions`](../commands/versions.mdx) lists the versions that your schema
+resolves, and [`proto plugin info`](../commands/plugin/info.mdx) shows the executables it locates.
+
+## Enabling a plugin
+
+A schema plugin is enabled like a WASM plugin: register it under an ID in the
+[`[plugins.tools]`](<../(fundamentals)/config.mdx#plugins>) section of a
+[`.prototools`](<../(fundamentals)/config.mdx>) file, or with the tool's
+[`plugin`](<../(fundamentals)/config.mdx#tools-plugin>) setting, and pin a version with the same
+ID. The value is a [plugin locator](../../../wasm/docs/plugin-locators.mdx) that points to the
+schema file:
+
+```toml title=".prototools"
+protostar = "1.4.0"
+
+[plugins.tools]
+protostar = "file://./tools/protostar.toml"
+```
+
+The `github://` locator only looks for `.wasm` assets, so link to a schema in a GitHub release with
+an `https://` URL instead. Like any plugin, a schema configured in a project's
+[`.prototools`](<../(fundamentals)/config.mdx>) isn't loaded until the file is
+[trusted](<../(fundamentals)/trust.mdx>).
+
+## Format v2
+
+The v2 format is enabled with a top-level `format` set to `"2"` (or the number `2`). Keys are
+snake_case in every file type, and settings are organized into sections, most of which map onto the
+output of a [WASM plugin function](../../../wasm/docs/tool.mdx):
+
+| Section                                    | Configures                              | Plugin function                                                            |
+| ------------------------------------------ | --------------------------------------- | -------------------------------------------------------------------------- |
+| [`plugin`](#plugin-metadata)               | Information about the plugin            |                                                                            |
+| [`metadata`](#plugin-metadata)             | The tool's name, type, and requirements | [`register_tool`](../../../wasm/docs/tool.mdx#register_tool)               |
+| [`detect`](#detecting-versions)            | Files to detect versions from           | [`detect_version_files`](../../../wasm/docs/tool.mdx#detect_version_files) |
+| [`resolve`](#git-tags-or-json-index)       | Where to load versions from             |                                                                            |
+| [`source`](#explicit-versions-and-aliases) | Explicit versions and aliases           | [`load_versions`](../../../wasm/docs/tool.mdx#load_versions)               |
+| [`install`](#downloading-and-installing)   | What to download, and how to verify it  | [`download_prebuilt`](../../../wasm/docs/tool.mdx#download_prebuilt)       |
+| [`locate`](#locating-executables)          | Executables and global packages         | [`locate_executables`](../../../wasm/docs/tool.mdx#locate_executables)     |
+| [`platform`](#platform-variations)         | Settings for each operating system      |                                                                            |
+| [`overrides`](#overrides)                  | Settings for a range of versions        |                                                                            |
+
+Only `format` and `metadata` are required to load the schema, but installing a tool also requires a
+source of versions, a platform for the current operating system, and a download URL. Unknown
+settings at the top level, and in `plugin`, `resolve`, `platform`, and `overrides`, fail with an
+error, which catches typos early. The other sections ignore unknown settings, so double-check their
+spelling.
+
+### Plugin metadata
+
+The `metadata` section registers the tool with proto, like the output of
+[`register_tool`](../../../wasm/docs/tool.mdx#register_tool). `name` and `type` are required:
+
+- `name` <TypeLabel type="string" /> - The tool's human-readable name, displayed in proto's output.
+- `type` <TypeLabel type="string" /> - The kind of tool: `command-line` (or `cli`), `language` (or
+  `lang`), `dependency-manager` (or `dm`, `pm`), or `version-manager` (or `vm`).
+- `requires` <TypeLabel type="string[]" /> - IDs of other tools that this tool requires, like `node`
+  for a tool that's a Node.js script. A required tool must have a version configured, is installed
+  first, and is added to the environment when this tool runs.
+- `self_upgrade_commands` <TypeLabel type="string[]" /> - Arguments that make the tool upgrade
+  itself, like `upgrade` or `self-update`. proto refuses to run them, as it manages the tool's
+  versions, and offers to upgrade through proto instead.
+- `deprecations` <TypeLabel type="string[]" /> - Messages displayed to users of the plugin, like
+  for a setting or tool that's going away.
+- `unstable` <TypeLabel type="boolean | string" /> - Marks the tool as unstable, which displays a
+  warning when it's installed. A string is used as the warning's message.
+- `plugin_version` <TypeLabel type="string" /> - The version of your schema. Defaults to the
+  version of the built-in schema plugin.
+- `minimum_proto_version` <TypeLabel type="string" /> - The oldest version of proto that the schema
+  supports, which fails with an error when proto is older. It's never lower than the version that
+  the built-in schema plugin requires.
+- `inventory_options` and `lock_options` <TypeLabel type="object" /> - Customize where versions are
+  installed, and how they're recorded in the [lockfile](./lockfile.mdx), with
+  [`ToolInventoryOptions`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.ToolInventoryOptions.html)
+  and
+  [`ToolLockOptions`](https://docs.rs/proto_pdk_api/latest/proto_pdk_api/struct.ToolLockOptions.html).
+  Rarely needed.
+
+The optional `plugin` section describes the plugin itself, with `description`, `homepage_url`, and
+`repository_url` strings. These are informational, and don't change how the tool works.
+
+<SchemaTabs
+  config={{
+    format: "2",
+    plugin: {
+      description: "A fast CLI for managing stars.",
+      repository_url: "https://github.com/example/protostar",
+    },
+    metadata: {
+      name: "Protostar",
+      type: "cli",
+      requires: ["node"],
+      self_upgrade_commands: ["upgrade"],
+    },
+  }}
+/>
+
+### Detecting versions
+
+proto [detects](<../(fundamentals)/detection.mdx>) the version of a tool to use from the command
+line, environment variables, and [`.prototools`](<../(fundamentals)/config.mdx>) files, without
+any configuration. The `detect` section adds the tool's own version files, which are checked in
+each directory while traversing upwards, like `.nvmrc` for Node.js (see
+[ecosystem files](<../(fundamentals)/detection.mdx#4-ecosystem-files>)):
+
+- `files` <TypeLabel type="string[]" /> - Names of version files to check, in order of priority.
+- `ignore` <TypeLabel type="string[]" /> - Directories to skip while traversing. A directory is
+  skipped when its path contains any of these values, like `node_modules`.
+
+<SchemaTabs
+  config={{
+    detect: {
+      files: [".protostar-version", ".protostarrc"],
+      ignore: ["node_modules"],
+    },
+  }}
+/>
+
+Version files must be plain text. The version is read from the first line with content, with
+comments (everything after a `#` or `//`) removed, and can be a version, a requirement like `~1.4`,
+or an alias.
+
+### Resolving versions
+
+proto resolves a version requirement, like `1.4` or `^2`, against the list of versions that a schema
+provides. The list is loaded from a Git repository or a JSON index, configured with the `resolve`
+section, and combined with any explicit versions in the `source` section. Resolving fails when
+neither provides a version.
+
+The highest stable version becomes the `latest` alias, unless
+[configured otherwise](#explicit-versions-and-aliases). Git tags and indexes are loaded through
+proto, so users can point them at a mirror with the
+[`versions-source`](<../(fundamentals)/config.mdx#tools-versions-source>) setting, without changing
+your schema.
+
+#### Git tags or JSON index
+
+To load versions from the tags of a Git repository, which is what most tools need, configure the
+following settings:
+
+- `git_url` <TypeLabel type="string" /> - URL of the Git repository to list tags from.
+- `git_tag_pattern` <TypeLabel type="string" /> - A [version pattern](#version-patterns) that
+  matches tags, and extracts the version from them. Defaults to `version_pattern`.
+
+<SchemaTabs
+  config={{
+    resolve: {
+      git_url: "https://github.com/example/protostar",
+      git_tag_pattern:
+        "^protostar-v((?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+))$",
+    },
+  }}
+/>
+
+Some tools publish their releases in a JSON index instead, like Node.js does with
+`https://nodejs.org/dist/index.json`. Indexes are only used when `git_url` isn't set:
+
+- `index_url` <TypeLabel type="string" /> - URL of the JSON index.
+- `index_version_key` <TypeLabel type="string" /> - Where to find versions in the index. Defaults to
+  `version`. Every value found is matched with the [`version_pattern`](#version-patterns).
+
+How `index_version_key` is used depends on the shape of the index:
+
+- **An array of strings**, like `["1.0.0", "1.1.0"]` - Works with the default.
+- **An array of objects** - A plain key selects that key from each object, so the default reads
+  `[{ "version": "1.0.0" }]`. Every object must have the key, otherwise loading fails.
+- **Anything else** - A JSON path, used whenever the value contains a `.`, `[`, `*`, `$`, or `~`.
+  For example, `releases[*].tag` reads `{ "releases": [{ "tag": "v1.0.0" }] }`, and `*~` reads the
+  keys of an object that's keyed by version, like `{ "1.0.0": {} }`.
+
+<SchemaTabs
+  config={{
+    resolve: {
+      index_url: "https://releases.example.com/protostar/index.json",
+      index_version_key: "releases[*].tag",
+    },
+  }}
+/>
+
+#### Explicit versions and aliases
+
+The `source` section lists versions and aliases explicitly, like the output of
+[`load_versions`](../../../wasm/docs/tool.mdx#load_versions). It's useful for internal tools without
+tags or an index, and for adding aliases on top of the versions loaded from `resolve`:
+
+- `versions` <TypeLabel type="string[]" /> - Versions to make available, combined with the versions
+  loaded from `resolve`.
+- `aliases` <TypeLabel type="Record<string, string>" /> - Aliases mapped to a version, a
+  requirement, or another alias, which users can install and pin like versions, for example
+  `proto install protostar stable`.
+- `latest` <TypeLabel type="string" /> - What the `latest` alias resolves to, instead of the
+  highest stable version. When it's a version with a pre-release or build metadata, the highest
+  stable version is used instead.
+
+<SchemaTabs
+  config={{
+    source: {
+      versions: ["1.3.0", "1.4.0", "2.0.0-rc.1"],
+      latest: "1.4.0",
+      aliases: {
+        stable: "~1.4",
+        next: "2.0.0-rc.1",
+      },
+    },
+  }}
+/>
+
+#### Version patterns
+
+Tags and index entries are rarely just versions. A version pattern is a
+[Rust regex](https://docs.rs/regex/latest/regex/#syntax) that matches an entry, and extracts the
+version from it with named capture groups. Entries that don't match are skipped, so a pattern
+filters out unrelated tags too, like nightlies.
+
+- `version_pattern` <TypeLabel type="string" /> - The pattern for index entries, and for tags when
+  `git_tag_pattern` isn't set. The default matches versions like `1.2.3`, `v1.2.3`, `1.2.3.4`, and
+  `1.2.3-rc.1+build.5`.
+
+The version is built from the following groups:
+
+- `major` / `year` - The 1st number.
+- `minor` / `month` - The 2nd number.
+- `patch` / `day` - The 3rd number.
+- `revision` - An optional 4th number.
+- `pre` - A pre-release identifier, like `rc.1`, with an optional leading `-`.
+- `build` - Build metadata, like a timestamp, with an optional leading `+`.
+
+Missing numbers default to `0`, and leading zeros are removed, so `2024.01.05` becomes `2024.1.5`.
+Without a `major` or `year` group, the first capture group is used as the version, as-is, and a
+pattern without any capture group fails with an error. For example, to load calendar versions from
+tags like `v2024.08.06`:
+
+<SchemaTabs
+  config={{
+    resolve: {
+      git_url: "https://github.com/example/protostar",
+      version_pattern: "^v(?<year>\\d{4})\\.(?<month>\\d{2})\\.(?<day>\\d{2})$",
+    },
+  }}
+/>
+
+As leading zeros are removed, use the `{versionYear}`, `{versionMonth}`, and `{versionDay}`
+[tokens](#downloading-and-installing) to add them back when downloading, like
+`v{versionYear}.{versionMonth}.{versionDay}`.
+
+### Downloading and installing
+
+A schema plugin installs the tool from a prebuilt file, which is configured with the `install`
+section, like the output of [`download_prebuilt`](../../../wasm/docs/tool.mdx#download_prebuilt).
+Archives, like `.tar.gz`, `.tar.xz`, and `.zip`, are unpacked into the install directory. Any other
+file is treated as the executable itself, and copied into the install directory under the tool's ID.
+
+- `download_url` <TypeLabel type="string" /> - URL of the file to download. Required.
+- `download_name` <TypeLabel type="string" /> - Name of the downloaded file, which proto uses to
+  detect the archive format. Defaults to the last segment of the URL. Usually set for each
+  [platform](#platform-variations) instead.
+- `archive_prefix` <TypeLabel type="string" /> - Name of the folder in the archive that contains the
+  tool, which is removed when unpacking, like `protostar-{version}`. Omit it when the files are at
+  the root of the archive.
+- `http_headers` <TypeLabel type="Record<string, string>" /> - HTTP headers to send when downloading.
+- `post_script` <TypeLabel type="string" /> - A script to run after installing, relative to the
+  install directory. It must be executable, and runs through a shell, in the install directory.
+- `post_script_args` <TypeLabel type="string[]" /> - Arguments to pass to `post_script`.
+- `checksum_url`, `checksum_name`, `checksum_public_key`, and `checksum` - Verify the download (see
+  [checksums](#checksums)).
+
+<SchemaTabs
+  config={{
+    install: {
+      download_url:
+        "https://github.com/example/protostar/releases/download/v{version}/{download_name}",
+      archive_prefix: "protostar-{version}",
+    },
+  }}
+/>
+
+#### Interpolation tokens
+
+The URLs, names, and `archive_prefix` support tokens, which are replaced for the version and platform
+being installed:
+
+- `{version}` - The resolved version, like `1.4.0`, or `canary`.
+- `{versionMajor}`, `{versionMinor}`, and `{versionPatch}` - A part of the version, like `1`, `4`,
+  and `0`.
+- `{versionYear}`, `{versionMonth}`, and `{versionDay}` - A part of a calendar version, with leading
+  zeros, like `2024`, `08`, and `06`.
+- `{versionPrerelease}` and `{versionBuild}` - The pre-release and build metadata, like `rc.1`, or
+  empty when there's none.
+- `{os}` - The operating system, like `linux`, `macos`, or `windows`.
+- `{arch}` - The architecture, like `x86_64` or `aarch64`, which can be
+  [customized](#platform-variations).
+- `{libc}` - The C library on Linux, `gnu` or `musl`, which can be
+  [customized](#platform-variations). It's `unknown` on other operating systems.
+- `{download_name}` - The `download_name`, in `download_url` and `checksum_url`.
+- `{checksum_name}` - The `checksum_name`, in `checksum_url`.
+
+The version part tokens are empty for canary releases. `{download_file}` and `{checksum_file}` are
+aliases of the name tokens, for compatibility with [format v1](#format-v1). Using a name token
+without its name configured for the current platform fails with an error, instead of downloading
+from a broken URL.
+
+#### Platform variations
+
+Prebuilt files are usually different for each operating system, so the `platform` section maps an
+operating system to settings for it. Supported operating systems are `linux`, `macos`, `windows`,
+`freebsd`, `netbsd`, `openbsd`, `dragonfly`, `android`, `ios`, and `solaris`.
+
+- `download_name` <TypeLabel type="string" /> - Name of the file to download, which takes
+  precedence over `install.download_name`.
+- `checksum_name` <TypeLabel type="string" /> - Name of the checksum file, which takes precedence
+  over `install.checksum_name`.
+- `archive_prefix` <TypeLabel type="string" /> - Folder in the archive to remove, which takes
+  precedence over `install.archive_prefix`.
+- `archs` <TypeLabel type="string[]" /> - Supported architectures. Installing on another
+  architecture fails with an unsupported error. Supports all architectures when omitted.
+- `arch` <TypeLabel type="Record<string, string>" /> - Custom values for the `{arch}` token, keyed by
+  architecture, for tools that use different names, like `amd64`.
+- `libc` <TypeLabel type="Record<string, string>" /> - Custom values for the `{libc}` token, keyed
+  by `gnu` or `musl`.
+- `exe_path` <TypeLabel type="string" /> - Path to the primary executable on this operating system,
+  which takes precedence over its `exe_path` in [`locate.exes`](#locating-executables).
+- `exes_dirs` <TypeLabel type="string[]" /> - Directories of pre-installed executables, which take
+  precedence over [`locate.exes_dirs`](#locating-executables).
+
+<SchemaTabs
+  config={{
+    platform: {
+      linux: {
+        download_name: "protostar_{version}_linux_{arch}.tar.gz",
+        archs: ["x64", "arm64"],
+        arch: {
+          x64: "amd64",
+        },
+      },
+      macos: {
+        download_name: "protostar_{version}_darwin_{arch}.tar.gz",
+        archs: ["x64", "arm64"],
+        arch: {
+          x64: "amd64",
+        },
+      },
+      windows: {
+        download_name: "protostar_{version}_windows_{arch}.zip",
+        archs: ["x64"],
+        arch: {
+          x64: "amd64",
+        },
+        exe_path: "bin/protostar",
+      },
+    },
+  }}
+/>
+
+Architectures are named `x86`, `x64`, `arm`, `arm64`, `riscv64`, `s390x`, and so on (`x86_64` and
+`aarch64` also work), while the `{arch}` token defaults to Rust's names, like `x86_64` and
+`aarch64`. Map only the values that differ, as unmapped architectures keep their default.
+
+<Callout>
+  Every supported operating system needs a table in `platform`, even when it has
+  no settings of its own, like an empty `[platform.windows]` for a tool with a
+  single download URL. Installing on an operating system without one fails with
+  an unsupported error. BSD-based systems fall back to the `linux` table when
+  they don't have their own.
+</Callout>
+
+#### Checksums
+
+proto [verifies every download](./checksums.mdx) against the checksum or signature that a tool
+publishes, when the schema provides one. Without one, proto computes a SHA-256 checksum of the
+download, and records it instead.
+
+- `checksum_url` <TypeLabel type="string" /> - URL of a checksum or signature file, like
+  `SHASUMS256.txt`, `protostar.tar.gz.sha256`, or `protostar.tar.gz.minisig`. Supports the same
+  tokens as `download_url`, plus `{checksum_name}`.
+- `checksum_name` <TypeLabel type="string" /> - Name of the checksum file, which proto uses to
+  detect the algorithm. Defaults to the last segment of the URL. Usually set for each
+  [platform](#platform-variations) instead.
+- `checksum_public_key` <TypeLabel type="string" /> - The public key that a
+  [minisign](./checksums.mdx#minisign-signatures) or [GPG](./checksums.mdx#gpg-signatures)
+  signature is verified with.
+- `checksum` <TypeLabel type="string" /> - The expected checksum itself, like `sha256:<hash>`,
+  instead of a file to download. As it applies to every platform, it's only useful for downloads
+  that are the same on every platform, in an [override](#overrides) for a specific version.
+
+<SchemaTabs
+  config={{
+    install: {
+      download_url:
+        "https://github.com/example/protostar/releases/download/v{version}/{download_name}",
+      checksum_url:
+        "https://github.com/example/protostar/releases/download/v{version}/{download_name}.sha256",
+    },
+  }}
+/>
+
+### Locating executables
+
+Once installed, proto needs to know which [executables](<../(fundamentals)/(plugin)/tool.mdx#executables>)
+the tool provides, to create shims and binaries for them. The `locate` section configures them, like
+the output of [`locate_executables`](../../../wasm/docs/tool.mdx#locate_executables):
+
+- `exes` <TypeLabel type="Record<string, object>" /> - Executables, keyed by the name of their shim
+  and binary, with the following settings:
+  - `exe_path` <TypeLabel type="string" /> - Path to the executable, relative to the install
+    directory. `.exe` is added on Windows when the path has no extension, so `bin/protostar` works
+    on every platform.
+  - `primary` <TypeLabel type="boolean" /> - Whether it's the primary executable, which
+    [`proto run`](../commands/run.mdx) runs by default. Only one executable can be primary.
+  - `no_bin` <TypeLabel type="boolean" /> - Don't create a binary in `~/.proto/bin`.
+  - `no_shim` <TypeLabel type="boolean" /> - Don't create a shim in `~/.proto/shims`.
+  - `exe_link_path` <TypeLabel type="string" /> - The executable that binaries link to, instead of
+    `exe_path`, for when `exe_path` isn't a standard executable.
+  - `parent_exe_name` <TypeLabel type="string" /> - An executable required to run this one, like
+    `node` for a `.js` file.
+  - `parent_exe_args` <TypeLabel type="string[]" /> - Arguments to pass to the parent executable,
+    before all other arguments.
+  - `shim_before_args` and `shim_after_args` <TypeLabel type="string | string[]" /> - Arguments
+    that the shim adds before or after the arguments it's run with.
+  - `shim_env_vars` <TypeLabel type="Record<string, string>" /> - Environment variables that the
+    shim sets.
+- `exes_dirs` <TypeLabel type="string[]" /> - Directories that contain executables, relative to the
+  install directory, which [shell activation](<../(fundamentals)/workflows.mdx#shell-activation>)
+  adds to `PATH`. Useful for tools that ship many executables, without creating shims for each.
+
+<SchemaTabs
+  config={{
+    locate: {
+      exes: {
+        protostar: {
+          exe_path: "bin/protostar",
+          primary: true,
+        },
+        "protostar-lsp": {
+          exe_path: "bin/protostar-lsp",
+          no_bin: true,
+        },
+      },
+    },
+  }}
+/>
+
+Executable paths support the same tokens as [download URLs](#downloading-and-installing). When no
+executable is marked as primary, one is created that's named after the tool's ID, at the path in
+[`platform.<os>.exe_path`](#platform-variations), or at the root of the install directory.
+
+#### Global packages
+
+Tools with their own package manager, like npm or Cargo, can install packages globally. The
+following settings tell proto where those packages' executables are, so that
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>) and
+[`proto exec`](../commands/exec.mdx) add them to `PATH`, and
+[`proto bin --dir globals`](../commands/bin.mdx) prints them:
+
+- `globals_lookup_dirs` <TypeLabel type="string[]" /> - Directories where global executables may be
+  installed.
+- `globals_prefix` <TypeLabel type="string" /> - A prefix that every global executable has, which is
+  removed when listing them, like `cargo-` for Cargo.
+
+Directories support environment variables, like `$PROTOSTAR_HOME`, and are skipped when a variable
+isn't set. `~` and `$HOME` are your home directory, `$PROTO_HOME` is proto's
+[store](<../(fundamentals)/store.mdx>), and `$TOOL_DIR` is the install directory of the version.
+
+<SchemaTabs
+  config={{
+    locate: {
+      globals_lookup_dirs: ["$PROTOSTAR_HOME/bin", "~/.protostar/bin"],
+    },
+  }}
+/>
+
+### Overrides
+
+Tools change over time: assets get renamed, platforms are dropped, and downloads move to another
+host. Instead of a schema per version, the `overrides` section is a list of entries that apply
+settings to a range of versions. Each entry has a required `range`, and any of the following:
+
+- `range` <TypeLabel type="string" /> - A [version range](<../(fundamentals)/version-spec.mdx#requirements-and-ranges>),
+  like `>=2` or `<1.5`, or `canary` to match canary releases.
+- `install` - [Install settings](#downloading-and-installing) for matching versions.
+- `locate` - [Locate settings](#locating-executables) for matching versions.
+- `platform` - [Platform settings](#platform-variations) for matching versions.
+- `resolve` - [Resolve settings](#git-tags-or-json-index), matched against the version being
+  resolved, instead of installed.
+
+<SchemaTabs
+  config={{
+    overrides: [
+      {
+        range: ">=2",
+        platform: {
+          linux: {
+            download_name: "protostar-{version}-linux-{arch}.tar.gz",
+            archs: ["x64"],
+          },
+        },
+      },
+      {
+        range: "^3",
+        install: {
+          download_url:
+            "https://downloads.example.com/protostar/{version}/{download_name}",
+        },
+        locate: {
+          exes: {
+            protostar: {
+              exe_path: "protostar-{version}/protostar",
+              primary: true,
+            },
+          },
+        },
+      },
+      {
+        range: "canary",
+        install: {
+          download_url:
+            "https://downloads.example.com/protostar/nightly/{download_name}",
+        },
+      },
+    ],
+  }}
+/>
+
+Overrides apply on top of the base settings, in the order they're declared, so later entries take
+precedence when several match. Within an entry, `platform` settings take precedence over `install`
+and `locate` settings, like they do in the base schema. A few things to know:
+
+- Each setting replaces the previous value, including lists and maps like `locate.exes`, which must
+  be redeclared in full. The `arch` and `libc` maps of a platform are the exception, as they're
+  merged.
+- Pre-releases match the range of their release, so `2.0.0-rc.1` matches `>=2`, and `1.9.0-rc.1`
+  matches `<2`. Ranges with a pre-release of their own, like `>=2.0.0-rc.2`, use standard semver
+  matching.
+- An override can't add support for an operating system, as the base `platform` must have a table
+  for it.
+
+`resolve` overrides are matched against the version being resolved, like `0.21` or `^0.5`, which
+matches when at least one version satisfies both it and the range. Aliases, like `latest`, never
+match. This lets a tool that changed its tag format load older versions with another pattern:
+
+<SchemaTabs
+  config={{
+    resolve: {
+      git_url: "https://github.com/example/protostar",
+    },
+    overrides: [
+      {
+        range: "<1",
+        resolve: {
+          git_tag_pattern:
+            "^@protostar/cli@((?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+))$",
+        },
+      },
+    ],
+  }}
+/>
+
+Setting either `git_url` or `index_url` in an override replaces both, to switch where versions are
+loaded from.
+
+## Format v1
+
+The v1 format is used when the schema doesn't set `format`. Keys are kebab-case in TOML, and
+camelCase in JSON and YAML, which proto converts to kebab-case (except user-defined keys, like
+operating systems, architectures, executables, and aliases). v1 supports most of what v2 does, with
+a different layout, but doesn't support [overrides](#overrides), HTTP headers, or post-install
+scripts, so consider [format v2](#format-v2) for new plugins.
+
+### Plugin metadata [#v1-plugin-metadata]
+
+Metadata is spread across the top level and the `metadata` section:
+
+- `name` <TypeLabel type="string" /> - The tool's human-readable name, displayed in proto's output.
+- `type` <TypeLabel type="string" /> - The kind of tool: `command-line` (or `cli`), `language`,
+  `dependency-manager` (or `package-manager`), or `version-manager`. Defaults to `language`.
+- `deprecations` <TypeLabel type="string[]" /> - Messages displayed to users of the plugin.
+- `metadata.requires` <TypeLabel type="string[]" /> - IDs of other tools that this tool requires.
+  A required tool must have a version configured, is installed first, and is added to the
+  environment when this tool runs.
+- `metadata.self-upgrade-commands` <TypeLabel type="string[]" /> - Arguments that make the tool
+  upgrade itself, like `upgrade`, which proto refuses to run.
+- `metadata.plugin-version` <TypeLabel type="string" /> - The version of your schema. Defaults to
+  the version of the built-in schema plugin.
+
+The optional `plugin` section describes the plugin itself, with `description`, `homepage-url`, and
+`repository-url` strings. These are informational, and don't change how the tool works.
+
+<SchemaTabs
+  format="v1"
+  config={{
+    name: "Protostar",
+    type: "cli",
+    plugin: {
+      description: "A fast CLI for managing stars.",
+      repositoryUrl: "https://github.com/example/protostar",
+    },
+    metadata: {
+      selfUpgradeCommands: ["upgrade"],
+    },
+  }}
+/>
+
+### Detecting versions [#v1-detecting-versions]
+
+The `detect` section adds the tool's own version files, which proto checks in each directory while
+[detecting](<../(fundamentals)/detection.mdx#4-ecosystem-files>) a version:
+
+- `version-files` <TypeLabel type="string[]" /> - Names of version files to check, in order of
+  priority.
+- `ignore` <TypeLabel type="string[]" /> - Directories to skip, when their path contains any of
+  these values.
+
+<SchemaTabs
+  format="v1"
+  config={{
+    detect: {
+      versionFiles: [".protostar-version", ".protostarrc"],
+    },
+  }}
+/>
+
+Version files are parsed like in [format v2](#detecting-versions): the first line with content is
+used, without comments.
+
+### Resolving versions [#v1-resolving-versions]
+
+Versions are configured with the `resolve` section. They're loaded from a Git repository or a JSON
+manifest, and combined with any explicit versions. Resolving fails when neither provides a version.
+
+#### Git tags or JSON manifest [#v1-git-tags-or-json-manifest]
+
+- `git-url` <TypeLabel type="string" /> - URL of the Git repository to list tags from.
+- `git-tag-pattern` <TypeLabel type="string" /> - A [version pattern](#v1-version-patterns) for
+  tags. Defaults to `version-pattern`.
+- `manifest-url` <TypeLabel type="string" /> - URL of a JSON index of versions, used when `git-url`
+  isn't set.
+- `manifest-version-key` <TypeLabel type="string" /> - Where to find versions in the manifest.
+  Defaults to `version`. Supports a key or a JSON path, like
+  [`index_version_key`](#git-tags-or-json-index) in format v2.
+
+<SchemaTabs
+  format="v1"
+  config={{
+    resolve: {
+      gitUrl: "https://github.com/example/protostar",
+    },
+  }}
+/>
+
+<SchemaTabs
+  format="v1"
+  config={{
+    resolve: {
+      manifestUrl: "https://releases.example.com/protostar/index.json",
+      manifestVersionKey: "releases[*].tag",
+    },
+  }}
+/>
+
+#### Explicit versions and aliases [#v1-explicit-versions-and-aliases]
+
+- `versions` <TypeLabel type="string[]" /> - Versions to make available, combined with the versions
+  loaded from Git or the manifest.
+- `aliases` <TypeLabel type="Record<string, string>" /> - Aliases mapped to a version, a
+  requirement, or another alias. Set `latest` to change what the `latest` alias resolves to,
+  instead of the highest stable version.
+
+<SchemaTabs
+  format="v1"
+  config={{
+    resolve: {
+      versions: ["1.3.0", "1.4.0", "2.0.0-rc.1"],
+      aliases: {
+        latest: "1.4.0",
+        next: "2.0.0-rc.1",
+      },
+    },
+  }}
+/>
+
+#### Version patterns [#v1-version-patterns]
+
+- `version-pattern` <TypeLabel type="string" /> - A [Rust regex](https://docs.rs/regex/latest/regex/#syntax)
+  that extracts the version from manifest entries, and from tags when `git-tag-pattern` isn't set.
+
+Patterns work the same as in [format v2](#version-patterns), with the `major` / `year`, `minor` /
+`month`, `patch` / `day`, `revision`, `pre`, and `build` named groups.
+
+<SchemaTabs
+  format="v1"
+  config={{
+    resolve: {
+      gitUrl: "https://github.com/example/protostar",
+      versionPattern:
+        "^protostar-v((?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+))$",
+    },
+  }}
+/>
+
+### Downloading and installing [#v1-downloading-and-installing]
+
+The `install` section configures the file to download, while its name comes from the
+[platform](#v1-platform-variations):
+
+- `download-url` <TypeLabel type="string" /> - URL of the file to download. Required.
+- `download-url-canary` <TypeLabel type="string" /> - URL to download canary releases from. Defaults
+  to `download-url`, with `canary` as the version.
+- `arch` <TypeLabel type="Record<string, string>" /> - Custom values for the `{arch}` token, for
+  every platform.
+- `libc` <TypeLabel type="Record<string, string>" /> - Custom values for the `{libc}` token, for
+  every platform.
+
+<SchemaTabs
+  format="v1"
+  config={{
+    install: {
+      downloadUrl:
+        "https://github.com/example/protostar/releases/download/v{version}/{download_file}",
+      arch: {
+        x64: "amd64",
+      },
+    },
+  }}
+/>
+
+URLs support the same [tokens](#downloading-and-installing) as format v2, except that the
+platform's names are inserted with `{download_file}` and `{checksum_file}` (`{download_name}` and
+`{checksum_name}` aren't supported).
+
+#### Platform variations [#v1-platform-variations]
+
+The `platform` section maps an operating system, like `linux`, `macos`, or `windows`, to settings for
+it. Every supported operating system needs a table, and BSD-based systems fall back to `linux`.
+
+- `download-file` <TypeLabel type="string" /> - Name of the file to download, inserted with the
+  `{download_file}` token.
+- `checksum-file` <TypeLabel type="string" /> - Name of the checksum file, inserted with the
+  `{checksum_file}` token.
+- `archive-prefix` <TypeLabel type="string" /> - Name of the folder in the archive that contains the
+  tool, which is removed when unpacking.
+- `archs` <TypeLabel type="string[]" /> - Supported architectures, like `x64` and `arm64`.
+  Supports all architectures when omitted.
+- `arch` and `libc` <TypeLabel type="Record<string, string>" /> - Custom values for the `{arch}` and
+  `{libc}` tokens on this platform, which take precedence over `install.arch` and `install.libc`.
+- `exe-path` <TypeLabel type="string" /> - Path to the primary executable on this platform.
+- `exes-dirs` <TypeLabel type="string[]" /> - Directories of pre-installed executables, which
+  [shell activation](<../(fundamentals)/workflows.mdx#shell-activation>) adds to `PATH`.
+
+<SchemaTabs
+  format="v1"
+  config={{
+    platform: {
+      linux: {
+        downloadFile: "protostar-{arch}-unknown-linux-{libc}.tar.gz",
+        archivePrefix: "protostar-{version}",
+        archs: ["x64", "arm64"],
+      },
+      macos: {
+        downloadFile: "protostar-{arch}-apple-darwin.tar.gz",
+        archivePrefix: "protostar-{version}",
+      },
+      windows: {
+        downloadFile: "protostar-{arch}-pc-windows-msvc.zip",
+        exePath: "protostar.exe",
+      },
+    },
+  }}
+/>
+
+#### Checksums [#v1-checksums]
+
+- `install.checksum-url` <TypeLabel type="string" /> - URL of a checksum or signature file. Supports
+  the `{download_file}` and `{checksum_file}` tokens. When `checksum-file` isn't set,
+  `{checksum_file}` is `CHECKSUM.txt`.
+- `install.checksum-url-canary` <TypeLabel type="string" /> - URL of the checksum file for canary
+  releases. When `download-url-canary` is set without it, canary releases aren't verified against a
+  published checksum.
+- `install.checksum-public-key` <TypeLabel type="string" /> - The public key that a
+  [minisign](./checksums.mdx#minisign-signatures) or [GPG](./checksums.mdx#gpg-signatures)
+  signature is verified with.
+
+When the platform doesn't set `checksum-file`, proto extracts the checksum file's name from the URL,
+which it uses to detect the algorithm.
+
+<SchemaTabs
+  format="v1"
+  config={{
+    platform: {
+      linux: {
+        downloadFile: "protostar-{arch}-unknown-linux-{libc}.tar.gz",
+        checksumFile: "SHASUMS256.txt",
+      },
+    },
+    install: {
+      downloadUrl:
+        "https://github.com/example/protostar/releases/download/v{version}/{download_file}",
+      checksumUrl:
+        "https://github.com/example/protostar/releases/download/v{version}/{checksum_file}",
+    },
+  }}
+/>
+
+### Locating executables [#v1-locating-executables]
+
+Executables are configured with `install.exes`, keyed by the name of their shim and binary. Each
+executable supports the same settings as [`locate.exes`](#locating-executables) in format v2, in
+kebab-case: `exe-path`, `primary`, `no-bin`, `no-shim`, `exe-link-path`, `parent-exe-name`,
+`parent-exe-args`, `shim-before-args`, `shim-after-args`, and `shim-env-vars`. The shim arguments
+must be lists.
+
+<SchemaTabs
+  format="v1"
+  config={{
+    install: {
+      exes: {
+        protostar: {
+          exePath: "bin/protostar",
+          primary: true,
+          shimEnvVars: {
+            PROTOSTAR_LOG: "warn",
+          },
+        },
+        "protostar-lsp": {
+          exePath: "bin/protostar-lsp",
+          noBin: true,
+        },
+      },
+    },
+  }}
+/>
+
+The primary executable's path comes from [`platform.<os>.exe-path`](#v1-platform-variations), then
+its `exe-path`, then the tool's ID. `.exe` is added on Windows when the path has no extension. When
+no executable is marked as primary, one is created that's named after the tool's ID. The
+`install.no-bin` and `install.no-shim` <TypeLabel type="boolean" /> settings apply to the primary
+executable, like `no-bin` and `no-shim` on the executable itself.
+
+`install.primary`, `install.secondary`, `platform.<os>.bin-path`, and `platform.<os>.exes-dir` are
+deprecated. Use `install.exes`, `exe-path`, and `exes-dirs` instead.
+
+#### Global packages [#v1-global-packages]
+
+The `packages` section tells proto where globally installed packages' executables are, like
+[`locate`](#global-packages) in format v2:
+
+- `globals-lookup-dirs` <TypeLabel type="string[]" /> - Directories where global executables may be
+  installed. Supports environment variables, like `$HOME`, and `~`.
+- `globals-prefix` <TypeLabel type="string" /> - A prefix that every global executable has, which is
+  removed when listing them.
+
+<SchemaTabs
+  format="v1"
+  config={{
+    packages: {
+      globalsLookupDirs: ["$PROTOSTAR_HOME/bin", "~/.protostar/bin"],
+    },
+  }}
+/>

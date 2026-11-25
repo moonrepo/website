@@ -2,8 +2,314 @@
 title: Java
 ---
 
-## Installing
+import { TypeLabel } from "@/components/TypeLabel";
 
-## Version detection
+[Java](https://dev.java/) is a language and runtime for everything from command-line tools to large
+backend services, and the platform that JVM languages like Kotlin and Scala run on. It's an unstable
+[built-in tool](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>) with the `java`, `jdk`, and
+`jre` IDs, so it works without configuring a plugin, but proto prints a warning when installing it.
+
+proto installs prebuilt releases of OpenJDK, Java's open source implementation, which is built and
+distributed by [many vendors](#vendors), like Eclipse Temurin, Azul Zulu, and Amazon Corretto. It
+uses the [foojay Disco API](https://github.com/foojayio/discoapi) to find a build for your platform,
+so each project can choose both its vendor and its version.
+
+The `java` and `jdk` IDs install the Java Development Kit (JDK), which provides the `java`, `javac`,
+and `jar` [executables](<../(fundamentals)/(plugin)/tool.mdx#executables>): the runtime, and its
+development tools. The `jre` ID installs the Java Runtime Environment (JRE), which is the runtime
+only, and provides the `java` executable alone (see [JDK and JRE](#jdk-and-jre)).
+
+## Prerequisites
+
+- **A supported platform** - Java is published for Linux, macOS, and Windows, on the architectures
+  that each vendor builds for (see [no Java package is available](#no-java-package-is-available)).
+  Other operating systems fail with an unsupported platform error.
+- **Network access** - proto lists the available releases with the foojay Disco API
+  (`api.foojay.io`), and downloads them from the vendors' servers. To use a mirror of the API
+  instead, set [`api-url`](#api-url).
+
+## Installation
+
+Install Java with [`proto install`](../commands/install.mdx), and pin a version with
+[`proto pin`](../commands/pin.mdx), or with the `--pin` option while installing:
+
+```shell
+# Install the detected version, or the latest when none is detected
+$ proto install java
+
+# Install the newest Temurin 21 release, and pin it to the closest .prototools
+$ proto install java temurin-21 --pin
+
+# Pin a version without installing it
+$ proto pin java temurin-21
+
+# Install the newest Java 21 release, from Eclipse Temurin
+$ proto install java 21
+
+# Install the newest Java 21 release from another vendor
+$ proto install java zulu-21
+
+# Pin the exact release it resolves to, like temurin-21.0.11+10
+$ proto pin java temurin-21 --resolve
+```
+
+```toml title=".prototools"
+java = "temurin-21"
+```
+
+Besides versions and ranges, Java supports the `latest`
+[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. See
+[versions & aliases](#versions--aliases) for how Java's versions map to proto's.
 
 ## Configuration
+
+Java is configured in the `[tools.java]` table of [`.prototools`](<../(fundamentals)/config.mdx>),
+or `[tools.jdk]` and `[tools.jre]` for those IDs. Like other
+[tool settings](<../(fundamentals)/config.mdx#tools>), these only apply from a project's
+[`.prototools`](<../(fundamentals)/config.mdx>) once it's [trusted](<../(fundamentals)/trust.mdx>).
+
+### `api-url`
+
+<TypeLabel type="string" /> - The base URL of the foojay Disco API, which proto
+queries for the available releases, and for the download URL of each build.
+Defaults to `https://api.foojay.io/disco/v3.0`.
+
+Point it at a mirror, or a self-hosted instance of the API, when your network can't reach foojay.
+The builds themselves are still downloaded from the URLs that the API returns, which you can
+redirect with [URL rewrites](../advanced/http.mdx#url-rewrites).
+
+```toml title=".prototools"
+[tools.java]
+api-url = "https://foojay.corp.internal/disco/v3.0"
+```
+
+### `release-type`
+
+<TypeLabel type="ga | ea" /> - Which releases are available: `ga` for general
+availability releases, or `ea` for early access builds of upcoming versions. The
+long forms, `general-availability` and `early-access`, are accepted too.
+Defaults to `ga`.
+
+Early access builds replace the general availability releases, rather than adding to them, and
+the `latest` alias doesn't work with them. They're pre-releases, like `temurin-28.0.0-ea+25`, so pin
+them as a full version, which you can find with [`proto versions java`](../commands/versions.mdx).
+
+```toml title=".prototools"
+java = "temurin-28.0.0-ea+25"
+
+[tools.java]
+release-type = "ea"
+```
+
+## Core features
+
+### Execution environment
+
+Whenever Java runs through proto, with a [shim](<../(fundamentals)/workflows.mdx#shims>),
+[`proto run`](../commands/run.mdx), [`proto exec`](../commands/exec.mdx), or
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>), proto sets `JAVA_HOME` to
+the installed version's directory, and so does [`proto shell`](../commands/shell.mdx). On macOS,
+where JDKs are packaged as bundles, that's the `Contents/Home` directory within it. Build tools
+like Gradle and Maven look for Java with `JAVA_HOME` before `PATH`, so this keeps them on the same
+version as `java`.
+
+proto also adds the version's `bin` directory to `PATH`. With shell activation,
+[`proto exec`](../commands/exec.mdx), and [`proto shell`](../commands/shell.mdx), that makes every
+JDK tool available, like `jshell`, `keytool`, and `javadoc`, not only `java`, `javac`, and `jar`,
+which are the executables with shims.
+
+```shell
+# Run the Gradle wrapper with the pinned Java, and JAVA_HOME pointing to it
+$ proto exec --tools-from-config -- ./gradlew build
+```
+
+### Version files
+
+Besides [`.prototools`](<../(fundamentals)/config.mdx>), proto
+[detects](<../(fundamentals)/detection.mdx#4-ecosystem-files>) a Java version from the following
+files, checked in this order in each directory:
+
+1. `.java-version` - Used by jenv and other version managers. The version is read from the first
+   line with content, ignoring comments after `#` or `//`. A version with a vendor, like `zulu-21`,
+   is used as-is, and one without uses Temurin. Legacy `1.x` versions are converted, so `1.8` is
+   Java 8.
+2. `.sdkmanrc` - The project file of [SDKMAN!](https://sdkman.io/). Its `java=` line is read, with
+   SDKMAN's `<version>-<vendor>` identifiers, like `21.0.2-tem`, whose vendor codes are mapped to
+   [vendor scopes](#vendors). Only the version numbers are kept, so the build in an identifier like
+   `21.0.13.0+9-tem` is ignored, and the release is matched whatever its build.
+
+```text title=".java-version"
+zulu-21
+```
+
+```text title=".sdkmanrc"
+java=21.0.2-tem
+```
+
+These files are detected as `zulu-21` and `temurin-21.0.2`.
+
+## Ecosystem
+
+### Versions & aliases
+
+Java doesn't use [semantic versions](<../(fundamentals)/version-spec.mdx#semantic-versions>) for
+all of its releases, so proto converts them:
+
+| Java version | proto version          |
+| ------------ | ---------------------- |
+| `21+35`      | `temurin-21.0.0+35`    |
+| `21.0.11+10` | `temurin-21.0.11+10`   |
+| `17.0.4.1+1` | `temurin-17.0.4.1+1`   |
+| `28-ea+25`   | `temurin-28.0.0-ea+25` |
+
+Java leaves out trailing zeros, so the first release of each version is named like `21`, and most
+releases have a build number, like the `+10` in `21.0.11+10`. proto writes each version as
+`<vendor>-<version>`, with a [version scope](<../(fundamentals)/version-spec.mdx#version-scopes>)
+for its [vendor](#vendors), like `temurin` or `zulu`. Early access builds are pre-releases, which
+are only listed with [`release-type`](#release-type) set to `ea`. When choosing a version:
+
+- **Write proto's form** on the command line and in
+  [`.prototools`](<../(fundamentals)/config.mdx>), like `temurin-21.0.11`, or `21.0.11` for the
+  default vendor.
+- **Build numbers are optional.** `temurin-21.0.11` matches `temurin-21.0.11+10`, whatever its
+  build, so you can leave the build off.
+- **Partial versions are requirements.** `21` is a
+  [requirement](<../(fundamentals)/version-spec.mdx#requirements-and-ranges>) that matches every
+  Java 21 release, so it resolves to the newest one, like `temurin-21.0.11+10`, not to the first.
+  Write `21.0.0` for that release.
+- **A 4th number is a revision.** Releases like `17.0.4.1` are supported as
+  [revisions](<../(fundamentals)/version-spec.mdx#revisions>). In `.sdkmanrc`, a revision of `0`,
+  like SDKMAN's `21.0.13.0`, is left out, so it's read as `21.0.13`.
+- **Version files keep their own forms.** `.java-version` accepts legacy `1.x` versions, like `1.8`
+  for Java 8, and `.sdkmanrc` accepts SDKMAN's identifiers, like `21.0.2-tem`. proto converts both
+  when it [reads them](#version-files).
+
+Run [`proto versions java`](../commands/versions.mdx) to list every version as proto names it.
+
+### Vendors
+
+Every vendor builds Java from the same OpenJDK source, but they differ in which versions and
+platforms they publish, how long they ship updates for, their licenses, and the extras they include,
+like GraalVM's native image compiler. You choose a vendor per version, with its scope:
+
+```toml title=".prototools"
+java = "corretto-21"
+```
+
+- **Default** - A version without a vendor, like `21`, uses Eclipse Temurin, so `java = "21"` is the
+  same as `java = "temurin-21"`. There's no setting to change the default, so write the vendor in
+  your pin to use another.
+- **Latest** - The `latest` alias is the newest Temurin release. For the newest release of another
+  vendor, use a wildcard, like `zulu-*`.
+- **Exact names** - Write the scope exactly as listed below. The aliases in the last column are only
+  recognized in `.sdkmanrc` files, and match no releases elsewhere.
+- **Ranges** - A range of multiple requirements, like `>=17 <22` or `17 || 21`, isn't given the
+  default vendor, and matches releases of every vendor. Write the vendor in each part instead, like
+  `temurin-17 || temurin-21`.
+- **Listing** - [`proto versions java`](../commands/versions.mdx) lists the releases of every vendor
+  for your platform, and a scope narrows it down, as in
+  [`proto versions java zulu-21`](../commands/versions.mdx).
+
+Temurin is a good default: it's free, widely used, and its LTS versions receive updates for years.
+When you deploy to a cloud, its own build is a natural fit, like Amazon Corretto on AWS, or the
+Microsoft Build of OpenJDK on Azure. For native images, use GraalVM, Liberica NIK, or Mandrel. Avoid
+`openjdk` for anything long-lived, as its builds, from jdk.java.net, stop receiving updates 6 months
+after each release.
+
+| Vendor                              | Scope                                                                         | Aliases                      |
+| ----------------------------------- | ----------------------------------------------------------------------------- | ---------------------------- |
+| AdoptOpenJDK                        | `aoj`                                                                         |                              |
+| AdoptOpenJDK OpenJ9                 | `aoj-openj9`                                                                  |                              |
+| Alibaba Dragonwell                  | `dragonwell`                                                                  | `albba`, `alibaba`, `dragon` |
+| Amazon Corretto                     | `corretto`                                                                    | `amzn`, `amazon`             |
+| Azul Zulu                           | `zulu`                                                                        |                              |
+| BellSoft Liberica                   | `liberica`                                                                    | `librca`                     |
+| BellSoft Liberica Native Image Kit  | `liberica-native`                                                             | `nik`                        |
+| Eclipse Temurin (default)           | `temurin`                                                                     | `tem`                        |
+| Gluon GraalVM                       | `gluon-graalvm`                                                               | `gluon`                      |
+| GraalVM Community                   | `graalvm-community`                                                           | `graalce`                    |
+| GraalVM Community (legacy, per JDK) | `graalvm-ce8`, `graalvm-ce11`, `graalvm-ce16`, `graalvm-ce17`, `graalvm-ce19` |                              |
+| Huawei BiSheng                      | `bisheng`                                                                     |                              |
+| IBM Semeru                          | `semeru`                                                                      | `sem`                        |
+| IBM Semeru Certified Edition        | `semeru-certified`                                                            |                              |
+| JetBrains Runtime                   | `jetbrains`                                                                   | `jbr`                        |
+| Microsoft Build of OpenJDK          | `microsoft`                                                                   | `ms`, `msoft`                |
+| OJDKBuild                           | `ojdk-build`                                                                  |                              |
+| OpenLogic OpenJDK                   | `open-logic`                                                                  |                              |
+| Oracle GraalVM                      | `graalvm`                                                                     | `graal`                      |
+| Oracle JDK                          | `oracle`                                                                      |                              |
+| Oracle OpenJDK (jdk.java.net)       | `openjdk`                                                                     | `open`                       |
+| Red Hat Build of OpenJDK            | `redhat`                                                                      |                              |
+| Red Hat Mandrel                     | `mandrel`                                                                     |                              |
+| SapMachine                          | `sap-machine`                                                                 | `sap`, `sapmchn`             |
+| Tencent Kona                        | `kona`                                                                        | `tencent`                    |
+| Trava OpenJDK                       | `trava`                                                                       |                              |
+
+### JDK and JRE
+
+The 3 IDs install releases from the same vendors, as different packages:
+
+- `java` and `jdk` - The JDK, for developing and building Java code. It includes the runtime, the
+  compiler (`javac`), `jar`, and every other development tool. The two IDs are names for the same
+  tool, and share their installed versions in the [store](<../(fundamentals)/store.mdx>), in
+  `~/.proto/tools/jdk`.
+- `jre` - The JRE, for running Java code only, like a prebuilt `.jar`, or in a production image that
+  doesn't need a compiler. It's a smaller download, provides the `java` executable only, and is
+  installed separately, in `~/.proto/tools/jre`. Not every vendor publishes a JRE for every version
+  and platform, so check with [`proto versions jre`](../commands/versions.mdx).
+
+```toml title=".prototools"
+jre = "temurin-21"
+```
+
+Use the same ID across your projects, and prefer `java`. All 3 provide a `java` executable, and each
+shim runs a single tool, so when projects on your machine pin different IDs, a shim like `java`
+only follows one of them.
+
+## Troubleshooting
+
+### No Java package is available
+
+The vendor doesn't publish that version for your operating system and architecture in a format
+proto can install, like when it only has a `.dmg` or `.msi` installer, has no musl build for Alpine,
+or has no JRE. Check what the vendor offers for your platform, and choose another version or vendor:
+
+```shell
+# List the releases of a vendor for this platform
+$ proto versions java zulu-21
+```
+
+### A vendor isn't recognized
+
+An `Unknown distribution vendor` error means the scope isn't one of the [vendors](#vendors), which
+often comes from a `.java-version` or `.sdkmanrc` written by another tool, with its own vendor names.
+Change it to a scope from the table. A version can also fail to resolve when its scope is written
+differently than listed, like `tem-21` or `Temurin-21`, as aliases and other spellings only work in
+`.sdkmanrc`.
+
+### Gradle or Maven uses a different Java
+
+Gradle (including its wrapper) and Maven use `JAVA_HOME` when it's set, and only fall back to `java`
+on `PATH` otherwise. proto sets `JAVA_HOME` only for the processes it runs, and in your shell with
+[activation](<../(fundamentals)/workflows.mdx#shell-activation>), so with shims alone, `./gradlew`
+and `mvn` use whatever `JAVA_HOME` your shell profile sets. Use shell activation, run them through
+[`proto exec`](../commands/exec.mdx) (see [execution environment](#execution-environment)), or point
+`JAVA_HOME` at the detected version yourself:
+
+```shell
+# Set JAVA_HOME to the version detected for the current directory
+$ export JAVA_HOME="$(dirname "$(proto bin java --dir exes)")"
+```
+
+## Caveats
+
+- **Archives only** - Builds that a vendor only publishes as an installer, like a `.dmg`, `.pkg`, or
+  `.msi`, aren't available, nor are builds with JavaFX bundled.
+- **No sign-in downloads** - Builds that require signing in to download, like Oracle JDK 17.0.13
+  and later, aren't available.
+- **musl** - On Linux with musl, like Alpine, only musl builds are installed, which not every vendor
+  publishes for every version.
+- **SHA checksums only** - Downloads are verified against the vendor's SHA-256 or SHA-512 checksum.
+  When a vendor doesn't publish one, like Tencent Kona, which publishes MD5 checksums instead, proto
+  [records one](../advanced/checksums.mdx#tools-without-checksums) from the first download, and with
+  a [lockfile](../advanced/lockfile.mdx), later installs must match it.

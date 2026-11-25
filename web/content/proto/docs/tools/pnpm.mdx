@@ -2,8 +2,333 @@
 title: pnpm
 ---
 
-## Installing
+import { TypeLabel } from "@/components/TypeLabel";
 
-## Version detection
+[pnpm](https://pnpm.io/) is a fast, disk-efficient package manager for JavaScript, which stores each
+package once on disk and links it into every project's `node_modules`. It's a
+[built-in tool](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>) with the `pnpm` ID, so it
+works without configuring a plugin.
+
+proto installs pnpm from the npm registry, so each project runs the pnpm version it pins, and
+changing directories changes versions. pnpm requires [Node.js](./node.mdx), so proto runs it
+alongside the `node` version detected for the same directory.
+
+The plugin also reads the version from the `packageManager` and `devEngines` fields in
+`package.json`, and handles the changes of pnpm's recent major versions, like the native binary of
+v12 (see [major versions](#major-versions)). The same plugin powers [npm](./npm.mdx),
+[Yarn](./yarn.mdx), and [Nub](./nub.mdx).
+
+## Prerequisites
+
+- **Node.js** - pnpm requires the [`node`](./node.mdx) tool, which must have a version configured
+  too, like a pin in [`.prototools`](<../(fundamentals)/config.mdx>), in the project or globally,
+  or with `PROTO_NODE_VERSION` (see [`requires`](<../(fundamentals)/config.mdx#tools-requires>)).
+  That includes pnpm v12, which is a native binary, as your scripts and the executables of your
+  dependencies still run on Node.js. Pick a version that your pnpm release supports, like 22.13 or
+  newer for pnpm v11.
+- **A supported platform** - pnpm is published for macOS, Linux, and Windows, on x64 and arm64.
+  pnpm v12.4 and newer are also published for Linux on ppc64, riscv64, and s390x, and FreeBSD on
+  x64. Other platforms fail with an unsupported platform error.
+
+## Installation
+
+pnpm requires Node.js, so pin both. Install pnpm with [`proto install`](../commands/install.mdx),
+and pin a version with [`proto pin`](../commands/pin.mdx), or with the `--pin` option while
+installing:
+
+```shell
+# Install the detected version, or the latest when none is detected
+$ proto install pnpm
+
+# Install the newest pnpm 10 release, and pin it to the closest .prototools
+$ proto install pnpm 10 --pin
+
+# Pin a version without installing it
+$ proto pin pnpm 10
+
+# Install and pin Node.js, which pnpm requires
+$ proto install node 24 --pin
+```
+
+```toml title=".prototools"
+node = "24.11.0"
+pnpm = "10.20.0"
+```
+
+Besides versions and ranges, pnpm supports the `latest`
+[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. `latest` follows
+the `latest` dist-tag of the `pnpm` package. See [versions & aliases](#versions--aliases) for the
+aliases that pnpm provides.
+
+pnpm provides the following executables, which are available as
+[shims](<../(fundamentals)/workflows.mdx#shims>), and through
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>):
+
+- `pnpm` - The primary executable.
+- `pnpx` - Runs a package's executable without adding it to the project, like `pnpm dlx`.
+- `pn` and `pnx` - Short aliases of `pnpm` and `pnpx`, in pnpm v11 and newer.
+
+```shell
+# Run a package's executable without installing it
+$ pnpx cowsay hello
+
+# Run a specific pnpm version
+$ proto run pnpm 9 -- install
+```
 
 ## Configuration
+
+pnpm is configured in the `[tools.pnpm]` table of [`.prototools`](<../(fundamentals)/config.mdx>).
+Like other [tool settings](<../(fundamentals)/config.mdx#tools>), these only apply from a
+project's [`.prototools`](<../(fundamentals)/config.mdx>) once it's
+[trusted](<../(fundamentals)/trust.mdx>).
+
+### `registry-url`
+
+<TypeLabel type="string" /> - The npm registry to list pnpm's versions from, and
+to download it from. Set it to use a private registry or mirror that proxies the
+npm registry. Defaults to `https://registry.npmjs.org`.
+
+```toml title=".prototools"
+[tools.pnpm]
+registry-url = "https://npm.example.com"
+```
+
+When an `.npmrc` has credentials for this registry, proto sends them with every request: an
+`_authToken` as a bearer token, and `_auth`, or `username` and `_password`, as basic authentication.
+They're read from the project's `.npmrc`, in the closest directory with a `package.json`, and from
+`~/.npmrc`. The `registry` setting in `.npmrc` isn't used, so set `registry-url` even when your
+`.npmrc` points to the same registry.
+
+The registry must serve the `pnpm` package, and for v12 and newer, the platform packages too, like
+`@pnpm/exe.linux-x64`. Prefer this setting over
+[`versions-source`](<../(fundamentals)/config.mdx#tools-versions-source>), which lists versions
+without the registry's dist-tag aliases.
+
+### `dist-url`
+
+<TypeLabel type="string" /> - The URL template to download a pnpm tarball from.
+Defaults to `{registry}/{package}/-/{package_without_scope}-{version}.tgz`.
+
+The default is the npm registry's layout. Supports the following placeholders:
+
+- `{registry}` - The [`registry-url`](#registry-url) setting.
+- `{package}` - The package to download: `pnpm`, or for v12 and newer, the package for your
+  platform, like `@pnpm/exe.darwin-arm64`, or `@pnpm/exe.linux-x64-musl` on musl.
+- `{package_without_scope}` - The package name without its scope, like `pnpm` or
+  `exe.darwin-arm64`.
+- `{version}` - The version being installed, like `10.20.0`.
+- `{file}` - The tarball's file name, `{package_without_scope}-{version}.tgz`, like
+  `pnpm-10.20.0.tgz`.
+
+```toml title=".prototools"
+[tools.pnpm]
+dist-url = "https://mirror.example.com/pnpm/{version}/{file}"
+```
+
+The setting only changes where tarballs are downloaded from. Versions are still listed from
+[`registry-url`](#registry-url).
+
+### `shared-globals-dir`
+
+<TypeLabel type="boolean" /> - Install global packages into
+`~/.proto/tools/node/globals`, a directory that npm, Yarn, and Nub can share
+when they enable it too, instead of pnpm's own global directory. This setting is
+experimental. Defaults to `false`.
+
+```toml title=".prototools"
+[tools.pnpm]
+shared-globals-dir = true
+```
+
+When enabled, `pnpm add -g` installs into the shared directory whenever pnpm runs through proto
+(see [execution environment](#execution-environment)), and links executables into
+`~/.proto/tools/node/globals/bin`, which becomes the only
+[globals directory](#global-packages) that proto looks in. Shell activation adds it to `PATH`.
+Otherwise, add it to `PATH` in your shell profile.
+
+## Core features
+
+### Execution environment
+
+Whenever pnpm runs through proto, with a [shim](<../(fundamentals)/workflows.mdx#shims>),
+[`proto run`](../commands/run.mdx), [`proto exec`](../commands/exec.mdx), or
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>), proto:
+
+- Adds the `node` version detected for the directory to pnpm's environment, by putting its
+  executables on `PATH` and setting `PROTO_NODE_VERSION`. pnpm, your scripts, and the executables
+  of your dependencies all run on that Node.js. The version must already be installed. This only
+  happens with shims and [`proto run`](../commands/run.mdx). With
+  [`proto exec`](../commands/exec.mdx), pass `node` too, and with shell activation, `node` is
+  activated from its own pin in [`.prototools`](<../(fundamentals)/config.mdx>).
+- Puts pnpm's [globals directories](#global-packages) on `PATH`.
+- Points pnpm at the shared directory when [`shared-globals-dir`](#shared-globals-dir) is enabled,
+  by setting `pnpm_config_global_dir` and `pnpm_config_global_bin_dir` for v11 and newer, or
+  `npm_config_global_dir` and `npm_config_global_bin_dir` for v10 and below, which don't read the
+  `pnpm_config_*` variables.
+
+### Global packages
+
+pnpm installs global packages with `pnpm add -g`, and links their executables into `$PNPM_HOME`, or
+`$PNPM_HOME/bin` for v11 and newer.
+
+proto looks for their executables in the following directories, in order, skipping any whose
+environment variable isn't set:
+
+1. `$PREFIX/bin`, and `$PREFIX/shims`.
+2. `~/.proto/tools/node/$PROTO_NODE_VERSION/bin`, the directory of the Node.js version in use.
+3. `$PNPM_HOME` for v10 and below, or `$PNPM_HOME/bin` for v11 and newer. A `PNPM_HOME` that
+   already ends in `bin` is used as-is.
+4. pnpm's default home directory, with `/bin` appended for v11 and newer: `$XDG_DATA_HOME/pnpm`,
+   then `~/Library/pnpm` on macOS, or `~/.local/share/pnpm` on Linux. On Windows, it's
+   `%LOCALAPPDATA%\pnpm`.
+5. `~/.proto/tools/node/globals/bin`, the shared directory. With
+   [`shared-globals-dir`](#shared-globals-dir) enabled, it's the only one.
+
+proto adds these directories to `PATH` whenever pnpm runs through proto, and with
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>). With shims alone, set
+`PNPM_HOME` in your shell profile, and add it (or `$PNPM_HOME/bin` for v11 and newer) to your
+`PATH` yourself.
+
+```shell
+# Install a package globally
+$ pnpm add -g cowsay
+
+# Print the directories that proto looks in
+$ proto bin pnpm --dir globals --all
+```
+
+### Version files
+
+Besides [`.prototools`](<../(fundamentals)/config.mdx>), proto
+[detects](<../(fundamentals)/detection.mdx#4-ecosystem-files>) a pnpm version from the following
+fields of `package.json`, checked in this order, and skips any `package.json` within
+`node_modules`:
+
+1. `devEngines.packageManager` - The entry named `pnpm`, whether it's the object itself, or one in a
+   list.
+2. `packageManager` - Like `pnpm@10.20.0`. A Corepack hash, like `+sha512.<hash>`, is removed, and a
+   plain `pnpm` means `latest`.
+3. `volta.pnpm` - Including from the file that `volta.extends` points to, when it isn't set
+   directly.
+4. `engines.pnpm` - Typically a range, like `>=10`.
+
+The first field with a valid version wins. Fields for another package manager are ignored, and a
+field that isn't a version, like a URL, is skipped in favor of the next one. It's only an error when
+none of them has a valid version. In this example, the `devEngines` range wins:
+
+```json title="package.json"
+{
+  "packageManager": "pnpm@10.20.0",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^10.20.0"
+    }
+  }
+}
+```
+
+To pin a version there instead of [`.prototools`](<../(fundamentals)/config.mdx>), run
+[`proto pin pnpm 10.20.0 --tool-native`](../commands/pin.mdx), which writes it to
+`devEngines.packageManager`, alongside any entry for another package manager. As `devEngines` only
+supports versions and ranges, pass `--resolve` to pin an alias like `latest`. When `engines` is a
+broad range that describes compatibility, rather than the version to run, consider a
+[detection strategy](<../(fundamentals)/detection.mdx#detection-strategies>) that ignores it.
+
+## Ecosystem
+
+### Versions & aliases
+
+The plugin provides the following aliases, in addition to proto's
+[built-in aliases](<../(fundamentals)/version-spec.mdx#built-in-aliases>):
+
+- `<dist-tag>` - The version that any other dist-tag of the `pnpm` package points to, like
+  `latest-10`, which follows the newest pnpm 10 release.
+
+Aliases resolve to a newer version as releases are published. To pin the version an alias
+currently resolves to, pass `--resolve` to [`proto pin`](../commands/pin.mdx).
+
+```shell
+# Pin the version that latest-10 resolves to
+$ proto pin pnpm latest-10 --resolve
+
+# List the versions, and the dist-tag aliases with the versions they point to
+$ proto versions pnpm --aliases
+```
+
+### Major versions
+
+pnpm v11 and v12 changed how pnpm is shipped, and proto adapts to the version being installed:
+
+- **v10 and below** - The JavaScript `pnpm` package, which runs on the Node.js version that proto
+  adds to its environment. Provides `pnpm` and `pnpx`, and links global executables into
+  `$PNPM_HOME`.
+- **v11** - Still the JavaScript package, and it requires Node.js 22.13 or newer. Adds the `pn` and
+  `pnx` aliases, links global executables into `$PNPM_HOME/bin`, and reads `pnpm_config_*`
+  environment variables instead of `npm_config_*`.
+- **v12 and newer** - A native binary written in Rust, downloaded from the package for your
+  platform, like `@pnpm/exe.darwin-arm64`. It doesn't run on Node.js, but still requires `node` (see
+  [prerequisites](#prerequisites)). `pnpx` and `pnx` run `pnpm dlx`, and `pnpm` and `pn` are also
+  [linked as binaries](<../(fundamentals)/workflows.mdx#binary-linking>) in `~/.proto/bin`.
+
+As `latest` moves to each new major version, pin a major version, like `~10`, or a dist-tag alias,
+like `latest-10`, to stay on an older one:
+
+```shell
+# Install and pin the newest pnpm 10 release
+$ proto install pnpm latest-10 --pin
+```
+
+## Troubleshooting
+
+### Installing pnpm fails, even though Node.js is installed
+
+pnpm requires a configured `node` version, not just an installed one, so without one,
+[`proto install pnpm`](../commands/install.mdx) fails with
+`pnpm requires node to function correctly`. A version detected from `.nvmrc` or `package.json`
+isn't enough here, so pin one in a [`.prototools`](<../(fundamentals)/config.mdx>):
+
+```shell
+# Pin Node.js for this project, or for your machine with --to global
+$ proto pin node 24
+$ proto install pnpm
+```
+
+### pnpm runs on the wrong Node.js version
+
+pnpm runs on the `node` version detected for the current directory, but only when it's installed.
+Otherwise it's left out of pnpm's environment, and pnpm uses whichever `node` is next on `PATH`. Run
+[`proto status`](../commands/status.mdx) to see what's detected, and
+[`proto install`](../commands/install.mdx) to install every pinned version. If pnpm v11 fails to
+start, check that Node.js is 22.13 or newer.
+
+### Global packages aren't found
+
+If `pnpm add -g` fails because pnpm can't find its global bin directory, like with
+`ERR_PNPM_NO_GLOBAL_BIN_DIR`, set `PNPM_HOME` in your shell profile, or enable
+[`shared-globals-dir`](#shared-globals-dir). If a global package installs, but its executables
+aren't found in your shell, check where they were linked with
+[`proto bin pnpm --dir globals --all`](../commands/bin.mdx), and add that directory to `PATH` (see
+[global packages](#global-packages)).
+
+### Downloads from a private registry fail
+
+An unauthorized error means proto didn't find credentials for [`registry-url`](#registry-url) in
+your `.npmrc` files. A "not found" error for pnpm v12 and newer usually means that the registry
+doesn't proxy the `@pnpm/exe.*` platform packages.
+
+## Caveats
+
+- **Shims only for v11 and below** - The JavaScript versions need proto to put Node.js on `PATH`,
+  so they aren't [linked as binaries](<../(fundamentals)/workflows.mdx#binary-linking>) in
+  `~/.proto/bin`. Use shims or shell activation to run them.
+- **`pnpm self-update` isn't redirected** - Unlike the self-upgrade commands of some tools, proto
+  doesn't intercept it (see [running tools](<../(fundamentals)/(plugin)/tool.mdx#running-tools>)).
+  To upgrade yourself, run [`proto install pnpm latest --pin`](../commands/install.mdx).
+- **Published hashes aren't verified** - proto doesn't verify pnpm's downloads against the
+  registry's integrity hashes, so it
+  [records a checksum](../advanced/checksums.mdx#tools-without-checksums) from the first download,
+  and with a [lockfile](../advanced/lockfile.mdx), later installs must match it. As v12 downloads
+  differ per platform, [lockfile records](../advanced/lockfile.mdx#records) include the
+  platform for every pnpm version.

@@ -2,8 +2,213 @@
 title: ZLS
 ---
 
-## Installing
+import { TypeLabel } from "@/components/TypeLabel";
 
-## Version detection
+[ZLS](https://zigtools.org/zls/) is the language server for [Zig](./zig.mdx), which gives your
+editor completions, diagnostics, and go-to-definition for Zig code. It's an unstable
+[built-in tool](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>) with the `zls` ID, so it
+works without configuring a plugin, but proto prints a warning when installing it.
+
+proto installs ZLS from the official prebuilt releases published by the Zigtools team. A ZLS
+release only works well with the Zig release it was built for. To keep them matched, the plugin
+reads the same version files as the [Zig](./zig.mdx) tool and picks the compatible ZLS release. A
+project that declares its Zig version in `.zig-version` gets a matching ZLS without pinning it
+separately.
+
+## Prerequisites
+
+- **Zig** - ZLS requires the [`zig`](./zig.mdx) tool to work with your project, which must have a
+  version configured too, like a pin in [`.prototools`](<../(fundamentals)/config.mdx>). ZLS looks
+  up `zig` on `PATH`, and installing ZLS doesn't require it (see
+  [matching Zig versions](#matching-zig-versions)).
+- **A supported platform** - ZLS is published for Linux, macOS, and Windows. Unlike Zig, FreeBSD,
+  NetBSD, and OpenBSD aren't supported. Other platforms fail with an unsupported platform error.
+
+## Installation
+
+ZLS requires Zig, so pin both, with the same minor version, like `0.15`. Install ZLS with
+[`proto install`](../commands/install.mdx), and pin a version with
+[`proto pin`](../commands/pin.mdx), or with the `--pin` option while installing:
+
+```shell
+# Install the detected version, or the latest when none is detected
+$ proto install zls
+
+# Install the newest 0.15 release, and pin it to the closest .prototools
+$ proto install zls 0.15 --pin
+
+# Pin a version without installing it
+$ proto pin zls 0.15
+
+# Pin Zig too, with the same minor version
+$ proto pin zig 0.15.2
+```
+
+```toml title=".prototools"
+zig = "0.15.2"
+zls = "~0.15"
+```
+
+Besides versions and ranges, ZLS supports the `latest`
+[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. Only stable
+releases are available, and `latest` resolves to the newest of them, as ZLS development builds
+can't be installed. Downloads are verified against the SHA-256
+[checksums](../advanced/checksums.mdx) in the release index.
 
 ## Configuration
+
+ZLS is configured in the `[tools.zls]` table of [`.prototools`](<../(fundamentals)/config.mdx>).
+Like other [tool settings](<../(fundamentals)/config.mdx#tools>), these only apply from a
+project's [`.prototools`](<../(fundamentals)/config.mdx>) once it's
+[trusted](<../(fundamentals)/trust.mdx>).
+
+### `index-url`
+
+<TypeLabel type="string" /> - The URL of the JSON release index that versions
+are listed from, and archives are downloaded from. Defaults to
+`https://releases.zigtools.org/v1/zls/index.json`.
+
+Change it from the official index to install ZLS from an internal mirror:
+
+```toml title=".prototools"
+[tools.zls]
+index-url = "https://mirror.corp.internal/zls/index.json"
+```
+
+The mirror must serve the same format as the official index: an object keyed by version, where
+each platform, like `x86_64-linux`, has the archive's `tarball` URL and its `shasum`. Archives are
+downloaded from those URLs as written, so point them at the mirror too, or rewrite them with
+[`url-rewrites`](<../(fundamentals)/config.mdx#url-rewrites>). This setting changes both listing and
+downloading, unlike [`versions-source`](<../(fundamentals)/config.mdx#tools-versions-source>), which
+only changes where versions are listed from.
+
+## Core features
+
+### Version files
+
+Besides [`.prototools`](<../(fundamentals)/config.mdx>), proto
+[detects](<../(fundamentals)/detection.mdx#4-ecosystem-files>) a ZLS version from the following
+files, checked in this order in each directory:
+
+1. `.zig-version` - A plain version file, also read by the [Zig](./zig.mdx) tool.
+2. `.zigversion` - The same, with an alternative name.
+3. `build.zig.zon` - The `.minimum_zig_version` field of your package manifest.
+
+These are the same files as Zig's, so one file declares the version for both. They declare a Zig
+version, not a ZLS one, so the plugin converts it to the matching ZLS release line:
+
+- **`.zig-version` and `.zigversion`** - The version is read from the first line with content,
+  ignoring comments after `#` or `//`. A version like `0.15.2` becomes `~0.15`, the newest ZLS 0.15
+  release. Partial versions, like `0.15`, and aliases, like `latest`, are used as-is. Development
+  versions, like `0.16.0-dev.123+abc`, and `master` become `canary`, which can't be installed.
+- **`build.zig.zon`** - The `.minimum_zig_version` field becomes the same `~0.15` range. A manifest
+  without the field is skipped.
+
+```text title=".zig-version"
+0.15.2
+```
+
+```zig title="build.zig.zon"
+.{
+    .name = .app,
+    .version = "0.1.0",
+    .minimum_zig_version = "0.15.2",
+}
+```
+
+Files within `.zig-cache` and `zig-out` directories are ignored, so build output and caches never
+decide the version. A `zls` pin in a [`.prototools`](<../(fundamentals)/config.mdx>)
+in the same directory, or a closer one, takes precedence over these files.
+
+## Ecosystem
+
+### Matching Zig versions
+
+ZLS releases track Zig's: each Zig minor release, like 0.15, has a matching ZLS release line, and
+ZLS should use the same minor version as the Zig it works with. Patch versions are independent, so
+Zig 0.15.2 works with ZLS 0.15.1. That's why the [version files](#version-files) resolve to a range,
+like `~0.15`, instead of Zig's exact version.
+
+When pinning in [`.prototools`](<../(fundamentals)/config.mdx>), pin both tools, as a `zig` pin
+doesn't apply to `zls`. Pin ZLS with a partial version or range, like `0.15` or `~0.15`, since a ZLS
+release with Zig's exact patch number may not exist.
+
+Development builds of Zig, like `master`, need a development build of ZLS, which proto can't
+install. Install a matching nightly by following the
+[ZLS installation guide](https://zigtools.org/zls/install/), and point your editor at it.
+
+### Editor setup
+
+Your editor starts ZLS for you, so it needs to know where the executable is. There are 2 ways to
+point it at the ZLS that proto installed:
+
+- **The shim** - The `zls` [shim](<../(fundamentals)/workflows.mdx#shims>), in `~/.proto/shims`,
+  detects the version for the directory the editor starts it in, so it follows each project's Zig
+  version. Editors that look up `zls` on `PATH` find it when `~/.proto/shims` is on `PATH`.
+- **The executable** - The executable within an installed version, like
+  `~/.proto/tools/zls/0.15.1/zls`. It starts without going through proto, but the path changes
+  whenever the version does.
+
+[`proto bin`](../commands/bin.mdx) prints either path, for editors that need an absolute one:
+
+```shell
+# Print the path to the shim
+$ proto bin zls --shim
+
+# Print the path to the executable of the detected version
+$ proto bin zls
+
+# Print the path to Zig's shim, for the editor's Zig setting
+$ proto bin zig --shim
+```
+
+For example, with the Zig extension for VS Code, set both paths in your user settings:
+
+```json title="settings.json"
+{
+  "zig.path": "/Users/you/.proto/shims/zig",
+  "zig.zls.path": "/Users/you/.proto/shims/zls"
+}
+```
+
+ZLS looks up `zig` on `PATH` too, unless your editor, or the `zig_exe_path` option in ZLS's own
+config, provides a path. Other editors, like Neovim, Zed, and Helix, have their own settings for
+the ZLS path, as described in the [ZLS installation guide](https://zigtools.org/zls/install/).
+
+If your editor inherits `PATH` from a shell with
+[activation](<../(fundamentals)/workflows.mdx#shell-activation>), pin `zls` in a
+[`.prototools`](<../(fundamentals)/config.mdx>), as activation skips versions that are only
+declared in ecosystem files, like `.zig-version`.
+
+## Troubleshooting
+
+### ZLS doesn't support canary versions
+
+The detected Zig version is a development build, like `master` or `0.16.0-dev.123+abc`, which maps
+to `canary`, so installing fails with `ZLS does not support canary/nightly versions.` Use a tagged
+Zig release, or install a nightly ZLS outside of proto (see
+[matching Zig versions](#matching-zig-versions)). For the same reason,
+[`proto install`](../commands/install.mdx) with no arguments fails to install ZLS in that project,
+while other tools still install.
+
+### A pinned version can't be found
+
+ZLS patch numbers don't follow Zig's, so pinning ZLS to Zig's exact version, like `0.15.2`, can
+fail to resolve. Pin the minor version, like `0.15`, and list the available versions with
+[`proto versions zls`](../commands/versions.mdx).
+
+### Completions or diagnostics are wrong
+
+Zig and ZLS likely resolve to different minor versions in the project's directory. Check that
+they resolve to the same one:
+
+```shell
+# Print the versions that the project resolves to
+$ proto run zig -- version
+$ proto run zls -- --version
+```
+
+## Caveats
+
+- **Zig isn't installed with it** - Installing ZLS doesn't install Zig, as the plugin doesn't
+  require it. Install and pin [Zig](./zig.mdx) yourself.

@@ -49,7 +49,7 @@ $ proto install moon --pin
 proto installs moon into its own store (`~/.proto/tools/moon`), and makes `moon` and `moonx`
 available through its shims, so the version that runs is resolved from the closest
 [`.prototools`](<../../proto/docs/(fundamentals)/config.mdx>) file. This is the easiest way to pin
-moon per repository (see [pinning a version](#pinning-a-version)).
+moon per repository (see [pinning a version](#pin-a-version)).
 
 ```toml title=".prototools"
 moon = "3.0.0"
@@ -184,7 +184,8 @@ Re-running an install script also installs the latest version, overwriting the p
 with proto, you can upgrade (and pin) directly:
 
 ```shell
-$ proto install moon --pin
+# Install the latest version, and pin it in the closest .prototools
+$ proto install moon latest --pin
 ```
 
 To check for and download new versions from your own servers instead of moonrepo's, see

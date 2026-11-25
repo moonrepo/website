@@ -2,6 +2,203 @@
 title: Rust
 ---
 
-## Installing
+[Rust](https://www.rust-lang.org/) is a systems programming language focused on performance,
+reliability, and memory safety. It's a
+[built-in tool](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>) with the `rust` ID, so it
+works without configuring a plugin.
 
-## Version detection
+proto installs Rust with [rustup](https://rustup.rs/), Rust's official toolchain manager, instead
+of downloading archives itself: installing a version of Rust runs `rustup toolchain install`, and
+uninstalling one runs `rustup toolchain uninstall`. Toolchains are shared with rustup, so `cargo`,
+`rustc`, and `rustup` keep working as usual, while proto adds version pinning, detection, and the
+same workflow you use for every other tool.
+
+## Prerequisites
+
+- **rustup** - If `rustup` isn't on `PATH`, proto installs it the first time you install Rust, with
+  rustup's official installer, and without a default toolchain. The installer adds `~/.cargo/bin`
+  to `PATH` in your shell profile, so open a new shell afterwards.
+- **Git** - Versions are listed from the tags of the
+  [rust-lang/rust](https://github.com/rust-lang/rust) repository, with `git ls-remote`, so `git`
+  must be on your `PATH` (see [requirements](../index.mdx#requirements)).
+- **A supported platform** - Rust can be installed on Linux, macOS, and Windows. Other platforms
+  fail with an unsupported platform error.
+- **`~/.cargo/bin` on `PATH`** - proto doesn't create
+  [shims or binaries](<../(fundamentals)/(plugin)/tool.mdx#executables>) for Rust, as rustup's
+  proxies in `~/.cargo/bin` (or `$CARGO_HOME/bin`) already provide `cargo`, `rustc`, and friends.
+
+## Installation
+
+Install Rust with [`proto install`](../commands/install.mdx), and pin a version with
+[`proto pin`](../commands/pin.mdx), or with the `--pin` option while installing:
+
+```shell
+# Install the detected version, or the latest when none is detected
+$ proto install rust
+
+# Install the newest 1.85 release, and pin it to the closest .prototools
+$ proto install rust 1.85 --pin
+
+# Pin a version without installing it
+$ proto pin rust 1.85.0
+
+# Install a channel
+$ proto install rust nightly
+```
+
+```toml title=".prototools"
+rust = "1.85.0"
+```
+
+Besides versions and ranges, Rust supports the `latest` and `canary`
+[aliases](<../(fundamentals)/version-spec.mdx#built-in-aliases>), and rustup's `stable`, `beta`,
+and `nightly` channels. See [versions & aliases](#versions--aliases) for the aliases that Rust
+provides. A partial version, like `1.85`, installs the newest `1.85.x` release. Versions are listed
+from the tags of the [rust-lang/rust](https://github.com/rust-lang/rust) repository, which you can
+browse with [`proto versions rust`](../commands/versions.mdx).
+
+## Core features
+
+### Global packages
+
+Binaries installed with `cargo install`, like `cargo install cargo-nextest`, go into a single
+directory that every Rust version shares.
+
+proto looks for their executables in the following directories, in order, skipping any whose
+environment variable isn't set:
+
+1. `$CARGO_INSTALL_ROOT/bin`, when `CARGO_INSTALL_ROOT` is set.
+2. `$CARGO_HOME/bin`, when `CARGO_HOME` is set.
+3. `~/.cargo/bin`.
+
+A variable that already points to a `bin` directory is used as-is. Since `~/.cargo/bin` is on your
+`PATH` for rustup anyway, installed binaries are typically available everywhere.
+
+```shell
+# Install a binary, then print the directory it was installed to
+$ cargo install cargo-nextest
+$ proto bin rust --dir globals
+
+# Print the directories that proto looks in
+$ proto bin rust --dir globals --all
+```
+
+To pin a crate's version per project instead, install it as a tool with the
+[cargo backend](../backends/cargo.mdx), like `cargo:cargo-nextest`.
+
+### Version files
+
+Besides [`.prototools`](<../(fundamentals)/config.mdx>), proto
+[detects](<../(fundamentals)/detection.mdx#4-ecosystem-files>) a Rust version from the following
+files, checked in this order in each directory:
+
+1. `rust-toolchain` - The legacy
+   [toolchain file](https://rust-lang.github.io/rustup/overrides.html#the-toolchain-file), which
+   contains only a channel, or the same TOML as `rust-toolchain.toml`. It comes first, as rustup
+   prefers it when both exist.
+2. `rust-toolchain.toml` - rustup's toolchain file, with a `[toolchain]` table.
+
+When `rust-toolchain` contains only a channel, the version is read from the first line with
+content, ignoring comments after `#` or `//`. Otherwise, only the `channel` of the `[toolchain]`
+table is read, and a file without one is skipped. proto installs the toolchain without the file's
+`components` and `targets`, so add those with `rustup component add` and `rustup target add`.
+
+```toml title="rust-toolchain.toml"
+[toolchain]
+channel = "1.85.0"
+components = ["clippy", "rustfmt"]
+```
+
+```text title="rust-toolchain"
+1.85.0 # MSRV
+```
+
+Use a fully-qualified version or a channel in these files, not a partial version like `1.85`.
+rustup installs a partial version as a toolchain of its own, separate from the `1.85.x` toolchain
+that proto resolves it to, so Rust ends up installed twice. proto warns when it reads one.
+
+proto doesn't write to these files, so [`proto pin --tool-native`](../commands/pin.mdx) isn't
+supported. Edit them by hand.
+
+## Ecosystem
+
+### Versions & aliases
+
+The plugin provides the following aliases, in addition to proto's
+[built-in aliases](<../(fundamentals)/version-spec.mdx#built-in-aliases>):
+
+- `stable`, `beta`, and `nightly` - rustup's release channels, for the newest release of each.
+
+Channels are installed with rustup as-is, instead of resolving to a version, and proto's `canary`
+installs `nightly`. Dated channels, like `nightly-2025-01-15`, aren't supported.
+
+A channel moves as new releases land, but proto doesn't update a channel that's already installed,
+so update it with rustup instead. As a channel never resolves to a version, passing `--resolve` to
+[`proto pin`](../commands/pin.mdx) pins the channel itself. To pin a version that doesn't move, pin
+it directly, or pin `latest` with `--resolve`, which pins the newest version, like `1.85.0`. Prefer
+a version when everyone, including CI, must build with the same toolchain.
+
+```shell
+# Pin the stable channel, and update it later
+$ proto pin rust stable
+$ rustup update stable
+
+# Pin the newest version instead
+$ proto pin rust latest --resolve
+```
+
+### Choosing a toolchain
+
+Without shims, which toolchain runs `cargo` or `rustc` depends on how it's run:
+
+- **Through proto** - [`proto run`](../commands/run.mdx) and
+  [shell activation](<../(fundamentals)/workflows.mdx#shell-activation>) use the version that
+  proto [detects](<../(fundamentals)/detection.mdx>), and [`proto exec`](../commands/exec.mdx) the
+  version you pass it (see
+  [detection by command](<../(fundamentals)/detection.mdx#detection-by-command>)). `cargo` is the
+  primary executable, so [`proto run rust -- build`](../commands/run.mdx) runs `cargo build`.
+- **Everywhere else** - `cargo` and `rustc` are rustup's proxies, which choose a toolchain with
+  [rustup's own rules](https://rust-lang.github.io/rustup/overrides.html): a toolchain file, a
+  directory override, or the default toolchain. They don't read
+  [`.prototools`](<../(fundamentals)/config.mdx>).
+
+To keep both in agreement, pin the version in `rust-toolchain.toml`, which both read, and install
+it with [`proto install rust`](../commands/install.mdx). Since shell activation only activates
+tools pinned in a [`.prototools`](<../(fundamentals)/config.mdx>), pin the same version there too
+if you rely on it.
+
+## Troubleshooting
+
+### `cargo` isn't found
+
+`cargo` and `rustc` come from `~/.cargo/bin`, not from proto. If they aren't found after
+installing, open a new shell so the `PATH` changes from rustup's installer apply, or add
+`~/.cargo/bin` (or `$CARGO_HOME/bin`) to `PATH` yourself.
+
+### No default toolchain is configured
+
+When proto installs rustup, it doesn't set a default toolchain, so `cargo` fails in directories
+without a toolchain file. Set a default with rustup, or add a `rust-toolchain.toml`:
+
+```shell
+# Use 1.85.0 wherever no toolchain file applies
+$ rustup default 1.85.0
+```
+
+## Caveats
+
+- **Toolchains live outside the store** - They're in rustup's directory, `~/.rustup/toolchains` (or
+  `$RUSTUP_HOME/toolchains`), instead of the
+  [store](<../(fundamentals)/store.mdx#custom-locations>), named with your host's target triple,
+  like `1.85.0-aarch64-apple-darwin`. [`proto clean`](../commands/clean.mdx) never removes them.
+- **Uninstall versions one at a time** - [`proto uninstall rust`](../commands/uninstall.mdx) without
+  a version removes the whole toolchains directory, including toolchains you installed with rustup
+  directly.
+- **Host toolchains only** - Only toolchains for your host are installed: `unknown-linux-gnu` or
+  `unknown-linux-musl` on Linux, depending on its libc, `apple-darwin` on macOS, and
+  `pc-windows-msvc` on Windows, so Windows GNU toolchains aren't supported. Add cross-compilation
+  targets with `rustup target add`.
+- **Downloads are managed by rustup** - rustup downloads and verifies toolchains itself, so they
+  aren't recorded in [lockfiles](../advanced/lockfile.mdx), and proto's
+  [HTTP settings](../advanced/http.mdx), like proxies and URL rewrites, don't apply to them.
+  Configure rustup instead.

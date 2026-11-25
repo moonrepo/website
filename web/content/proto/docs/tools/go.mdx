@@ -2,10 +2,285 @@
 title: Go
 ---
 
-## Installing
+import { TypeLabel } from "@/components/TypeLabel";
 
-## Version detection
+[Go](https://go.dev/) is a statically typed, compiled programming language, known for its fast
+builds, batteries-included tooling, and single-binary deployments. It's a
+[built-in tool](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>) with the `go` ID, so it
+works without configuring a plugin.
+
+proto downloads the official prebuilt distributions of Go from `dl.google.com`, so each project can
+pin the Go version it's built with, and every developer and CI job uses the same one. It provides
+the `go` and `gofmt` [executables](<../(fundamentals)/(plugin)/tool.mdx#executables>), each with a
+shim and a binary of its own, and `go` is the primary. proto also reads the version that a module
+declares in `go.mod` or `go.work`, points `GOROOT` at the version it runs, and puts the executables
+that `go install` creates on `PATH`.
+
+## Prerequisites
+
+- **Git** - Versions are listed from the tags of the [golang/go](https://github.com/golang/go)
+  repository, with `git ls-remote`, so `git` must be on your `PATH` (see
+  [requirements](../index.mdx#requirements)).
+- **A supported platform** - Go is published for Linux (x64, arm64, x86, ARMv6, ppc64le, s390x,
+  riscv64, and loong64), macOS (x64 and arm64), Windows (x64, arm64, and x86), and FreeBSD (x64,
+  arm64, and x86). Other platforms fail with an unsupported platform error.
+
+## Installation
+
+Install Go with [`proto install`](../commands/install.mdx), and pin a version with
+[`proto pin`](../commands/pin.mdx), or with the `--pin` option while installing:
+
+```shell
+# Install the detected version, or the latest when none is detected
+$ proto install go
+
+# Install the newest 1.26 release, and pin it to the closest .prototools
+$ proto install go 1.26 --pin
+
+# Pin a version without installing it
+$ proto pin go 1.26.2
+```
+
+```toml title=".prototools"
+go = "1.26.2"
+```
+
+Besides versions and ranges, Go supports the `latest`
+[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. See
+[versions & aliases](#versions--aliases) for how Go's versions map to proto's.
+
+Every download is verified against the `.sha256` file that Go publishes alongside each archive (see
+[SHA checksums](../advanced/checksums.mdx#sha-checksums)).
+
+### Building from source
+
+Pass `--build` to [`proto install`](../commands/install.mdx) to
+[build Go from source](../guides/build-from-source.mdx), instead of downloading a prebuilt. It's
+supported on the same platforms as the prebuilts. proto downloads the source of the release's tag
+from GitHub, and runs Go's `make.bash` (`make.bat` on Windows), which compiles the toolchain
+without running Go's test suite.
+
+```shell
+# Build Go from source, instead of downloading a prebuilt
+$ proto install go 1.26.2 --build
+```
+
+The build needs:
+
+- An existing `go` on `PATH` to bootstrap with, as Go is written in Go, like a prebuilt version
+  installed with proto. It must be recent enough for the version you're building, as described in
+  Go's [installing from source](https://go.dev/doc/install/source) guide.
 
 ## Configuration
 
-## Building from source
+Go is configured in the `[tools.go]` table of [`.prototools`](<../(fundamentals)/config.mdx>).
+Like other [tool settings](<../(fundamentals)/config.mdx#tools>), these only apply from a
+project's [`.prototools`](<../(fundamentals)/config.mdx>) once it's
+[trusted](<../(fundamentals)/trust.mdx>).
+
+### `dist-url`
+
+<TypeLabel type="string" /> - The URL to download Go archives from, like an
+internal mirror. Defaults to `https://dl.google.com/go/{file}`.
+
+The URL supports the following placeholders:
+
+- `{file}` - The archive's file name, like `go1.26.2.linux-amd64.tar.gz`, or
+  `go1.26.2.windows-amd64.zip` on Windows.
+- `{version}` - The version, as Go names it, like `1.26.2`, `1.20`, or `1.27rc1`.
+
+```toml title=".prototools"
+[tools.go]
+dist-url = "https://artifactory.corp.internal/golang/{file}"
+```
+
+The checksum is downloaded from the same URL, with `{file}` set to the archive's name followed by
+`.sha256`, so a mirror must serve those files too. To list versions from a mirror as well, configure
+[`versions-source`](<../(fundamentals)/config.mdx#tools-versions-source>). To redirect the
+downloads of many tools at once, use [`url-rewrites`](<../(fundamentals)/config.mdx#url-rewrites>)
+instead.
+
+### `gobin`
+
+<TypeLabel type="boolean" /> - When enabled, installing a version of Go adds a
+`GOBIN` variable, and a `PATH` entry for it, to your shell profile, so the
+executables of [global packages](#global-packages) are available in every
+terminal. Defaults to `false`.
+
+As it's about your own shell, set it in your user
+[`~/.prototools`](<../(fundamentals)/config.mdx#locations>).
+
+```toml title=".prototools"
+[tools.go]
+gobin = true
+```
+
+proto appends to the profile that [`proto setup`](../commands/setup.mdx) chose, and only when the
+profile doesn't mention `GOBIN` already, so installing more versions doesn't add the lines again.
+For Bash and Zsh, they look like this:
+
+```shell title="~/.zshrc"
+# go
+export GOBIN="$HOME/go/bin";
+export PATH="$GOBIN:$PATH";
+```
+
+To skip it for a single install, pass `--no-gobin` through to the plugin:
+
+```shell
+# Install without updating the shell profile
+$ proto install go -- --no-gobin
+```
+
+## Core features
+
+### Execution environment
+
+Whenever Go runs through proto, with a [shim](<../(fundamentals)/workflows.mdx#shims>),
+[`proto run`](../commands/run.mdx), [`proto exec`](../commands/exec.mdx), or
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>), proto:
+
+- Sets `GOROOT` to the directory of the version it runs, like `~/.proto/tools/go/1.26.2`. Without
+  it, a `GOROOT` inherited from another Go installation, like one exported by goenv or an old shell
+  profile, would make `go` compile against the other installation's standard library, and fail
+  with mismatched versions.
+- Adds the directories of [global packages](#global-packages) to `PATH`, so the tools that
+  `go generate` or a build script calls, like `stringer` or `mockgen`, are found.
+
+### Global packages
+
+`go install` writes the executables of the packages it installs to a single directory: `$GOBIN`
+when it's set, or the `bin` directory of your `GOPATH` (`~/go` by default) otherwise. proto looks
+for their executables in the following directories, in order, skipping any whose environment
+variable isn't set:
+
+1. `$GOBIN`, when it's set.
+2. `$GOPATH/bin`, when `GOPATH` is set.
+3. `~/go/bin`, Go's default.
+
+These directories are shared by every Go version, so a tool installed with one version keeps
+working after you switch, and they're outside the [store](<../(fundamentals)/store.mdx>), so
+[`proto uninstall go`](../commands/uninstall.mdx) leaves them in place.
+
+proto adds these directories to `PATH` whenever Go runs through proto, and with
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>). With shims alone, add the
+directory that [`proto bin go --dir globals`](../commands/bin.mdx) prints to your `PATH` yourself,
+or enable [`gobin`](#gobin).
+
+```shell
+# Install a global package
+$ go install golang.org/x/tools/gopls@latest
+
+# Print the directories that proto looks in
+$ proto bin go --dir globals --all
+```
+
+### Version files
+
+Besides [`.prototools`](<../(fundamentals)/config.mdx>), proto
+[detects](<../(fundamentals)/detection.mdx#4-ecosystem-files>) a Go version from the following
+files, checked in this order in each directory:
+
+1. `go.mod` - The file that defines a module.
+2. `go.work` - The file that defines a workspace of several modules.
+
+From each file, proto reads the `toolchain` line when it names a version, like
+`toolchain go1.26.2`, and the `go` line otherwise, like `go 1.25`. The `toolchain` line wins, as Go
+runs at least that version, and would download it itself otherwise. A line like `toolchain default`
+is ignored, and a file with neither line is skipped.
+
+```text title="go.mod"
+module example.com/app
+
+go 1.25
+
+toolchain go1.26.2
+```
+
+Both lines are minimums, so proto reads them the same way: the file above becomes the requirement
+`^1.26.2`, which matches 1.26.2 and every later Go 1 release.
+[Like any requirement](<../(fundamentals)/version-spec.mdx#requirements-and-ranges>), it resolves to
+the highest matching version that's installed, or the newest matching release when none is. To run
+an exact version, pin it in a [`.prototools`](<../(fundamentals)/config.mdx>).
+
+proto only reads these files, so [`proto pin --tool-native`](../commands/pin.mdx) isn't supported
+for Go. Update them with Go itself, like `go get go@1.26.2`, or `go get toolchain@go1.26.2`. Like
+other ecosystem files, they don't activate Go on their own, as shell activation only activates
+tools that are pinned in a [`.prototools`](<../(fundamentals)/config.mdx>) (see
+[detection by command](<../(fundamentals)/detection.mdx#detection-by-command>)).
+
+## Ecosystem
+
+### Versions & aliases
+
+Go doesn't use [semantic versions](<../(fundamentals)/version-spec.mdx#semantic-versions>) for all
+of its releases, so proto converts them:
+
+| Go version   | proto version |
+| ------------ | ------------- |
+| `go1.26.2`   | `1.26.2`      |
+| `go1.20`     | `1.20.0`      |
+| `go1.27rc1`  | `1.27.0-rc1`  |
+| `go1.4beta1` | `1.4.0-beta1` |
+
+Releases before Go 1.21, and pre-releases, leave out trailing zeros, and pre-releases have no `-`
+before their identifier. When choosing a version:
+
+- **Write proto's form** on the command line and in
+  [`.prototools`](<../(fundamentals)/config.mdx>), like `1.20.0` or `1.27.0-rc1`. Go's own names,
+  like `go1.20` or `1.27rc1`, aren't valid there.
+- **Partial versions are requirements.** `1.20` is a
+  [requirement](<../(fundamentals)/version-spec.mdx#requirements-and-ranges>) that matches every
+  1.20 release, so it resolves to the newest patch, like `1.20.14`, not to `go1.20`. Write `1.20.0`
+  for that release.
+- **Pin pre-releases in full.** Like any pre-release, a release candidate is only used when pinned
+  as a full version, like `1.27.0-rc1`.
+- **Version files keep Go's form.** `go.mod` and `go.work` are written the way Go expects, with a
+  bare version on the `go` line, like `go 1.25`, and a release name on the `toolchain` line, like
+  `toolchain go1.26.2`. proto converts both when it [reads them](#version-files).
+
+Run [`proto versions go`](../commands/versions.mdx) to list every version as proto names it.
+
+### Toolchain switching
+
+Go can switch versions on its own. When `go.mod` or `go.work` requires a newer Go than the one
+running, and `GOTOOLCHAIN` is `auto` (the default), `go` downloads that version into its module
+cache, and runs it instead. See [Go toolchains](https://go.dev/doc/toolchain).
+
+As proto [detects](#version-files) the version from the same lines, the Go it runs usually satisfies
+them already. But when a [`.prototools`](<../(fundamentals)/config.mdx>) pins an older Go than
+`go.mod` requires, Go runs a version that proto didn't install. To make Go fail instead, so the
+version stays under proto's control, set `GOTOOLCHAIN` to `local`:
+
+```toml title=".prototools"
+go = "1.26.2"
+
+[tools.go.env]
+GOTOOLCHAIN = "local"
+```
+
+A `go.mod` that needs a newer Go then fails with an error from Go, and the fix is to bump the pin.
+
+## Troubleshooting
+
+### Builds fail with mismatched versions
+
+Errors like `compile: version "go1.25.0" does not match go tool version "go1.26.2"` mean that `go`
+is using the `GOROOT` of another installation. proto sets `GOROOT` when Go runs through it, but not
+when Go runs from a [binary](<../(fundamentals)/workflows.mdx#binary-linking>) in `~/.proto/bin`,
+or by its full path. Remove any `GOROOT` export from your shell profile, as Go finds its own root
+from the location of its executable, and run `go env GOROOT` to check which one is used.
+
+### A different Go version runs
+
+If `go version` prints a version you didn't install with proto, Go probably switched toolchains
+(see [toolchain switching](#toolchain-switching)). Otherwise, follow
+[a tool runs the wrong version](../guides/troubleshooting.mdx#a-tool-runs-the-wrong-version).
+
+### Installed tools aren't found
+
+When a tool you installed with `go install`, like `gopls`, isn't found in your shell, its directory
+isn't on your `PATH`. Enable [`gobin`](#gobin), use
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>), or add the directory that
+[`proto bin go --dir globals`](../commands/bin.mdx) prints to your `PATH` (see
+[global packages](#global-packages)).

@@ -2,10 +2,322 @@
 title: Python
 ---
 
-## Installing
+import { TypeLabel } from "@/components/TypeLabel";
 
-## Version detection
+[Python](https://www.python.org/) is a general-purpose programming language. It's a
+[built-in tool](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>) with the `python` ID, so it
+works without configuring a plugin.
+
+proto installs CPython, the reference implementation, from the prebuilt distributions of
+[python-build-standalone](https://github.com/astral-sh/python-build-standalone), or builds it from
+source with pyenv's `python-build`. Each version lives in its own directory in the
+[store](<../(fundamentals)/store.mdx>), so every project can use a different one, without touching
+your system Python. It provides the `python`
+[executable](<../(fundamentals)/(plugin)/tool.mdx#executables>), and a `pip` shim that runs
+`python -m pip`, so pip always belongs to the detected Python version. It also reads
+`.python-version` files, so repositories that are set up for pyenv or uv work as-is.
+
+## Prerequisites
+
+- **Git** - Versions are listed from the tags of the
+  [python/cpython](https://github.com/python/cpython) repository, with `git ls-remote`, so `git`
+  must be on your `PATH` (see [requirements](../index.mdx#requirements)).
+- **A supported platform** - Python's [prebuilts](#prebuilts) are published for Linux (x64, arm64,
+  and more), macOS (x64 and arm64), and Windows (x64, x86, and arm64). On other platforms,
+  [build from source](#building-from-source).
+- **Building from source** - On macOS, it needs the Xcode command line tools, and it isn't
+  supported on Windows.
+
+## Installation
+
+Install Python with [`proto install`](../commands/install.mdx), and pin a version with
+[`proto pin`](../commands/pin.mdx), or with the `--pin` option while installing:
+
+```shell
+# Install the detected version, or the latest when none is detected
+$ proto install python
+
+# Install the newest 3.13 release, and pin it to the closest .prototools
+$ proto install python 3.13 --pin
+
+# Pin a version without installing it
+$ proto pin python 3.13
+
+# Install a release candidate
+$ proto install python 3.15.0-rc.2
+```
+
+```toml title=".prototools"
+python = "~3.13"
+```
+
+Besides versions and ranges, Python supports the `latest`
+[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. See
+[versions & aliases](#versions--aliases) for how Python's versions map to proto's.
+
+### Building from source
+
+Pass `--build` to [`proto install`](../commands/install.mdx) to
+[build Python from source](../guides/build-from-source.mdx), instead of downloading a prebuilt.
+It's useful when your platform or version doesn't have one, and isn't supported on Windows. proto
+clones [pyenv](https://github.com/pyenv/pyenv), and runs its
+[`python-build`](https://github.com/pyenv/pyenv/blob/master/plugins/python-build/README.md) script,
+which downloads CPython's source, and builds it, with pip, into the store.
+
+```shell
+# Build the detected version
+$ proto install python --build
+
+# Build a specific version
+$ proto install python 3.12.8 --build
+```
+
+The version is passed to `python-build` in CPython's format, without the build suffix, so
+`3.15.0-rc.2` builds `3.15.0rc2`. `python-build` can only build versions it has a definition for.
+
+The build needs:
+
+- Git, to clone pyenv.
+- On macOS, the Xcode command line tools.
+
+Before building, proto offers to install the
+[system dependencies](../guides/build-from-source.mdx#system-dependencies) that Python needs, which
+are the packages that pyenv
+[suggests](https://github.com/pyenv/pyenv/wiki#suggested-build-environment). Without them, the
+build fails, or leaves out standard library modules, like `sqlite3` or `compression.zstd`. When you
+install them yourself, like in a Docker image, these are the packages for each package manager:
+
+- **apk** - `git bash build-base libffi-dev openssl-dev bzip2-dev zlib-dev xz-dev readline-dev
+sqlite-dev tk-dev zstd-dev`
+- **apt** - `make build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev
+curl git libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
+libzstd-dev`
+- **brew** - `openssl readline sqlite3 xz tcl-tk@8 libb2 zstd zlib pkgconfig`
+- **dnf** - `make gcc patch zlib-devel bzip2 bzip2-devel readline-devel sqlite sqlite-devel
+openssl-devel tk-devel libffi-devel xz-devel libuuid-devel gdbm-libs libnsl2`
+- **pacman** - `base-devel openssl zlib xz tk zstd`
+- **yum** - `gcc make patch zlib-devel bzip2 bzip2-devel readline-devel sqlite sqlite-devel
+openssl-devel tk-devel libffi-devel xz-devel`
+
+When a build fails, check its [build log](../guides/build-from-source.mdx#build-logs), and the
+`python-build` README linked above.
 
 ## Configuration
 
-## Building from source
+Python is configured in the `[tools.python]` table of [`.prototools`](<../(fundamentals)/config.mdx>).
+Like other [tool settings](<../(fundamentals)/config.mdx#tools>), these only apply from a
+project's [`.prototools`](<../(fundamentals)/config.mdx>) once it's
+[trusted](<../(fundamentals)/trust.mdx>).
+
+### `use-latest-build`
+
+<TypeLabel type="boolean" /> - When a version without a build suffix is
+requested, like `3.13.5`, resolve it to the newest [build](#versions--aliases)
+of that version, like `3.13.5+20250723`, instead of the first one published for
+it. A version with a build suffix is always kept as-is, and a requirement like
+`3.13` already resolves to the newest build. Defaults to `false`.
+
+```toml title=".prototools"
+python = "3.13.5"
+
+[tools.python]
+use-latest-build = true
+```
+
+## Core features
+
+### Global packages
+
+When you install a package with pip, its executables, like `black` or `ruff`, are written to the
+version's own directory, or with `--user`, to your user's directory.
+
+proto looks for their executables in the following directories, in order, skipping any whose
+environment variable isn't set:
+
+1. The version's own `bin` directory (`Scripts` on Windows), like
+   `~/.proto/tools/python/<version>/bin`. This is where `pip install` writes, so these packages are
+   only available to that version, and are removed along with it.
+2. `$PYTHONUSERBASE/bin`, when it's set (not on Windows). This is where `pip install --user` writes
+   when you've moved your user base.
+3. `~/.local/bin`, where `pip install --user` writes by default on Linux and macOS. pipx and
+   `uv tool install` write there too.
+
+proto adds these directories to `PATH` whenever Python runs through proto, and with
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>), along with the version's
+other executables, like `python3` and `pip3`. That way, a package's executables, and any Python
+process they spawn, use the same version. With shims alone, only the `python` and `pip` shims are
+on `PATH`, so install with `--user`, and add `~/.local/bin` to your `PATH` yourself, or run
+packages as modules, like `python -m black`.
+
+```shell
+# Install a package for the detected version only
+$ pip install black
+
+# Install a package for your user, into ~/.local
+$ pip install --user black
+
+# Print the directories that proto looks in
+$ proto bin python --dir globals --all
+```
+
+On Windows, `pip install --user` writes to `%APPDATA%\Python`, which proto doesn't look in, so
+install packages into the version itself instead.
+
+### Version files
+
+Besides [`.prototools`](<../(fundamentals)/config.mdx>), proto
+[detects](<../(fundamentals)/detection.mdx#4-ecosystem-files>) a Python version from the following
+files, checked in this order in each directory:
+
+1. `.python-version` - Written by pyenv, and by `uv python pin`.
+2. `.python-versions` - uv's file for multiple versions, where the first is used.
+
+The version is read from the first line with content, ignoring comments after `#` or `//`. A file
+can contain a full version (`3.13.5`), a partial version (`3.13`), a requirement (`>=3.11,<3.13`),
+a [build suffix](#versions--aliases) (`3.13.5+20250723`), or a pre-release in CPython's format, like
+`3.15.0rc2`, which proto reads as `3.15.0-rc.2`.
+
+```text title=".python-version"
+# Keep in sync with the Docker image
+3.13
+```
+
+A file that doesn't pin a CPython version that proto can install is ignored with a warning, and
+proto keeps looking. That includes `system`, other implementations, like `pypy3.10-7.3.12` or
+`miniconda3-latest`, and free-threaded or debug builds, like `3.13t`, `3.13+freethreaded`, or
+`3.13d`.
+
+`requires-python` in `pyproject.toml` isn't read, so pin the version in `.python-version`, or in
+[`.prototools`](<../(fundamentals)/config.mdx>). Shell activation only activates Python when it's
+pinned in a [`.prototools`](<../(fundamentals)/config.mdx>), not when it's only in a version file
+(see [detection by command](<../(fundamentals)/detection.mdx#detection-by-command>)).
+
+## Ecosystem
+
+### Versions & aliases
+
+Python doesn't use [semantic versions](<../(fundamentals)/version-spec.mdx#semantic-versions>) for
+all of its releases, so proto converts them:
+
+| Python version | proto version    |
+| -------------- | ---------------- |
+| `3.13.5`       | `3.13.5`         |
+| `3.15.0a1`     | `3.15.0-alpha.1` |
+| `3.15.0b4`     | `3.15.0-beta.4`  |
+| `3.15.0rc2`    | `3.15.0-rc.2`    |
+
+Python's pre-releases have no `-` before their identifier, and use `a` and `b` for alpha and beta.
+When choosing a version:
+
+- **Write proto's form** on the command line and in
+  [`.prototools`](<../(fundamentals)/config.mdx>), like `3.15.0-rc.2`. Python's own form, like
+  `3.15.0rc2`, isn't valid there, while shorter forms, like `3.15.0-rc2` or `3.15.0-b.4`, are
+  normalized for you.
+- **Pin pre-releases in full.** Like any pre-release, an alpha, beta, or release candidate is only
+  used when pinned as a full version, like `3.15.0-rc.2`, as
+  [requirements](<../(fundamentals)/version-spec.mdx#requirements-and-ranges>) like `3.15` skip
+  pre-releases.
+- **Version files can keep Python's form.** A `.python-version` can contain `3.15.0rc2`, as pyenv
+  and uv write it (see [version files](#version-files)).
+
+Python has no build suffixes, but proto adds one. Each [python-build-standalone](#prebuilts) release
+rebuilds the Python versions it supports, so one Python version can have several builds, named after
+the date of the release. Each build is listed as its own version with a build suffix, like
+`3.13.5+20250723`, alongside the plain `3.13.5`. Every build of a version is the same Python, while
+newer builds have fixes to the distribution itself, like updated bundled libraries.
+
+Which build is installed depends on the version you ask for:
+
+- **Partial versions and ranges**, like `3.13` - The latest build of the highest matching version,
+  for your platform.
+- **Exact versions**, like `3.13.5` - The version's first build, or its latest with
+  [`use-latest-build`](#use-latest-build).
+- **Exact builds**, like `3.13.5+20250712` - Exactly that build.
+- **`latest`** - The first build of the newest Python release.
+
+Run [`proto versions python`](../commands/versions.mdx) to list every version as proto names it,
+builds included.
+
+### Prebuilts
+
+Prebuilts come from [python-build-standalone](https://github.com/astral-sh/python-build-standalone),
+a project maintained by Astral, which also provides the Python versions that uv installs. Its
+distributions bundle their own copies of libraries like OpenSSL and SQLite, so they don't depend on
+what's installed on your system. proto looks up the builds of each version in moonrepo's registry,
+at `registry.moonrepo.app`, downloads them from python-build-standalone's GitHub releases, and
+verifies them against their [checksum](../advanced/checksums.mdx), when one is published (older
+builds don't have one). Behind a firewall, allow both hosts.
+
+Prebuilts exist for the following platforms:
+
+- **Linux** - x64 and arm64, with glibc or musl (like Alpine), and armv7, ppc64le, riscv64, and
+  s390x with glibc, plus x86 with glibc up to 3.11.5. On 32-bit ARM, the hard-float build is used,
+  which distros like Raspberry Pi OS require.
+- **macOS** - x64 and arm64.
+- **Windows** - x64, x86, and arm64.
+
+They cover most releases of Python 3.8 and later, plus a few 3.7 releases, though some platforms
+start later, like Windows on arm64, from 3.11.13, 3.12.11, and 3.13.5. Other versions can be
+[built from source](#building-from-source).
+
+### Package managers
+
+- **pip** - Included with every version. The `pip` shim runs `python -m pip`, so it always installs
+  into the detected version. There's no `pip` binary in `~/.proto/bin`, so with
+  [binary linking](<../(fundamentals)/workflows.mdx#binary-linking>), run `python -m pip` instead.
+- **[Poetry](./poetry.mdx)** - Requires `python`, so pin both, and uses that version of Python.
+- **[uv](./uv.mdx)** - Doesn't require `python`, as it can install Python versions of its own. It
+  reads the same `.python-version` files as proto, so both agree on the version, and it can use the
+  Python that proto installed when it's on `PATH`.
+
+```toml title=".prototools"
+python = "~3.13"
+poetry = "~2"
+```
+
+## Troubleshooting
+
+### No prebuilt is available
+
+Installing a version that doesn't have a prebuilt for your platform fails, as there's nothing to
+download. Install a different version, or [build from source](#building-from-source) with `--build`.
+Besides platforms without prebuilts, this happens when:
+
+- **A new Python release doesn't have a build yet** - Builds are published after CPython's releases,
+  but a requirement like `3.14` resolves to a new release as soon as it's tagged. Pin the previous
+  release until a build is out.
+- **A version predates prebuilts** - Releases before 3.8 mostly don't have one. For example, `3.7`
+  resolves to `3.7.17`, while prebuilts stop at `3.7.9`.
+
+Versions with a [build suffix](#versions--aliases) have a prebuilt for your platform, so look for
+those when choosing a version:
+
+```shell
+# List every version, including those with a build suffix
+$ proto versions python
+```
+
+### `python3` runs a different Python
+
+Shims only exist for `python` and `pip`, so with shims, `python3`, `pip3`, and scripts with a
+`#!/usr/bin/env python3` shebang run whatever else is on your `PATH`, like your system's Python. Run
+`python` instead, or use [shell activation](<../(fundamentals)/workflows.mdx#shell-activation>)
+with a pin in [`.prototools`](<../(fundamentals)/config.mdx>), which puts the version's `bin`
+directory, with `python3` and `pip3`, on `PATH`. For a single command, use
+[`proto exec`](../commands/exec.mdx):
+
+```shell
+# Run a script that calls python3, with Python 3.13 on PATH
+$ proto exec python@3.13 -- ./scripts/build.sh
+```
+
+## Caveats
+
+- **CPython only** - PyPy, conda, and free-threaded or debug builds of CPython can't be installed.
+- **Virtual environments are tied to a version** - A virtual environment, like one created with
+  `python -m venv .venv`, points to the version in the store that created it. Uninstalling that
+  version breaks the environment, so recreate it after switching versions. Running the
+  environment's own `python` bypasses proto, so it doesn't update the version's
+  [last used](<../(fundamentals)/store.mdx#last-used>) time, and
+  [`proto clean`](../commands/clean.mdx) can remove a version that an environment still uses.
+  Install it with `PROTO_NO_CLEAN=1` to keep it.

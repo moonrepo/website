@@ -2,8 +2,219 @@
 title: Bun
 ---
 
-## Installing
+import { TypeLabel } from "@/components/TypeLabel";
 
-## Version detection
+[Bun](https://bun.sh/) is an all-in-one JavaScript toolkit: a runtime, a package manager, a test
+runner, and a bundler, in a single executable. It's a
+[built-in tool](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>) with the `bun` ID, so it works
+without configuring a plugin. Since Bun is its own package manager, `bun install` and `bun add` come
+with it, and there's no separate tool to pin.
+
+proto downloads Bun's prebuilt releases from GitHub, verifies them against Bun's published
+checksums, and picks the build that runs on your machine, like the baseline build for older x64 CPUs
+(see [builds](#builds)). It provides the `bun` and `bunx`
+[executables](<../(fundamentals)/(plugin)/tool.mdx#executables>): `bun` is the primary one, and
+`bunx` is Bun's equivalent of `npx`, for running a package's executable.
+
+## Prerequisites
+
+- **Git** - Versions are listed from the tags of the [oven-sh/bun](https://github.com/oven-sh/bun)
+  repository, with `git ls-remote`, so `git` must be on your `PATH` (see
+  [requirements](../index.mdx#requirements)).
+- **A supported platform** - Bun is published for Linux and macOS on x64 and arm64, for Windows on
+  x64 from Bun 1.1 and on arm64 from Bun 1.3.10, and for FreeBSD on x64 and arm64 from Bun 1.3.14.
+  On musl-based Linux distributions, like Alpine, it's published from Bun 1.1.35. Installing a
+  version that isn't published for your platform fails, instead of installing a build that can't
+  run. Other platforms fail with an unsupported platform error.
+
+## Installation
+
+Install Bun with [`proto install`](../commands/install.mdx), and pin a version with
+[`proto pin`](../commands/pin.mdx), or with the `--pin` option while installing:
+
+```shell
+# Install the detected version, or the latest when none is detected
+$ proto install bun
+
+# Install the newest 1.3 release, and pin it to the closest .prototools
+$ proto install bun 1.3 --pin
+
+# Pin a version without installing it
+$ proto pin bun 1.3
+```
+
+```toml title=".prototools"
+bun = "~1.3"
+```
+
+Besides versions and ranges, Bun supports the `latest` and `canary`
+[aliases](<../(fundamentals)/version-spec.mdx#built-in-aliases>) (see
+[canary builds](#canary-builds)).
 
 ## Configuration
+
+Bun is configured in the `[tools.bun]` table of [`.prototools`](<../(fundamentals)/config.mdx>).
+Like other [tool settings](<../(fundamentals)/config.mdx#tools>), these only apply from a
+project's [`.prototools`](<../(fundamentals)/config.mdx>) once it's
+[trusted](<../(fundamentals)/trust.mdx>).
+
+### `dist-url`
+
+<TypeLabel type="string" /> - The URL template that release archives are
+downloaded from, like an internal mirror of Bun's GitHub releases. Defaults to
+`https://github.com/oven-sh/bun/releases/download/bun-v{version}/{file}`.
+
+Supports the following placeholders:
+
+- `{version}` - The version being installed, like `1.3.2`. For [canary builds](#canary-builds), it's
+  `canary`, and a `bun-v` before it is removed, matching the `canary` release on GitHub.
+- `{file}` - The archive's file name, in the format `bun-<os>-<arch>[-musl][-baseline].zip`, like
+  `bun-linux-x64.zip` or `bun-darwin-aarch64.zip`. Checksums are downloaded from the same URL, with
+  `{file}` replaced by `SHASUMS256.txt`, so a mirror must host that file next to the archives.
+
+```toml title=".prototools"
+[tools.bun]
+dist-url = "https://mirror.internal/bun/bun-v{version}/{file}"
+```
+
+This only changes where archives are downloaded from. Available versions are still listed from the
+tags of `https://github.com/oven-sh/bun`, like `bun-v1.3.2`, so to list them from a mirror too,
+configure [`versions-source`](<../(fundamentals)/config.mdx#tools-versions-source>).
+
+## Core features
+
+### Global packages
+
+Packages installed globally with `bun add --global` (or `-g`) live outside of proto's
+[store](<../(fundamentals)/store.mdx>), so every Bun version shares them. Bun links their
+executables into a global bin directory.
+
+proto looks for their executables in the following directories, in order, skipping any whose
+environment variable isn't set:
+
+1. `$BUN_INSTALL_BIN`.
+2. `$BUN_INSTALL/bin`, or `$BUN_INSTALL` itself when it already is a `bin` directory.
+3. `$XDG_CACHE_HOME/.bun/bin`.
+4. `~/.bun/bin`, Bun's default.
+
+proto adds these directories to `PATH` whenever Bun runs through proto, and with
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>), so a script that calls a
+global package's command finds it. With shims alone, add the directory that
+[`proto bin bun --dir globals`](../commands/bin.mdx) prints to your `PATH` yourself.
+
+```shell
+# Install a package globally
+$ bun add --global cowsay
+
+# Print the directory that global executables are linked into
+$ proto bin bun --dir globals
+
+# Print the directories that proto looks in
+$ proto bin bun --dir globals --all
+```
+
+### Version files
+
+Besides [`.prototools`](<../(fundamentals)/config.mdx>), proto
+[detects](<../(fundamentals)/detection.mdx#4-ecosystem-files>) a Bun version from the following
+files, checked in this order in each directory:
+
+1. `.bumrc` - The version is read from the first line with content, ignoring comments after `#` or
+   `//`.
+2. `.bun-version` - Read the same way as `.bumrc`.
+3. `package.json` - The first of the following fields that declares a Bun version:
+   1. `devEngines.runtime`, an entry named `bun`.
+   2. `devEngines.packageManager`, an entry named `bun`.
+   3. `volta.bun`, including from a file that `volta.extends` points to.
+   4. `packageManager`, like `bun@1.3.2`. A Corepack hash after the version, like `+sha512.…`, is
+      removed.
+   5. `engines.bun`.
+
+In `devEngines` and `engines`, only versions and ranges are read, so values like `latest` are
+skipped. Files within `node_modules` are ignored, so a dependency's `package.json` never decides
+which version you run.
+
+```text title=".bun-version"
+1.3.2
+```
+
+```json title="package.json"
+{
+  "devEngines": {
+    "runtime": { "name": "bun", "version": "^1.3.0" }
+  }
+}
+```
+
+To pin a version in these files, instead of [`.prototools`](<../(fundamentals)/config.mdx>), pass
+`--tool-native` to [`proto pin`](../commands/pin.mdx). It updates `.bumrc` or `.bun-version` when
+one exists in the directory, as they're detected first, and writes to `devEngines.runtime` in
+`package.json` otherwise. `devEngines` only accepts versions and ranges, so pin an alias with
+`--resolve`. [`proto unpin --tool-native`](../commands/unpin.mdx) removes the version file, or the
+`bun` entries in `devEngines`.
+
+```shell
+# Pin to .bumrc or .bun-version when one exists, or devEngines in package.json otherwise
+$ proto pin bun 1.3.2 --tool-native
+
+# Pin the version that latest resolves to
+$ proto pin bun latest --resolve --tool-native
+```
+
+## Ecosystem
+
+### Builds
+
+Bun publishes more than one build for some platforms, and proto picks the one that runs on your
+machine, with nothing to configure:
+
+- **Baseline** - On x64 CPUs without AVX2 support, like older Intel processors, proto installs the
+  baseline build, as the default build can't run on them. A
+  [lockfile](../advanced/lockfile.mdx) records it as the `baseline`
+  [variant](../advanced/lockfile.mdx#variants), so machines with different CPUs can share one.
+  Locking another platform with [`proto lock`](../commands/lock.mdx) locks the default build.
+- **musl** - On musl-based Linux distributions, like Alpine, proto installs the musl build, which
+  Bun publishes from version 1.1.35. Installing an older version fails, instead of installing a
+  glibc build that can't run.
+
+### Canary builds
+
+Bun publishes a canary build, its latest unreleased build, which you can install with the `canary`
+spec. Canary builds don't have reliable checksums, so they aren't verified against a published one
+(see [tools without checksums](../advanced/checksums.mdx#tools-without-checksums)). Once installed,
+a canary build isn't replaced by a newer one. To get a newer build, uninstall it and install it
+again. Uninstalling also removes a `canary` pin from your
+[`.prototools`](<../(fundamentals)/config.mdx>), so pin it again if you use one.
+
+```shell
+# Install the canary build
+$ proto install bun canary
+
+# Run it for a single command
+$ PROTO_BUN_VERSION=canary bun --version
+
+# Update to the newest canary build
+$ proto uninstall bun canary
+$ proto install bun canary
+```
+
+## Troubleshooting
+
+### A global package's command isn't found
+
+Executables of global packages are only on `PATH` within Bun's own process, or with
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>) (see the
+[comparison of workflows](<../(fundamentals)/workflows.mdx#comparison>)). To run them from a shell
+that isn't activated, add the globals directory to your `PATH` yourself, as printed by
+[`proto bin bun --dir globals`](../commands/bin.mdx).
+
+If you've changed the directory with `globalBinDir` in `bunfig.toml`, proto doesn't read it. Set
+the `BUN_INSTALL_BIN` environment variable to the same directory instead, which both Bun and proto
+use.
+
+## Caveats
+
+- **`bun upgrade` is blocked** - It would replace a version that proto manages, so in an
+  interactive terminal, proto offers to install and pin the `latest` version instead (see
+  [running tools](<../(fundamentals)/(plugin)/tool.mdx#running-tools>)). To upgrade yourself,
+  run [`proto install bun latest --pin`](../commands/install.mdx).
