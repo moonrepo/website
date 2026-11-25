@@ -70,10 +70,8 @@ kotlin = "2.4.20"
 ```
 
 Besides versions and ranges, Kotlin supports the `latest`
-[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. Partial versions,
-like `2.4`, work too, and `latest` is the newest stable release. Pre-releases, like `2.4.20-Beta2`
-and `2.4.20-RC`, are available as well, but only when requested explicitly. Development builds
-aren't listed.
+[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. See
+[versions & aliases](#versions--aliases) for how Kotlin's versions map to proto's.
 
 Kotlin provides the following executables, which are available as
 [shims](<../(fundamentals)/workflows.mdx#shims>), and through
@@ -172,25 +170,53 @@ kotlin=2.4.20
 
 ## Ecosystem
 
-### Historical releases
+### Versions & aliases
 
-Historical compiler releases can be installed too, back to `0.6.31`. Older releases used tags and
-file names that don't follow today's conventions, so their versions are normalized to semantic
-versions:
+Kotlin doesn't use [semantic versions](<../(fundamentals)/version-spec.mdx#semantic-versions>) for
+all of its releases, so proto converts them:
 
-- **Two-part releases** have a zero patch version. The original `1.1` release is `1.1.0`, while
-  `1.1` is a partial version that resolves to the newest `1.1.x` release, like `1.1.61`. Previews
-  can be requested either way, so `1.2-M1` and `1.2.0-M1` install the same release.
-- **Previews with two names** are available under both, when the tag and the compiler's build
-  version differ. `1.3.0-rc4` and `1.3.0-rc-190` install the same archive.
+| Kotlin version | proto version                  |
+| -------------- | ------------------------------ |
+| `1.1`          | `1.1.0`                        |
+| `1.2-M1`       | `1.2.0-M1`                     |
+| `1.3-rc4`      | `1.3.0-rc4` and `1.3.0-rc-190` |
+| `0.11.91.1`    | `0.11.91+1`                    |
+
+Only [historical releases](#historical-releases) are converted. Current releases, like `2.4.20`,
+and their previews, like `2.4.20-Beta2` and `2.4.20-RC`, are already semantic versions, so they're
+written the same in proto. When choosing a version:
+
+- **Write proto's form** on the command line, in [`.prototools`](<../(fundamentals)/config.mdx>),
+  and in version files, like `1.1.0` or `0.11.91+1`.
+- **Partial versions are requirements.** `1.1` is a
+  [requirement](<../(fundamentals)/version-spec.mdx#requirements-and-ranges>) that matches every
+  1.1 release, so it resolves to the newest one, like `1.1.61`, not to the original `1.1`. Write
+  `1.1.0` for that release. Previews can be written either way, so `1.2-M1` and `1.2.0-M1` install
+  the same release.
+- **Some previews have two names**, when the tag and the compiler's build version differ, and are
+  available under both. `1.3.0-rc4` and `1.3.0-rc-190` install the same archive.
 - **Pre-1.0 builds** keep their build numbers, like `0.6.31`, and the four-part `0.11.91.1` is
   `0.11.91+1`.
+- **Fix releases are pre-releases.** Releases like `1.1.4-3` are fixes that Kotlin published after
+  `1.1.4`, but proto reads the `-3` as a pre-release, so they sort before `1.1.4`, and are only
+  used when pinned as a full version.
+- **Pin previews in full.** Like any pre-release, a preview is only used when pinned as a full
+  version, like `2.4.20-Beta2`, so `2.4` and `latest` resolve to stable releases. Development
+  builds aren't listed.
+
+Run [`proto versions kotlin`](../commands/versions.mdx) to list every version as proto names it.
 
 ```shell
 # The original 1.1 release, and the newest 1.1.x release
 $ proto install kotlin 1.1.0
 $ proto install kotlin 1.1
 ```
+
+### Historical releases
+
+Historical compiler releases can be installed too, back to `0.6.31`. Older releases used tags and
+file names that don't follow today's conventions, so their versions are converted to semantic
+versions (see [versions & aliases](#versions--aliases)).
 
 The earliest releases don't ship every launcher. Without a runner, `kotlin` runs the compiler
 instead, and without `kotlinc`, like in `0.6.31`, both use `kotlinc-jvm`.

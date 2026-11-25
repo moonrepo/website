@@ -64,9 +64,8 @@ poetry = "2.1"
 ```
 
 Besides versions and ranges, Poetry supports the `latest`
-[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. Prereleases are
-written in semver form, like `1.2.0-rc2`, instead of PyPI's `1.2.0rc2`, and proto converts them for
-the installer.
+[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. See
+[versions & aliases](#versions--aliases) for how Poetry's versions map to proto's.
 
 ## Core features
 
@@ -104,6 +103,30 @@ A specifier that can't be converted, like `~=2`, is skipped, and detection moves
 wasn't there.
 
 ## Ecosystem
+
+### Versions & aliases
+
+Poetry doesn't use [semantic versions](<../(fundamentals)/version-spec.mdx#semantic-versions>) for
+all of its releases, so proto converts them:
+
+| Poetry version | proto version |
+| -------------- | ------------- |
+| `2.1.1`        | `2.1.1`       |
+| `1.2.0a2`      | `1.2.0-a2`    |
+| `1.2.0b3`      | `1.2.0-b3`    |
+| `1.2.0rc2`     | `1.2.0-rc2`   |
+
+Poetry's pre-releases follow [PEP 440](https://peps.python.org/pep-0440/), with no `-` before their
+identifier. When choosing a version:
+
+- **Write proto's form** on the command line, in [`.prototools`](<../(fundamentals)/config.mdx>),
+  and in `.poetry-version`, exactly as it's listed, like `1.2.0-rc2`. Poetry's own form, like
+  `1.2.0rc2`, isn't valid there, and other forms, like `1.2.0-rc.2`, don't match a release. proto
+  converts the version back to Poetry's form for the installer.
+- **Pin pre-releases in full.** Like any pre-release, an alpha, beta, or release candidate is only
+  used when pinned as a full version, like `1.2.0-rc2`.
+
+Run [`proto versions poetry`](../commands/versions.mdx) to list every version as proto names it.
 
 ### Virtual environments
 

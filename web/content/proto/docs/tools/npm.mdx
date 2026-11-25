@@ -58,13 +58,7 @@ Besides versions and ranges, npm supports the `latest`
 [alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. Versions are the
 releases of the [`npm`](https://www.npmjs.com/package/npm) package, and `latest` follows its
 `latest` dist-tag, falling back to the highest stable version when that tag points to a
-pre-release.
-
-The plugin also provides the following aliases:
-
-- `bundled` - The version that ships with the detected Node.js version (see
-  [bundled npm](#bundled-npm)).
-- `<dist-tag>` - The version of any other dist-tag of the package, like `next-11`.
+pre-release. See [versions & aliases](#versions--aliases) for the aliases that npm provides.
 
 npm provides three [executables](<../(fundamentals)/(plugin)/tool.mdx#executables>), each with a
 [shim](<../(fundamentals)/workflows.mdx#shims>), but no
@@ -239,6 +233,27 @@ $ proto pin npm latest --resolve --tool-native
 ```
 
 ## Ecosystem
+
+### Versions & aliases
+
+The plugin provides the following aliases, in addition to proto's
+[built-in aliases](<../(fundamentals)/version-spec.mdx#built-in-aliases>):
+
+- `bundled` - The version that ships with the detected Node.js version (see
+  [bundled npm](#bundled-npm)).
+- `<dist-tag>` - The version that any other dist-tag of the `npm` package points to, like
+  `next-11`, which follows the newest npm 11 release.
+
+Aliases resolve to a newer version as releases are published. To pin the version an alias
+currently resolves to, pass `--resolve` to [`proto pin`](../commands/pin.mdx).
+
+```shell
+# Pin the version that next-11 resolves to
+$ proto pin npm next-11 --resolve
+
+# List every alias, and the version it resolves to
+$ proto versions npm --aliases
+```
 
 ### Bundled npm
 

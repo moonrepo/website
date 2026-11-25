@@ -42,6 +42,9 @@ $ proto install python 3.13 --pin
 
 # Pin a version without installing it
 $ proto pin python 3.13
+
+# Install a release candidate
+$ proto install python 3.15.0-rc.2
 ```
 
 ```toml title=".prototools"
@@ -49,20 +52,8 @@ python = "~3.13"
 ```
 
 Besides versions and ranges, Python supports the `latest`
-[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. A requirement like
-`3.13` resolves to a version with a [build suffix](#build-suffixes), like `3.13.5+20250723`, which
-names the prebuilt to download.
-
-CPython names its pre-releases like `3.15.0rc2`, which proto writes as a
-[semantic version](<../(fundamentals)/version-spec.mdx#semantic-versions>), `3.15.0-rc.2`, where `a`
-becomes `alpha`, and `b` becomes `beta`. Use that format on the command line and in
-[`.prototools`](<../(fundamentals)/config.mdx>). Shorter forms, like `3.15.0-rc2`, are normalized
-for you, and [version files](#version-files) can keep CPython's format.
-
-```shell
-# Install a release candidate
-$ proto install python 3.15.0-rc.2
-```
+[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. See
+[versions & aliases](#versions--aliases) for how Python's versions map to proto's.
 
 ### Building from source
 
@@ -121,9 +112,9 @@ project's [`.prototools`](<../(fundamentals)/config.mdx>) once it's
 ### `use-latest-build`
 
 <TypeLabel type="boolean" /> - When a version without a build suffix is
-requested, like `3.13.5`, resolve it to the newest [build](#build-suffixes) of
-that version, like `3.13.5+20250723`, instead of the first one published for it.
-A version with a build suffix is always kept as-is, and a requirement like
+requested, like `3.13.5`, resolve it to the newest [build](#versions--aliases)
+of that version, like `3.13.5+20250723`, instead of the first one published for
+it. A version with a build suffix is always kept as-is, and a requirement like
 `3.13` already resolves to the newest build. Defaults to `false`.
 
 ```toml title=".prototools"
@@ -183,7 +174,7 @@ files, checked in this order in each directory:
 
 The version is read from the first line with content, ignoring comments after `#` or `//`. A file
 can contain a full version (`3.13.5`), a partial version (`3.13`), a requirement (`>=3.11,<3.13`),
-a [build suffix](#build-suffixes) (`3.13.5+20250723`), or a pre-release in CPython's format, like
+a [build suffix](#versions--aliases) (`3.13.5+20250723`), or a pre-release in CPython's format, like
 `3.15.0rc2`, which proto reads as `3.15.0-rc.2`.
 
 ```text title=".python-version"
@@ -202,6 +193,50 @@ proto keeps looking. That includes `system`, other implementations, like `pypy3.
 [detection by command](<../(fundamentals)/detection.mdx#detection-by-command>)).
 
 ## Ecosystem
+
+### Versions & aliases
+
+Python doesn't use [semantic versions](<../(fundamentals)/version-spec.mdx#semantic-versions>) for
+all of its releases, so proto converts them:
+
+| Python version | proto version    |
+| -------------- | ---------------- |
+| `3.13.5`       | `3.13.5`         |
+| `3.15.0a1`     | `3.15.0-alpha.1` |
+| `3.15.0b4`     | `3.15.0-beta.4`  |
+| `3.15.0rc2`    | `3.15.0-rc.2`    |
+
+Python's pre-releases have no `-` before their identifier, and use `a` and `b` for alpha and beta.
+When choosing a version:
+
+- **Write proto's form** on the command line and in
+  [`.prototools`](<../(fundamentals)/config.mdx>), like `3.15.0-rc.2`. Python's own form, like
+  `3.15.0rc2`, isn't valid there, while shorter forms, like `3.15.0-rc2` or `3.15.0-b.4`, are
+  normalized for you.
+- **Pin pre-releases in full.** Like any pre-release, an alpha, beta, or release candidate is only
+  used when pinned as a full version, like `3.15.0-rc.2`, as
+  [requirements](<../(fundamentals)/version-spec.mdx#requirements-and-ranges>) like `3.15` skip
+  pre-releases.
+- **Version files can keep Python's form.** A `.python-version` can contain `3.15.0rc2`, as pyenv
+  and uv write it (see [version files](#version-files)).
+
+Python has no build suffixes, but proto adds one. Each [python-build-standalone](#prebuilts) release
+rebuilds the Python versions it supports, so one Python version can have several builds, named after
+the date of the release. Each build is listed as its own version with a build suffix, like
+`3.13.5+20250723`, alongside the plain `3.13.5`. Every build of a version is the same Python, while
+newer builds have fixes to the distribution itself, like updated bundled libraries.
+
+Which build is installed depends on the version you ask for:
+
+- **Partial versions and ranges**, like `3.13` - The latest build of the highest matching version,
+  for your platform.
+- **Exact versions**, like `3.13.5` - The version's first build, or its latest with
+  [`use-latest-build`](#use-latest-build).
+- **Exact builds**, like `3.13.5+20250712` - Exactly that build.
+- **`latest`** - The first build of the newest Python release.
+
+Run [`proto versions python`](../commands/versions.mdx) to list every version as proto names it,
+builds included.
 
 ### Prebuilts
 
@@ -223,22 +258,6 @@ Prebuilts exist for the following platforms:
 
 They cover Python 3.8 and later, plus a few 3.7 releases, though some platforms start later, like
 Windows on arm64, from 3.11. Other versions can be [built from source](#building-from-source).
-
-### Build suffixes
-
-Each python-build-standalone release rebuilds the Python versions it supports, so one Python version
-can have several builds, named after the date of the release. proto lists these as versions with a
-`+<build>` suffix, like `3.13.5+20250723`, alongside the plain `3.13.5`. Every build of a version is
-the same Python, while newer builds have fixes to the distribution itself, like updated bundled
-libraries.
-
-Which build is installed depends on what you ask for:
-
-- **A requirement or alias**, like `3.13` or `latest` - The newest build of the newest matching
-  version, for your platform.
-- **A version**, like `3.13.5` - The first build published for that version, or the newest with
-  [`use-latest-build`](#use-latest-build).
-- **A version with a build**, like `3.13.5+20250712` - Exactly that build.
 
 ### Package managers
 
@@ -269,8 +288,8 @@ Besides platforms without prebuilts, this happens when:
 - **A version predates prebuilts** - The last releases of older versions often don't have one. For
   example, `3.7` resolves to `3.7.17`, while prebuilts stop at `3.7.9`.
 
-Versions with a [build suffix](#build-suffixes) have a prebuilt for your platform, so look for those
-when choosing a version:
+Versions with a [build suffix](#versions--aliases) have a prebuilt for your platform, so look for
+those when choosing a version:
 
 ```shell
 # List every version, including those with a build suffix

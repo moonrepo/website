@@ -70,13 +70,8 @@ yarn = "~4"
 Besides versions and ranges, Yarn supports the `latest` and `canary`
 [aliases](<../(fundamentals)/version-spec.mdx#built-in-aliases>) (see [Yarn 6](#yarn-6)). `latest`
 is the latest release of Berry on the npm registry, currently Yarn 4, and it's never a Yarn 6
-pre-release. `canary` resolves to the latest Yarn 6 release candidate. The plugin also provides the
-following aliases:
-
-- `berry` - The latest Yarn 4.
-- `classic` and `legacy` - The latest Yarn 1.
-- `rust` and `zpm` - The latest Yarn 6 release candidate, like `canary`.
-- The npm dist-tags of the `yarn` and `@yarnpkg/cli-dist` packages - Like `v3`.
+pre-release. `canary` resolves to the latest Yarn 6 release candidate. See
+[versions & aliases](#versions--aliases) for the aliases that Yarn provides.
 
 Run [`proto versions yarn`](../commands/versions.mdx) to list every available version, across all
 generations, and add `--aliases` to see the aliases too.
@@ -234,6 +229,29 @@ $ proto pin yarn latest --resolve --tool-native
 ```
 
 ## Ecosystem
+
+### Versions & aliases
+
+The plugin provides the following aliases, in addition to proto's
+[built-in aliases](<../(fundamentals)/version-spec.mdx#built-in-aliases>):
+
+- `berry` - The latest Yarn 4, the newest version of Berry (see
+  [Yarn generations](#yarn-generations)).
+- `classic` and `legacy` - The latest Yarn 1, the last version of Classic.
+- `rust` and `zpm` - The latest Yarn 6 release candidate, like `canary` (see [Yarn 6](#yarn-6)).
+- `<dist-tag>` - The version that any other dist-tag of the `yarn` and `@yarnpkg/cli-dist`
+  packages points to, like `rc`.
+
+Aliases resolve to a newer version as releases are published. To pin the version an alias
+currently resolves to, pass `--resolve` to [`proto pin`](../commands/pin.mdx).
+
+```shell
+# Pin the version that berry resolves to
+$ proto pin yarn berry --resolve
+
+# List every alias, and the version it resolves to
+$ proto versions yarn --aliases
+```
 
 ### Yarn generations
 

@@ -52,8 +52,8 @@ rust = "1.85.0"
 
 Besides versions and ranges, Rust supports the `latest` and `canary`
 [aliases](<../(fundamentals)/version-spec.mdx#built-in-aliases>), and rustup's `stable`, `beta`,
-and `nightly` channels (see [channels](#channels)). A partial version, like `1.85`, installs the
-newest `1.85.x` release, while a channel, like `stable`, is installed as-is. Versions are listed
+and `nightly` channels. See [versions & aliases](#versions--aliases) for the aliases that Rust
+provides. A partial version, like `1.85`, installs the newest `1.85.x` release. Versions are listed
 from the tags of the [rust-lang/rust](https://github.com/rust-lang/rust) repository, which you can
 browse with [`proto versions rust`](../commands/versions.mdx).
 
@@ -122,26 +122,29 @@ supported. Edit them by hand.
 
 ## Ecosystem
 
-### Channels
+### Versions & aliases
 
-Besides versions, proto supports rustup's release channels, which are installed with rustup as-is,
-instead of resolving to a version:
+The plugin provides the following aliases, in addition to proto's
+[built-in aliases](<../(fundamentals)/version-spec.mdx#built-in-aliases>):
 
-- `stable`, `beta`, and `nightly` - The newest release of each channel.
-- `nightly-<date>` - A dated nightly, like `nightly-2025-01-15`. Dated `stable` and `beta` channels
-  aren't supported.
-- `canary` - proto's [canary](<../(fundamentals)/version-spec.mdx#built-in-aliases>) alias, which
-  installs `nightly`.
+- `stable`, `beta`, and `nightly` - rustup's release channels, for the newest release of each.
+
+Channels are installed with rustup as-is, instead of resolving to a version, and proto's `canary`
+installs `nightly`. Dated channels, like `nightly-2025-01-15`, aren't supported.
 
 A channel moves as new releases land, but proto doesn't update a channel that's already installed,
-so update it with rustup instead. The `latest` alias is different: it resolves to the newest
-version, like `1.85.0`, which never changes. Prefer a version when everyone, including CI, must
-build with the same toolchain.
+so update it with rustup instead. As a channel never resolves to a version, passing `--resolve` to
+[`proto pin`](../commands/pin.mdx) pins the channel itself. To pin a version that doesn't move, pin
+it directly, or pin `latest` with `--resolve`, which pins the newest version, like `1.85.0`. Prefer
+a version when everyone, including CI, must build with the same toolchain.
 
 ```shell
 # Pin the stable channel, and update it later
 $ proto pin rust stable
 $ rustup update stable
+
+# Pin the newest version instead
+$ proto pin rust latest --resolve
 ```
 
 ### Choosing a toolchain

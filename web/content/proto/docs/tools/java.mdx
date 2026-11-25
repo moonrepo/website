@@ -58,13 +58,8 @@ java = "temurin-21"
 ```
 
 Besides versions and ranges, Java supports the `latest`
-[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. Versions are
-written as `<vendor>-<version>`, using
-[version scopes](<../(fundamentals)/version-spec.mdx#version-scopes>), and a version without a
-vendor uses Eclipse Temurin (see [vendors](#vendors)). Releases usually include a build number, like
-the `+10` in `temurin-21.0.11+10`, which you can leave off, as `temurin-21.0.11` matches that release
-whatever its build. Releases with a 4th number, like `17.0.4.1`, are supported as
-[revisions](<../(fundamentals)/version-spec.mdx#revisions>).
+[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. See
+[versions & aliases](#versions--aliases) for how Java's versions map to proto's.
 
 ## Configuration
 
@@ -154,6 +149,42 @@ java=21.0.2-tem
 These files are detected as `zulu-21` and `temurin-21.0.2`.
 
 ## Ecosystem
+
+### Versions & aliases
+
+Java doesn't use [semantic versions](<../(fundamentals)/version-spec.mdx#semantic-versions>) for
+all of its releases, so proto converts them:
+
+| Java version | proto version          |
+| ------------ | ---------------------- |
+| `21+35`      | `temurin-21.0.0+35`    |
+| `21.0.11+10` | `temurin-21.0.11+10`   |
+| `17.0.4.1+1` | `temurin-17.0.4.1+1`   |
+| `28-ea+25`   | `temurin-28.0.0-ea+25` |
+
+Java leaves out trailing zeros, so the first release of each version is named like `21`, and most
+releases have a build number, like the `+10` in `21.0.11+10`. proto writes each version as
+`<vendor>-<version>`, with a [version scope](<../(fundamentals)/version-spec.mdx#version-scopes>)
+for its [vendor](#vendors), like `temurin` or `zulu`. Early access builds are pre-releases, which
+are only listed with [`release-type`](#release-type) set to `ea`. When choosing a version:
+
+- **Write proto's form** on the command line and in
+  [`.prototools`](<../(fundamentals)/config.mdx>), like `temurin-21.0.11`, or `21.0.11` for the
+  default vendor.
+- **Build numbers are optional.** `temurin-21.0.11` matches `temurin-21.0.11+10`, whatever its
+  build, so you can leave the build off.
+- **Partial versions are requirements.** `21` is a
+  [requirement](<../(fundamentals)/version-spec.mdx#requirements-and-ranges>) that matches every
+  Java 21 release, so it resolves to the newest one, like `temurin-21.0.11+10`, not to the first.
+  Write `21.0.0` for that release.
+- **A 4th number is a revision.** Releases like `17.0.4.1` are supported as
+  [revisions](<../(fundamentals)/version-spec.mdx#revisions>). A revision of `0`, as in SDKMAN's
+  `21.0.13.0`, is left out, so it's the same as `21.0.13`.
+- **Version files keep their own forms.** `.java-version` accepts legacy `1.x` versions, like `1.8`
+  for Java 8, and `.sdkmanrc` accepts SDKMAN's identifiers, like `21.0.2-tem`. proto converts both
+  when it [reads them](#version-files).
+
+Run [`proto versions java`](../commands/versions.mdx) to list every version as proto names it.
 
 ### Vendors
 

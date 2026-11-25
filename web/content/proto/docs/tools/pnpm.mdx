@@ -48,9 +48,6 @@ $ proto pin pnpm 10
 
 # Install and pin Node.js, which pnpm requires
 $ proto install node 24 --pin
-
-# List the available versions and aliases
-$ proto versions pnpm --aliases
 ```
 
 ```toml title=".prototools"
@@ -60,10 +57,8 @@ pnpm = "10.20.0"
 
 Besides versions and ranges, pnpm supports the `latest`
 [alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. `latest` follows
-the `latest` dist-tag of the `pnpm` package. The plugin also provides the following aliases:
-
-- Every other dist-tag of the `pnpm` package - Like `latest-10` for the newest v10 release, or
-  `next-11`.
+the `latest` dist-tag of the `pnpm` package. See [versions & aliases](#versions--aliases) for the
+aliases that pnpm provides.
 
 pnpm provides the following executables, which are available as
 [shims](<../(fundamentals)/workflows.mdx#shims>), and through
@@ -239,6 +234,25 @@ broad range that describes compatibility, rather than the version to run, consid
 [detection strategy](<../(fundamentals)/detection.mdx#detection-strategies>) that ignores it.
 
 ## Ecosystem
+
+### Versions & aliases
+
+The plugin provides the following aliases, in addition to proto's
+[built-in aliases](<../(fundamentals)/version-spec.mdx#built-in-aliases>):
+
+- `<dist-tag>` - The version that any other dist-tag of the `pnpm` package points to, like
+  `latest-10`, which follows the newest pnpm 10 release.
+
+Aliases resolve to a newer version as releases are published. To pin the version an alias
+currently resolves to, pass `--resolve` to [`proto pin`](../commands/pin.mdx).
+
+```shell
+# Pin the version that latest-10 resolves to
+$ proto pin pnpm latest-10 --resolve
+
+# List every alias, and the version it resolves to
+$ proto versions pnpm --aliases
+```
 
 ### Major versions
 

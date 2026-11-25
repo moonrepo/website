@@ -46,10 +46,8 @@ zig = "0.15.2"
 ```
 
 Besides versions and ranges, Zig supports the `latest` and `canary`
-[aliases](<../(fundamentals)/version-spec.mdx#built-in-aliases>) (see
-[development builds](#development-builds)). The plugin also provides the following aliases:
-
-- `master` - The latest [development build](#development-builds).
+[aliases](<../(fundamentals)/version-spec.mdx#built-in-aliases>). See
+[versions & aliases](#versions--aliases) for the aliases that Zig provides.
 
 As a new minor release can break your code, pin a minor version, like `0.15`, or an exact version
 in [`.prototools`](<../(fundamentals)/config.mdx>), instead of relying on `latest`.
@@ -122,6 +120,24 @@ Files within `.zig-cache` and `zig-out` directories are ignored, so build output
 version runs.
 
 ## Ecosystem
+
+### Versions & aliases
+
+The plugin provides the following aliases, in addition to proto's
+[built-in aliases](<../(fundamentals)/version-spec.mdx#built-in-aliases>):
+
+- `master` - The latest [development build](#development-builds) of Zig's `master` branch, which
+  `canary` installs too.
+
+Aliases resolve to a newer version as releases are published. To pin the version an alias
+currently resolves to, pass `--resolve` to [`proto pin`](../commands/pin.mdx). Avoid this with
+`master`, as a [development build](#development-builds) can't be installed once the next one is
+published.
+
+```shell
+# List every alias, and the version it resolves to
+$ proto versions zig --aliases
+```
 
 ### Development builds
 

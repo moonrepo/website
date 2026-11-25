@@ -46,23 +46,8 @@ go = "1.26.2"
 ```
 
 Besides versions and ranges, Go supports the `latest`
-[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`.
-
-proto uses [semantic versions](<../(fundamentals)/version-spec.mdx#semantic-versions>), so a few of
-Go's release names are written differently. Releases before Go 1.21 leave out trailing zeros, and
-pre-releases have no `-` before their identifier:
-
-| Go release   | proto version |
-| ------------ | ------------- |
-| `go1.26.2`   | `1.26.2`      |
-| `go1.20`     | `1.20.0`      |
-| `go1.27rc1`  | `1.27.0-rc1`  |
-| `go1.4beta1` | `1.4.0-beta1` |
-
-Run [`proto versions go`](../commands/versions.mdx) to list every version as proto names it. Like
-any pre-release, a release candidate must be
-[pinned as a full version](<../(fundamentals)/version-spec.mdx#requirements-and-ranges>), like
-`1.27.0-rc1`.
+[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. See
+[versions & aliases](#versions--aliases) for how Go's versions map to proto's.
 
 Every download is verified against the `.sha256` file that Go publishes alongside each archive (see
 [SHA checksums](../advanced/checksums.mdx#sha-checksums)).
@@ -225,6 +210,36 @@ in a [`.prototools`](<../(fundamentals)/config.mdx>) (see
 [detection by command](<../(fundamentals)/detection.mdx#detection-by-command>)).
 
 ## Ecosystem
+
+### Versions & aliases
+
+Go doesn't use [semantic versions](<../(fundamentals)/version-spec.mdx#semantic-versions>) for all
+of its releases, so proto converts them:
+
+| Go version   | proto version |
+| ------------ | ------------- |
+| `go1.26.2`   | `1.26.2`      |
+| `go1.20`     | `1.20.0`      |
+| `go1.27rc1`  | `1.27.0-rc1`  |
+| `go1.4beta1` | `1.4.0-beta1` |
+
+Releases before Go 1.21, and pre-releases, leave out trailing zeros, and pre-releases have no `-`
+before their identifier. When choosing a version:
+
+- **Write proto's form** on the command line and in
+  [`.prototools`](<../(fundamentals)/config.mdx>), like `1.20.0` or `1.27.0-rc1`. Go's own names,
+  like `go1.20` or `1.27rc1`, aren't valid there.
+- **Partial versions are requirements.** `1.20` is a
+  [requirement](<../(fundamentals)/version-spec.mdx#requirements-and-ranges>) that matches every
+  1.20 release, so it resolves to the newest patch, like `1.20.14`, not to `go1.20`. Write `1.20.0`
+  for that release.
+- **Pin pre-releases in full.** Like any pre-release, a release candidate is only used when pinned
+  as a full version, like `1.27.0-rc1`.
+- **Version files keep Go's form.** `go.mod` and `go.work` are written the way Go expects, with a
+  bare version on the `go` line, like `go 1.25`, and a release name on the `toolchain` line, like
+  `toolchain go1.26.2`. proto converts both when it [reads them](#version-files).
+
+Run [`proto versions go`](../commands/versions.mdx) to list every version as proto names it.
 
 ### Toolchain switching
 

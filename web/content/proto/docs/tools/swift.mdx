@@ -60,13 +60,11 @@ swift = "6.1.2"
 ```
 
 Besides versions and ranges, Swift supports the `latest`
-[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. Versions are
+[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. See
+[versions & aliases](#versions--aliases) for how Swift's versions map to proto's. Versions are
 listed from the release tags of the [swiftlang/swift](https://github.com/swiftlang/swift)
 repository, which can be pointed at a mirror with
-[`versions-source`](<../(fundamentals)/config.mdx#tools-versions-source>). Swift.org names some
-releases without a patch version, like `6.0`, but proto lists them as `6.0.0`. Since a partial
-version like `6.0` is a [requirement](<../(fundamentals)/version-spec.mdx#requirements-and-ranges>)
-that resolves to the newest 6.0.x release, use `6.0.0` to install that release itself.
+[`versions-source`](<../(fundamentals)/config.mdx#tools-versions-source>).
 
 Downloads are verified against Swift.org's
 [GPG signatures](../advanced/checksums.mdx#gpg-signatures) on Linux. macOS packages aren't
@@ -176,6 +174,34 @@ Manifests within `.build` directories, where SwiftPM checks out dependencies, ar
 dependency's `Package.swift` never decides which version you run.
 
 ## Ecosystem
+
+### Versions & aliases
+
+Swift doesn't use [semantic versions](<../(fundamentals)/version-spec.mdx#semantic-versions>) for
+all of its releases, so proto converts them:
+
+| Swift version | proto version |
+| ------------- | ------------- |
+| `5.10`        | `5.10.0`      |
+| `6.0`         | `6.0.0`       |
+| `6.0.3`       | `6.0.3`       |
+| `6.4.0`       | `6.4.0`       |
+
+Before Swift 6.4, Swift.org named the first release of each minor version without a patch version,
+like `6.0`. Patch releases, like `6.0.3`, and every release since Swift 6.4, like `6.4.0`, are
+already semantic versions. When choosing a version:
+
+- **Write proto's form**, like `6.0.0`, on the command line, in
+  [`.prototools`](<../(fundamentals)/config.mdx>), and in `.swift-version`, which is read the same
+  way.
+- **Partial versions are requirements.** `6.0` is a
+  [requirement](<../(fundamentals)/version-spec.mdx#requirements-and-ranges>) that matches every
+  6.0 release, so it resolves to the newest one, like `6.0.3`, not to the original `6.0`. Write
+  `6.0.0` for that release.
+- **`Package.swift` keeps SwiftPM's form.** Its `// swift-tools-version:` comment, like `5.9`, is
+  read as a minimum, `>=5.9`, when proto [reads it](#version-files).
+
+Run [`proto versions swift`](../commands/versions.mdx) to list every version as proto names it.
 
 ### Linux distributions
 

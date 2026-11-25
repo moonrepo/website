@@ -50,21 +50,8 @@ ruby = "3.4.5"
 ```
 
 Besides versions and ranges, Ruby supports the `latest`
-[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. Versions are
-listed from the tags of the [ruby/ruby](https://github.com/ruby/ruby) repository, from Ruby 2
-onwards. Pre-releases use semver's format, like `4.0.0-preview.2` or `3.4.0-rc.1`, and Ruby's own
-format, like `4.0.0-preview2`, is accepted too.
-
-Prebuilts are portable builds from the [jdx/ruby](https://github.com/jdx/ruby) project. A release
-can be built more than once, and each build is listed as its own version with a build number, like
-`3.4.5+6`, which you can see with [`proto versions ruby`](../commands/versions.mdx). Which build
-you get depends on the version you ask for:
-
-- **Partial versions and ranges**, like `3.4` or `^3.3`, resolve to the highest matching release,
-  and its latest build.
-- **Exact versions**, like `3.4.5`, install the release's first build, unless
-  [`use-latest-build`](#use-latest-build) is enabled.
-- **Exact builds**, like `3.4.5+6`, install that build.
+[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. See
+[versions & aliases](#versions--aliases) for how Ruby's versions map to proto's.
 
 ### Building from source
 
@@ -102,7 +89,7 @@ project's [`.prototools`](<../(fundamentals)/config.mdx>) once it's
 ### `use-latest-build`
 
 <TypeLabel type="boolean" /> - When an exact version without a build number is
-requested, like `3.4.5`, install the latest [build](#installation) of that
+requested, like `3.4.5`, install the latest [build](#versions--aliases) of that
 release, like `3.4.5+6`, instead of its first. Defaults to `false`.
 
 Enable it to keep exact pins, while still picking up rebuilds of the same release. A version with a
@@ -169,6 +156,43 @@ ruby-3.4.5
 
 The `ruby` directive in a `Gemfile` isn't read. To keep Bundler and proto in agreement, point
 Bundler at the same file with `ruby file: ".ruby-version"` in your `Gemfile`.
+
+## Ecosystem
+
+### Versions & aliases
+
+Ruby doesn't use [semantic versions](<../(fundamentals)/version-spec.mdx#semantic-versions>) for all
+of its releases, so proto converts them:
+
+| Ruby version     | proto version     |
+| ---------------- | ----------------- |
+| `3.4.5`          | `3.4.5`           |
+| `3.4.0-rc1`      | `3.4.0-rc.1`      |
+| `4.0.0-preview2` | `4.0.0-preview.2` |
+
+Only pre-releases differ, as proto adds a `.` before their number. When choosing a version:
+
+- **Write proto's form** on the command line and in
+  [`.prototools`](<../(fundamentals)/config.mdx>), like `4.0.0-preview.2`. Ruby's own form, like
+  `4.0.0-preview2`, is accepted for an exact version too, including in `.ruby-version`, and
+  resolves to proto's. Requirements and ranges only match proto's form.
+- **Pin pre-releases in full.** Like any pre-release, a preview or release candidate is only used
+  when pinned as a full version, like `4.0.0-preview.2`.
+
+Ruby has no build numbers, but proto adds one. Prebuilts are portable builds from the
+[jdx/ruby](https://github.com/jdx/ruby) project, and as a release can be built more than once, each
+build is listed as its own version with a build number, like `3.4.5+6`.
+
+Which build is installed depends on the version you ask for:
+
+- **Partial versions and ranges**, like `3.4` or `^3.3` - The latest build of the highest matching
+  version.
+- **Exact versions**, like `3.4.5` - The version's first build, or its latest with
+  [`use-latest-build`](#use-latest-build).
+- **Exact builds**, like `3.4.5+6` - Exactly that build.
+
+Run [`proto versions ruby`](../commands/versions.mdx) to list every version as proto names it,
+builds included, from Ruby 2 onwards. Add `--no-builds` to list the versions only.
 
 ## Troubleshooting
 

@@ -11,10 +11,11 @@ works without configuring a plugin.
 
 proto downloads the official build for your platform from `nodejs.org`, or an
 [unofficial build](#unofficial-builds) where there's no official one, like on Alpine Linux. It
-supports the LTS release lines through aliases like `lts`, reads the versions that nvm, Volta, and
-`package.json` declare, and can [build Node.js from source](#building-from-source). It provides the
-`node` [executable](<../(fundamentals)/(plugin)/tool.mdx#executables>) only, as npm, pnpm, and
-Yarn are [tools of their own](#package-managers).
+supports the LTS release lines through [aliases](#versions--aliases) like `lts`, reads the
+versions that nvm, Volta, and `package.json` declare, and can
+[build Node.js from source](#building-from-source). It provides the `node`
+[executable](<../(fundamentals)/(plugin)/tool.mdx#executables>) only, as npm, pnpm, and Yarn are
+[tools of their own](#package-managers).
 
 ## Prerequisites
 
@@ -48,25 +49,8 @@ node = "~24"
 
 Besides versions and ranges, Node.js supports the `latest` and `canary`
 [aliases](<../(fundamentals)/version-spec.mdx#built-in-aliases>), where `canary` installs the
-newest nightly build that's available for your platform.
-
-The plugin also provides the following aliases:
-
-- `stable` - The newest LTS (long-term support) release. Also available as `lts` and `lts-latest`.
-- `<codename>` - The newest release of an LTS line, like `jod` (v22) or `krypton` (v24). Also
-  available as `lts-<codename>` and `lts/<codename>`, as nvm writes them.
-- `node` - The newest release, LTS or not, like `latest`.
-
-Aliases move as new versions are released, so pin the version they resolve to when every machine
-should run the same one:
-
-```shell
-# Pin the exact version that lts currently resolves to
-$ proto pin node lts --resolve
-
-# List every alias, and the version it resolves to
-$ proto versions node --aliases
-```
+newest nightly build that's available for your platform. See
+[versions & aliases](#versions--aliases) for the aliases that Node.js provides.
 
 Every download is verified against the `SHASUMS256.txt` file of its release (see
 [checksums](../advanced/checksums.mdx)).
@@ -258,6 +242,28 @@ of [`.prototools`](<../(fundamentals)/config.mdx>), run
 [`proto unpin node --tool-native`](../commands/unpin.mdx).
 
 ## Ecosystem
+
+### Versions & aliases
+
+The plugin provides the following aliases, in addition to proto's
+[built-in aliases](<../(fundamentals)/version-spec.mdx#built-in-aliases>):
+
+- `stable`, `lts`, and `lts-latest` - The newest LTS (long-term support) release. nvm's `lts/*`
+  and `lts-*` work too, but only in `.nvmrc` and `.node-version`.
+- `<codename>`, like `jod` (v22) or `krypton` (v24) - The newest release of that LTS line. Also
+  available as `lts-<codename>` and `lts/<codename>`, as nvm writes them.
+- `node` - The newest release, LTS or not, like `latest`.
+
+Aliases resolve to a newer version as releases are published. To pin the version an alias
+currently resolves to, pass `--resolve` to [`proto pin`](../commands/pin.mdx).
+
+```shell
+# Pin the version that lts resolves to
+$ proto pin node lts --resolve
+
+# List every alias, and the version it resolves to
+$ proto versions node --aliases
+```
 
 ### Unofficial builds
 
