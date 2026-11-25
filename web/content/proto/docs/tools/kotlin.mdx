@@ -2,8 +2,210 @@
 title: Kotlin
 ---
 
-## Installing
+import { TypeLabel } from "@/components/TypeLabel";
 
-## Version detection
+[Kotlin](https://kotlinlang.org/) is a statically typed language from JetBrains, used on the JVM for
+server-side, Android, and multiplatform development. proto installs the Kotlin command-line
+compiler with the `kotlin` ID, so you can compile and run Kotlin code with a pinned version, outside
+of a Gradle or Maven build.
+
+The plugin installs the portable compiler archive that JetBrains publishes with each release. It
+runs on the JVM, so the same archive is used on Linux, macOS, and Windows, but it needs a Java
+runtime, which proto can manage with the [Java](./java.mdx) tool. Kotlin is
+[unstable](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>), so proto prints a warning when
+installing it.
+
+## Prerequisites
+
+- **A Java runtime** - Kotlin's launchers use `$JAVA_HOME/bin/java` when `JAVA_HOME` is set, and
+  `java` on `PATH` otherwise. Install one with proto's [Java](./java.mdx) tool, or use one that's
+  already on your system. Choose a version that's compatible with your Kotlin release (see
+  [an older compiler fails to start](#an-older-compiler-fails-to-start)).
+
+The plugin doesn't declare Java as a requirement, so proto won't install it for you. To have proto
+manage both, declare Java with the [`requires`](<../(fundamentals)/config.mdx#tools-requires>)
+setting:
+
+```toml title=".prototools"
+java = "21"
+kotlin = "2.4.20"
+
+[tools.kotlin]
+requires = ["java"]
+```
+
+[`proto install`](../commands/install.mdx) then installs Java before Kotlin, and fails if Java
+doesn't have a version configured. Whenever Kotlin runs, Java is added to its environment too, and
+`JAVA_HOME` points to the proto-managed version, even if your shell sets it to another JDK.
+
+## Installation
+
+Install Kotlin, and pin a version to [`.prototools`](<../(fundamentals)/config.mdx>), like any
+other tool:
+
+```shell
+# Install the latest stable release
+$ proto install kotlin
+
+# Install a specific version, and pin it
+$ proto install kotlin 2.4.20 --pin
+
+# List the available versions
+$ proto versions kotlin
+```
+
+Exact versions, partial versions like `2.4`, ranges, and `latest` are supported, where `latest` is
+the newest stable release. Pre-releases, like `2.4.20-Beta2` and `2.4.20-RC`, are available too,
+but only when requested explicitly. Development builds aren't listed, and `canary` isn't supported.
+
+Kotlin provides the following executables, which are available as
+[shims](<../(fundamentals)/workflows.mdx#shims>), and through
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>):
+
+- `kotlin` - The primary executable, which runs compiled programs and scripts. It uses the
+  `kotlinr` runner in releases that ship it, and the `kotlin` launcher otherwise.
+- `kotlinc` - The compiler.
+- `kotlinr`, `kotlinc-jvm`, `kotlinc-js`, `kotlinc-wasm`, and `kapt` - When the installed release
+  ships them.
+
+```shell
+# Compile a program into a runnable JAR, then run it
+$ kotlinc hello.kt -include-runtime -d hello.jar
+$ java -jar hello.jar
+
+# Run the compiler of a specific version
+$ proto run kotlin 2.4.20 --exe kotlinc -- -version
+```
+
+The launchers are scripts that locate the compiler's libraries relative to themselves, so they
+aren't [linked as binaries](<../(fundamentals)/workflows.mdx#binary-linking>) in `~/.proto/bin`.
 
 ## Configuration
+
+### `dist-url`
+
+<TypeLabel type="string" /> - The URL template to download the compiler archive
+from. Defaults to `https://github.com/JetBrains/kotlin/releases/download/{tag}/
+{file}`. Supports the following placeholders:
+
+- `{version}` - The version being installed, like `2.4.20` or `1.1.0`.
+- `{tag}` - The release's Git tag, like `v2.4.20`. Older releases use other tags, like `v1.1` for
+  `1.1.0`, or `build-1.0.0` for `1.0.0`.
+- `{file}` - The archive's file name, like `kotlin-compiler-2.4.20.zip`.
+
+Use `{tag}` and `{file}` when mirroring GitHub's layout, as they don't always match the version
+for [historical releases](#historical-releases). For Kotlin `1.9.0-RC` and newer, the checksum is
+downloaded from the same URL with `.sha256` appended, so a mirror should serve those files too.
+
+```toml title=".prototools"
+[tools.kotlin]
+dist-url = "https://mirror.example.com/kotlin/{tag}/{file}"
+```
+
+The setting only changes where archives are downloaded from. Versions are listed from the tags of
+the [JetBrains/kotlin](https://github.com/JetBrains/kotlin) repository, so to list them from a
+mirror too, set [`versions-source`](<../(fundamentals)/config.mdx#tools-versions-source>) to a Git
+mirror that keeps the same tags:
+
+```toml title=".prototools"
+[tools.kotlin.versions-source]
+git-url = "https://git.example.com/mirrors/kotlin.git"
+```
+
+## Core features
+
+### Execution environment
+
+When Kotlin runs through proto, whether from a shim, [`proto run`](../commands/run.mdx),
+[`proto exec`](../commands/exec.mdx), or shell activation, proto:
+
+- Sets `KOTLIN_HOME` to the installation directory of the version, like
+  `~/.proto/tools/kotlin/2.4.20`, for tools and scripts that look for a Kotlin installation there.
+- Puts the version's `bin` directory on `PATH`, so child processes use the same launchers.
+
+Kotlin doesn't set `JAVA_HOME`. That's done by the [Java](./java.mdx) tool, when it's activated,
+or [required](#prerequisites) by Kotlin.
+
+### Version files
+
+Besides [`.prototools`](<../(fundamentals)/config.mdx>), proto
+[detects](<../(fundamentals)/detection.mdx#4-ecosystem-files>) a Kotlin version from the following
+files, in order:
+
+1. `.kotlin-version` - The version on the first line with content, skipping blank lines and
+   comments.
+2. `.sdkmanrc` - The `kotlin` entry of an [SDKMAN!](https://sdkman.io/) config. Other entries, and
+   comments, are ignored, and an empty `kotlin=` is an error.
+
+Since proto's Java tool reads the `java` entry of `.sdkmanrc` too, a project that already uses
+SDKMAN! works with proto as-is:
+
+```text title=".sdkmanrc"
+java=21.0.5-tem
+kotlin=2.4.20
+```
+
+## Ecosystem
+
+### Historical releases
+
+Historical compiler releases can be installed too, back to `0.6.31`. Older releases used tags and
+file names that don't follow today's conventions, so their versions are normalized to semantic
+versions:
+
+- **Two-part releases** have a zero patch version. The original `1.1` release is `1.1.0`, while
+  `1.1` is a partial version that resolves to the newest `1.1.x` release, like `1.1.61`. Previews
+  can be requested either way, so `1.2-M1` and `1.2.0-M1` install the same release.
+- **Previews with two names** are available under both, when the tag and the compiler's build
+  version differ. `1.3.0-rc4` and `1.3.0-rc-190` install the same archive.
+- **Pre-1.0 builds** keep their build numbers, like `0.6.31`, and the four-part `0.11.91.1` is
+  `0.11.91+1`.
+
+```shell
+# The original 1.1 release, and the newest 1.1.x release
+$ proto install kotlin 1.1.0
+$ proto install kotlin 1.1
+```
+
+The earliest releases don't ship every launcher. Without a runner, `kotlin` runs the compiler
+instead, and without `kotlinc`, like in `0.6.31`, both use `kotlinc-jvm`.
+
+### Checksums
+
+JetBrains publishes SHA-256 checksums for Kotlin `1.9.0-RC` and newer, which proto verifies every
+download against. Older releases don't have them, so proto records a checksum of the first
+download instead (see [tools without checksums](../advanced/checksums.mdx#tools-without-checksums)).
+As the same archive is used on every platform, Kotlin's [lockfile](../advanced/lockfile.mdx#records)
+records don't include a platform, so one record covers every machine.
+
+## Troubleshooting
+
+### Kotlin can't find Java
+
+If `kotlinc` or `kotlin` fails to start because Java can't be found, make sure a Java version is
+installed and detected for the current directory, like with
+[`proto install java`](../commands/install.mdx), and a pin in
+[`.prototools`](<../(fundamentals)/config.mdx>). Then either add `java` to Kotlin's
+[`requires`](#prerequisites), or make sure `java` is on your `PATH`, through shims or activation.
+
+As the launchers prefer `JAVA_HOME` over `PATH`, a `JAVA_HOME` in your shell that points to another,
+or a removed, JDK wins over a `java` shim. Unset it, or use `requires`, which sets it for you.
+
+### An older compiler fails to start
+
+Historical compilers may not run on current Java versions. Pin an older Java alongside them, in the
+[`.prototools`](<../(fundamentals)/config.mdx>) of the project that needs them:
+
+```toml title=".prototools"
+java = "8"
+kotlin = "1.3.72"
+```
+
+## Caveats
+
+- **JVM compiler only** - Kotlin/Native, and the experimental native image of the compiler, are
+  separate distributions that aren't installed, so `kotlinc-native` isn't available. Use Gradle for
+  Kotlin/Native and multiplatform projects, as it manages that toolchain itself.
+- **Independent of your build** - The Kotlin version that a Gradle or Maven build uses comes from
+  the Kotlin plugin in its build files, not from proto. Pinning Kotlin doesn't change those files,
+  and they aren't read for version detection.

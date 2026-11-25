@@ -2,6 +2,166 @@
 title: Poetry
 ---
 
-## Installing
+[Poetry](https://python-poetry.org) is a Python package and dependency manager. It manages a
+project's dependencies, lockfile, and virtual environment from its `pyproject.toml`, and builds and
+publishes packages. In proto, it's the `poetry` tool, which provides a single `poetry` executable.
 
-## Version detection
+Poetry is written in Python, so it requires the [Python](./python.mdx) tool. Instead of downloading
+an archive, proto runs Poetry's official installer, which installs each version into a virtual
+environment of its own in the [store](<../(fundamentals)/store.mdx>), like
+`~/.proto/tools/poetry/2.1.1`. From there, `poetry` works like any other tool, through
+[shims, binaries, or shell activation](<../(fundamentals)/workflows.mdx>), with its version detected
+per directory.
+
+## Prerequisites
+
+- **Python** - A `python` version must be pinned in a [`.prototools`](<../(fundamentals)/config.mdx>)
+  (or set with `PROTO_PYTHON_VERSION`), and installed before Poetry. Each Poetry release supports a
+  range of Python versions, listed in Poetry's
+  [system requirements](https://python-poetry.org/docs/#system-requirements).
+- **`python` on `PATH`** - The installer runs with the first `python` executable on your `PATH`. With
+  proto's [shims](<../(fundamentals)/workflows.mdx#shims>) or
+  [binaries](<../(fundamentals)/workflows.mdx#binary-linking>) on `PATH`, that's proto's Python.
+- **Network access** - The installer is downloaded from `install.python-poetry.org` for every
+  install, and it downloads Poetry from PyPI.
+
+## Installation
+
+Pin Python and Poetry in the same [`.prototools`](<../(fundamentals)/config.mdx>), and
+[`proto install`](../commands/install.mdx) installs Python first, then Poetry:
+
+```toml title=".prototools"
+python = "3.13"
+poetry = "2.1"
+```
+
+```shell
+# Install every pinned tool, Python before Poetry
+$ proto install
+
+# Or install and pin them one at a time, Python first
+$ proto install python 3.13 --pin
+$ proto install poetry 2.1 --pin
+
+# Install an exact version, or a prerelease
+$ proto install poetry 2.1.1
+$ proto install poetry 1.2.0-rc2
+```
+
+Versions are listed from the Git tags of the
+[Poetry repository](https://github.com/python-poetry/poetry). Prereleases are written in semver
+form, like `1.2.0-rc2`, instead of PyPI's `1.2.0rc2`, and proto converts them for the installer.
+
+## Core features
+
+### Version files
+
+Besides [`.prototools`](<../(fundamentals)/config.mdx>), proto detects a Poetry version from these
+[ecosystem files](<../(fundamentals)/detection.mdx#4-ecosystem-files>), in order:
+
+1. `.poetry-version` - A plain version file, with a [version spec](<../(fundamentals)/version-spec.mdx>)
+   like `2.1.1` or `2`. Comments after a `#` or `//` are ignored.
+2. `pyproject.toml` - The `requires-poetry` field of the `[tool.poetry]` table. Nothing else in the
+   file is read, including `requires-python`, so a file without the field is skipped.
+
+```toml title="pyproject.toml"
+[tool.poetry]
+requires-poetry = ">=2.0, <3.0"
+```
+
+`requires-poetry` is a [PEP 440](https://peps.python.org/pep-0440/#version-specifiers) specifier,
+which proto converts to an equivalent version spec, and resolves to the highest matching version:
+
+| `requires-poetry` | Matches                            |
+| ----------------- | ---------------------------------- |
+| `>=2.0, <3.0`     | `2.0.0` and above, below `3.0.0`   |
+| `~=2.1`           | `2.1.0` and above, within `2.x`    |
+| `~=2.1.3`         | `2.1.3` and above, within `2.1.x`  |
+| `==2.1.*`         | Any `2.1.x`                        |
+| `==2.1`           | Exactly `2.1.0`                    |
+| `>=2.0, !=2.1.0`  | `2.0.0` and above, except `2.1.0`  |
+| `^2.1` and `~2.1` | Poetry's own operators, used as-is |
+
+A specifier that can't be converted, like `~=2`, is skipped, and detection moves on as if the field
+wasn't there.
+
+## Ecosystem
+
+### Virtual environments
+
+Poetry creates a project's virtual environment with the active Python, which is the `python` on
+`PATH`. With proto, that's the Python version detected for the project, not the one Poetry itself
+runs on. So pinning `python` alongside `poetry` decides which Python your project's environment
+uses:
+
+```toml title=".prototools"
+python = "3.12"
+poetry = "2.1"
+```
+
+```shell
+# Create the project's virtual environment with Python 3.12
+$ poetry install
+
+# Check which Python the environment uses
+$ poetry env info
+```
+
+Poetry 2 behaves this way by default, unless you enable its
+[`virtualenvs.use-poetry-python`](https://python-poetry.org/docs/configuration/#virtualenvsuse-poetry-python)
+setting. Poetry 1.2 to 1.8 doesn't, so after installing one of them, proto runs
+`poetry config virtualenvs.prefer-active-python true`. This writes to Poetry's global config file,
+which every Poetry 1.x installation on your machine reads, not only proto's.
+
+### Plugins
+
+Plugins added with `poetry self add` are installed into the virtual environment of the Poetry
+version that ran the command. Each version in the store has its own environment, so add your
+plugins again after installing a new version. With Poetry 2, you can declare them per project in
+the `[tool.poetry.requires-plugins]` table of `pyproject.toml` instead, and Poetry installs them for
+you.
+
+## Troubleshooting
+
+### `python` does not exist
+
+Installing fails with "Command or script `python` does not exist" when there's no `python` on
+`PATH`. Add proto's shims and bins to `PATH` with [`proto setup`](../commands/setup.mdx) (or by hand
+in CI, see the [CI guide](../guides/ci.mdx)), and make sure Python is pinned and installed. Some
+systems only provide `python3`, which the installer doesn't use, so proto's Python is the reliable
+choice.
+
+### The installer fails
+
+Install errors include the installer's own output, like when a version doesn't exist on PyPI. When
+the installer writes an error log instead, proto says so, and the log is a
+`poetry-installer-error-*.log` file in the current directory. Also check that the Python version
+that ran the installer meets Poetry's
+[system requirements](https://python-poetry.org/docs/#system-requirements), and pin another one if it
+doesn't. To see what proto ran, raise the [log level](../guides/troubleshooting.mdx#logging) with
+`--log trace`.
+
+### `poetry` stops working
+
+Poetry's virtual environment is tied to the Python version that installed it. If that version is
+removed, with [`proto uninstall`](../commands/uninstall.mdx) or [`proto clean`](../commands/clean.mdx),
+`poetry` can no longer start. Reinstall Poetry with the Python version you have now:
+
+```shell
+# Reinstall the detected Poetry version
+$ proto install poetry --force
+```
+
+Changing the Python version a project pins doesn't affect Poetry itself, only the virtual
+environments it creates afterwards.
+
+## Caveats
+
+- **No checksum verification** - Poetry installs itself, so proto has no archive or checksum to
+  verify. [`proto lock`](../commands/lock.mdx) skips it, and its [lockfile](../advanced/lockfile.mdx)
+  record has no checksum (see [tools without checksums](../advanced/checksums.mdx#tools-without-checksums)).
+- **`poetry self update` is blocked** - Updating Poetry in place would replace a version that proto
+  manages, so proto blocks it, and in an interactive terminal, offers to install the latest version
+  instead (see
+  [running tools](<../(fundamentals)/(plugin)/tool.mdx#running-tools>)). Use
+  [`proto install poetry latest --pin`](../commands/install.mdx) to upgrade.

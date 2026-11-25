@@ -2,8 +2,322 @@
 title: Yarn
 ---
 
-## Installing
+import { TypeLabel } from "@/components/TypeLabel";
 
-## Version detection
+[Yarn](https://yarnpkg.com) is a JavaScript package manager, known for its workspaces, Plug'n'Play
+installs, and offline cache. Its proto ID is `yarn`, and that one ID covers every generation of
+Yarn: Classic (1.x), Berry (2.x to 4.x), and the Rust-based Yarn 6, which proto supports
+experimentally. proto knows where each generation is published and how to run it, so moving a
+project from Yarn 1 to Yarn 4 is a one-line change to its pin.
+
+Yarn requires [Node.js](./node.mdx). Versions before Yarn 6 are written in JavaScript and run on
+Node.js, so their `yarn` and `yarnpkg` executables are available as
+[shims](<../(fundamentals)/workflows.mdx#shims>), but not as
+[binaries](<../(fundamentals)/workflows.mdx#binary-linking>). Yarn is powered by the same plugin as
+[npm](./npm.mdx), [pnpm](./pnpm.mdx), and [Nub](./nub.mdx), so their settings work the same way.
+
+## Prerequisites
+
+- **Node.js** - The `node` tool must have a version configured, pinned in a
+  [`.prototools`](<../(fundamentals)/config.mdx>) or set with `PROTO_NODE_VERSION`, for every
+  version of Yarn, including Yarn 6. It's installed before Yarn, and it's put on `PATH` whenever
+  Yarn runs, so Yarn and your package scripts use the same `node`.
+- **Git** - Yarn 6 releases are listed from the tags of a GitHub repository, so loading Yarn's
+  available versions runs `git ls-remote`, whichever generation you use. That happens when you
+  install a version, or resolve a requirement like `~4`.
+- **Platform** - Linux, macOS, or Windows, on x64 or arm64. Yarn 6 supports a different set of
+  platforms (see [Yarn 6](#yarn-6)).
+
+## Installation
+
+Pin Node.js alongside Yarn, as Yarn can't be installed without a `node` version configured. Then
+install them, and proto installs Node.js first:
+
+```shell
+# Pin Node.js and Yarn in the closest .prototools
+$ proto pin node 24
+$ proto pin yarn 4
+
+# Install every pinned tool
+$ proto install
+
+# Install the latest Yarn 1, to try it out
+$ proto install yarn classic
+```
+
+```toml title=".prototools"
+node = "~24"
+yarn = "~4"
+```
+
+Besides versions and requirements, Yarn supports the following aliases:
+
+- `latest` - The latest release of Berry on the npm registry, currently Yarn 4. It's never a Yarn 6
+  pre-release.
+- `berry` - The latest Yarn 4.
+- `classic` and `legacy` - The latest Yarn 1.
+- `rust` and `zpm` - The latest Yarn 6 release candidate. `canary` resolves to the same.
+- The npm dist-tags of the `yarn` and `@yarnpkg/cli-dist` packages, like `v3`.
+
+Run [`proto versions yarn`](../commands/versions.mdx) to list every available version, across all
+generations, and add `--aliases` to see the aliases too.
 
 ## Configuration
+
+### `registry-url`
+
+<TypeLabel type="string" /> - The npm registry to list Yarn versions from, and
+to download versions before Yarn 6 from. Defaults to
+`https://registry.npmjs.org`. Set it to use a mirror or a private registry, with
+credentials in `.yarnrc.yml` when it requires them (see [private
+registries](#private-registries)). proto doesn't read `npmRegistryServer` from
+`.yarnrc.yml`, so set this even when Yarn itself is already configured for the
+registry.
+
+```toml title=".prototools"
+[tools.yarn]
+registry-url = "https://npm.example.com"
+```
+
+### `dist-url`
+
+<TypeLabel type="string" /> - The URL to download an archive from, for versions
+before Yarn 6. Defaults to `{registry}/{package}/-/{package_without_scope}-
+{version}.tgz`, the npm registry's tarball URL. Change it when your mirror
+stores tarballs at a different path. Supports the following placeholders:
+
+- `{registry}` - The [`registry-url`](#registry-url).
+- `{package}` - The npm package: `yarn` for Yarn 1, and `@yarnpkg/cli-dist` for Yarn 2 and later.
+- `{package_without_scope}` - The package without its scope: `yarn` or `cli-dist`.
+- `{version}` - The version to download, like `4.9.2`.
+- `{file}` - The archive's file name, `{package_without_scope}-{version}.tgz`.
+
+```toml title=".prototools"
+[tools.yarn]
+dist-url = "https://mirror.example.com/npm/{package}/{file}"
+```
+
+### `shared-globals-dir`
+
+<TypeLabel type="boolean" /> - Install global packages into
+`~/.proto/tools/node/globals`, instead of Yarn's own location. Defaults to
+`false`. npm, pnpm, and Nub support the same setting, so enabling it for each of
+them gives you one place for every global package, whichever package manager
+installed it. This setting is experimental.
+
+When enabled, Yarn runs with `PREFIX` set to `~/.proto/tools/node/globals`, so Yarn 1 links the
+executables of global packages into `~/.proto/tools/node/globals/bin`, which is then the only place
+proto looks for them (see [global packages](#global-packages)). To run them outside of proto, add
+`~/.proto/tools/node/globals/bin` to `PATH`.
+
+```toml title=".prototools"
+[tools.yarn]
+shared-globals-dir = true
+```
+
+## Core features
+
+### Execution environment
+
+Whenever Yarn runs, through a shim, [`proto run`](../commands/run.mdx),
+[`proto exec`](../commands/exec.mdx), or
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>), proto adds the detected
+Node.js version to its environment, so Yarn, and every script it runs, uses that `node`. With
+[`shared-globals-dir`](#shared-globals-dir) enabled, it also sets `PREFIX` to
+`~/.proto/tools/node/globals`, where Yarn 1 then installs global packages. With shell activation,
+`PREFIX` is exported into your shell.
+
+### Global packages
+
+Only Yarn 1 installs packages globally, with `yarn global add`. Yarn 2 and later don't have global
+packages, so run one-off executables with `yarn dlx` instead.
+
+proto looks for the executables of global packages in the following directories, in order, and
+skips any that use an environment variable that isn't set:
+
+1. `$PREFIX/bin`
+2. `$PREFIX/shims`
+3. `~/.proto/tools/node/<version>/bin`, for the Node.js version that Yarn runs with
+4. `$YARN_PREFIX/bin`
+5. `%LOCALAPPDATA%\Yarn\bin`, on Windows only
+6. `~/.yarn/bin`
+7. `~/.proto/tools/node/globals/bin`
+
+When `PREFIX` or `YARN_PREFIX` already points to a `bin` directory, it's used as-is. With
+[`shared-globals-dir`](#shared-globals-dir) enabled, only the last directory is used. These
+directories are put on `PATH` when Yarn runs through proto, and with shell activation (see the
+[workflows comparison](<../(fundamentals)/workflows.mdx#comparison>)). If Yarn 1 links executables
+somewhere else, set `PREFIX`, or enable `shared-globals-dir`.
+
+```shell
+# Install a package globally with Yarn 1
+$ yarn global add serve
+
+# Print where Yarn 1 links executables
+$ yarn global bin
+
+# Print every directory proto looks in
+$ proto bin yarn --dir globals --all
+```
+
+### Version files
+
+proto detects Yarn's version from `package.json` (see
+[ecosystem files](<../(fundamentals)/detection.mdx#4-ecosystem-files>)), and ignores any within
+`node_modules`. It reads the following fields, in order, and the first with a valid version wins:
+
+1. `devEngines.packageManager` - An object, or a list of objects, whose `name` is `yarn`. Only a
+   version or range in `version` is read.
+2. `packageManager` - A value like `yarn@4.9.2`. Corepack's hash suffix, like `+sha512.<hash>`, is
+   ignored, and `yarn` without a version means `latest`.
+3. `volta.yarn` - Volta's pin, including one inherited through `volta.extends`.
+4. `engines.yarn` - A version or range.
+
+Fields for other package managers, like `"packageManager": "pnpm@10.0.0"`, are skipped. A field
+with an invalid version is skipped when a later one is valid, and is an error otherwise. In the
+following example, `^4.9.0` from `devEngines` wins over `packageManager`:
+
+```json title="package.json"
+{
+  "packageManager": "yarn@4.9.2",
+  "devEngines": {
+    "packageManager": {
+      "name": "yarn",
+      "version": "^4.9.0"
+    }
+  }
+}
+```
+
+To pin a version in `package.json` instead of [`.prototools`](<../(fundamentals)/config.mdx>), pass
+`--tool-native` to [`proto pin`](../commands/pin.mdx), which writes `devEngines.packageManager`. As
+`devEngines` only supports versions and ranges, resolve an alias first with `--resolve`. To remove
+the pin, run [`proto unpin yarn --tool-native`](../commands/unpin.mdx).
+
+```shell
+# Pin Yarn in package.json
+$ proto pin yarn 4.9.2 --tool-native
+
+# Pin the version that latest resolves to
+$ proto pin yarn latest --resolve --tool-native
+```
+
+## Ecosystem
+
+### Yarn generations
+
+Yarn has been rewritten twice, and each generation is published in a different place. proto picks
+the right one from the version, and combines the versions of all three into one list, so a
+requirement can match any generation, like `>=1.22` matching Yarn 4.
+
+| Versions | Generation   | Downloaded from                                                        | Runs as                |
+| -------- | ------------ | ---------------------------------------------------------------------- | ---------------------- |
+| `<2`     | Classic      | The `yarn` package on the npm registry                                 | JavaScript, on Node.js |
+| `>=2 <6` | Berry        | The `@yarnpkg/cli-dist` package on the npm registry                    | JavaScript, on Node.js |
+| `>=6`    | Yarn 6 (zpm) | The GitHub releases of [`yarnpkg/zpm`](https://github.com/yarnpkg/zpm) | Native binary          |
+
+Classic and Berry are downloaded from [`registry-url`](#registry-url), and authenticate with
+[`.yarnrc.yml`](#private-registries). proto runs them with `node`, and provides both the `yarn` and
+`yarnpkg` executables.
+
+### Yarn 6
+
+Yarn 6 is a rewrite of Yarn in Rust, and is still in release candidates. It works differently from
+earlier generations in a few ways:
+
+- **Pre-releases only** - Every Yarn 6 release so far is a release candidate, like `6.0.0-rc.23`,
+  and requirements without a pre-release, like `6` or `^6`, don't match pre-releases. Use an exact
+  version, or the `rust` and `zpm` aliases, which resolve to the latest release candidate.
+- **Downloaded from GitHub** - Archives come from GitHub releases, not the npm registry, so
+  [`registry-url`](#registry-url), [`dist-url`](#dist-url), and `.yarnrc.yml` credentials don't
+  apply. To download them from a mirror, use
+  [`url-rewrites`](<../(fundamentals)/config.mdx#url-rewrites>).
+- **Platforms** - Linux on x64, arm64, and x86, macOS on arm64 (Apple silicon) only, and
+  Windows on x64, from `6.0.0-rc.23`. On Linux, proto installs the musl build, which also runs on
+  glibc distributions.
+- **A native binary** - proto runs Yarn's binary directly, and also links it into `~/.proto/bin`.
+  Releases include Yarn Switch, a `yarn` launcher that picks a version from `packageManager`, but
+  proto doesn't use it, as it detects the version itself. There's no `yarnpkg` executable.
+- **Still requires Node.js** - A `node` version must be configured, as for every other generation,
+  even though Yarn 6 itself doesn't run on Node.js.
+
+```shell
+# Install the latest Yarn 6 release candidate
+$ proto install yarn rust
+
+# Install an exact release candidate
+$ proto install yarn 6.0.0-rc.23
+```
+
+### Private registries
+
+When [`registry-url`](#registry-url) requires authentication, proto reads credentials from the
+closest `.yarnrc.yml`, walking up from the current directory, and sends them when listing versions
+and downloading Classic and Berry. Unlike npm and pnpm, `.npmrc` isn't read, even for Yarn 1.
+Credentials are taken from:
+
+1. The `npmRegistries` entry for `registry-url`, keyed by its URL without the protocol, like
+   `//npm.example.com/`. The trailing slash is optional.
+2. Otherwise, the top-level settings, when `npmRegistryServer` isn't set, or matches
+   `registry-url`.
+
+In either, `npmAuthToken` is sent as a bearer token, and `npmAuthIdent`, in the
+`username:password` format, with basic authentication.
+
+```toml title=".prototools"
+[tools.yarn]
+registry-url = "https://npm.example.com"
+```
+
+```yaml title=".yarnrc.yml"
+npmRegistries:
+  "//npm.example.com/":
+    npmAuthToken: "npm_AbC123"
+```
+
+### `yarnPath`
+
+Yarn's `yarnPath` setting points to a Yarn release that's committed to the repository, like
+`.yarn/releases/yarn-4.9.2.cjs`. proto doesn't read it, but Berry does: the version that proto runs
+hands off to that file, so the committed release is what actually runs, whichever version proto
+detected. Yarn 1 does the same, for `yarnPath` in `.yarnrc.yml`, and `yarn-path` in `.yarnrc`.
+
+To let proto choose the version, remove `yarnPath` and the release file, and pin Yarn in
+`packageManager` or [`.prototools`](<../(fundamentals)/config.mdx>) instead. To ignore `yarnPath`
+for a single command, set `YARN_IGNORE_PATH=1`.
+
+## Troubleshooting
+
+### Yarn runs a different version than the one pinned
+
+Run [`proto status`](../commands/status.mdx) to see the version proto detects, and the file it
+comes from. A [version field](#version-files) in a closer `package.json` wins over a
+[`.prototools`](<../(fundamentals)/config.mdx>) in a parent directory. If proto detects the right
+version, but `yarn --version` prints another, check the closest `.yarnrc.yml` for
+[`yarnPath`](#yarnpath). Otherwise, see
+[a tool runs the wrong version](../guides/troubleshooting.mdx#a-tool-runs-the-wrong-version).
+
+### Listing versions or installing fails
+
+Loading Yarn's versions requests the npm registry at [`registry-url`](#registry-url), and runs
+`git ls-remote` against `github.com` for the Yarn 6 releases, whichever version you install. Check
+that `git` is installed, and that both hosts are reachable from your network (see
+[network requests keep failing](../guides/troubleshooting.mdx#network-requests-keep-failing)).
+
+If the registry responds with a 401 or 403 error, check that `registry-url` is set to your
+registry, and that the closest `.yarnrc.yml` has an `npmRegistries` entry for it, without the
+protocol (see [private registries](#private-registries)).
+
+### Yarn 6 doesn't install
+
+An unsupported OS or architecture error means there's no Yarn 6 build for your platform, like macOS
+on Intel, or Windows before `6.0.0-rc.23`. A requirement like `6` failing to resolve means it can't
+match a release candidate: use an exact version, or the `rust` alias (see [Yarn 6](#yarn-6)).
+
+## Caveats
+
+- Downloads aren't checked against a published checksum, and the Corepack hash in `packageManager`
+  isn't verified either. They're handled like other
+  [tools without checksums](../advanced/checksums.mdx#tools-without-checksums) instead: proto
+  records the checksum of the first download, and with a lockfile, later installs must match it.
+- Yarn 6 support is experimental, as Yarn 6 itself is still in release candidates.

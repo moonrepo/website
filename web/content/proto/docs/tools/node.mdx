@@ -2,10 +2,336 @@
 title: Node.js
 ---
 
-## Installing
+import { TypeLabel } from "@/components/TypeLabel";
 
-## Version detection
+[Node.js](https://nodejs.org) is a JavaScript runtime, used to run servers, scripts, and the
+tooling of most frontend projects. Its ID is `node`, and it's a
+[built-in tool](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>), so it works without any
+configuration.
+
+The plugin downloads the official build for your platform from `nodejs.org`, or an
+[unofficial build](#unofficial-builds) where there's no official one, like on Alpine Linux. It
+supports the LTS release lines through aliases like `lts`, reads the versions that nvm, Volta, and
+`package.json` declare, and can [build Node.js from source](#building-from-source). It provides the
+`node` executable only, as npm, pnpm, and Yarn are [tools of their own](#package-managers).
+
+## Prerequisites
+
+- A supported platform:
+  - Linux on x64, arm64, ARMv7, ARMv6 (up to v22), ppc64le, s390x, riscv64, or loong64. With musl,
+    like on Alpine, only x64 and arm64 are supported.
+  - macOS on x64 or arm64.
+  - Windows on x64, x86, or arm64.
+- Nothing else is needed to install a prebuilt. Building from source has its own
+  [requirements](#building-from-source).
+
+## Installation
+
+Install a version with [`proto install`](../commands/install.mdx), and pin it for a project with
+[`proto pin`](../commands/pin.mdx):
+
+```shell
+# Install the newest release
+$ proto install node
+
+# Install the newest LTS release, or the newest release of a major version
+$ proto install node lts
+$ proto install node 24
+
+# Pin a version to the closest .prototools
+$ proto pin node 24
+```
+
+```toml title=".prototools"
+node = "~24"
+```
+
+Besides proto's [built-in aliases](<../(fundamentals)/version-spec.mdx#built-in-aliases>), like
+`latest`, the plugin provides aliases for Node.js release lines:
+
+- `stable` - The newest LTS (long-term support) release. Also available as `lts` and `lts-latest`.
+- LTS codenames, like `jod` (v22) or `krypton` (v24) - The newest release of that LTS line. Also
+  available as `lts-<codename>` and `lts/<codename>`, as nvm writes them.
+- `node` - The newest release, LTS or not, like `latest`.
+
+`canary` installs the newest nightly build that's available for your platform. Aliases move as new
+versions are released, so pin the version they resolve to when every machine should run the same
+one:
+
+```shell
+# Pin the exact version that lts currently resolves to
+$ proto pin node lts --resolve
+
+# List every alias, and the version it resolves to
+$ proto versions node --aliases
+```
+
+Every download is verified against the `SHASUMS256.txt` file of its release (see
+[checksums](../advanced/checksums.mdx)).
+
+### Building from source
+
+Pass `--build` to [`proto install`](../commands/install.mdx) to compile Node.js from its source
+archive on GitHub, instead of downloading a prebuilt. Building is supported on Linux (x64, arm64,
+ARM, ppc64le, and s390x), macOS (x64 and arm64), and Windows (x64, x86, and arm64), and needs:
+
+- Python 3 (`python3`), `make`, and a C++ compiler. With apt, dnf, yum, or pacman, proto offers to
+  install them for you (see
+  [system dependencies](../guides/build-from-source.mdx#system-dependencies)).
+- On macOS, the Xcode command line tools.
+- On Windows, the
+  [Visual Studio prerequisites](https://github.com/nodejs/node/blob/main/BUILDING.md#windows-prerequisites),
+  which proto asks you to confirm before it continues.
+
+```shell
+# Build a specific version from source
+$ proto install node 24.11.0 --build
+```
+
+On Linux and macOS, a build is installed with the same layout as the prebuilt archives, including
+npm. On Windows, only `node.exe` is kept, so install [npm](./npm.mdx) as its own tool. See
+[building from source](../guides/build-from-source.mdx) for how builds work.
 
 ## Configuration
 
-## Building from source
+Settings go in the `[tools.node]` table of a [`.prototools`](<../(fundamentals)/config.mdx>) (see
+[tool settings](<../(fundamentals)/config.mdx#tools>)). The URL settings point proto at a mirror of
+`nodejs.org`, like an Artifactory or Nexus repository, for networks that can't reach it.
+
+### `bundled-npm`
+
+<TypeLabel type="boolean" /> - When enabled, installing a version of Node.js
+also installs the version of npm that ships with it, as the separate
+[npm](./npm.mdx) tool. Defaults to `false`.
+
+```toml title=".prototools"
+node = "~24"
+npm = "bundled"
+
+[tools.node]
+bundled-npm = true
+```
+
+Once Node.js is installed, proto runs [`proto install npm bundled`](../commands/install.mdx) for
+that version. This doesn't pin npm, so pin `npm = "bundled"` to use it, which resolves to the npm
+version that ships with the detected Node.js version (see [package managers](#package-managers)).
+If npm fails to install, proto logs a warning, and Node.js stays installed. To skip it for a single
+install, pass `--no-bundled-npm`:
+
+```shell
+# Install Node.js without its bundled npm
+$ proto install node 24 -- --no-bundled-npm
+```
+
+### `dist-url`
+
+<TypeLabel type="string" /> - The URL to download official archives from, and
+the `SHASUMS256.txt` file that verifies them. Defaults to
+`https://nodejs.org/download/{channel}/v{version}/{file}`, and supports the
+following placeholders:
+
+- `{channel}` - `release`, or `nightly` when installing `canary`.
+- `{version}` - The version, without a `v` prefix, like `24.11.0`.
+- `{file}` - The file to download, like `node-v24.11.0-linux-x64.tar.xz` (a `.zip` on Windows), or
+  `SHASUMS256.txt`.
+
+```toml title=".prototools"
+[tools.node]
+dist-url = "https://artifactory.corp.internal/nodejs/{channel}/v{version}/{file}"
+```
+
+A mirror must use the same file names as `nodejs.org`, and serve each release's `SHASUMS256.txt`
+next to its archives.
+
+### `dist-url-unofficial`
+
+<TypeLabel type="string" /> - The URL to download [unofficial
+builds](#unofficial-builds) from, like the musl builds for Alpine Linux.
+Supports the same placeholders as [`dist-url`](#dist-url). Defaults to
+`https://unofficial-builds.nodejs.org/download/{channel}/v{version}/{file}`.
+
+```toml title=".prototools"
+[tools.node]
+dist-url-unofficial = "https://artifactory.corp.internal/nodejs-unofficial/{channel}/v{version}/{file}"
+```
+
+### `index-url`
+
+<TypeLabel type="string" /> - The URL of the JSON index that lists available
+versions, in the format of the [`nodejs.org`
+index](https://nodejs.org/download/release/index.json). Defaults to
+`https://nodejs.org/download/{channel}/index.json`, where `{channel}` is
+`release` when listing versions, and `nightly` when resolving `canary`.
+
+```toml title=".prototools"
+[tools.node]
+index-url = "https://artifactory.corp.internal/nodejs/{channel}/index.json"
+```
+
+The LTS aliases are read from this index too. That's why it's the better choice for a mirror of
+`nodejs.org` than [`versions-source`](<../(fundamentals)/config.mdx#tools-versions-source>), which
+only lists versions, so the LTS aliases aren't available with it.
+
+## Core features
+
+### Global packages
+
+Node.js doesn't install packages itself, so global packages come from a package manager, like
+[npm](./npm.mdx), [pnpm](./pnpm.mdx), or [Yarn](./yarn.mdx), each with global directories of its
+own. Node.js reports a single globals directory, `~/.proto/tools/node/globals/bin`, which is
+shared by every version of Node.js and every package manager. Packages are installed there when a
+package manager's `shared-globals-dir` setting is enabled:
+
+```toml title=".prototools"
+[tools.npm]
+shared-globals-dir = true
+```
+
+```shell
+# Install a package into the shared globals directory
+$ npm install -g typescript
+
+# Print the shared globals directory
+$ proto bin node --dir globals
+```
+
+The directory is added to `PATH` when Node.js runs through proto, and in an
+[activated shell](<../(fundamentals)/workflows.mdx#shell-activation>), so executables like `tsc`
+keep working when you switch Node.js versions. With [shims](<../(fundamentals)/workflows.mdx#shims>)
+only, add the directory that [`proto bin node --dir globals`](../commands/bin.mdx) prints to `PATH`
+yourself, to run them directly.
+
+### Version files
+
+Alongside [`.prototools`](<../(fundamentals)/config.mdx>), proto
+[detects](<../(fundamentals)/detection.mdx#4-ecosystem-files>) the version of Node.js from the
+following files, checked in this order in each directory. Anything within `node_modules` is
+ignored, so a dependency's `package.json` never decides the version.
+
+1. `.nvmrc` - The version file of nvm.
+2. `.node-version` - The version file of fnm, nodenv, and others.
+3. `package.json` - The first of these fields that holds a valid version:
+   1. `devEngines.runtime` - The entry named `node`, as an object or in a list.
+   2. `volta.node` - Volta's pin. When it isn't set, a `volta.extends` path is followed to another
+      `package.json`.
+   3. `engines.node`
+
+`.nvmrc` and `.node-version` hold a single version, read from the first line with content, so
+blank lines and comments (after a `#` or `//`) are ignored. They accept any
+[version specification](<../(fundamentals)/version-spec.mdx>), and nvm's own spellings too:
+`lts/*` (or `lts-*`) for the newest LTS release, `lts/<codename>`, and `node`.
+
+```text title=".nvmrc"
+# Follow the newest LTS release
+lts/*
+```
+
+In `package.json`, `devEngines` and `engines` only count when they hold a version, requirement, or
+range, so values like `latest` are skipped. A field that proto can't parse is skipped too, in favor
+of the next one, but when none of them parse, detection fails with an error.
+
+```json title="package.json"
+{
+  "devEngines": {
+    "runtime": { "name": "node", "version": "^24.11.0" }
+  },
+  "engines": { "node": ">=20" }
+}
+```
+
+Here, `^24.11.0` is detected, as `devEngines` comes first. To pin a version in `devEngines` instead
+of [`.prototools`](<../(fundamentals)/config.mdx>), run
+[`proto pin node 24 --tool-native`](../commands/pin.mdx), and remove it with
+[`proto unpin node --tool-native`](../commands/unpin.mdx).
+
+## Ecosystem
+
+### Unofficial builds
+
+Official builds cover most platforms. Where there's none, the plugin downloads from
+[unofficial builds](https://github.com/nodejs/unofficial-builds), a project of the Node.js
+organization that builds Node.js for more platforms, at `unofficial-builds.nodejs.org`. proto
+detects these platforms, and picks the right build for you:
+
+- **musl Linux**, like Alpine - x64 and arm64. Other architectures fail to install, as no musl
+  builds exist for them.
+- **riscv64 and loong64 Linux**.
+- **ARMv6 Linux**, like the Raspberry Pi Zero and 1 - v12 to v22. Earlier versions use official
+  ARMv6 builds, and v23 and later have no ARMv6 builds at all. These builds are recorded as an
+  `armv6l` [variant](../advanced/lockfile.mdx#variants) in lockfiles.
+
+Unofficial builds are made separately from official releases, so a new version may not be available
+for these platforms right away. To download them from a mirror, set
+[`dist-url-unofficial`](#dist-url-unofficial).
+
+On arm64 machines, versions that predate arm64 builds use x64 builds instead, which run through
+emulation: before v16 on macOS (with Rosetta 2), and before v20 on Windows.
+
+### Package managers
+
+Every Node.js release ships with npm and npx, but the `node` tool only provides the `node`
+executable, so proto doesn't create shims or binaries for them. To run npm through proto, install it
+as its own [npm](./npm.mdx) tool, which requires `node` to be pinned too. Pin it to either:
+
+- `bundled` - The version that ships with the detected Node.js version, so npm changes along with
+  Node.js. Enable [`bundled-npm`](#bundled-npm) to install it whenever you install Node.js.
+- A version, like `11` - To upgrade npm independently of Node.js.
+
+```toml title=".prototools"
+node = "~24"
+npm = "~11"
+```
+
+The npm inside each Node.js installation sits next to `node`, so it's still on `PATH` for processes
+that Node.js runs, and in an activated shell when `npm` isn't pinned. Its version follows Node.js,
+and proto doesn't manage it. [pnpm](./pnpm.mdx) and [Yarn](./yarn.mdx) are tools of their own too,
+and are pinned the same way.
+
+## Troubleshooting
+
+### The version from `package.json` is unexpected
+
+`engines.node` often describes the versions a package supports, like `>=20`, rather than the one to
+develop with. A range resolves to the highest installed version that matches, or the highest
+available one, so different machines may run different versions. Pin the version where it's found
+first instead: a [`.prototools`](<../(fundamentals)/config.mdx>) or `.nvmrc` in the same directory,
+or `devEngines` in the same `package.json`. To prefer every
+[`.prototools`](<../(fundamentals)/config.mdx>) over these files, even those in parent directories,
+set [`detect-strategy`](<../(fundamentals)/config.mdx#detect-strategy>) to `prefer-prototools`. Run
+[`proto status`](../commands/status.mdx) to see what was detected, and where from.
+
+### Detection fails to parse a version
+
+An `.nvmrc` or `.node-version` that holds something proto can't parse fails detection, and so does
+a `package.json` when none of its Node.js fields (`devEngines`, `volta`, and `engines`) parse. This
+happens even when a parent directory pins a valid version, as the closest file is checked first. Fix
+the file, or pin the version in a [`.prototools`](<../(fundamentals)/config.mdx>) in the same
+directory, which is checked before the others.
+
+### npm wasn't installed along with Node.js
+
+When [`bundled-npm`](#bundled-npm) can't install npm, it logs a warning, and Node.js stays
+installed. It runs the `proto` executable, so proto must be on `PATH`. Run the install yourself to
+see the error:
+
+```shell
+# Install the npm that ships with the detected Node.js version
+$ proto install npm bundled
+```
+
+### No prebuilt archive is available
+
+ARMv6 has no builds from v23, so pin v22 or earlier. musl Linux only has builds for x64 and arm64,
+so on other architectures, use a glibc-based distribution or container image. For an
+[unofficial build](#unofficial-builds) that fails to download, check that the version has been
+published at `unofficial-builds.nodejs.org`, or pick an earlier one.
+
+## Caveats
+
+- `lts/*` and `lts-*` are only understood in `.nvmrc` and `.node-version`. On the command line and
+  in [`.prototools`](<../(fundamentals)/config.mdx>), use `lts`, as `*` isn't valid in an alias.
+- `devEngines` only supports versions and ranges, so pinning an alias with `--tool-native`, like
+  [`proto pin node lts --tool-native`](../commands/pin.mdx), fails. Add `--resolve` to pin the
+  version it resolves to.
+- The LTS aliases are only available from the index that [`index-url`](#index-url) points to, not
+  from a [`versions-source`](<../(fundamentals)/config.mdx#tools-versions-source>).

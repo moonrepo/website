@@ -2,8 +2,173 @@
 title: Zig
 ---
 
-## Installing
+import { TypeLabel } from "@/components/TypeLabel";
 
-## Version detection
+[Zig](https://ziglang.org/) is a systems programming language and toolchain, which also works as a
+drop-in C and C++ compiler, with `zig cc` and `zig c++`. proto installs it with the `zig` ID, from
+the official prebuilt archives listed in Zig's release index, and verifies each download against
+the [SHA-256 checksum](../advanced/checksums.mdx#sha-checksums) in that index. Every project can
+then pin the exact Zig it builds with, which matters more than usual, as Zig changes its language
+and standard library between minor releases.
+
+Zig is an [unstable tool](<../(fundamentals)/(plugin)/tool.mdx#built-in-tools>), so proto prints a
+warning when installing it. Its language server, [ZLS](./zls.mdx), is a separate tool (see
+[pairing with ZLS](#pairing-with-zls)).
+
+## Prerequisites
+
+- A platform that Zig publishes a prebuilt archive for. Archives exist for Linux, macOS, and
+  Windows on most architectures, and for FreeBSD, NetBSD, and OpenBSD, though older releases cover
+  fewer platforms. proto can't build Zig from source.
+- Nothing else. The archive includes Zig's standard library and C toolchain, so no other tool or
+  system compiler is required.
+
+## Installation
+
+```shell
+# Install the latest stable release
+$ proto install zig
+
+# Install the newest 0.15 release, and pin it to the closest .prototools
+$ proto install zig 0.15 --pin
+
+# Install the latest development build
+$ proto install zig master
+```
+
+```toml title=".prototools"
+zig = "0.15.2"
+```
+
+As a new minor release can break your code, pin a minor version, like `0.15`, or an exact version
+in [`.prototools`](<../(fundamentals)/config.mdx>), instead of relying on `latest`. Besides the
+[built-in aliases](<../(fundamentals)/version-spec.mdx#built-in-aliases>), the plugin provides
+`master`, for the latest [development build](#development-builds).
 
 ## Configuration
+
+### `index-url`
+
+<TypeLabel type="string" /> - The URL of the release index to list versions
+from, and to read each version's archive URL and checksum from. Defaults to
+`https://ziglang.org/download/index.json`.
+
+Point it at a mirror when your network can't reach ziglang.org. The index must use the same format
+as the official one: an object keyed by version (and `master`), with an entry per platform, like
+`x86_64-linux`, that holds a `tarball` URL and its `shasum`. Archives are downloaded from those
+`tarball` URLs, so either the mirror's index points at the mirror, or you rewrite them with
+[`url-rewrites`](<../(fundamentals)/config.mdx#url-rewrites>):
+
+```toml title=".prototools"
+[tools.zig]
+index-url = "https://mirror.corp.internal/zig/index.json"
+
+[settings.url-rewrites]
+'^https://ziglang\.org/' = "https://mirror.corp.internal/zig/"
+```
+
+Use this setting instead of [`versions-source`](<../(fundamentals)/config.mdx#tools-versions-source>).
+That only changes where versions are listed from, so archives are still looked up in `index-url`,
+and a configured `git-url` or `index-url` there drops the `master` alias.
+
+## Core features
+
+### Version files
+
+proto [detects](<../(fundamentals)/detection.mdx#4-ecosystem-files>) a Zig version from the
+following files, checked in this order in each directory:
+
+1. `.zig-version` - A plain version file, also used by other Zig version managers.
+2. `.zigversion` - The same, with an alternative name.
+3. `build.zig.zon` - The `minimum_zig_version` field of your package manifest.
+
+The plain version files are read from their first line with content, ignoring comments after `#` or
+`//`, and accept any version spec, like `0.15.2`, `0.15`, or `master`. As they're checked first, a
+`.zig-version` overrides the `build.zig.zon` in the same directory.
+
+```text title=".zig-version"
+0.15.2 # Matches CI
+```
+
+`minimum_zig_version` is resolved within its minor version, so `"0.15.1"` matches the newest 0.15
+release that's 0.15.1 or newer, but never 0.16, which would likely fail to build the package. When
+the field is missing, the file is skipped.
+
+```zig title="build.zig.zon"
+.{
+    .name = .app,
+    .version = "0.1.0",
+    .minimum_zig_version = "0.15.1",
+    // ...
+}
+```
+
+Files within `.zig-cache` and `zig-out` directories are ignored, so build output never decides which
+version runs.
+
+## Ecosystem
+
+### Development builds
+
+Zig's index lists the newest build of its `master` branch alongside the stable releases. The
+`master` alias resolves to that build's exact version, like `0.16.0-dev.1234+abcdef012`, and
+installs it like any other version. proto's `canary` spec installs the same build, under the
+`canary` version instead.
+
+```shell
+# Install the latest master build
+$ proto install zig master
+
+# Check which version master resolves to
+$ proto versions zig master
+```
+
+Pin `master` itself to follow new builds:
+
+```toml title=".prototools"
+zig = "master"
+```
+
+When a new build is published, and the [cached versions](../advanced/http.mdx#response-caching)
+refresh, `master` resolves to a version that isn't installed yet, so run
+[`proto install`](../commands/install.mdx) again, or enable
+[`auto-install`](<../(fundamentals)/config.mdx#auto-install>). Don't pin the exact version a build
+resolved to, like with [`proto pin --resolve`](../commands/pin.mdx): the index drops it once the
+next build is published, so it can't be installed anywhere else afterward.
+
+### Pairing with ZLS
+
+[ZLS](./zls.mdx), the language server that editors use for Zig, supports the Zig release with the
+same minor version, so the two must be kept in step. Install it with the `zls` ID. It reads the same
+version files as Zig, and picks the ZLS release for the detected Zig version, so a project with a
+`.zig-version` or `build.zig.zon` gets a matching ZLS without extra configuration. When you pin Zig
+in [`.prototools`](<../(fundamentals)/config.mdx>) instead, pin ZLS alongside it:
+
+```toml title=".prototools"
+zig = "0.15.2"
+zls = "0.15"
+```
+
+ZLS development builds aren't supported, so there's no ZLS to pair with a `master` build of Zig.
+
+## Troubleshooting
+
+- **No archive is available for target** - The release doesn't publish an archive for your
+  operating system and architecture, which is common for older releases. Install a newer one. When
+  the error says Zig doesn't provide an archive for your platform at all, Zig can't be installed
+  with proto there.
+- **A development version was not found** - Development builds are only listed until the next one
+  is published, so a pin like `0.16.0-dev.1234+abcdef012` stops working. Pin `master`, or a stable
+  release, instead.
+
+## Caveats
+
+- On Windows, there's no `~/.proto/bin/zig.exe` [binary](<../(fundamentals)/workflows.mdx#binary-linking>),
+  as Zig looks for its `lib` directory next to the executable it's run from, which a binary in
+  `~/.proto/bin` doesn't have. Run Zig through its [shim](<../(fundamentals)/workflows.mdx#shims>) or
+  [shell activation](<../(fundamentals)/workflows.mdx#shell-activation>) instead.
+- Archives are downloaded from the URLs in the index, which are on ziglang.org, and not from Zig's
+  community mirrors. They're verified with the index's SHA-256 checksums, not minisign signatures.
+  To download from a mirror, rewrite the URLs with
+  [`url-rewrites`](<../(fundamentals)/config.mdx#url-rewrites>), and the checksums from the index
+  still verify them.
