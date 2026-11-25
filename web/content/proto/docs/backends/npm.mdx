@@ -2,6 +2,318 @@
 title: npm
 ---
 
-## Usage
+import { TypeLabel } from "@/components/TypeLabel";
+
+The [npm registry](https://www.npmjs.com/) is where the JavaScript ecosystem publishes its packages,
+and many of them are CLIs, like Prettier, Biome, or esbuild. The npm backend installs any package
+with executables as a tool of its own, so each project can pin the version it needs, instead of
+adding it as a dependency or a global package. It's an unstable
+[built-in backend](<../(fundamentals)/(plugin)/backend.mdx#built-in-backends>) with the `npm`
+prefix, so it works without configuring a plugin, but proto prints a warning when installing a tool
+with it.
+
+proto lists a package's versions and dist-tags with `npm view`, and installs each version with
+`npm install --global`, into a directory of its own in the store (see
+[resolving and installing](<../(fundamentals)/(plugin)/backend.mdx#resolving-and-installing>)).
+The executables in the package's `bin` field become
+[shims](<../(fundamentals)/workflows.mdx#shims>), which run on the Node.js version detected for the
+current directory. With the [`bun`](#backend-bun) setting, Bun does all of this instead of npm and
+Node.js.
+
+The backend isn't the [npm tool](../tools/npm.mdx). The `npm` tool installs npm itself, the package
+manager, while a tool from the backend, like `npm:prettier`, is another package that npm installs.
+The backend runs on the npm tool, so its tools need `npm` configured as well.
+
+## Prerequisites
+
+- **Node.js and npm** - The backend requires the [`node`](../tools/node.mdx) and
+  [`npm`](../tools/npm.mdx) tools, which must have versions configured too, like pins in
+  [`.prototools`](<../(fundamentals)/config.mdx>), in the project or globally, or with
+  `PROTO_NODE_VERSION` and `PROTO_NPM_VERSION` (see
+  [`requires`](<../(fundamentals)/config.mdx#tools-requires>)). npm installs the packages, and
+  their executables run on Node.js. To use the npm that ships with your Node.js version, pin
+  `npm = "bundled"` (see [bundled npm](../tools/npm.mdx#bundled-npm)).
+- **Bun, with the `bun` setting** - With [`bun`](#backend-bun) enabled, the backend requires the
+  [`bun`](../tools/bun.mdx) tool instead, which must have a version configured too, and doesn't
+  require Node.js or npm.
+- **A supported platform** - The backend has no platform restrictions of its own, so it runs
+  wherever [npm](../tools/npm.mdx#prerequisites) and [Node.js](../tools/node.mdx#prerequisites)
+  do, or [Bun](../tools/bun.mdx#prerequisites) with the `bun` setting. A package may support fewer,
+  like one that ships a native binary for each platform.
+- **proto's shims on `PATH`** - The backend runs the `npm` (or `bun`) command on your `PATH`, which
+  should be proto's own, so it uses the versions that proto installed. npm has no
+  [binary](<../(fundamentals)/workflows.mdx#binary-linking>), so put `~/.proto/shims` on `PATH`,
+  like [`proto setup`](../commands/setup.mdx) does, and before any other npm installation.
+
+## Installation
+
+npm backend tools require Node.js and npm, so pin them too. Install a tool from the backend with
+[`proto install`](../commands/install.mdx), using its `npm:<package>` identifier, and pin a version
+with [`proto pin`](../commands/pin.mdx), or with the `--pin` option while installing:
+
+```shell
+# Install the detected version, or the latest when none is detected
+$ proto install npm:prettier
+
+# Install the newest Prettier 3 release, and pin it to the closest .prototools
+$ proto install npm:prettier 3 --pin
+
+# Pin a version without installing it
+$ proto pin npm:prettier 3
+
+# Pin Node.js, and the npm version that ships with it, which the backend requires
+$ proto pin node 24
+$ proto pin npm bundled
+
+# Install and pin a scoped package
+$ proto install npm:@biomejs/biome --pin
+```
+
+```toml title=".prototools"
+node = "24.11.0"
+npm = "bundled"
+"npm:prettier" = "3.10.1"
+"npm:@biomejs/biome" = "2.6.9"
+```
+
+Besides versions and ranges, npm packages support the `latest`
+[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but `canary` only works for packages
+with a `canary` dist-tag. `latest` follows the package's `latest` dist-tag, falling back to the
+highest stable version when that tag points to a pre-release. See
+[versions & aliases](#versions--aliases) for the aliases that each package provides.
+
+Each package provides its own executables, like `prettier` for `npm:prettier`, which are available
+as shims (see [executables](#executables)).
 
 ## Configuration
+
+Backend settings go in the `[backends.npm]` table of
+[`.prototools`](<../(fundamentals)/config.mdx>), and apply to every tool from the backend. The
+backend has no tool settings, and doesn't read its settings from a tool's own table, like
+`[tools."npm:prettier"]`, so they can't differ per package. Every setting in the backend's table
+requires [trust](<../(fundamentals)/trust.mdx>) in a project's
+[`.prototools`](<../(fundamentals)/config.mdx>).
+
+### Backend settings
+
+#### `bun` [#backend-bun]
+
+<TypeLabel type="boolean" /> - Use [Bun](../tools/bun.mdx) to list, install, and
+run packages, instead of npm and Node.js. Defaults to `false`.
+
+```toml title=".prototools"
+bun = "1.4.5"
+"npm:prettier" = "3.10.1"
+
+[backends.npm]
+bun = true
+```
+
+When enabled, for every tool from the backend:
+
+- The [`bun`](../tools/bun.mdx) tool is required, instead of `node` and `npm`, so pin a version of
+  Bun.
+- Versions and dist-tags are listed with `bun info`, and packages are installed with
+  `bun install --global`, into the version's directory in the store.
+- JavaScript and TypeScript executables run with `bun`, instead of `node` or `tsx` (see
+  [executables](#executables)).
+
+## Ecosystem
+
+### Versions & aliases
+
+The plugin provides the following aliases, in addition to proto's
+[built-in aliases](<../(fundamentals)/version-spec.mdx#built-in-aliases>):
+
+- `<dist-tag>` - The version that any dist-tag of the package points to, like `next` or `beta`.
+  Each package publishes its own, so run [`proto versions`](../commands/versions.mdx) with
+  `--aliases` to see them.
+
+A `canary` dist-tag is the exception. `canary` is a built-in alias that proto never looks up, so
+it's passed to npm as is: it installs the package's `canary` dist-tag, like the one that
+`@moonrepo/cli` publishes, and fails for packages without one.
+
+Aliases resolve to a newer version as releases are published. To pin the version an alias
+currently resolves to, pass `--resolve` to [`proto pin`](../commands/pin.mdx).
+
+```shell
+# Pin the version that the next dist-tag resolves to
+$ proto pin npm:prettier next --resolve
+
+# List the versions, and the dist-tag aliases with the versions they point to
+$ proto versions npm:prettier --aliases
+```
+
+### Package names
+
+The part of an identifier after `npm:` is the package's name on the registry, including its scope,
+like `npm:@biomejs/biome`. Where proto needs a simpler name, it derives one from it:
+
+- **Store** - Each version is installed into a directory named after the backend and the package,
+  with the `@` removed, and `/` turned into `_`, like `~/.proto/tools/npm__biomejs_biome/2.6.9`.
+- **Version variable** - The
+  [environment variable](<../(fundamentals)/detection.mdx#2-environment-variable>) that selects a
+  version keeps only letters, digits, and `_`, in uppercase, and turns `-` into `_`, so it's
+  `PROTO_BIOMEJSBIOME_VERSION` for `npm:@biomejs/biome`, and `PROTO_PRETTIER_VERSION` for
+  `npm:prettier`.
+
+### Executables
+
+A tool's executables are the commands in the `bin` field of its package's `package.json`, each with
+a [shim](<../(fundamentals)/workflows.mdx#shims>). The first one is the primary executable, which
+[`proto run`](../commands/run.mdx) runs by default, and the others run with `--exe`. When `bin` is
+a single path, the executable is named after the package without its scope, like npm does. For
+example, `npm:npm-check-updates` provides `ncu`, its primary executable, and `npm-check-updates`.
+
+How an executable runs depends on its file:
+
+- **JavaScript** - A `.js`, `.cjs`, or `.mjs` file, or a file without an extension whose first line
+  is a `node` shebang, like `#!/usr/bin/env node`, runs with `node`. Most CLIs are like this,
+  including `prettier` and `tsc`.
+- **TypeScript** - A `.ts`, `.cts`, `.mts`, or `.tsx` file runs with `tsx`, which isn't a required
+  tool, so it must be on your `PATH`, like from `npm:tsx`.
+- **Anything else** - Native binaries, and scripts for another interpreter, like a shell script,
+  run directly, and are also [linked as binaries](<../(fundamentals)/workflows.mdx#binary-linking>)
+  in `~/.proto/bin`. For example, esbuild replaces its JavaScript `bin` with a native binary when
+  it's installed.
+
+With the [`bun`](#backend-bun) setting, JavaScript and TypeScript executables run with `bun`
+instead.
+
+Shims and [`proto run`](../commands/run.mdx) add the tools that a package requires to its
+environment, with the versions detected for the current directory, so a CLI runs on the project's
+Node.js, whichever version installed it. Those versions must already be installed. With
+[`proto exec`](../commands/exec.mdx), pass `node` too, and with
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>), `node` is activated from its
+own pin in [`.prototools`](<../(fundamentals)/config.mdx>). When a package also needs a tool that
+the backend doesn't know about, like `cargo`, add it with the
+[`requires`](<../(fundamentals)/config.mdx#tools-requires>) setting (see
+[locating executables](<../(fundamentals)/(plugin)/backend.mdx#locating-executables>)).
+
+```shell
+# Run the primary executable
+$ proto run npm:npm-check-updates
+
+# Run another executable
+$ proto run npm:npm-check-updates --exe npm-check-updates
+```
+
+### Installing packages
+
+Each version is installed on its own, with the version's directory in the store as npm's global
+prefix. It gets its own copy of the package's dependencies, separate from your projects'
+`node_modules`, from the global packages of your Node.js versions, and from the package's other
+versions.
+
+The package's own install scripts, like a `postinstall` that downloads a native binary, are allowed
+to run. npm v12 and newer block install scripts by default, so the backend allows the package's
+with `--allow-scripts`, or with `--trust` for Bun.
+
+The install runs the `npm` command on your `PATH`, normally proto's shim (see
+[prerequisites](#prerequisites)). Unless `PROTO_NODE_VERSION` and `PROTO_NPM_VERSION` are already
+set, the backend sets them to `*` for it, so the shim runs the highest installed versions of Node.js
+and npm, which may not be the ones pinned for the current directory. This only affects the install,
+as the executables run on the detected Node.js version (see [executables](#executables)). To install
+with specific versions, set the variables yourself, or `PROTO_BUN_VERSION` with the
+[`bun`](#backend-bun) setting:
+
+```shell
+# Install with the newest installed Node.js 22 release
+$ PROTO_NODE_VERSION=22 proto install npm:prettier
+```
+
+### Registries
+
+The backend has no registry setting. npm lists and installs the packages, so its own configuration
+applies, like a `registry` and its credentials in `.npmrc`. This is separate from the npm tool's
+[`registry-url`](../tools/npm.mdx#registry-url), which only changes where npm itself is downloaded
+from.
+
+Listing versions runs in the current directory, where npm reads a project's `.npmrc`. But installs
+run in global mode, from the version's directory in the store, and npm doesn't read a project's
+`.npmrc` in global mode. So configure a private registry in your user `~/.npmrc`, where both find
+it:
+
+```ini title="~/.npmrc"
+@acme:registry=https://npm.acme.internal/
+//npm.acme.internal/:_authToken=${NPM_TOKEN}
+```
+
+With the [`bun`](#backend-bun) setting, Bun's commands run from proto's store too, so configure the
+registry in your global `~/.bunfig.toml` instead (see
+[Bun's configuration](https://bun.com/docs/runtime/bunfig)).
+
+## Troubleshooting
+
+### Installing a package fails, even though Node.js is installed
+
+The backend requires configured `node` and `npm` versions, not just installed ones, so without them,
+[`proto install`](../commands/install.mdx) fails with an error like
+`npm:prettier requires node to function correctly, but it has not been installed.` A version
+detected from `.nvmrc` or `package.json` isn't enough here, so pin both in a
+[`.prototools`](<../(fundamentals)/config.mdx>):
+
+```shell
+# Pin Node.js and npm for this project, or for your machine with --to global
+$ proto pin node 24
+$ proto pin npm bundled
+$ proto install npm:prettier
+```
+
+If you enabled [`bun`](#backend-bun) and it still asks for `node`, the setting isn't applied:
+either it's in a tool's table instead of `[backends.npm]`, or the
+[`.prototools`](<../(fundamentals)/config.mdx>) that sets it isn't
+[trusted](<../(fundamentals)/trust.mdx>).
+
+### The `npm` command isn't found
+
+`Command or script npm does not exist. Unable to execute from plugin.` means that `npm` isn't on
+your `PATH`. npm only has a shim, not a binary, so with only `~/.proto/bin` on `PATH`, like in some
+CI and container setups, the backend can't run it. Add `~/.proto/shims` to `PATH` (see
+[prerequisites](#prerequisites)). With the [`bun`](#backend-bun) setting, the same applies to
+`bun`.
+
+### A package's versions fail to load
+
+`Failed to load package versions:` is followed by the error from npm (or Bun). Usually, the package
+doesn't exist under that name, like a scoped package written without its scope, or it's on a
+private registry that npm isn't configured for (see [registries](#registries)).
+
+### A private package fails to install, though its versions load
+
+npm reads a project's `.npmrc` when listing versions, but not when installing, as installs run in
+global mode. So a registry that's only configured in the project works for one, and fails for the
+other, often with a "not found" or unauthorized error. Move the registry, and its credentials, to
+your user `~/.npmrc` (see [registries](#registries)).
+
+### A package doesn't provide any executables
+
+The backend only provides the executables in a package's `bin` field, so a library without one, like
+`lodash`, installs without any shims, and [`proto run`](../commands/run.mdx) fails with
+`npm:lodash does not support a primary (default) executable.` Check that you're installing the
+package that ships the CLI, which is sometimes a separate package, like `@angular/cli` for Angular.
+
+### A CLI runs on the wrong Node.js version
+
+Executables run on the `node` version detected for the current directory, but only through shims
+and [`proto run`](../commands/run.mdx), and only when that version is installed. Otherwise, the
+`node` that's next on `PATH` runs them. Run [`proto status`](../commands/status.mdx) to see what's
+detected, and [`proto install`](../commands/install.mdx) to install every pinned version.
+
+## Caveats
+
+- **No checksums or lockfile records** - npm downloads the packages, not proto, so proto doesn't
+  verify [checksums](../advanced/checksums.mdx), and installs aren't recorded in the
+  [lockfile](../advanced/lockfile.mdx).
+- **Dependencies aren't locked** - Each install resolves the package's dependencies again, from the
+  ranges in its `package.json`, unless it publishes an `npm-shrinkwrap.json`. So installing the
+  same version on two machines, or at different times, can install different dependencies.
+- **Dependencies' install scripts don't run** - Only the package's own install scripts are allowed,
+  so with npm v12 and newer, which blocks install scripts that aren't allowed, a dependency's
+  `postinstall` doesn't run, and a package that relies on one may fail.
+- **No binaries for JavaScript** - JavaScript and TypeScript executables need proto to run them
+  with `node` (or `bun`), so they aren't
+  [linked as binaries](<../(fundamentals)/workflows.mdx#binary-linking>) in `~/.proto/bin`. Use
+  shims or shell activation to run them.
+- **`bun` applies to every package** - It's a backend setting, so every tool from the backend uses
+  either npm or Bun, not a mix.

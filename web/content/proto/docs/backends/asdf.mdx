@@ -2,6 +2,417 @@
 title: asdf
 ---
 
-## Usage
+import { TypeLabel } from "@/components/TypeLabel";
+
+[asdf](https://asdf-vm.com/) is a version manager that installs tools through community plugins:
+Git repositories of shell scripts that list, download, and install a tool's versions. Hundreds of
+them are registered in the [asdf-plugins](https://github.com/asdf-vm/asdf-plugins) index, which
+makes the backend a way to install tools that proto has no plugin for. It's an unstable
+[built-in backend](<../(fundamentals)/(plugin)/backend.mdx#built-in-backends>) with the `asdf`
+prefix, so it works without configuring a plugin, but proto prints a warning when installing a tool
+with it.
+
+proto clones a tool's asdf plugin, lists its versions with the plugin's `bin/list-all` script, and
+installs a version by running its `bin/download` and `bin/install` scripts, like asdf does (see
+[resolving and installing](<../(fundamentals)/(plugin)/backend.mdx#resolving-and-installing>)).
+proto runs the scripts itself, so asdf doesn't need to be installed.
+
+## Prerequisites
+
+- **Bash** - asdf plugins are shell scripts, which proto runs with the interpreter in their shebang
+  (`bash` for most of them), and it sources `bin/exec-env` with `bash`, so `bash` must be on your
+  `PATH`.
+- **Git** - Each asdf plugin's repository is cloned with `git clone`, and updated with `git pull`,
+  so `git` must be on your `PATH` (see [requirements](../index.mdx#requirements)).
+- **A supported platform** - The backend runs on macOS and Linux, including WSL. Windows fails with
+  an unsupported OS error, like `Unable to install terraform, unsupported OS windows.` An asdf
+  plugin may support fewer platforms or architectures, so check its README.
+- **The plugin's dependencies** - Scripts run other programs, like `curl` and `unzip` for
+  asdf-hashicorp, which installs `terraform`, and some compile the tool from source. Install
+  whatever the asdf plugin's README lists.
+
+## Installation
+
+Install a tool from the backend with [`proto install`](../commands/install.mdx), using its
+`asdf:<name>` identifier, and pin a version with [`proto pin`](../commands/pin.mdx), or with the
+`--pin` option while installing:
+
+```shell
+# Install the detected version, or the latest when none is detected
+$ proto install asdf:terraform
+
+# Install the newest 1.17 release, and pin it to the closest .prototools
+$ proto install asdf:terraform 1.17 --pin
+
+# Pin a version without installing it
+$ proto pin asdf:terraform 1.17
+
+# List the versions that the plugin's bin/list-all script prints
+$ proto versions asdf:terraform
+```
+
+```toml title=".prototools"
+"asdf:terraform" = "1.17.2"
+```
+
+`<name>` is the tool's name in the asdf-plugins index, like `terraform`, which tells proto which
+asdf plugin to clone (see [plugins and repositories](#plugins-and-repositories)). For a plugin with
+a different name, or one that isn't in the index, configure [`shortname`](#tool-shortname) or
+[`repository`](#tool-repository).
+
+Besides versions and ranges, asdf tools support the `latest`
+[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. `latest` is the
+highest version that `bin/list-all` prints, without a pre-release or build metadata. See
+[versions & aliases](#versions--aliases) for how asdf's versions map to proto's, and the aliases
+the backend provides.
+
+Unlike pins for built-in tools, or for the npm and cargo backends, a pin for an asdf tool only
+applies from a project's [`.prototools`](<../(fundamentals)/config.mdx>) once it's
+[trusted](<../(fundamentals)/trust.mdx>), as loading the tool clones and runs third-party scripts.
+[`proto pin`](../commands/pin.mdx) trusts the file for you when the pin is its first
+security-sensitive setting. In a repository you've cloned, review its
+[`.prototools`](<../(fundamentals)/config.mdx>), then run [`proto trust`](../commands/trust.mdx).
+
+The tool's executables, like `terraform`, are available as
+[shims](<../(fundamentals)/workflows.mdx#shims>), and through
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>) (see
+[executables](#executables)).
+
+```shell
+# Run through the shim, with the version detected for this directory
+$ terraform version
+
+# Run a specific version
+$ proto run asdf:terraform 1.16 -- version
+```
 
 ## Configuration
+
+Tool settings go in a tool's own table of [`.prototools`](<../(fundamentals)/config.mdx>), like
+`[tools."asdf:terraform"]`, and require [trust](<../(fundamentals)/trust.mdx>) in a project's
+[`.prototools`](<../(fundamentals)/config.mdx>). The backend has no settings of its own, so the
+`[backends.asdf]` table only supports proto's [`env`](<../(fundamentals)/config.mdx#backends-env>)
+and [`plugin`](<../(fundamentals)/config.mdx#backends-plugin>) settings, and the backend ignores
+anything else in it.
+
+### Tool settings
+
+#### `shortname` [#tool-shortname]
+
+<TypeLabel type="string" /> - The name of the tool's asdf plugin in the
+[asdf-plugins](https://github.com/asdf-vm/asdf-plugins) index, when it differs
+from the tool's name. Defaults to the tool's name, like `terraform` for
+`asdf:terraform`.
+
+proto looks the shortname up in the index, clones the plugin into a directory named after it, and
+matches the tool's line in [`.tool-versions`](#version-files) by it, as well as by the tool's name.
+Use it to name a tool after its executable, which makes that executable the
+[primary](#executables) one. For example, the `awscli` plugin installs the `aws` executable:
+
+```toml title=".prototools"
+"asdf:aws" = "2.42.4"
+
+[tools."asdf:aws"]
+shortname = "awscli"
+```
+
+Some plugins serve several tools, and pick one from the name of the directory they're cloned into,
+like asdf-hashicorp for `terraform`, `vault`, and `packer`. For those, the tool's name, or its
+shortname, must be one that the plugin supports.
+
+#### `repository` [#tool-repository]
+
+<TypeLabel type="string" /> - The Git repository to clone the tool's asdf plugin
+from, instead of looking it up in the index, like an HTTPS or SSH URL, or a
+local path. Defaults to the repository that the index lists for the
+[`shortname`](#tool-shortname).
+
+Use it for a plugin that isn't in the index, like one your organization maintains, or for a fork.
+proto clones the plugin only when its directory doesn't exist yet, so changing this setting doesn't
+affect a plugin that's already cloned (see
+[troubleshooting](#a-changed-repository-or-plugin-update-is-ignored)).
+
+```toml title=".prototools"
+"asdf:my-cli" = "1.4.0"
+
+[tools."asdf:my-cli"]
+repository = "https://github.com/my-org/asdf-my-cli"
+```
+
+#### `exes` [#tool-exes]
+
+<TypeLabel type="string[]" /> - The executables to create shims and binaries
+for, as file names in the version's `bin` directory. Defaults to every file in
+the directories that the plugin's `bin/list-bin-paths` script prints, or in
+`bin` when the plugin doesn't have that script (see
+[executables](#executables)).
+
+Set it when the default picks up files that aren't meant to be run, or misses one. Only the listed
+files get shims, but every directory from `bin/list-bin-paths` is still put on `PATH` when the tool
+runs.
+
+```toml title=".prototools"
+[tools."asdf:aws"]
+shortname = "awscli"
+# Skip the aws_completer executable
+exes = ["aws"]
+```
+
+## Core features
+
+### Execution environment
+
+Whenever a tool from the backend runs through proto, with a
+[shim](<../(fundamentals)/workflows.mdx#shims>), [`proto run`](../commands/run.mdx),
+[`proto exec`](../commands/exec.mdx), or
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>), proto:
+
+- Runs the plugin's `bin/exec-env` script, when it has one, and sets the environment variables that
+  it exports, like the `GOROOT` that asdf-golang points to the version's directory. The script is
+  sourced with Bash, with the same `ASDF_INSTALL_*` variables as the other
+  [scripts](#asdf-scripts), and runs every time, so it adds a Bash process to each run of the tool.
+- Puts the directories that `bin/list-bin-paths` prints on `PATH`, or the version's `bin`
+  directory when the plugin doesn't have that script.
+
+### Version files
+
+Besides [`.prototools`](<../(fundamentals)/config.mdx>), proto
+[detects](<../(fundamentals)/detection.mdx#4-ecosystem-files>) a version of a tool from the backend
+from the following files, checked in this order in each directory:
+
+1. `.tool-versions` - asdf's own file, with a line per tool, like `terraform 1.17.2`. The line is
+   matched by the tool's name, or its [`shortname`](#tool-shortname), and comments after `#` are
+   ignored. When a line lists fallback versions, like `terraform 1.17.2 1.16.7`, only the first is
+   used.
+2. The plugin's legacy files - The files that the plugin's `bin/list-legacy-filenames` script
+   prints, like `.nvmrc` and `.node-version` for asdf-nodejs. Each is read with the plugin's
+   `bin/parse-legacy-file` script, or the file's content is used as the version when the plugin
+   doesn't have that script.
+
+```text title=".tool-versions"
+terraform 1.17.2
+awscli 2.42.4 # Read by asdf:aws, through its shortname
+```
+
+asdf only reads legacy files when its `legacy_version_file` setting is enabled, but proto always
+checks them. To ignore them, along with every other ecosystem file, use a
+[detection strategy](<../(fundamentals)/detection.mdx#detection-strategies>) that only checks
+[`.prototools`](<../(fundamentals)/config.mdx>). asdf's special versions, like `ref:`, `path:`, and
+`system`, aren't supported (see
+[troubleshooting](#detection-fails-on-special-asdf-versions)).
+
+proto only reads these files for an asdf tool it's already using, like one pinned in a
+[`.prototools`](<../(fundamentals)/config.mdx>), or run through its shim. So a bare
+[`proto install`](../commands/install.mdx) doesn't install every tool that `.tool-versions` lists,
+and shell activation doesn't activate them, as it only activates tools pinned in a
+[`.prototools`](<../(fundamentals)/config.mdx>) (see
+[detection by command](<../(fundamentals)/detection.mdx#detection-by-command>)). proto also doesn't
+write to these files, so [`proto pin --tool-native`](../commands/pin.mdx) isn't supported for asdf
+tools.
+
+## Ecosystem
+
+### Versions & aliases
+
+asdf plugins don't use [semantic versions](<../(fundamentals)/version-spec.mdx#semantic-versions>)
+for all of their releases, so proto converts the versions that `bin/list-all` prints:
+
+| asdf version | proto version |
+| ------------ | ------------- |
+| `1.17.2`     | `1.17.2`      |
+| `v1.17.2`    | `1.17.2`      |
+| `1.20`       | Not listed    |
+| `3.14.0a1`   | Not listed    |
+
+proto lists the entries that it can read as a semantic version, including those with a
+[revision](<../(fundamentals)/version-spec.mdx#revisions>), like `1.2.3.4`, or a
+[scope](<../(fundamentals)/version-spec.mdx#version-scopes>), like `temurin-21.0.5`, and
+[calendar versions](<../(fundamentals)/version-spec.mdx#calendar-versions>), like `2024-02-26`.
+When choosing a version:
+
+- **Write proto's form** on the command line and in
+  [`.prototools`](<../(fundamentals)/config.mdx>), like `1.17.2`. It's also what the scripts
+  receive, so a plugin that lists `v1.17.2` is asked to install `1.17.2`.
+- **Other entries can't be installed.** Entries that proto can't read, like `3.14.0a1`, and names
+  that aren't versions, like `nightly`, can't be installed, even though the plugin prints them.
+- **Partial versions are requirements.** `1.20` is a
+  [requirement](<../(fundamentals)/version-spec.mdx#requirements-and-ranges>) that matches every
+  listed 1.20 release, so it resolves to the newest patch, like `1.20.14`, never to the release
+  that the plugin calls `1.20`. That includes `1.20` in a `.tool-versions`, where asdf would install
+  that release.
+- **Pin pre-releases in full.** Like any pre-release, a release candidate is only used when pinned
+  as a full version, like `1.17.0-rc1`.
+
+Run [`proto versions asdf:<name>`](../commands/versions.mdx) to list every version as proto names
+it.
+
+The backend provides the following aliases, in addition to proto's
+[built-in aliases](<../(fundamentals)/version-spec.mdx#built-in-aliases>):
+
+- `stable` - The version that the plugin's `bin/latest-stable` script prints, or `latest` when the
+  plugin doesn't have that script. It's resolved when it's used, so
+  [`proto versions --aliases`](../commands/versions.mdx) doesn't list it.
+
+Aliases resolve to a newer version as releases are published. To pin the version an alias
+currently resolves to, pass `--resolve` to [`proto pin`](../commands/pin.mdx).
+
+```shell
+# Pin the version that stable resolves to
+$ proto pin asdf:terraform stable --resolve
+```
+
+### Plugins and repositories
+
+Loading a tool from the backend, with any command, first gets its asdf plugin:
+
+- **Finding the repository** - proto looks the tool's name, or its
+  [`shortname`](#tool-shortname), up in the [asdf-plugins](https://github.com/asdf-vm/asdf-plugins)
+  index, which has a file for each plugin that names its repository. `terraform` is the
+  asdf-hashicorp plugin, for example. The [`repository`](#tool-repository) setting skips the lookup.
+- **Cloning** - The repository is cloned with `git clone --depth 1` into
+  `~/.proto/backends/asdf/<shortname>` (see
+  [directory layout](<../(fundamentals)/store.mdx#directory-layout>)), so every version, and every
+  project, shares one clone.
+- **Updating** - proto runs `git pull` in the clone when the tool is loaded, at most once every 7
+  days, which it tracks in the clone's `.last-pull` file.
+
+Uninstalling a tool's versions leaves its clone in place, and
+[`proto clean`](../commands/clean.mdx) doesn't remove it either, so delete the tool's directory in
+`~/.proto/backends/asdf` to remove its plugin. Plugins are third-party code that runs with your
+permissions, so review a plugin before using it, as you would with asdf.
+
+### Executables
+
+proto locates a version's executables after installing it, and whenever the tool runs:
+
+1. The directories are those that `bin/list-bin-paths` prints, relative to the version's directory,
+   or `bin` when the plugin doesn't have that script.
+2. Every file in them gets a [shim](<../(fundamentals)/workflows.mdx#shims>) and a
+   [binary](<../(fundamentals)/workflows.mdx#binary-linking>), except sub-directories, hidden
+   files, documents like `README` and `LICENSE`, and files with an extension other than `.sh`,
+   which also skips names with a dot, like `python3.12`.
+3. The executable named after the tool, like `terraform` for `asdf:terraform`, is the primary one,
+   which [`proto run`](../commands/run.mdx) runs by default.
+
+When no executable is named after the tool, like `asdf:awscli`, which provides `aws`,
+[`proto run`](../commands/run.mdx) fails with `does not support a primary (default) executable`.
+Pass `--exe` to choose one, or set [`shortname`](#tool-shortname) to name the tool after it. To
+choose which executables get shims, configure [`exes`](#tool-exes).
+
+```shell
+# Run a tool's executable, when none is named after the tool
+$ proto run asdf:awscli --exe aws -- --version
+```
+
+Executable names are shared by every tool, so when an asdf plugin provides one that another tool
+does too, like `node` from asdf-nodejs, only one of them owns its shim (see
+[locating executables](<../(fundamentals)/(plugin)/backend.mdx#locating-executables>)).
+
+### asdf scripts
+
+proto runs the following scripts from the plugin's `bin` directory, like asdf does:
+
+| Script                  | When proto runs it                                                      |
+| ----------------------- | ----------------------------------------------------------------------- |
+| `list-all`              | Listing versions. Required.                                             |
+| `latest-stable`         | Resolving the [`stable`](#versions--aliases) alias.                     |
+| `download`              | Installing, before `install`.                                           |
+| `install`               | Installing. Required.                                                   |
+| `uninstall`             | Uninstalling, before proto deletes the version's directory.             |
+| `list-bin-paths`        | Locating [executables](#executables).                                   |
+| `exec-env`              | Running the tool (see [execution environment](#execution-environment)). |
+| `list-legacy-filenames` | Detecting a version (see [version files](#version-files)).              |
+| `parse-legacy-file`     | Reading a legacy version file.                                          |
+
+Other scripts, like `exec-path`, the `help.*` scripts, and the `post-plugin-add`,
+`post-plugin-update`, and `pre-plugin-remove` hooks, aren't run.
+
+Each script runs with the interpreter in its shebang, or with Bash when it has none. Like with
+asdf, the scripts that act on a version run in its directory, and receive `ASDF_INSTALL_TYPE`
+(always `version`), `ASDF_INSTALL_VERSION` (proto's form of the version), `ASDF_INSTALL_PATH` (its
+directory in the store), and `ASDF_DOWNLOAD_PATH` (a temporary directory). `install` also receives
+`ASDF_CONCURRENCY`, the number of CPU cores, unless it's already set in your environment.
+
+Scripts inherit your shell's environment, but not the `env` settings of
+[`.prototools`](<../(fundamentals)/config.mdx>), which only apply when a tool runs. So set the
+variables that a plugin reads while installing, like asdf-hashicorp's `ASDF_HASHICORP_SKIP_VERIFY`,
+in your shell.
+
+## Troubleshooting
+
+### A pinned asdf tool is ignored
+
+A pin for an asdf tool in an untrusted [`.prototools`](<../(fundamentals)/config.mdx>) is skipped,
+as if it wasn't there, so [`proto install`](../commands/install.mdx) doesn't install it, and its
+shim doesn't use that version. Most commands warn about the skipped pin, and
+[`proto status`](../commands/status.mdx) lists the config as untrusted. Review the config, then
+trust it (see [trust & safety](<../(fundamentals)/trust.mdx>)):
+
+```shell
+# Trust the current directory, and every config within it
+$ proto trust
+```
+
+### The tool isn't in the shortname index
+
+When the name after `asdf:` isn't in the asdf-plugins index, loading the tool fails with
+`asdf plugin <name> not found in the shortname index`. A plugin's name in the index often differs
+from the tool's, like `awscli` for `aws`, or `golang` for `go`. Find the plugin in the
+[index](https://github.com/asdf-vm/asdf-plugins), and set its name as the
+[`shortname`](#tool-shortname), or set the plugin's [`repository`](#tool-repository).
+
+### A script isn't found
+
+`Script list-all not found. Is the asdf repository valid?` means that the cloned repository isn't an
+asdf plugin, as it has no `bin/list-all` or `bin/install` script. That's common when
+[`repository`](#tool-repository) points to the tool's own repository, instead of its asdf plugin.
+Fix the setting, then delete the clone, as described below.
+
+### A changed repository or plugin update is ignored
+
+proto only clones a plugin when its directory doesn't exist, and pulls from the repository it was
+cloned from at most once every 7 days. So changing [`repository`](#tool-repository) has no effect
+on an existing clone, and a fix to the plugin can take a week to arrive. Delete the clone, which
+proto clones again on the next command, or its `.last-pull` file, to pull on the next command:
+
+```shell
+# Clone the plugin again, from the configured repository
+$ rm -rf ~/.proto/backends/asdf/terraform
+
+# Pull the plugin's latest changes on the next command
+$ rm ~/.proto/backends/asdf/terraform/.last-pull
+```
+
+### Installing fails, or seems to hang
+
+proto captures the scripts' output, so nothing is printed while they run, which can take minutes
+for plugins that compile from source. When a script fails, the error includes its stderr, like
+`Failed to execute script <path>: <stderr>`, which usually names a missing dependency (see
+[prerequisites](#prerequisites)). `Command or script bash does not exist` means that the script's
+interpreter isn't on your `PATH`. To watch the scripts run, set
+[`PROTO_DEBUG_COMMAND`](../advanced/env-vars.mdx#debugging) to `stream`:
+
+```shell
+# Stream the output of the plugin's scripts
+$ PROTO_DEBUG_COMMAND=stream proto install asdf:terraform
+```
+
+### Detection fails on special asdf versions
+
+asdf's `ref:` and `path:` versions in a `.tool-versions` fail with
+`Failed to parse a version requirement.`, and `system` fails to resolve, as proto has no such
+alias. Replace `ref:` and `path:` with a version. For `system`, remove the line, so that when no
+other version is detected, the shim runs the executable from elsewhere on your `PATH`. Or pin a
+version in a [`.prototools`](<../(fundamentals)/config.mdx>) in the same directory, which proto
+checks first.
+
+## Caveats
+
+- **Prefer built-in tools** - For tools that proto has a plugin for, like
+  [Node.js](../tools/node.mdx), [Go](../tools/go.mdx), or [Zig](../tools/zig.mdx), use the built-in
+  tool instead of its asdf plugin. It downloads prebuilts directly, verifies their checksums, works
+  on Windows, and its pins don't require trust.
+- **No checksums or lockfile records** - The plugin's scripts download the files, not proto, so
+  proto doesn't verify [checksums](../advanced/checksums.mdx), and installs aren't recorded in the
+  [lockfile](../advanced/lockfile.mdx). Verification is up to the plugin, like asdf-hashicorp,
+  which checks HashiCorp's signatures when `gpg` is installed.

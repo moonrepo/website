@@ -2,10 +2,354 @@
 title: Cargo
 ---
 
-## Usage
+import { TypeLabel } from "@/components/TypeLabel";
+
+[Cargo](https://doc.rust-lang.org/cargo/) is Rust's package manager, and many command-line tools are
+published with it to [crates.io](https://crates.io), Rust's package registry, like
+[ripgrep](https://crates.io/crates/ripgrep) and
+[cargo-nextest](https://crates.io/crates/cargo-nextest). The cargo backend installs these tools
+with Cargo, so each project can pin the versions it uses, instead of everyone installing them
+globally with `cargo install`. It's an unstable
+[built-in backend](<../(fundamentals)/(plugin)/backend.mdx#built-in-backends>) with the `cargo`
+prefix, so it works without configuring a plugin, but proto prints a warning when installing a tool
+with it.
+
+proto lists a crate's versions from the crates.io API, skipping yanked versions, and installs a
+version with [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) when it's available,
+which downloads a prebuilt binary when there is one, or with `cargo install`, which builds the crate
+from source (see
+[resolving and installing](<../(fundamentals)/(plugin)/backend.mdx#resolving-and-installing>)).
+
+## Prerequisites
+
+- **Rust** - Cargo tools require the [`rust`](../tools/rust.mdx) tool, which must have a version
+  configured too, like a pin in [`.prototools`](<../(fundamentals)/config.mdx>), in the project or
+  globally, or with `PROTO_RUST_VERSION` (see
+  [`requires`](<../(fundamentals)/config.mdx#tools-requires>)). Crates are installed with the
+  `cargo` on your `PATH`, typically rustup's proxy in `~/.cargo/bin` (see
+  [which toolchain builds crates](#which-toolchain-builds-crates)).
+- **A supported platform** - The backend works wherever Cargo does, as long as the crate builds for
+  your platform. cargo-binstall only downloads a prebuilt when one is published for it, and builds
+  from source otherwise.
+- **cargo-binstall (optional)** - To download prebuilt binaries instead of compiling crates,
+  install [cargo-binstall](https://github.com/cargo-bins/cargo-binstall). The backend uses it when
+  it's in `~/.cargo/bin` (or `$CARGO_HOME/bin`), or anywhere on your `PATH`.
+
+## Installation
+
+Cargo tools require Rust, so pin it too. Install a tool from the backend with
+[`proto install`](../commands/install.mdx), using its `cargo:<crate>` identifier, and pin a version
+with [`proto pin`](../commands/pin.mdx), or with the `--pin` option while installing:
+
+```shell
+# Install the detected version, or the latest when none is detected
+$ proto install cargo:ripgrep
+
+# Install the newest ripgrep 15 release, and pin it to the closest .prototools
+$ proto install cargo:ripgrep 15 --pin
+
+# Pin a version without installing it
+$ proto pin cargo:ripgrep 15
+
+# Install and pin Rust, which Cargo tools require
+$ proto install rust 1.91 --pin
+```
+
+```toml title=".prototools"
+rust = "1.91.0"
+"cargo:ripgrep" = "15.2.0"
+```
+
+Besides versions and ranges, Cargo tools support the `latest`
+[alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. `latest` is the
+newest version that isn't a pre-release.
 
 ## Configuration
 
+Backend settings go in the `[backends.cargo]` table of
+[`.prototools`](<../(fundamentals)/config.mdx>), and apply to every tool from the backend. Tool
+settings go in a tool's own table, like `[tools."cargo:ripgrep"]`. Every setting in both tables
+requires [trust](<../(fundamentals)/trust.mdx>) in a project's
+[`.prototools`](<../(fundamentals)/config.mdx>). When both tables set `registry`, the tool's wins,
+and `locked` is enabled when either table enables it.
+
 ### Backend settings
 
+#### `locked` [#backend-locked]
+
+<TypeLabel type="boolean" /> - Install every tool with the dependency versions
+in the `Cargo.lock` it was published with, by passing `--locked` to Cargo.
+Defaults to `false`.
+
+In Rust 1.100 and newer, Cargo uses a crate's published `Cargo.lock` by default. Older versions
+resolve the dependencies again without `--locked`, possibly to newer versions that no longer build.
+cargo-binstall only uses it when it falls back to building from source.
+
+```toml title=".prototools"
+[backends.cargo]
+locked = true
+```
+
+#### `no-binstall` [#backend-no-binstall]
+
+<TypeLabel type="boolean" /> - Build every tool from source with `cargo
+install`, even when cargo-binstall is available. Defaults to `false`.
+
+```toml title=".prototools"
+[backends.cargo]
+no-binstall = true
+```
+
+#### `registry` [#backend-registry]
+
+<TypeLabel type="string" /> - The name of a registry in your Cargo config to
+install every tool from, passed as `--registry`. When not set, Cargo installs
+from its default registry, crates.io.
+
+`cargo install` only reads the Cargo config in `$CARGO_HOME` (`~/.cargo/config.toml` by default),
+not a project's `.cargo/config.toml`, so define the registry there:
+
+```toml title="~/.cargo/config.toml"
+[registries.company]
+index = "sparse+https://cargo.example.com/index/"
+```
+
+```toml title=".prototools"
+[backends.cargo]
+registry = "company"
+```
+
+Versions are still listed from crates.io, so the setting only works for crates that are published
+there too, with the same versions, like in a registry that mirrors crates.io.
+
 ### Tool settings
+
+#### `bin` [#tool-bin]
+
+<TypeLabel type="string" /> - The only binary to install, for a crate that has
+several, passed as `--bin`. Setting it builds the crate from source with `cargo
+install`. When not set, every binary is installed.
+
+```toml title=".prototools"
+[tools."cargo:wasm-bindgen-cli"]
+bin = "wasm-bindgen"
+```
+
+#### `features` [#tool-features]
+
+<TypeLabel type="string[]" /> - The crate's features to enable, passed as
+`--features`. Setting it builds the crate from source with `cargo install`.
+Defaults to `[]`.
+
+```toml title=".prototools"
+[tools."cargo:ripgrep"]
+features = ["pcre2"]
+```
+
+#### `locked` [#tool-locked]
+
+<TypeLabel type="boolean" /> - Like the backend's [`locked`](#backend-locked),
+for this tool only. Defaults to `false`.
+
+A tool can't disable it when the backend enables it.
+
+```toml title=".prototools"
+[tools."cargo:cargo-nextest"]
+locked = true
+```
+
+#### `no-default-features` [#tool-no-default-features]
+
+<TypeLabel type="boolean" /> - Disable the crate's `default` feature, passed as
+`--no-default-features`, typically to enable only some of its features with
+[`features`](#tool-features). Setting it builds the crate from source with
+`cargo install`. Defaults to `false`.
+
+```toml title=".prototools"
+[tools."cargo:cargo-nextest"]
+# Leave out the self-update feature, as proto manages the version
+no-default-features = true
+features = ["default-no-update"]
+```
+
+#### `registry` [#tool-registry]
+
+<TypeLabel type="string" /> - Like the backend's
+[`registry`](#backend-registry), for this tool only, and it takes precedence
+over the backend's.
+
+```toml title=".prototools"
+[tools."cargo:ripgrep"]
+registry = "company"
+```
+
+## Ecosystem
+
+### Crates and executables
+
+A tool's identifier is the crate's name on crates.io, like `cargo:ripgrep`. Only crates with
+binaries can be installed, so for a project that publishes its CLI separately from its library, use
+the CLI's crate, like `cargo:wasm-bindgen-cli` instead of `cargo:wasm-bindgen`.
+
+Each version is installed into `~/.proto/tools/cargo__<crate>/<version>`, and every binary that
+Cargo installs into its `bin` directory becomes an
+[executable](<../(fundamentals)/(plugin)/tool.mdx#executables>), with a shim and a binary of its
+own. They're named after the binaries, not the crate:
+
+- `cargo:ripgrep` provides `rg`.
+- `cargo:cargo-nextest` provides `cargo-nextest`.
+- `cargo:wasm-bindgen-cli` provides `wasm-bindgen`, `wasm-bindgen-test-runner`, and `wasm2es6js`.
+
+The primary executable, which [`proto run`](../commands/run.mdx) runs by default, is the binary
+named after the crate, or after the crate without its `cargo-` prefix, and otherwise any one of
+them. For crates with several binaries, like `wasm-bindgen-cli`, choose one with `--exe`:
+
+```shell
+# Run the primary executable
+$ proto run cargo:ripgrep -- --version
+
+# Run a specific executable of the crate
+$ proto run cargo:wasm-bindgen-cli --exe wasm-bindgen -- --version
+```
+
+Crates named `cargo-<name>`, like `cargo-nextest`, are Cargo subcommands. Cargo runs `cargo <name>`
+by looking for a `cargo-<name>` executable on `PATH`, so `cargo nextest` finds proto's shim, which
+runs the version pinned for the current directory. If the subcommand is also in `~/.cargo/bin`,
+like from an earlier `cargo install`, Cargo may run that one instead, so remove it with
+`cargo uninstall`.
+
+```shell
+# Runs the cargo-nextest version pinned in .prototools
+$ cargo nextest run
+```
+
+### Prebuilt binaries
+
+When cargo-binstall is available, proto installs with `cargo binstall` instead of `cargo install`,
+unless [`no-binstall`](#backend-no-binstall) is enabled, or a tool sets [`bin`](#tool-bin),
+[`features`](#tool-features), or [`no-default-features`](#tool-no-default-features), which only
+apply when building from source.
+
+cargo-binstall looks for a prebuilt in the crate's own releases first, then from the
+cargo-quickinstall project, and builds from source with `cargo install` when neither has one. proto
+runs it with `--no-confirm`, so it doesn't prompt, and `--disable-telemetry`, so installs aren't
+reported to cargo-quickinstall's statistics server. cargo-binstall reads its other options from
+environment variables, like `BINSTALL_DISABLE_STRATEGIES`:
+
+```shell
+# Don't use prebuilts from cargo-quickinstall
+$ BINSTALL_DISABLE_STRATEGIES=quick-install proto install cargo:ripgrep
+```
+
+### Which toolchain builds crates
+
+proto only checks that `rust` has a version configured. The crate is built by the `cargo` on your
+`PATH`, typically rustup's proxy, which chooses a toolchain with
+[rustup's own rules](https://rust-lang.github.io/rustup/overrides.html). Cargo runs in the version's
+directory in the store, so a project's `rust-toolchain.toml` doesn't apply, and rustup typically
+uses your default toolchain, not necessarily the `rust` version pinned in
+[`.prototools`](<../(fundamentals)/config.mdx>). Even cargo-binstall needs a toolchain, as it runs
+through `cargo`. To choose one, set `RUSTUP_TOOLCHAIN`:
+
+```shell
+# Build with the Rust 1.91.0 toolchain
+$ RUSTUP_TOOLCHAIN=1.91.0 proto install cargo:cargo-nextest
+```
+
+Compiling can take minutes, and proto doesn't show Cargo's output while it runs. To watch it, set
+[`PROTO_DEBUG_COMMAND`](../advanced/env-vars.mdx#debugging) to `stream`. Each build starts from
+scratch, unless `CARGO_TARGET_DIR` is set, in which case Cargo builds in that directory and reuses
+its artifacts, like for caching builds in CI.
+
+```shell
+# Stream Cargo's output while installing
+$ PROTO_DEBUG_COMMAND=stream proto install cargo:ripgrep
+```
+
+## Troubleshooting
+
+### Installing a tool fails, even though Rust is installed
+
+Cargo tools require a configured `rust` version, not just an installed one, so without one,
+[`proto install cargo:ripgrep`](../commands/install.mdx) fails with
+`cargo:ripgrep requires rust to function correctly`. A version in `rust-toolchain.toml` isn't
+enough here, so pin one in a [`.prototools`](<../(fundamentals)/config.mdx>):
+
+```shell
+# Pin Rust for this project, or for your machine with --to global
+$ proto pin rust 1.91.0
+$ proto install cargo:ripgrep
+```
+
+### `cargo` isn't found
+
+`Command or script cargo does not exist` means that `cargo` isn't on the `PATH` of the shell that
+runs proto. Open a new shell after rustup's installer runs, or add `~/.cargo/bin` (or
+`$CARGO_HOME/bin`) to `PATH` yourself (see [Rust's prerequisites](../tools/rust.mdx#prerequisites)).
+
+### rustup can't choose a toolchain
+
+When rustup has no default toolchain, its `cargo` proxy fails before anything is installed, as a
+project's toolchain file doesn't apply (see
+[which toolchain builds crates](#which-toolchain-builds-crates)). Set a default with
+`rustup default`, or set `RUSTUP_TOOLCHAIN` while installing (see
+[no default toolchain](../tools/rust.mdx#no-default-toolchain-is-configured)).
+
+### A crate has nothing to install
+
+`there is nothing to install in ..., because it has no binaries` from Cargo, or
+`no binaries specified nor inferred` from cargo-binstall, means the crate is a library. Use the
+crate that publishes the CLI instead, like `cargo:wasm-bindgen-cli` (see
+[crates and executables](#crates-and-executables)).
+
+### A crate or version isn't found
+
+When the crate doesn't exist on crates.io, listing versions fails with a 404 status from
+`https://crates.io/api/v1/crates/<crate>/versions`. Check the crate's name, and note that crates
+that are only published to another registry aren't supported. When the version doesn't exist, it
+fails with `Failed to resolve <version> to a valid supported version`. Yanked versions aren't
+listed, so they fail too, unless they're already installed.
+
+### A crate fails to build
+
+proto prints `Failed to install cargo:<crate>.` followed by Cargo's error. Common causes are a
+toolchain older than the crate's minimum Rust version (see
+[which toolchain builds crates](#which-toolchain-builds-crates)), newer dependency versions that no
+longer build (enable [`locked`](#backend-locked)), or a system library or C compiler that the crate
+needs. Install cargo-binstall to download a prebuilt instead, when the crate has one.
+
+### A changed setting has no effect
+
+Settings are only read when a version is installed, and proto skips versions that are already
+installed. Reinstall with `--force`, which proto passes to Cargo too:
+
+```shell
+# Reinstall the detected version with the current settings
+$ proto install cargo:ripgrep --force
+```
+
+### A setting is rejected
+
+An `unknown field` error while installing means the backend doesn't know a setting. Keys are
+kebab-case, like `no-binstall`, and each table only accepts its own settings, so `no-binstall` goes
+in `[backends.cargo]`, and `bin`, `features`, and `no-default-features` in a tool's table.
+
+## Caveats
+
+- **Versions always come from crates.io** - Even with a [`registry`](#backend-registry), so crates
+  that are only published to another registry can't be installed, and
+  [`versions-source`](<../(fundamentals)/config.mdx#tools-versions-source>) has no effect.
+- **`--build` doesn't apply** - Cargo tools are always installed by Cargo or cargo-binstall, so
+  [`proto install --build`](../commands/install.mdx) doesn't change how they're installed, and a
+  bare [`proto install --build`](../commands/install.mdx) or `--no-build` skips them. Use
+  [`no-binstall`](#backend-no-binstall) to build from source.
+- **Arguments after `--` aren't passed to Cargo** - [`proto install`](../commands/install.mdx)
+  ignores them for Cargo tools, so use the [tool settings](#tool-settings) instead.
+- **Downloads are managed by Cargo** - Cargo and cargo-binstall download crates themselves, so
+  proto's [HTTP settings](../advanced/http.mdx), like proxies and URL rewrites, only apply to
+  listing versions. Configure [Cargo](https://doc.rust-lang.org/cargo/reference/config.html)
+  instead.
+- **No checksums or lockfile records** - Cargo downloads the crates, not proto, so proto doesn't
+  verify [checksums](../advanced/checksums.mdx), and installs aren't recorded in the
+  [lockfile](../advanced/lockfile.mdx). Cargo still verifies the crates it downloads against the
+  registry's checksums.

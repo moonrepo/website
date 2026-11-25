@@ -84,7 +84,7 @@ $ prettier --check .
 $ proto run npm:prettier -- --check .
 
 # Run one of the tool's other executables
-$ proto run npm:typescript --exe tsserver
+$ proto run npm:npm-check-updates --exe npm-check-updates
 
 # Run a command with a specific version on PATH
 $ proto exec npm:prettier@3.6.2 -- prettier --version
@@ -190,8 +190,8 @@ the community registry. The plugin is downloaded and cached once, and then loade
   [`[tools."<backend>:<id>"]`](../config.mdx#tools).
 
 Some backends need more than the plugin. When an asdf tool is loaded, the backend clones the asdf
-plugin's repository into `~/.proto/backends/asdf/<name>`, and pulls updates at most once every 7
-days.
+plugin's repository into `~/.proto/backends/asdf/<shortname>`, named after the plugin's
+[shortname](../../backends/asdf.mdx#tool-shortname), and pulls updates at most once every 7 days.
 
 ### Resolving and installing
 
@@ -219,10 +219,11 @@ can't clash with a tool of the same name: `npm:prettier` is installed into
 
 Once installed, the backend locates the tool's executables. Shims and
 [binaries](../workflows.mdx#binary-linking) are named after the executables, not the tool, so
-`cargo:ripgrep` provides `rg`, and `npm:typescript` provides `tsc` and `tsserver`. Each shim
-remembers the backend tool it belongs to, so running `prettier` runs `npm:prettier` with the version
-detected for the current directory. When running a backend tool, proto also adds the tools it
-requires, like `node`, to the environment, using their detected versions. If a package needs a
+`cargo:ripgrep` provides `rg`, and `npm:npm-check-updates` provides `ncu` and `npm-check-updates`.
+Each shim remembers the backend tool it belongs to, so running `prettier` runs `npm:prettier` with
+the version detected for the current directory. When a backend tool runs through a shim or
+[`proto run`](../../commands/run.mdx), proto also adds the tools it requires, like `node`, to the
+environment, using their detected versions. If a package needs a
 tool that its backend doesn't know about, add it with the
 [`requires`](../config.mdx#tools-requires) setting <VersionLabel version="0.64.0" />. For example,
 the npm backend knows that Tauri's CLI needs Node.js, but not that it also runs `cargo`:

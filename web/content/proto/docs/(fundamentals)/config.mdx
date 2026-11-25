@@ -160,7 +160,7 @@ within `packages/app`.
 ## Resolution modes
 
 When a command or shim runs, its resolution mode decides which of the [located](#locations) files
-it loads, before they're [merged](#merging) into a single configuration. Each command has a default
+it loads, before they're [merged](#merging-strategy) into a single configuration. Each command has a default
 mode, which you can change with the global `--config-mode` (`-c`) option, or the
 `PROTO_CONFIG_MODE` environment variable. The following examples assume that the current directory
 is `~/Projects/app`, and list files from highest to lowest precedence.
@@ -936,14 +936,17 @@ requires = ["node"]
 
 A requirement works exactly like one from the plugin:
 
-- **Installing** - [`proto install`](../commands/install.mdx) installs the required tools first, and
+- **Installing** - [`proto install`](../commands/install.mdx) installs the required tools before the
+  tool. Installing the tool on its own, like `proto install my-cli`, doesn't install them, and
   fails if one of them doesn't have a version configured, either pinned in a `.prototools` or set
   with a `PROTO_<TOOL>_VERSION` environment variable.
-- **Running** - When the tool runs, through a shim, [`proto run`](../commands/run.mdx), or
-  [`proto exec`](../commands/exec.mdx), the required tools are added to its environment too: their
-  executable directories are put on `PATH`, and their versions are exported as
-  `PROTO_<TOOL>_VERSION`, so child processes use them. They use their
-  [detected](./detection.mdx) versions, and must already be installed.
+- **Running** - When the tool runs through a shim or [`proto run`](../commands/run.mdx), the
+  required tools are added to its environment too: their executable directories are put on `PATH`,
+  and their versions are exported as `PROTO_<TOOL>_VERSION`, so child processes use them. They use
+  their [detected](./detection.mdx) versions, and must already be installed.
+  [`proto exec`](../commands/exec.mdx) doesn't add them, so pass them to it as well, and
+  [shell activation](./workflows.mdx#shell-activation) only activates them when they're pinned in a
+  `.prototools` themselves.
 
 Unlike other settings, lists from every loaded file are combined, without duplicates, instead of the
 closest file replacing them. A tool can't require itself, and requirements that form a cycle, like
@@ -1021,12 +1024,13 @@ Every setting in a backend's table requires [trust](./trust.mdx#security-sensiti
 <TypeLabel type="Record<string, string | boolean>" />
 
 Environment variables to set when any of the backend's tools run, with the same syntax as
-[`[env]`](#env), including `file`. They override `[env]`, and are overridden by a
-[tool's own variables](#tools-env). See [order of precedence](#order-of-precedence).
+[`[env]`](#env), including `file`. They're only set when the tools run, not while installing them.
+They override `[env]`, and are overridden by a [tool's own variables](#tools-env). See
+[order of precedence](#order-of-precedence).
 
 ```toml title=".prototools"
-[backends.cargo.env]
-CARGO_NET_GIT_FETCH_WITH_CLI = "true"
+[backends.npm.env]
+NODE_OPTIONS = "--max-old-space-size=4096"
 ```
 
 #### `plugin` [#backends-plugin]
