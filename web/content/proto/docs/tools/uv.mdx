@@ -23,8 +23,8 @@ See [Python versions](#python-versions) for how the two work together.
   [`versions-source`](<../(fundamentals)/config.mdx#tools-versions-source>).
 - **A supported platform** - uv is published for Linux, macOS, and Windows, on x64 and arm64. x86 is
   also supported on Linux and Windows, and arm, ppc64le, s390x, and riscv64 on Linux. On Linux, the
-  build for your system's libc, glibc or musl, is downloaded. Other platforms fail with an
-  unsupported platform error.
+  build for your system's libc, glibc or musl, is downloaded, except on arm, which uses a static
+  musl build that runs with either. Other platforms fail with an unsupported platform error.
 
 ## Installation
 

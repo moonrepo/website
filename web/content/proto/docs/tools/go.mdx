@@ -205,8 +205,8 @@ an exact version, pin it in a [`.prototools`](<../(fundamentals)/config.mdx>).
 
 proto only reads these files, so [`proto pin --tool-native`](../commands/pin.mdx) isn't supported
 for Go. Update them with Go itself, like `go get go@1.26.2`, or `go get toolchain@go1.26.2`. Like
-other ecosystem files, they're ignored by shell activation, which only activates versions pinned
-in a [`.prototools`](<../(fundamentals)/config.mdx>) (see
+other ecosystem files, they don't activate Go on their own, as shell activation only activates
+tools that are pinned in a [`.prototools`](<../(fundamentals)/config.mdx>) (see
 [detection by command](<../(fundamentals)/detection.mdx#detection-by-command>)).
 
 ## Ecosystem

@@ -131,9 +131,9 @@ Run [`proto versions poetry`](../commands/versions.mdx) to list every version as
 ### Virtual environments
 
 Poetry creates a project's virtual environment with the active Python, which is the `python` on
-`PATH`. With proto, that's the Python version detected for the project, not the one Poetry itself
-runs on. So pinning `python` alongside `poetry` decides which Python your project's environment
-uses:
+`PATH`. With proto's shims or shell activation, that's the Python version detected for the project,
+not the one Poetry itself runs on. So pinning `python` alongside `poetry` decides which Python your
+project's environment uses:
 
 ```toml title=".prototools"
 python = "3.12"

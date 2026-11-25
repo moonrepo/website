@@ -25,8 +25,9 @@ Yarn requires [Node.js](./node.mdx), and is powered by the same plugin as [npm](
 
 - **Node.js** - Yarn requires the [`node`](./node.mdx) tool, which must have a version configured
   too, like a pin in [`.prototools`](<../(fundamentals)/config.mdx>), or with `PROTO_NODE_VERSION`.
-  That applies to every version of Yarn, including Yarn 6. It's installed before Yarn, and it's put
-  on `PATH` whenever Yarn runs, so Yarn and your package scripts use the same `node`.
+  That applies to every version of Yarn, including Yarn 6. When both are pinned,
+  [`proto install`](../commands/install.mdx) installs it before Yarn, and once it's installed, it's
+  put on `PATH` whenever Yarn runs, so Yarn and your package scripts use the same `node`.
 - **Git** - Yarn 6 versions are listed from the tags of the
   [yarnpkg/zpm](https://github.com/yarnpkg/zpm) repository, with `git ls-remote`, so `git` must be
   on your `PATH` (see [requirements](../index.mdx#requirements)). That happens whenever Yarn's
@@ -74,7 +75,7 @@ pre-release. `canary` resolves to the latest Yarn 6 release candidate. See
 [versions & aliases](#versions--aliases) for the aliases that Yarn provides.
 
 Run [`proto versions yarn`](../commands/versions.mdx) to list every available version, across all
-generations, and add `--aliases` to see the aliases too.
+generations, and add `--aliases` to see the registry's dist-tag aliases too.
 
 ## Configuration
 
@@ -90,8 +91,8 @@ to download versions before Yarn 6 from. Set it to use a mirror or a private
 registry, with credentials in `.yarnrc.yml` when it requires them (see [private
 registries](#private-registries)). Defaults to `https://registry.npmjs.org`.
 
-proto doesn't read `npmRegistryServer` from `.yarnrc.yml`, so set this even when Yarn itself is
-already configured for the registry.
+proto doesn't use `npmRegistryServer` from `.yarnrc.yml` as the registry, so set this even when
+Yarn itself is already configured for the registry.
 
 ```toml title=".prototools"
 [tools.yarn]
@@ -142,11 +143,16 @@ shared-globals-dir = true
 
 Whenever Yarn runs through proto, with a [shim](<../(fundamentals)/workflows.mdx#shims>),
 [`proto run`](../commands/run.mdx), [`proto exec`](../commands/exec.mdx), or
-[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>), proto adds the detected
-Node.js version to its environment, so Yarn, and every script it runs, uses that `node`. With
-[`shared-globals-dir`](#shared-globals-dir) enabled, it also sets `PREFIX` to
-`~/.proto/tools/node/globals`, where Yarn 1 then installs global packages. With shell activation,
-`PREFIX` is exported into your shell.
+[shell activation](<../(fundamentals)/workflows.mdx#shell-activation>), proto:
+
+- Adds the Node.js version detected for the directory to Yarn's environment, so Yarn, and every
+  script it runs, uses that `node`. This only happens with shims and
+  [`proto run`](../commands/run.mdx). With [`proto exec`](../commands/exec.mdx), pass `node` too,
+  and with shell activation, `node` is activated from its own pin in
+  [`.prototools`](<../(fundamentals)/config.mdx>).
+- Sets `PREFIX` to `~/.proto/tools/node/globals`, where Yarn 1 then installs global packages, when
+  [`shared-globals-dir`](#shared-globals-dir) is enabled. With shell activation, `PREFIX` is
+  exported into your shell.
 
 ### Global packages
 
@@ -158,7 +164,7 @@ environment variable isn't set:
 
 1. `$PREFIX/bin`.
 2. `$PREFIX/shims`.
-3. `~/.proto/tools/node/<version>/bin`, for the Node.js version that Yarn runs with.
+3. `~/.proto/tools/node/<version>/bin`, for the Node.js version in `PROTO_NODE_VERSION`, when set.
 4. `$YARN_PREFIX/bin`.
 5. `%LOCALAPPDATA%\Yarn\bin`, on Windows only.
 6. `~/.yarn/bin`.
@@ -199,9 +205,9 @@ fields of `package.json`, checked in this order, and skips any `package.json` wi
 4. `engines.yarn` - A version or range.
 
 The first field with a valid version wins. Fields for other package managers, like
-`"packageManager": "pnpm@10.0.0"`, are skipped. A field with an invalid version is skipped when a
-later one is valid, and is an error otherwise. In the following example, `^4.9.0` from `devEngines`
-wins over `packageManager`:
+`"packageManager": "pnpm@10.0.0"`, are skipped. A field with an invalid version is skipped in favor
+of a later one, and it's only an error when none of them has a valid version. In the following
+example, `^4.9.0` from `devEngines` wins over `packageManager`:
 
 ```json title="package.json"
 {
@@ -249,7 +255,7 @@ currently resolves to, pass `--resolve` to [`proto pin`](../commands/pin.mdx).
 # Pin the version that berry resolves to
 $ proto pin yarn berry --resolve
 
-# List every alias, and the version it resolves to
+# List the versions, and the dist-tag aliases with the versions they point to
 $ proto versions yarn --aliases
 ```
 

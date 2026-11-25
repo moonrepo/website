@@ -28,9 +28,9 @@ it needs a Java runtime, which proto can manage with the [Java](./java.mdx) tool
   proto installs on Linux, macOS, and Windows, whatever the architecture. Other operating systems
   fail with an unsupported platform error.
 
-The plugin doesn't declare Java as a requirement, so proto won't install it for you. To have proto
-manage both, declare Java with the [`requires`](<../(fundamentals)/config.mdx#tools-requires>)
-setting:
+The plugin doesn't declare Java as a requirement, so proto doesn't check that it's configured, or
+add it to Kotlin's environment. To have proto manage both, declare Java with the
+[`requires`](<../(fundamentals)/config.mdx#tools-requires>) setting:
 
 ```toml title=".prototools"
 java = "21"
@@ -41,8 +41,9 @@ requires = ["java"]
 ```
 
 [`proto install`](../commands/install.mdx) then installs Java before Kotlin, and fails if Java
-doesn't have a version configured. Whenever Kotlin runs, Java is added to its environment too, and
-`JAVA_HOME` points to the proto-managed version, even if your shell sets it to another JDK.
+doesn't have a version configured. Whenever Kotlin runs through a shim or
+[`proto run`](../commands/run.mdx), Java is added to its environment too, and `JAVA_HOME` points to
+the proto-managed version, even if your shell sets it to another JDK.
 
 ## Installation
 
@@ -104,9 +105,9 @@ Kotlin is configured in the `[tools.kotlin]` table of
 
 ### `dist-url`
 
-<TypeLabel type="string" /> - The URL template to download the compiler archive
-from. Defaults to `https://github.com/JetBrains/kotlin/releases/download/{tag}/
-{file}`.
+<TypeLabel type="string" /> - The URL template that compiler archives are
+downloaded from. Defaults to
+`https://github.com/JetBrains/kotlin/releases/download/{tag}/{file}`.
 
 It supports the following placeholders:
 
@@ -239,8 +240,8 @@ current directory, like with [`proto install java`](../commands/install.mdx), an
 [`.prototools`](<../(fundamentals)/config.mdx>). Then either add `java` to Kotlin's
 [`requires`](#prerequisites), or make sure `java` is on your `PATH`, through shims or activation.
 
-As the launchers prefer `JAVA_HOME` over `PATH`, a `JAVA_HOME` in your shell that points to another,
-or a removed, JDK wins over a `java` shim. Unset it, or use `requires`, which sets it for you.
+As the launchers prefer `JAVA_HOME` over `PATH`, a `JAVA_HOME` in your shell that points to another
+JDK wins over a `java` shim. Unset it, or use `requires`, which sets it for you.
 
 ### An older compiler fails to start
 

@@ -156,8 +156,11 @@ Whenever pnpm runs through proto, with a [shim](<../(fundamentals)/workflows.mdx
 [shell activation](<../(fundamentals)/workflows.mdx#shell-activation>), proto:
 
 - Adds the `node` version detected for the directory to pnpm's environment, by putting its
-  executables on `PATH` and setting `PROTO_NODE_VERSION`. pnpm, your scripts, and the executables of
-  your dependencies all run on that Node.js. The version must already be installed.
+  executables on `PATH` and setting `PROTO_NODE_VERSION`. pnpm, your scripts, and the executables
+  of your dependencies all run on that Node.js. The version must already be installed. This only
+  happens with shims and [`proto run`](../commands/run.mdx). With
+  [`proto exec`](../commands/exec.mdx), pass `node` too, and with shell activation, `node` is
+  activated from its own pin in [`.prototools`](<../(fundamentals)/config.mdx>).
 - Puts pnpm's [globals directories](#global-packages) on `PATH`.
 - Points pnpm at the shared directory when [`shared-globals-dir`](#shared-globals-dir) is enabled,
   by setting `pnpm_config_global_dir` and `pnpm_config_global_bin_dir` for v11 and newer, or
@@ -250,7 +253,7 @@ currently resolves to, pass `--resolve` to [`proto pin`](../commands/pin.mdx).
 # Pin the version that latest-10 resolves to
 $ proto pin pnpm latest-10 --resolve
 
-# List every alias, and the version it resolves to
+# List the versions, and the dist-tag aliases with the versions they point to
 $ proto versions pnpm --aliases
 ```
 
@@ -311,9 +314,9 @@ aren't found in your shell, check where they were linked with
 
 ### Downloads from a private registry fail
 
-An unauthorized error means proto didn't find credentials for the host of
-[`registry-url`](#registry-url) in your `.npmrc` files. A "not found" error for pnpm v12 and newer
-usually means that the registry doesn't proxy the `@pnpm/exe.*` platform packages.
+An unauthorized error means proto didn't find credentials for [`registry-url`](#registry-url) in
+your `.npmrc` files. A "not found" error for pnpm v12 and newer usually means that the registry
+doesn't proxy the `@pnpm/exe.*` platform packages.
 
 ## Caveats
 

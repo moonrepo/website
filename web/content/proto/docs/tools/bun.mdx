@@ -182,7 +182,9 @@ machine, with nothing to configure:
 Bun publishes a canary build, its latest unreleased build, which you can install with the `canary`
 spec. Canary builds don't have reliable checksums, so they aren't verified against a published one
 (see [tools without checksums](../advanced/checksums.mdx#tools-without-checksums)). Once installed,
-a canary build isn't replaced by a newer one, so reinstall it with `--force` to update.
+a canary build isn't replaced by a newer one. To get a newer build, uninstall it and install it
+again. Uninstalling also removes a `canary` pin from your
+[`.prototools`](<../(fundamentals)/config.mdx>), so pin it again if you use one.
 
 ```shell
 # Install the canary build
@@ -192,7 +194,8 @@ $ proto install bun canary
 $ PROTO_BUN_VERSION=canary bun --version
 
 # Update to the newest canary build
-$ proto install bun canary --force
+$ proto uninstall bun canary
+$ proto install bun canary
 ```
 
 ## Troubleshooting
@@ -211,11 +214,6 @@ use.
 
 ## Caveats
 
-- **`bunx` shims run `bun x`** - Bun doesn't ship a separate `bunx` executable. It's the `bun`
-  executable under another name, which Bun checks to behave like `bun x`. The `bunx`
-  [binary](<../(fundamentals)/workflows.mdx#binary-linking>) in `~/.proto/bin` links to `bun`, so it
-  works exactly like Bun's own. The `bunx` shim can't rename the executable it runs, so it runs
-  `bun x` instead, where Bun-specific flags, like `--bun`, don't work.
 - **`bun upgrade` is blocked** - It would replace a version that proto manages, so in an
   interactive terminal, proto offers to install and pin the `latest` version instead (see
   [running tools](<../(fundamentals)/(plugin)/tool.mdx#running-tools>)). To upgrade yourself,

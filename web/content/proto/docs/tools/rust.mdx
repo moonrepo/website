@@ -151,20 +151,21 @@ $ proto pin rust latest --resolve
 
 Without shims, which toolchain runs `cargo` or `rustc` depends on how it's run:
 
-- **Through proto** - [`proto run`](../commands/run.mdx), [`proto exec`](../commands/exec.mdx),
-  and [shell activation](<../(fundamentals)/workflows.mdx#shell-activation>) use the version that
-  proto [detects](<../(fundamentals)/detection.mdx>). `cargo` is the primary executable, so
-  [`proto run rust -- build`](../commands/run.mdx) runs `cargo build`.
+- **Through proto** - [`proto run`](../commands/run.mdx) and
+  [shell activation](<../(fundamentals)/workflows.mdx#shell-activation>) use the version that
+  proto [detects](<../(fundamentals)/detection.mdx>), and [`proto exec`](../commands/exec.mdx) the
+  version you pass it (see
+  [detection by command](<../(fundamentals)/detection.mdx#detection-by-command>)). `cargo` is the
+  primary executable, so [`proto run rust -- build`](../commands/run.mdx) runs `cargo build`.
 - **Everywhere else** - `cargo` and `rustc` are rustup's proxies, which choose a toolchain with
   [rustup's own rules](https://rust-lang.github.io/rustup/overrides.html): a toolchain file, a
   directory override, or the default toolchain. They don't read
   [`.prototools`](<../(fundamentals)/config.mdx>).
 
 To keep both in agreement, pin the version in `rust-toolchain.toml`, which both read, and install
-it with [`proto install rust`](../commands/install.mdx). Since
-[`proto install`](../commands/install.mdx) without arguments only installs tools pinned in a
-[`.prototools`](<../(fundamentals)/config.mdx>), pin the same version there too if you rely on it,
-like in CI.
+it with [`proto install rust`](../commands/install.mdx). Since shell activation only activates
+tools pinned in a [`.prototools`](<../(fundamentals)/config.mdx>), pin the same version there too
+if you rely on it.
 
 ## Troubleshooting
 

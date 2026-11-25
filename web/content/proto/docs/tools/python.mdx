@@ -188,9 +188,9 @@ proto keeps looking. That includes `system`, other implementations, like `pypy3.
 `3.13d`.
 
 `requires-python` in `pyproject.toml` isn't read, so pin the version in `.python-version`, or in
-[`.prototools`](<../(fundamentals)/config.mdx>). Shell activation only uses pins in
-[`.prototools`](<../(fundamentals)/config.mdx>), not version files (see
-[detection by command](<../(fundamentals)/detection.mdx#detection-by-command>)).
+[`.prototools`](<../(fundamentals)/config.mdx>). Shell activation only activates Python when it's
+pinned in a [`.prototools`](<../(fundamentals)/config.mdx>), not when it's only in a version file
+(see [detection by command](<../(fundamentals)/detection.mdx#detection-by-command>)).
 
 ## Ecosystem
 
@@ -251,13 +251,14 @@ builds don't have one). Behind a firewall, allow both hosts.
 Prebuilts exist for the following platforms:
 
 - **Linux** - x64 and arm64, with glibc or musl (like Alpine), and armv7, ppc64le, riscv64, and
-  s390x with glibc. On 32-bit ARM, the hard-float build is used, which distros like Raspberry Pi OS
-  require.
+  s390x with glibc, plus x86 with glibc up to 3.11.5. On 32-bit ARM, the hard-float build is used,
+  which distros like Raspberry Pi OS require.
 - **macOS** - x64 and arm64.
 - **Windows** - x64, x86, and arm64.
 
-They cover Python 3.8 and later, plus a few 3.7 releases, though some platforms start later, like
-Windows on arm64, from 3.11. Other versions can be [built from source](#building-from-source).
+They cover most releases of Python 3.8 and later, plus a few 3.7 releases, though some platforms
+start later, like Windows on arm64, from 3.11.13, 3.12.11, and 3.13.5. Other versions can be
+[built from source](#building-from-source).
 
 ### Package managers
 
@@ -285,8 +286,8 @@ Besides platforms without prebuilts, this happens when:
 - **A new Python release doesn't have a build yet** - Builds are published after CPython's releases,
   but a requirement like `3.14` resolves to a new release as soon as it's tagged. Pin the previous
   release until a build is out.
-- **A version predates prebuilts** - The last releases of older versions often don't have one. For
-  example, `3.7` resolves to `3.7.17`, while prebuilts stop at `3.7.9`.
+- **A version predates prebuilts** - Releases before 3.8 mostly don't have one. For example, `3.7`
+  resolves to `3.7.17`, while prebuilts stop at `3.7.9`.
 
 Versions with a [build suffix](#versions--aliases) have a prebuilt for your platform, so look for
 those when choosing a version:

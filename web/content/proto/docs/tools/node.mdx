@@ -10,9 +10,9 @@ tooling of most frontend projects. It's a
 works without configuring a plugin.
 
 proto downloads the official build for your platform from `nodejs.org`, or an
-[unofficial build](#unofficial-builds) where there's no official one, like on Alpine Linux. It
-supports the LTS release lines through [aliases](#versions--aliases) like `lts`, reads the
-versions that nvm, Volta, and `package.json` declare, and can
+[unofficial build](#unofficial-builds) on platforms that official builds don't fully cover, like
+Alpine Linux. It supports the LTS release lines through [aliases](#versions--aliases) like `lts`,
+reads the versions that nvm, Volta, and `package.json` declare, and can
 [build Node.js from source](#building-from-source). It provides the `node`
 [executable](<../(fundamentals)/(plugin)/tool.mdx#executables>) only, as npm, pnpm, and Yarn are
 [tools of their own](#package-managers).
@@ -52,7 +52,7 @@ Besides versions and ranges, Node.js supports the `latest` and `canary`
 newest nightly build that's available for your platform. See
 [versions & aliases](#versions--aliases) for the aliases that Node.js provides.
 
-Every download is verified against the `SHASUMS256.txt` file of its release (see
+Every prebuilt download is verified against the `SHASUMS256.txt` file of its release (see
 [checksums](../advanced/checksums.mdx)).
 
 ### Building from source
@@ -261,14 +261,14 @@ currently resolves to, pass `--resolve` to [`proto pin`](../commands/pin.mdx).
 # Pin the version that lts resolves to
 $ proto pin node lts --resolve
 
-# List every alias, and the version it resolves to
+# List the versions, and the LTS aliases with the versions they point to
 $ proto versions node --aliases
 ```
 
 ### Unofficial builds
 
-Official builds cover most platforms. Where there's none, the plugin downloads from
-[unofficial builds](https://github.com/nodejs/unofficial-builds), a project of the Node.js
+Official builds cover most platforms. For the platforms they don't fully cover, the plugin downloads
+from [unofficial builds](https://github.com/nodejs/unofficial-builds), a project of the Node.js
 organization that builds Node.js for more platforms, at `unofficial-builds.nodejs.org`. proto
 detects these platforms, and picks the right build for you:
 
@@ -330,8 +330,8 @@ directory, which is checked before the others.
 ### npm wasn't installed along with Node.js
 
 [`bundled-npm`](#bundled-npm) installs npm by running the `proto` executable, so proto must be on
-`PATH`. When it can't install npm, it logs a warning, and Node.js stays installed. Run the install
-yourself to see the error:
+`PATH`, or the install fails with an error (Node.js itself stays installed). When npm fails to
+install, proto logs a warning instead. Run the install yourself to see the error:
 
 ```shell
 # Install the npm that ships with the detected Node.js version

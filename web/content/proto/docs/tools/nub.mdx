@@ -60,7 +60,8 @@ shim and a binary:
   (`nub run build`), and managing packages (`nub install`).
 - `nubx` - Runs a package's binary, from `node_modules/.bin` or fetched from the registry, like
   `npx`.
-- `nubr` - Runs a file, a script, or a package binary, resolving the most specific match first.
+- `nubr` - Runs a file, a script, or a package binary, checking for a file first, then a script,
+  then a binary.
 
 All three are the same binary, which picks its mode from the name it's run as, and proto's shims
 pass that name along.
@@ -134,8 +135,7 @@ Whenever Nub runs through proto, with a [shim](<../(fundamentals)/workflows.mdx#
 [shell activation](<../(fundamentals)/workflows.mdx#shell-activation>), proto sets
 `npm_config_global_dir` to `~/.proto/tools/node/globals`, and `npm_config_global_bin_dir` to its
 `bin` directory, when [`shared-globals-dir`](#shared-globals-dir) is enabled. Nub reads both to
-decide where global packages are installed, and where their executables are linked. Otherwise,
-proto doesn't change Nub's environment.
+decide where global packages are installed, and where their executables are linked.
 
 ### Global packages
 

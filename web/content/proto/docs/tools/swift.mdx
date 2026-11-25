@@ -237,7 +237,7 @@ On arm64, Amazon Linux 2 and Ubuntu 20.04 builds start at 5.6.0. A few things to
 - **Each build is locked separately** - Builds other than `ubuntu-24.04` are recorded as a
   [variant](../advanced/lockfile.mdx#variants) in the lockfile, so machines on different
   distributions can share one. When you lock Linux from another platform, with
-  [`proto lock --platform`](../commands/lock.mdx), proto can't detect a distribution, so it locks
+  [`proto lock --platform`](../commands/lock.mdx), proto can't detect a distribution, so it uses
   `ubuntu-24.04`, or [`linux-platform`](#linux-platform) when it's configured.
 
 ### Xcode toolchains

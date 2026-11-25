@@ -20,11 +20,12 @@ shim.
   repository, with `git ls-remote`, so `git` must be on your `PATH` (see
   [requirements](../index.mdx#requirements)).
 - **A supported platform** - Ruby is published as prebuilts for Linux on x64 and arm64 with glibc,
-  and for macOS on Apple Silicon, for Ruby 3.2.1 and later. Anywhere else, like macOS on Intel,
-  Alpine Linux (musl), or FreeBSD, and for older releases, Ruby must be
-  [built from source](#building-from-source). Windows isn't supported, either with prebuilts or by
-  building from source, so use [WSL](https://learn.microsoft.com/en-us/windows/wsl/) instead, where
-  Ruby installs like it does on Linux.
+  and for macOS on Apple Silicon, for stable releases from 3.2.1 onwards, and pre-releases from
+  3.5.0-preview.1 onwards. Anywhere else, like macOS on Intel, Alpine Linux (musl), or FreeBSD, and
+  for older releases, Ruby must be [built from source](#building-from-source). Windows isn't
+  supported, either with prebuilts or by building from source, so use
+  [WSL](https://learn.microsoft.com/en-us/windows/wsl/) instead, where Ruby installs like it does on
+  Linux.
 
 ## Installation
 
@@ -190,16 +191,20 @@ Which build is installed depends on the version you ask for:
 - **Exact versions**, like `3.4.5` - The version's first build, or its latest with
   [`use-latest-build`](#use-latest-build).
 - **Exact builds**, like `3.4.5+6` - Exactly that build.
+- **The `latest` alias** - The first build of the newest stable release.
 
-Run [`proto versions ruby`](../commands/versions.mdx) to list every version as proto names it,
-builds included, from Ruby 2 onwards. Add `--no-builds` to list the versions only.
+Run [`proto versions ruby`](../commands/versions.mdx) to list every version as proto names it, from
+Ruby 2 onwards, with the builds that have a prebuilt for your platform. Add `--no-builds` to list
+the versions only.
 
 ## Troubleshooting
 
 ### No pre-built available
 
-Installing fails with an error like `No pre-built available for 3.4.5 on macos-x64` when there's no
-prebuilt for the version on your platform:
+Installing fails with an error like `No pre-built available for 3.4.5 on macos-x64` when the version
+has no prebuilt for your platform, or like
+`Failed to request https://registry.moonrepo.app/releases/ruby/3.1.4 (404)` when it has no
+prebuilts at all:
 
 - **Your platform or version has no prebuilts** - Build it from source instead, as in
   [`proto install ruby 3.4.5 --build`](../commands/install.mdx). See
@@ -219,7 +224,7 @@ When your shell reports `command not found` for an installed gem's executable, l
 - Check whether `GEM_HOME` is set, like by a previous version manager. Gems are then installed
   there, and their executables to `$GEM_HOME/bin`, which proto doesn't put on `PATH`. Unset it, or
   add that directory to `PATH` yourself. The same goes for `gem install --user-install`, which
-  installs to `~/.gem`.
+  installs to `~/.gem`, or to `~/.local/share/gem` when `~/.gem` doesn't exist.
 
 ### A build from source fails
 
@@ -234,6 +239,6 @@ along with fixes for common errors.
   JRuby and TruffleRuby, aren't supported.
 - **Prebuilts are third-party** - They're published by jdx/ruby, not the Ruby core team. Build from
   source when you need Ruby compiled from its official source archives.
-- **No published checksums** - jdx/ruby doesn't publish checksums for its prebuilts, so proto
+- **No published checksums** - jdx/ruby doesn't publish checksum files for its prebuilts, so proto
   [records one](../advanced/checksums.mdx#tools-without-checksums) from the first download, and
   with a [lockfile](../advanced/lockfile.mdx), later installs must match it.

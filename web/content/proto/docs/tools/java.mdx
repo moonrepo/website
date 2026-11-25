@@ -91,8 +91,8 @@ long forms, `general-availability` and `early-access`, are accepted too.
 Defaults to `ga`.
 
 Early access builds replace the general availability releases, rather than adding to them, and
-there's no `latest` alias for them. They're pre-releases, like `temurin-28.0.0-ea+25`, so pin them
-as a full version, which you can find with [`proto versions java`](../commands/versions.mdx).
+the `latest` alias doesn't work with them. They're pre-releases, like `temurin-28.0.0-ea+25`, so pin
+them as a full version, which you can find with [`proto versions java`](../commands/versions.mdx).
 
 ```toml title=".prototools"
 java = "temurin-28.0.0-ea+25"
@@ -113,10 +113,10 @@ where JDKs are packaged as bundles, that's the `Contents/Home` directory within 
 like Gradle and Maven look for Java with `JAVA_HOME` before `PATH`, so this keeps them on the same
 version as `java`.
 
-With shell activation, [`proto exec`](../commands/exec.mdx), and
-[`proto shell`](../commands/shell.mdx), the version's `bin` directory is also added to `PATH`. That
-makes every JDK tool available, like `jshell`, `keytool`, and `javadoc`, not only `java`, `javac`,
-and `jar`, which are the executables with shims.
+proto also adds the version's `bin` directory to `PATH`. With shell activation,
+[`proto exec`](../commands/exec.mdx), and [`proto shell`](../commands/shell.mdx), that makes every
+JDK tool available, like `jshell`, `keytool`, and `javadoc`, not only `java`, `javac`, and `jar`,
+which are the executables with shims.
 
 ```shell
 # Run the Gradle wrapper with the pinned Java, and JAVA_HOME pointing to it
@@ -178,8 +178,8 @@ are only listed with [`release-type`](#release-type) set to `ea`. When choosing 
   Java 21 release, so it resolves to the newest one, like `temurin-21.0.11+10`, not to the first.
   Write `21.0.0` for that release.
 - **A 4th number is a revision.** Releases like `17.0.4.1` are supported as
-  [revisions](<../(fundamentals)/version-spec.mdx#revisions>). A revision of `0`, as in SDKMAN's
-  `21.0.13.0`, is left out, so it's the same as `21.0.13`.
+  [revisions](<../(fundamentals)/version-spec.mdx#revisions>). In `.sdkmanrc`, a revision of `0`,
+  like SDKMAN's `21.0.13.0`, is left out, so it's read as `21.0.13`.
 - **Version files keep their own forms.** `.java-version` accepts legacy `1.x` versions, like `1.8`
   for Java 8, and `.sdkmanrc` accepts SDKMAN's identifiers, like `21.0.2-tem`. proto converts both
   when it [reads them](#version-files).

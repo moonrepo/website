@@ -23,8 +23,9 @@ requires the [`node`](./node.mdx) tool.
   installed first.
 - **A supported platform** - npm is supported on macOS, Linux, and Windows, on x64 or arm64, even
   though Node.js runs on more. Other platforms fail with an unsupported platform error.
-- **Bash** - On macOS and Linux, npm's executables are launched with small Bash scripts, so `bash`
-  must be installed. Minimal container images, like Alpine, don't include it by default.
+- **Bash** - On macOS and Linux, the `npm` and `npx` executables are launched with small Bash
+  scripts, so `bash` must be installed. Minimal container images, like Alpine, don't include it by
+  default.
 
 ## Installation
 
@@ -138,7 +139,10 @@ Whenever npm runs through proto, with a [shim](<../(fundamentals)/workflows.mdx#
 
 - Adds the directory of the Node.js version detected for the directory to `PATH`, after npm's own,
   and sets `PROTO_NODE_VERSION` to that version. So npm, and every script it runs, like `npm test`
-  or a `postinstall` script, uses that version of `node`.
+  or a `postinstall` script, uses that version of `node`. This only happens with shims and
+  [`proto run`](../commands/run.mdx). With [`proto exec`](../commands/exec.mdx), pass `node` too,
+  and with shell activation, `node` is activated from its own pin in
+  [`.prototools`](<../(fundamentals)/config.mdx>).
 - Sets `PREFIX`, which npm uses as its global prefix, to `~/.proto/tools/node/globals` (or its
   `bin` directory on Windows), when [`shared-globals-dir`](#shared-globals-dir) is enabled. With
   shell activation, it's exported into your shell session.
@@ -173,7 +177,7 @@ to your `PATH` yourself, as shims only exist for npm's own executables.
 # Install a package globally
 $ npm install -g typescript
 
-# Print the directory of the detected Node.js version, where it's installed by default
+# Print the executables directory of the detected Node.js version, where tsc is linked by default
 $ proto bin node --dir exes
 
 # Print the directories that proto looks in
@@ -251,7 +255,7 @@ currently resolves to, pass `--resolve` to [`proto pin`](../commands/pin.mdx).
 # Pin the version that next-11 resolves to
 $ proto pin npm next-11 --resolve
 
-# List every alias, and the version it resolves to
+# List the versions, and the dist-tag aliases with the versions they point to
 $ proto versions npm --aliases
 ```
 

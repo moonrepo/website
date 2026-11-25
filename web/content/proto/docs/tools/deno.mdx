@@ -218,8 +218,8 @@ glibc-based distribution or container image instead, like Debian or Ubuntu.
   [running tools](<../(fundamentals)/(plugin)/tool.mdx#running-tools>)). To upgrade yourself, run
   [`proto install deno latest --pin`](../commands/install.mdx), or install
   [`canary`](#canary-builds) instead of running `deno upgrade canary`.
-- **No published checksums** - Deno doesn't publish checksums for versions before 2.0.1, so proto
-  [records one](../advanced/checksums.mdx#tools-without-checksums) from the first download, and
-  with a [lockfile](../advanced/lockfile.mdx), later installs must match it.
-- **Older versions on arm64** - Prebuilt binaries for Linux arm64 exist from Deno 1.41, and for
-  Windows arm64 from Deno 2.7, so older versions fail to download on those platforms.
+- **No published checksums** - Deno doesn't publish archive checksums for versions before 2.0.1,
+  so proto [records one](../advanced/checksums.mdx#tools-without-checksums) from the first
+  download, and with a [lockfile](../advanced/lockfile.mdx), later installs must match it.
+- **Older versions on arm64** - Prebuilt binaries for Linux arm64 exist from Deno 1.40.3, and for
+  Windows arm64 from Deno 2.6.8, so older versions fail to download on those platforms.

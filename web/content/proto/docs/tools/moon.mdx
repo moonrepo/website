@@ -23,9 +23,10 @@ For other ways to install moon, see its [installation guide](../../../moon/docs/
 - **Git** - Versions are listed from the tags of the
   [moonrepo/moon](https://github.com/moonrepo/moon) repository, with `git ls-remote`, so `git` must
   be on your `PATH` (see [requirements](../index.mdx#requirements)).
-- **A supported platform** - moon is published for Linux (x64 and arm64), macOS (x64 and arm64),
-  and Windows (x64). On Linux, proto downloads the GNU or musl build that matches your system. Other
-  platforms, like Windows on arm64, fail with an unsupported platform error.
+- **A supported platform** - moon is published for Linux (x64 and arm64), macOS (x64 and arm64,
+  except v2.0 and v2.1 on x64), and Windows (x64). On Linux, proto downloads the GNU or musl build
+  that matches your system. Other platforms, like Windows on arm64, fail with an unsupported
+  platform error.
 
 ## Installation
 
@@ -36,24 +37,24 @@ Install moon with [`proto install`](../commands/install.mdx), and pin a version 
 # Install the detected version, or the latest when none is detected
 $ proto install moon
 
-# Install the newest 3.0 release, and pin it to the closest .prototools
-$ proto install moon 3.0 --pin
+# Install the newest 2.6 release, and pin it to the closest .prototools
+$ proto install moon 2.6 --pin
 
 # Pin a version without installing it
-$ proto pin moon 3.0.0
+$ proto pin moon 2.6.6
 
 # Install every pinned tool, including moon, after cloning
 $ proto install
 ```
 
 ```toml title=".prototools"
-moon = "3.0.0"
+moon = "2.6.6"
 ```
 
 Besides versions and ranges, moon supports the `latest`
 [alias](<../(fundamentals)/version-spec.mdx#built-in-aliases>), but not `canary`. An exact version
 is the most reproducible for a tool that runs your whole pipeline, but any
-[version specification](<../(fundamentals)/version-spec.mdx>) works, like `3` or `~3.0`.
+[version specification](<../(fundamentals)/version-spec.mdx>) works, like `2` or `~2.6`.
 
 moon has no version file of its own for proto to detect, so pin it in a
 [`.prototools`](<../(fundamentals)/config.mdx>) at the root of your repository. proto doesn't read
@@ -83,7 +84,7 @@ GitHub, and compiles `moon` (and `moonx`, for v2 and later) with Cargo.
 
 ```shell
 # Build moon from source, instead of downloading a prebuilt
-$ proto install moon 3.0.0 --build
+$ proto install moon 2.6.6 --build
 ```
 
 The build needs:
@@ -112,9 +113,9 @@ git-url = "https://git.corp.internal/mirrors/moon.git"
 '^https://github\.com/moonrepo/moon/releases/download/' = "https://mirror.corp.internal/moon/"
 ```
 
-The mirrored repository must keep moon's `v`-prefixed tags, like `v3.0.0`, as other tags are
+The mirrored repository must keep moon's `v`-prefixed tags, like `v2.6.6`, as other tags are
 ignored. Release assets must keep their paths and file names, like
-`v3.0.0/moon_cli-x86_64-unknown-linux-gnu.tar.xz`, along with their `.sha256` checksum files.
+`v2.6.6/moon_cli-x86_64-unknown-linux-gnu.tar.xz`, along with their `.sha256` checksum files.
 
 ## Ecosystem
 
@@ -128,7 +129,7 @@ configures a [`version`](/moon/api/ToolchainPluginConfig#version) of its own. On
 moon, and every tool that your tasks run with:
 
 ```toml title=".prototools"
-moon = "3.0.0"
+moon = "2.6.6"
 node = "24.11.0"
 pnpm = "10.20.0"
 ```

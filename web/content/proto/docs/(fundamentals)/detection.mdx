@@ -139,8 +139,9 @@ same rules. A file with nothing but comments is skipped, like an empty one.
 24.11.0 # Krypton
 ```
 
-Versions from ecosystem files are used everywhere a version is detected, except by shell
-activation (see [detection by command](#detection-by-command)).
+Versions from ecosystem files are used everywhere a version is detected, though shell activation
+only activates tools that are also pinned in a [`.prototools`](./config.mdx) (see
+[detection by command](#detection-by-command)).
 
 Plugins for other tools can support ecosystem files too, whether they're
 [WASM plugins](../../../wasm/docs/tool.mdx#detect_version_files) or
