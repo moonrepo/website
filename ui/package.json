@@ -19,9 +19,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@base-ui/react": "^1.8.0",
-    "lucide-react": "^1.62.0",
-    "tailwind-merge": "^3.5.0"
+    "@base-ui/react": "^1.9.0",
+    "lucide-react": "^1.80.0",
+    "tailwind-merge": "^3.7.1"
   },
   "peerDependencies": {
     "react": "^19.0.0",
@@ -29,11 +29,11 @@
     "tailwindcss": "^4.0.0"
   },
   "devDependencies": {
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
+    "@types/react": "^19.3.3",
+    "@types/react-dom": "^19.3.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "tailwindcss": "^4.3.3",
-    "tsdown": "^0.23.1"
+    "tailwindcss": "^4.3.5",
+    "tsdown": "^0.23.7"
   }
 }
