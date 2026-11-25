@@ -657,7 +657,7 @@ export function SchematicHeroArt({ className }: { className?: string }) {
 			</g>
 
 			{/* Circuit */}
-			<g opacity={0.45} strokeWidth={1.25}>
+			<g opacity={0.15} strokeWidth={1.25}>
 				<path d="M-10 60H120V150H260" />
 				<Resistor x={260} y={150} />
 				<path d="M356 150H470V100H560" />
@@ -713,8 +713,8 @@ export function SchematicHeroArt({ className }: { className?: string }) {
 				/>
 			</g>
 
-			{/* Annotations */}
-			<g opacity={0.6}>
+			{/* Circuit annotations */}
+			<g opacity={0.25}>
 				<Label x={280} y={134}>
 					R1 10kΩ
 				</Label>
@@ -736,6 +736,10 @@ export function SchematicHeroArt({ className }: { className?: string }) {
 				<Label x={10} y={50}>
 					VCC +5V
 				</Label>
+			</g>
+
+			{/* Gear annotations */}
+			<g opacity={0.6}>
 				<Label anchor="middle" x={big.cx} y={big.cy + big.r + 32}>
 					Ø 300 · 24T · M12.5
 				</Label>

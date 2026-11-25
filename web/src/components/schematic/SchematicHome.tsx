@@ -58,7 +58,7 @@ function Hero() {
 			<BlueprintGrid />
 			<SchematicHeroArt />
 			<div className="relative min-w-0">
-				{/* <SchematicLogo /> */}
+				<SchematicLogo />
 				<Heading className="mt-6" level={1}>
 					Layered configuration and schemas for{' '}
 					<span className={code}>Rust</span>.
