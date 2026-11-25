@@ -168,8 +168,8 @@ Whenever a tool from the backend runs through proto, with a
 [shell activation](<../(fundamentals)/workflows.mdx#shell-activation>), proto:
 
 - Runs the plugin's `bin/exec-env` script, when it has one, and sets the environment variables that
-  it exports, like the `GOROOT` that asdf-golang points to the version's directory. The script is
-  sourced with Bash, with the same `ASDF_INSTALL_*` variables as the other
+  it exports, like the `GOROOT` that asdf-golang points to the version's `go` directory. The script
+  is sourced with Bash, with the same `ASDF_INSTALL_*` variables as the other
   [scripts](#asdf-scripts), and runs every time, so it adds a Bash process to each run of the tool.
 - Puts the directories that `bin/list-bin-paths` prints on `PATH`, or the version's `bin`
   directory when the plugin doesn't have that script.
@@ -234,7 +234,8 @@ When choosing a version:
   [`.prototools`](<../(fundamentals)/config.mdx>), like `1.17.2`. It's also what the scripts
   receive, so a plugin that lists `v1.17.2` is asked to install `1.17.2`.
 - **Other entries can't be installed.** Entries that proto can't read, like `3.14.0a1`, and names
-  that aren't versions, like `nightly`, can't be installed, even though the plugin prints them.
+  that aren't versions, like `nightly`, can't be installed, even though the plugin prints them (and
+  [`proto versions`](../commands/versions.mdx) still lists names like `nightly`).
 - **Partial versions are requirements.** `1.20` is a
   [requirement](<../(fundamentals)/version-spec.mdx#requirements-and-ranges>) that matches every
   listed 1.20 release, so it resolves to the newest patch, like `1.20.14`, never to the release
@@ -289,8 +290,8 @@ proto locates a version's executables after installing it, and whenever the tool
    or `bin` when the plugin doesn't have that script.
 2. Every file in them gets a [shim](<../(fundamentals)/workflows.mdx#shims>) and a
    [binary](<../(fundamentals)/workflows.mdx#binary-linking>), except sub-directories, hidden
-   files, documents like `README` and `LICENSE`, and files with an extension other than `.sh`,
-   which also skips names with a dot, like `python3.12`.
+   files, documents like `README` and `LICENSE`, and files with an extension other than `.sh` or
+   `.exe`, which also skips names with a dot, like `python3.12`.
 3. The executable named after the tool, like `terraform` for `asdf:terraform`, is the primary one,
    which [`proto run`](../commands/run.mdx) runs by default.
 
@@ -327,8 +328,8 @@ proto runs the following scripts from the plugin's `bin` directory, like asdf do
 Other scripts, like `exec-path`, the `help.*` scripts, and the `post-plugin-add`,
 `post-plugin-update`, and `pre-plugin-remove` hooks, aren't run.
 
-Each script runs with the interpreter in its shebang, or with Bash when it has none. Like with
-asdf, the scripts that act on a version run in its directory, and receive `ASDF_INSTALL_TYPE`
+Each script runs with the interpreter in its shebang, or with Bash when it has none. The scripts
+that act on a version run in its directory, and, like with asdf, receive `ASDF_INSTALL_TYPE`
 (always `version`), `ASDF_INSTALL_VERSION` (proto's form of the version), `ASDF_INSTALL_PATH` (its
 directory in the store), and `ASDF_DOWNLOAD_PATH` (a temporary directory). `install` also receives
 `ASDF_CONCURRENCY`, the number of CPU cores, unless it's already set in your environment.
@@ -389,12 +390,14 @@ proto captures the scripts' output, so nothing is printed while they run, which 
 for plugins that compile from source. When a script fails, the error includes its stderr, like
 `Failed to execute script <path>: <stderr>`, which usually names a missing dependency (see
 [prerequisites](#prerequisites)). `Command or script bash does not exist` means that the script's
-interpreter isn't on your `PATH`. To watch the scripts run, set
-[`PROTO_DEBUG_COMMAND`](../advanced/env-vars.mdx#debugging) to `stream`:
+interpreter isn't on your `PATH`. To see which script is running, and its output once it finishes,
+set [`PROTO_DEBUG_COMMAND`](../advanced/env-vars.mdx#debugging) and log at the trace level. Don't
+set it to `stream`, as proto can't read a streamed script's output, like the versions that
+`bin/list-all` prints:
 
 ```shell
-# Stream the output of the plugin's scripts
-$ PROTO_DEBUG_COMMAND=stream proto install asdf:terraform
+# Log each script that runs, and its output
+$ PROTO_DEBUG_COMMAND=1 proto install asdf:terraform --log trace
 ```
 
 ### Detection fails on special asdf versions

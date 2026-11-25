@@ -56,7 +56,7 @@ $ proto install rust 1.91 --pin
 ```
 
 ```toml title=".prototools"
-rust = "1.91.0"
+rust = "1.91.1"
 "cargo:ripgrep" = "15.2.0"
 ```
 
@@ -300,7 +300,9 @@ project's toolchain file doesn't apply (see
 `there is nothing to install in ..., because it has no binaries` from Cargo, or
 `no binaries specified nor inferred` from cargo-binstall, means the crate is a library. Use the
 crate that publishes the CLI instead, like `cargo:wasm-bindgen-cli` (see
-[crates and executables](#crates-and-executables)).
+[crates and executables](#crates-and-executables)). cargo-binstall prints its errors to stdout,
+which proto doesn't show, so when it fails with only `Failed to install cargo:<crate>.`, stream its
+output with [`PROTO_DEBUG_COMMAND`](../advanced/env-vars.mdx#debugging) to see why.
 
 ### A crate or version isn't found
 
@@ -308,7 +310,7 @@ When the crate doesn't exist on crates.io, listing versions fails with a 404 sta
 `https://crates.io/api/v1/crates/<crate>/versions`. Check the crate's name, and note that crates
 that are only published to another registry aren't supported. When the version doesn't exist, it
 fails with `Failed to resolve <version> to a valid supported version`. Yanked versions aren't
-listed, so they fail too, unless they're already installed.
+listed, so they can't be installed either.
 
 ### A crate fails to build
 

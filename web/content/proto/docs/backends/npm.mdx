@@ -175,7 +175,7 @@ How an executable runs depends on its file:
 - **Anything else** - Native binaries, and scripts for another interpreter, like a shell script,
   run directly, and are also [linked as binaries](<../(fundamentals)/workflows.mdx#binary-linking>)
   in `~/.proto/bin`. For example, esbuild replaces its JavaScript `bin` with a native binary when
-  it's installed.
+  it's installed, except on Windows.
 
 With the [`bun`](#backend-bun) setting, JavaScript and TypeScript executables run with `bun`
 instead.
@@ -239,8 +239,8 @@ it:
 //npm.acme.internal/:_authToken=${NPM_TOKEN}
 ```
 
-With the [`bun`](#backend-bun) setting, Bun's commands run from proto's store too, so configure the
-registry in your global `~/.bunfig.toml` instead (see
+With the [`bun`](#backend-bun) setting, Bun's commands run from proto's store too, so Bun also reads
+the registry from your user `~/.npmrc`, or from your global `~/.bunfig.toml` (see
 [Bun's configuration](https://bun.com/docs/runtime/bunfig)).
 
 ## Troubleshooting
@@ -248,7 +248,7 @@ registry in your global `~/.bunfig.toml` instead (see
 ### Installing a package fails, even though Node.js is installed
 
 The backend requires configured `node` and `npm` versions, not just installed ones, so without them,
-[`proto install`](../commands/install.mdx) fails with an error like
+[`proto install npm:prettier`](../commands/install.mdx) fails with an error like
 `npm:prettier requires node to function correctly, but it has not been installed.` A version
 detected from `.nvmrc` or `package.json` isn't enough here, so pin both in a
 [`.prototools`](<../(fundamentals)/config.mdx>):
@@ -270,8 +270,8 @@ either it's in a tool's table instead of `[backends.npm]`, or the
 `Command or script npm does not exist. Unable to execute from plugin.` means that `npm` isn't on
 your `PATH`. npm only has a shim, not a binary, so with only `~/.proto/bin` on `PATH`, like in some
 CI and container setups, the backend can't run it. Add `~/.proto/shims` to `PATH` (see
-[prerequisites](#prerequisites)). With the [`bun`](#backend-bun) setting, the same applies to
-`bun`.
+[prerequisites](#prerequisites)). Bun has a binary, so with the [`bun`](#backend-bun) setting,
+`~/.proto/bin` is enough.
 
 ### A package's versions fail to load
 
@@ -306,9 +306,10 @@ detected, and [`proto install`](../commands/install.mdx) to install every pinned
   verify [checksums](../advanced/checksums.mdx), and installs aren't recorded in the
   [lockfile](../advanced/lockfile.mdx).
 - **Dependencies aren't locked** - Each install resolves the package's dependencies again, from the
-  ranges in its `package.json`, unless it publishes an `npm-shrinkwrap.json`. So installing the
-  same version on two machines, or at different times, can install different dependencies.
-- **Dependencies' install scripts don't run** - Only the package's own install scripts are allowed,
+  ranges in its `package.json`, unless it publishes an `npm-shrinkwrap.json` and npm v11 or older
+  installs it. So installing the same version on two machines, or at different times, can install
+  different dependencies.
+- **Dependencies' install scripts don't run** - npm only allows the package's own install scripts,
   so with npm v12 and newer, which blocks install scripts that aren't allowed, a dependency's
   `postinstall` doesn't run, and a package that relies on one may fail.
 - **No binaries for JavaScript** - JavaScript and TypeScript executables need proto to run them
