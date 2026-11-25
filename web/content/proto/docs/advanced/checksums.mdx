@@ -46,8 +46,8 @@ serving a different file (see [HTTP requests](./http.mdx)) before suspecting the
 
 If you're writing a plugin, return a checksum URL, or a checksum, from the
 [`download_prebuilt`](../../../wasm/docs/tool.mdx#download_prebuilt) function of a WASM plugin, or
-with the `checksum-url` and `checksum-public-key` settings of a
-[schema plugin](../schema.mdx#downloading-and-installing). To verify downloads in a way proto doesn't
+with the `checksum_url` and `checksum_public_key` settings of a
+[schema plugin](./schema-plugin.mdx#checksums). To verify downloads in a way proto doesn't
 support, implement [`verify_checksum`](../../../wasm/docs/tool.mdx#verify_checksum).
 
 ### Tools without checksums

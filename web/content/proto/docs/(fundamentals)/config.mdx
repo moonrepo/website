@@ -991,7 +991,7 @@ that a plugin sends to its own index aren't sent to a configured one, and neithe
 plugin reads from its index besides versions, like the LTS aliases of Node.js.
 
 The setting only applies to plugins that load versions through proto, which most built-in tools
-(except Java) and [schema plugins](../schema.mdx) do. It changes where versions are listed from,
+(except Java) and [schema plugins](../advanced/schema-plugin.mdx) do. It changes where versions are listed from,
 not where they're downloaded from, so pair it with
 [`url-rewrites`](#url-rewrites), or the tool's own settings, to download from the mirror too. Like
 other tool settings, it requires [trust](./trust.mdx).
