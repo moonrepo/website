@@ -38,6 +38,7 @@ import {
 	Zap,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { MoonHeroArt } from '../HeroArt';
 
 const icon = 'text-moon dark:text-moon-400';
 
@@ -106,6 +107,7 @@ function Hero() {
 	return (
 		<section className="relative grid gap-12 px-6 pt-16 pb-16 md:px-12 md:pt-[96px] lg:min-h-[504px] lg:grid-cols-2">
 			<BlueprintGrid />
+			<MoonHeroArt />
 			<div className="relative">
 				<MoonLogo />
 				<Heading className="mt-6" level={1}>

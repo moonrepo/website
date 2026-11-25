@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { CodeBlock } from '@/components/CodeBlock';
+import { SchematicHeroArt } from '../HeroArt';
 
 const code = 'font-mono text-olive dark:text-tangerine';
 const pill =
@@ -55,6 +56,7 @@ function Hero() {
 	return (
 		<section className="relative grid gap-12 px-6 pt-16 pb-16 md:px-12 md:pt-[96px] lg:min-h-[546px] lg:grid-cols-2">
 			<BlueprintGrid />
+			<SchematicHeroArt />
 			<div className="relative min-w-0">
 				{/* <SchematicLogo /> */}
 				<Heading className="mt-6" level={1}>

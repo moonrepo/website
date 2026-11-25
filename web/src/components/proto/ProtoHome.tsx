@@ -29,6 +29,7 @@ import {
 	Zap,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { ProtoHeroArt } from '../HeroArt';
 
 const code = 'font-mono text-olive dark:text-sand';
 const comment = 'text-taupe';
@@ -85,6 +86,7 @@ function Hero() {
 	return (
 		<section className="relative grid gap-12 px-6 pt-16 pb-16 md:px-12 md:pt-[96px] lg:min-h-[546px] lg:grid-cols-2">
 			<BlueprintGrid />
+			<ProtoHeroArt />
 			<div className="relative min-w-0">
 				<ProtoLogo />
 				<Heading className="mt-6" level={1}>
