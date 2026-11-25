@@ -25,6 +25,7 @@ import {
 	Zap,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { HomeHeroArt } from '../HeroArt';
 
 function ListCard({
 	items,
@@ -92,37 +93,10 @@ function Feature({
 // Sections
 
 function Hero() {
-	const craters = [
-		'left-[59%] top-[475px] h-[78px] w-[112px]',
-		'left-[29%] top-[555px] h-8 w-10',
-		'left-[3%] top-[580px] h-6 w-7',
-		'left-[17%] top-[610px] h-[120px] w-[120px]',
-		'left-[86%] top-[617px] h-[58px] w-[64px]',
-	];
-
 	return (
 		<section className="relative h-[880px] overflow-hidden md:h-[700px]">
 			<BlueprintGrid className="bottom-auto h-[560px]" />
-			<div className="absolute inset-x-0 top-[180px] bottom-0 md:top-0">
-				{/* Planet surface */}
-				<div className="absolute top-[420px] left-[43%] size-[2380px] -translate-x-1/2 rounded-full border-2 border-olive bg-paper-100 dark:border-graphite-500 dark:bg-graphite-800" />
-				{craters.map((crater) => (
-					<div
-						className={cn(
-							'absolute rounded-[50%] bg-paper-400 dark:bg-graphite-950',
-							crater,
-						)}
-						key={crater}
-					/>
-				))}
-
-				{/* Small moons */}
-				<div className="absolute top-[60px] left-[82px] hidden size-[146px] overflow-hidden rounded-full border-2 border-olive bg-paper-100 md:block dark:border-graphite-500 dark:bg-graphite-800">
-					<div className="absolute -top-[30%] -right-[30%] size-full rounded-full bg-paper-400 dark:bg-graphite-950" />
-					<div className="absolute -top-[22%] -right-[38%] size-full rounded-full bg-paper-100 dark:bg-graphite-800" />
-				</div>
-				<div className="absolute top-[478px] -right-[40px] size-[84px] rounded-full border-2 border-olive bg-paper-400 dark:border-graphite-500 dark:bg-graphite-950" />
-			</div>
+			<HomeHeroArt />
 
 			<div className="relative flex flex-col items-center px-6 pt-[120px] text-center">
 				<Heading className="max-w-[680px]" level={1} size="hero">

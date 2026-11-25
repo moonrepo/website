@@ -77,12 +77,20 @@ function Label({
 	);
 }
 
-function Stars({ count, seed }: { count: number; seed: number }) {
+function Stars({
+	count,
+	seed,
+	height = H,
+}: {
+	count: number;
+	seed: number;
+	height?: number;
+}) {
 	const next = random(seed);
 	const stars = Array.from({ length: count }, () => ({
 		r: next(),
 		x: round(next() * W),
-		y: round(next() * H),
+		y: round(next() * height),
 	}));
 
 	return (
@@ -739,5 +747,404 @@ export function SchematicHeroArt({ className }: { className?: string }) {
 				</Label>
 			</g>
 		</HeroArt>
+	);
+}
+
+// home
+
+const color = {
+	blue: 'var(--color-info)',
+	green: 'var(--color-success)',
+	orange: 'var(--color-tangerine)',
+	pink: 'var(--color-proto)',
+	purple: 'var(--color-moon)',
+	teal: '#2bb5a0',
+	yellow: 'var(--color-yellow)',
+};
+
+function ColorHatch({
+	id,
+	stroke,
+	gap = 6,
+	angle = 45,
+}: {
+	id: string;
+	stroke: string;
+	gap?: number;
+	angle?: number;
+}) {
+	return (
+		<pattern
+			height={gap}
+			id={id}
+			patternTransform={`rotate(${angle})`}
+			patternUnits="userSpaceOnUse"
+			width={gap}
+		>
+			<line stroke={stroke} strokeWidth={1} x1={0} x2={0} y1={0} y2={gap} />
+		</pattern>
+	);
+}
+
+function circlePath(cx: number, cy: number, r: number) {
+	return `M${cx - r} ${cy}a${r} ${r} 0 1 0 ${r * 2} 0a${r} ${r} 0 1 0 ${-r * 2} 0Z`;
+}
+
+function Ringed({ cx, cy, r }: { cx: number; cy: number; r: number }) {
+	const id = useId();
+	const ring = { rx: r * 1.9, ry: r * 0.42 };
+	const tilt = `rotate(-18 ${cx} ${cy})`;
+	const rings = (
+		<g transform={tilt}>
+			<ellipse
+				cx={cx}
+				cy={cy}
+				rx={ring.rx}
+				ry={ring.ry}
+				stroke={color.orange}
+				strokeWidth={1.5}
+			/>
+			<ellipse
+				cx={cx}
+				cy={cy}
+				rx={ring.rx - 10}
+				ry={ring.ry - 5}
+				stroke={color.orange}
+				strokeDasharray="2 3"
+			/>
+			<ellipse
+				cx={cx}
+				cy={cy}
+				rx={ring.rx + 14}
+				ry={ring.ry + 7}
+				stroke={color.teal}
+				strokeDasharray="6 4"
+			/>
+		</g>
+	);
+
+	return (
+		<g>
+			<defs>
+				<ColorHatch id={`${id}-hatch`} stroke={color.purple} />
+				<clipPath id={`${id}-body`}>
+					<circle cx={cx} cy={cy} r={r} />
+				</clipPath>
+				<clipPath id={`${id}-front`}>
+					<rect height={r * 2} width={r * 6} x={cx - r * 3} y={cy} />
+				</clipPath>
+			</defs>
+			{rings}
+			<circle
+				className="fill-paper-100 dark:fill-graphite-800"
+				cx={cx}
+				cy={cy}
+				r={r}
+				stroke="none"
+			/>
+			<circle
+				cx={cx}
+				cy={cy}
+				fill={color.blue}
+				fillOpacity={0.14}
+				r={r}
+				stroke="none"
+			/>
+			<g clipPath={`url(#${id}-body)`} transform={tilt}>
+				<rect
+					fill={`url(#${id}-hatch)`}
+					height={r * 0.3}
+					width={r * 2}
+					x={cx - r}
+					y={cy - r * 0.5}
+				/>
+				<path
+					d={`M${cx - r} ${cy + r * 0.1}H${cx + r}M${cx - r} ${cy + r * 0.25}H${cx + r}`}
+					stroke={color.pink}
+					strokeDasharray="2 3"
+				/>
+				<rect
+					fill={`url(#${id}-hatch)`}
+					height={r * 0.6}
+					width={r * 2}
+					x={cx - r}
+					y={cy + r * 0.55}
+				/>
+			</g>
+			<circle cx={cx} cy={cy} r={r} stroke={color.blue} strokeWidth={1.5} />
+			<g clipPath={`url(#${id}-front)`}>{rings}</g>
+		</g>
+	);
+}
+
+function Rocket({ x, y, angle }: { x: number; y: number; angle: number }) {
+	return (
+		<g strokeWidth={1.25} transform={`translate(${x} ${y}) rotate(${angle})`}>
+			<path d="M-6 32Q0 60 6 32" stroke={color.orange} strokeDasharray="2 2" />
+			<path d="M-3 32Q0 48 3 32" stroke={color.yellow} />
+			<path
+				d="M-10 10L-20 30H-8ZM10 10L20 30H8Z"
+				fill={color.pink}
+				fillOpacity={0.2}
+				stroke={color.pink}
+			/>
+			<path
+				d="M0 -34C14 -20 12 10 8 30H-8C-12 10 -14 -20 0 -34Z"
+				fill="currentColor"
+				fillOpacity={0.06}
+			/>
+			<path d="M-9 -14C-4 -18 4 -18 9 -14M-8 22H8" opacity={0.6} />
+			<circle cx={0} cy={0} r={5} stroke={color.green} />
+		</g>
+	);
+}
+
+export function HomeHeroArt({ className }: { className?: string }) {
+	const id = useId();
+	const height = 700;
+	const planet = { cx: 580, cy: 1720, r: 1200 };
+	const moon = { cx: 1268, cy: 480, r: 42 };
+	const bands = [
+		{ hatch: true, inner: planet.r - 34, stroke: color.yellow },
+		{ hatch: false, inner: planet.r - 62, stroke: color.orange },
+		{ hatch: true, inner: planet.r - 86, stroke: color.teal },
+		{ hatch: false, inner: planet.r - 112, stroke: color.pink },
+		{ hatch: true, inner: planet.r - 136, stroke: color.purple },
+	];
+	const sparkles: [number, number, number, string][] = [
+		[300, 110, 9, color.yellow],
+		[1040, 300, 8, color.pink],
+		[1180, 90, 11, color.blue],
+		[90, 420, 7, color.green],
+		[860, 70, 6, color.green],
+		[640, 40, 5, color.orange],
+		[1290, 330, 6, color.yellow],
+		[420, 420, 5, color.teal],
+	];
+
+	return (
+		<svg
+			aria-hidden="true"
+			className={cn(
+				'pointer-events-none absolute inset-0 size-full text-olive dark:text-tangerine',
+				className,
+			)}
+			fill="none"
+			preserveAspectRatio="xMidYMax slice"
+			stroke="currentColor"
+			viewBox={`0 0 ${W} ${height}`}
+		>
+			<defs>
+				{bands.map((band) => (
+					<ColorHatch
+						id={`${id}-${band.inner}`}
+						key={band.inner}
+						stroke={band.stroke}
+					/>
+				))}
+				<ColorHatch gap={5} id={`${id}-shade`} stroke={color.purple} />
+				<ColorHatch
+					angle={-45}
+					gap={5}
+					id={`${id}-moon-shade`}
+					stroke={color.pink}
+				/>
+				<radialGradient id={`${id}-glow`}>
+					<stop offset="90%" stopColor={color.orange} stopOpacity={0.18} />
+					<stop offset="100%" stopColor={color.orange} stopOpacity={0} />
+				</radialGradient>
+				<clipPath id={`${id}-moon`}>
+					<circle cx={moon.cx} cy={moon.cy} r={moon.r} />
+				</clipPath>
+				<mask id={`${id}-moon-mask`}>
+					<rect fill="white" height={height} width={W} />
+					<circle cx={moon.cx - 16} cy={moon.cy - 14} fill="black" r={moon.r} />
+				</mask>
+			</defs>
+
+			<g opacity={0.4}>
+				<Stars count={80} height={height - 160} seed={42} />
+			</g>
+			<g opacity={0.85}>
+				{sparkles.map(([x, y, size, fill]) => (
+					<g color={fill} key={`${x}-${y}`}>
+						<Sparkle size={size} x={x} y={y} />
+					</g>
+				))}
+			</g>
+
+			{/* Shooting star */}
+			<path
+				d="M980 210L1110 150"
+				opacity={0.7}
+				stroke={color.yellow}
+				strokeDasharray="1 5"
+				strokeLinecap="round"
+				strokeWidth={2}
+			/>
+			<circle cx={1112} cy={149} r={3} stroke={color.yellow} />
+
+			{/* Gas giant on the horizon */}
+			<circle
+				cx={planet.cx}
+				cy={planet.cy}
+				fill={`url(#${id}-glow)`}
+				r={planet.r + 120}
+				stroke="none"
+			/>
+			<g opacity={0.6} strokeWidth={1}>
+				<circle
+					cx={planet.cx}
+					cy={planet.cy}
+					r={planet.r + 40}
+					stroke={color.orange}
+					strokeDasharray="8 6"
+				/>
+				<circle
+					cx={planet.cx}
+					cy={planet.cy}
+					r={planet.r + 80}
+					stroke={color.teal}
+					strokeDasharray="1 6"
+				/>
+			</g>
+			{bands.map((band, i) => {
+				const outer = i === 0 ? planet.r : bands[i - 1].inner;
+
+				return (
+					<g key={band.inner}>
+						<path
+							d={`${circlePath(planet.cx, planet.cy, outer)}${circlePath(planet.cx, planet.cy, band.inner)}`}
+							fill={band.hatch ? `url(#${id}-${band.inner})` : band.stroke}
+							fillOpacity={band.hatch ? 0.8 : 0.16}
+							fillRule="evenodd"
+							stroke="none"
+						/>
+						<circle
+							cx={planet.cx}
+							cy={planet.cy}
+							r={band.inner}
+							stroke={band.stroke}
+							strokeWidth={1}
+						/>
+					</g>
+				);
+			})}
+			<circle
+				cx={planet.cx}
+				cy={planet.cy}
+				fill={`url(#${id}-shade)`}
+				opacity={0.5}
+				r={planet.r - 136}
+				stroke="none"
+			/>
+			<circle
+				cx={planet.cx}
+				cy={planet.cy}
+				r={planet.r}
+				stroke={color.orange}
+				strokeWidth={1.5}
+			/>
+			<ellipse
+				cx={360}
+				cy={653}
+				fill={color.pink}
+				fillOpacity={0.2}
+				rx={56}
+				ry={9}
+				stroke={color.pink}
+			/>
+			<ellipse
+				cx={360}
+				cy={653}
+				rx={36}
+				ry={4}
+				stroke={color.pink}
+				strokeDasharray="2 3"
+			/>
+
+			{/* Ringed planet */}
+			<Ringed cx={155} cy={135} r={58} />
+
+			{/* Small teal planet */}
+			<circle
+				cx={70}
+				cy={300}
+				opacity={0.6}
+				r={30}
+				stroke={color.green}
+				strokeDasharray="2 4"
+			/>
+			<circle
+				cx={70}
+				cy={300}
+				fill={`url(#${id}-${planet.r - 86})`}
+				r={13}
+				stroke={color.teal}
+				strokeWidth={1.5}
+			/>
+			<circle cx={100} cy={300} fill={color.green} r={3} stroke="none" />
+
+			{/* Small moon */}
+			<circle
+				cx={moon.cx}
+				cy={moon.cy}
+				fill={color.pink}
+				fillOpacity={0.1}
+				r={moon.r}
+				stroke={color.pink}
+				strokeWidth={1.5}
+			/>
+			<g clipPath={`url(#${id}-moon)`} stroke={color.pink}>
+				<rect
+					fill={`url(#${id}-moon-shade)`}
+					height={height}
+					mask={`url(#${id}-moon-mask)`}
+					stroke="none"
+					width={W}
+				/>
+				<ellipse cx={1254} cy={468} rx={9} ry={7} />
+				<ellipse cx={1278} cy={454} rx={4} ry={3} />
+				<ellipse cx={1282} cy={496} rx={6} ry={5} />
+			</g>
+			<ellipse
+				cx={moon.cx}
+				cy={moon.cy}
+				opacity={0.6}
+				rx={moon.r + 26}
+				ry={moon.r + 10}
+				stroke={color.green}
+				strokeDasharray="1 4"
+				transform={`rotate(20 ${moon.cx} ${moon.cy})`}
+			/>
+
+			{/* Rocket */}
+			<path
+				d="M1000 470C1080 430 1130 360 1150 280"
+				opacity={0.7}
+				stroke={color.orange}
+				strokeDasharray="10 4 2 4"
+			/>
+			<Rocket angle={24} x={1166} y={232} />
+
+			{/* Annotations */}
+			<g opacity={0.7}>
+				<Label x={240} y={60}>
+					Ring plane 18°
+				</Label>
+				<Label x={240} y={74}>
+					Ø 116 · 3 rings
+				</Label>
+				<Label x={1190} y={196}>
+					{'MR-01 // ascent'}
+				</Label>
+				<Label anchor="end" x={moon.cx - moon.r - 34} y={moon.cy + 4}>
+					Moonlet b
+				</Label>
+				<Label x={60} y={height - 120}>
+					Gas giant · class J
+				</Label>
+			</g>
+		</svg>
 	);
 }
