@@ -9,8 +9,8 @@
     "start": "cd web && pnpm run start"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.6.3",
-    "prettier": "^3.9.10",
+    "@biomejs/biome": "^2.6.9",
+    "prettier": "^3.10.1",
     "typescript": "^7.0.2"
   },
   "engines": {

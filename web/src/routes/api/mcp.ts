@@ -1,13 +1,21 @@
 import { createMcpHandler, McpServer } from '@modelcontextprotocol/server';
 import { createFileRoute } from '@tanstack/react-router';
 import { registerSearchTool } from 'fumadocs-core/mcp';
-import { llms } from 'fumadocs-core/source';
 import { z } from 'zod';
-import { getLlmText } from '@/lib/llm';
+import { getLlmIndex, getLlmText } from '@/lib/llm';
+import { SITE_URL } from '@/lib/meta';
 import { searchServer } from '@/lib/search';
 import { productSources } from '@/lib/source';
 
 const sources = Object.values(productSources);
+
+// Agents pass URLs from `search` (`/page#heading`), from `llms.txt`
+// (`/page.mdx`), or the full URL, so reduce them to a page's pathname
+function toPagePath(url: string): string {
+	const pathname = URL.parse(url, SITE_URL)?.pathname ?? url;
+
+	return pathname.replace(/\.mdx?$/, '').replace(/(.)\/$/, '$1');
+}
 
 const handler = createMcpHandler(() => {
 	const mcp = new McpServer({
@@ -25,13 +33,7 @@ const handler = createMcpHandler(() => {
 				'List all docs pages of every moonrepo product with their pathnames (URLs)',
 			inputSchema: z.object({}),
 		},
-		async () => {
-			const indexes = await Promise.all(
-				sources.map((source) => llms(source).index()),
-			);
-
-			return { content: [{ type: 'text', text: indexes.join('\n\n') }] };
-		},
+		async () => ({ content: [{ type: 'text', text: await getLlmIndex() }] }),
 	);
 
 	mcp.registerTool(
@@ -43,8 +45,9 @@ const handler = createMcpHandler(() => {
 			inputSchema: z.object({ url: z.string() }),
 		},
 		async ({ url }) => {
+			const path = toPagePath(url);
 			const page = sources
-				.map((source) => source.getPageByUrl(url))
+				.map((source) => source.getPageByUrl(path))
 				.find((item) => item !== undefined);
 
 			if (!page) {

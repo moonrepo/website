@@ -7,6 +7,7 @@ import { createFileRoute, notFound, redirect } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import { flattenTree } from 'fumadocs-core/page-tree';
 import { useFumadocsLoader } from 'fumadocs-core/source/client';
+import type { TOCItemType } from 'fumadocs-core/toc';
 import type { CompiledMDXProperties } from 'fumadocs-mdx';
 import { DocsLayout } from 'fumadocs-ui/layouts/docs';
 import { Breadcrumb } from 'fumadocs-ui/layouts/docs/page/slots/breadcrumb';
@@ -111,12 +112,14 @@ interface ContentProps {
 	url: string;
 }
 
+// The client loader resolves the page's `toc`, so it's never the compiled function
+type PageContent = Omit<
+	CompiledMDXProperties<{ title: string; description?: string }>,
+	'toc'
+> & { toc: TOCItemType[] };
+
 function renderContent(
-	{
-		toc,
-		frontmatter,
-		default: MDX,
-	}: CompiledMDXProperties<{ title: string; description?: string }>,
+	{ toc, frontmatter, default: MDX }: PageContent,
 	{ file, minutes, url }: ContentProps,
 ) {
 	return (

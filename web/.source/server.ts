@@ -19,7 +19,7 @@ export const blog = await create.docLazy("blog", "content/blog", import.meta.glo
   "eager": false
 }));
 
-export const moon = await create.docsLazy("moon", "content/moon", import.meta.glob(["./**/*.{json,yaml}"], {
+export const moon = await create.docsLazy("moon", "content/moon", import.meta.glob(["./**/{*.{json,yaml},meta{,.*}.{js,ts}}"], {
   "base": "./../content/moon",
   "query": "?collection=moon",
   "import": "default",
@@ -35,7 +35,7 @@ export const moon = await create.docsLazy("moon", "content/moon", import.meta.gl
   "eager": false
 }));
 
-export const proto = await create.docsLazy("proto", "content/proto", import.meta.glob(["./**/*.{json,yaml}"], {
+export const proto = await create.docsLazy("proto", "content/proto", import.meta.glob(["./**/{*.{json,yaml},meta{,.*}.{js,ts}}"], {
   "base": "./../content/proto",
   "query": "?collection=proto",
   "import": "default",
@@ -51,7 +51,7 @@ export const proto = await create.docsLazy("proto", "content/proto", import.meta
   "eager": false
 }));
 
-export const schematic = await create.docsLazy("schematic", "content/schematic", import.meta.glob(["./**/*.{json,yaml}"], {
+export const schematic = await create.docsLazy("schematic", "content/schematic", import.meta.glob(["./**/{*.{json,yaml},meta{,.*}.{js,ts}}"], {
   "base": "./../content/schematic",
   "query": "?collection=schematic",
   "import": "default",
@@ -67,7 +67,7 @@ export const schematic = await create.docsLazy("schematic", "content/schematic",
   "eager": false
 }));
 
-export const wasm = await create.docsLazy("wasm", "content/wasm", import.meta.glob(["./**/*.{json,yaml}"], {
+export const wasm = await create.docsLazy("wasm", "content/wasm", import.meta.glob(["./**/{*.{json,yaml},meta{,.*}.{js,ts}}"], {
   "base": "./../content/wasm",
   "query": "?collection=wasm",
   "import": "default",
